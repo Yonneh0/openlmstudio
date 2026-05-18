@@ -1663,11 +1663,11 @@ public partial class MainWindow : Window
             // Use SearchMultiModalModelsAsync to get image generation / diffusion / VAE models
             var relevantModels = await _modelRepository.SearchMultiModalModelsAsync(
                 modelTypeFilter: Domain.Models.ModelType.ImageGeneration);
-            
+
             // Also include Diffusion and VAE types — we need both in the dropdown
             var allMultiModalModels = (await _modelRepository.ListMultiModalModelsAsync()).ToList();
             var imageGenModels = relevantModels.ToList().Concat(
-                allMultiModalModels.Where(m => 
+                allMultiModalModels.Where(m =>
                     new[] { Domain.Models.ModelType.Diffusion, Domain.Models.ModelType.Vae }.Contains(m.ModelType))
             ).DistinctBy(m => m.Id).ToList();
 
@@ -1675,20 +1675,20 @@ public partial class MainWindow : Window
             if (ImageGenModelSelector != null)
             {
                 ImageGenModelSelector.Items.Clear();
-                
+
                 foreach (var model in imageGenModels)
                 {
-                    var sizeStr = model.FileSizeBytes > 0 
-                        ? $"{model.FileSizeBytes / 1_048_576:F0} MB" 
+                    var sizeStr = model.FileSizeBytes > 0
+                        ? $"{model.FileSizeBytes / 1_048_576:F0} MB"
                         : "N/A";
-                    
-                    var item = new TextBlock 
-                    { 
+
+                    var item = new TextBlock
+                    {
                         Text = $"{model.Name} ({sizeStr})",
                         Foreground = new SolidColorBrush(Color.FromRgb(204, 204, 204)),
                         Padding = new Thickness(8)
                     };
-                    
+
                     // Store the model metadata for later lookup on selection
                     item.Tag = model;
                     ImageGenModelSelector.Items.Add(item);
@@ -1737,8 +1737,8 @@ public partial class MainWindow : Window
         }
 
         // If no matching item found, add the default resolution to the list
-        var newItem = new TextBlock 
-        { 
+        var newItem = new TextBlock
+        {
             Text = $"{defaultRes}x{defaultRes}",
             Foreground = new SolidColorBrush(Color.FromRgb(204, 204, 204)),
             Padding = new Thickness(8)

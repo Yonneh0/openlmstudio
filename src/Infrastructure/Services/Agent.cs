@@ -55,7 +55,7 @@ public class Agent : IAgent, IDisposable
             {
                 // Check error conditions
                 if (_progressTracker.HasError || _progressTracker.IsIterationLimitExceeded)
-                    return CreateFailedResult(request.TaskId, 
+                    return CreateFailedResult(request.TaskId,
                         $"Agent hit error condition: {_progressTracker.ErrorMessage ?? "iteration limit"}");
 
                 // Execute plan phase (determine what to do next)
@@ -67,7 +67,7 @@ public class Agent : IAgent, IDisposable
 
                 // Execute act phase based on plan
                 bool shouldContinue = await ExecuteActPhase(request, ct).ConfigureAwait(false);
-                
+
                 if (!shouldContinue)
                     break;
 
@@ -110,7 +110,7 @@ public class Agent : IAgent, IDisposable
 
         _logger?.LogInformation("Agent resuming from paused state");
         await _progressTracker.UpdateStageAsync(TaskProgressStage.InProgress).ConfigureAwait(false);
-        
+
         // Re-activate based on current phase — could continue planning or acting
     }
 
@@ -146,7 +146,7 @@ public class Agent : IAgent, IDisposable
         try
         {
             _state = AgentState.Acting;
-            
+
             // Log act phase message
             AddConversationMessage("agent", "acting", $"Executing tool: {selectedToolName}");
 
@@ -156,11 +156,11 @@ public class Agent : IAgent, IDisposable
             sw.Stop();
 
             _toolCalls.Add(new AgentToolCallRecord(
-                selectedToolName, parameters, 
+                selectedToolName, parameters,
                 success ? "Success" : "Failure",
                 success, sw.ElapsedMilliseconds, DateTime.UtcNow));
-            
-            await _progressTracker.RecordToolCallAsync(selectedToolName, parameters, 
+
+            await _progressTracker.RecordToolCallAsync(selectedToolName, parameters,
                 success ? "Success" : "Failure", success, sw.ElapsedMilliseconds).ConfigureAwait(false);
 
             return true;  // Continue executing
@@ -171,7 +171,7 @@ public class Agent : IAgent, IDisposable
             var errorSw = System.Diagnostics.Stopwatch.StartNew();
             errorSw.Stop();
             _toolCalls.Add(new AgentToolCallRecord(selectedToolName, parameters, ex.Message, false, errorSw.ElapsedMilliseconds, DateTime.UtcNow));
-            
+
             await _progressTracker.RecordErrorAsync($"Tool '{selectedToolName}' failed: {ex.Message}").ConfigureAwait(false);
             return true;  // Continue even on failure — agent should try other approaches
         }
@@ -210,11 +210,11 @@ public class Agent : IAgent, IDisposable
         try
         {
             var assembly = Assembly.GetExecutingAssembly();
-            
+
             foreach (var type in assembly.GetTypes())
             {
                 if (type.IsAbstract || !typeof(ITool).IsAssignableFrom(type)) continue;
-                
+
                 // Check constructor compatibility — needs ILogger and possibly IMcpClient/IMcpResourceAccessor
                 var constructors = type.GetConstructors();
                 foreach (var ctor in constructors.Where(c => c.IsPublic))
@@ -248,16 +248,16 @@ public class Agent : IAgent, IDisposable
         try
         {
             var assembly = Assembly.GetExecutingAssembly();
-            
+
             // Search for tool type in this assembly first (built-in tools like FileReadTool)
             foreach (var type in assembly.GetTypes())
             {
                 if (type.IsAbstract || !typeof(ITool).IsAssignableFrom(type)) continue;
-                
+
                 var toolInterfaceName = typeof(ITool).FullName ?? "OpenLMStudio.Application.Interfaces.ITool";
                 var interfaceImpl = type.GetInterface(toolInterfaceName);
                 if (interfaceImpl == null) continue;
-                
+
                 // Check constructor compatibility — needs ILogger and possibly IMcpClient/IMcpResourceAccessor
                 var constructors = type.GetConstructors();
                 foreach (var ctor in constructors.Where(c => c.IsPublic))
@@ -295,7 +295,7 @@ public class Agent : IAgent, IDisposable
         if (!_disposed)
         {
             _disposed = true;
-            
+
             // Clean up any unmanaged resources (tool calls are records — no disposal needed)
             _logger?.LogInformation("Agent disposed");
         }

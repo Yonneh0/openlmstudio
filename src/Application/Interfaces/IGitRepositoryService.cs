@@ -24,10 +24,10 @@ public class GitDiffInfo
 {
     /// <summary>The number of lines added.</summary>
     public int LinesAdded { get; set; }
-    
+
     /// <summary>The number of lines deleted.</summary>
     public int LinesDeleted { get; set; }
-    
+
     /// <summary>The unified diff text (if requested).</summary>
     public string? UnifiedDiff { get; set; }
 

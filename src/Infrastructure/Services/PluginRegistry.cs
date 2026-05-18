@@ -154,7 +154,7 @@ public class PluginRegistry : Domain.Interfaces.IPluginRegistry
 
         // Download the plugin archive from the registry URL
         var downloadUrl = plugin.DownloadUrl ?? throw new InvalidOperationException("No download URL available for plugin.");
-        
+
         using var client = _httpClient ??= CreateHttpClient();
         var archiveBytes = await client.GetByteArrayAsync(downloadUrl, ct);
         var installPath = Path.Combine(_pluginDirectory, plugin.Id);
@@ -163,14 +163,14 @@ public class PluginRegistry : Domain.Interfaces.IPluginRegistry
         Directory.CreateDirectory(installPath);
         using var archiveStream = new MemoryStream(archiveBytes);
         using var archiveZip = new System.IO.Compression.ZipArchive(archiveStream, System.IO.Compression.ZipArchiveMode.Read);
-        
+
         foreach (var entry in archiveZip.Entries)
         {
             if (string.IsNullOrEmpty(entry.Name)) continue;
-            
-        var targetPath = Path.Combine(installPath, entry.FullName);
-        Directory.CreateDirectory(Path.GetDirectoryName(targetPath) ?? string.Empty);
-            
+
+            var targetPath = Path.Combine(installPath, entry.FullName);
+            Directory.CreateDirectory(Path.GetDirectoryName(targetPath) ?? string.Empty);
+
             await using var streamWriter = new FileStream(targetPath, FileMode.CreateNew, FileAccess.Write, FileShare.None);
             await using var readerStream = entry.Open();
             await readerStream.CopyToAsync(streamWriter);
@@ -190,7 +190,7 @@ public class PluginRegistry : Domain.Interfaces.IPluginRegistry
         try
         {
             Directory.Delete(pluginDir, recursive: true);
-            
+
             // Remove from settings.db (SQLite-backed)
             _logger?.LogInformation("Uninstalled plugin: {PluginId}", pluginId);
         }
@@ -209,9 +209,9 @@ public class PluginRegistry : Domain.Interfaces.IPluginRegistry
         if (File.Exists(manifestPath))
         {
             var currentManifest = await LoadPluginManifestAsync(manifestPath);
-            
+
             // Update IsEnabled and write back the updated manifest
-            var updateJson = System.Text.Json.JsonSerializer.Serialize(new 
+            var updateJson = System.Text.Json.JsonSerializer.Serialize(new
             {
                 Id = currentManifest.Id,
                 Name = currentManifest.Name,
@@ -221,7 +221,7 @@ public class PluginRegistry : Domain.Interfaces.IPluginRegistry
                 Tags = currentManifest.Tags ?? new(),
                 Author = currentManifest.Author
             });
-            
+
             await File.WriteAllTextAsync(manifestPath, updateJson);
             _logger?.LogInformation("Plugin '{PluginId}' state changed to: {State}", pluginId, enabled ? "Enabled" : "Disabled");
         }
@@ -249,7 +249,7 @@ public class PluginRegistry : Domain.Interfaces.IPluginRegistry
 
                 var jsonContent = await response.Content.ReadAsStringAsync();
                 var registryPlugin = System.Text.Json.JsonSerializer.Deserialize<Domain.Interfaces.PluginDefinition>(jsonContent);
-                
+
                 if (registryPlugin != null && registryPlugin.RegistryVersion > installed.Version)
                 {
                     result.Add(new Domain.Interfaces.PluginUpdateInfo(
@@ -275,7 +275,7 @@ public class PluginRegistry : Domain.Interfaces.IPluginRegistry
     private static async Task<PluginManifestData> LoadPluginManifestAsync(string manifestPath)
     {
         var content = await File.ReadAllTextAsync(manifestPath);
-        return System.Text.Json.JsonSerializer.Deserialize<PluginManifestData>(content) 
+        return System.Text.Json.JsonSerializer.Deserialize<PluginManifestData>(content)
             ?? new PluginManifestData();
     }
 

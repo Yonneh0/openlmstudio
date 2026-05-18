@@ -265,7 +265,7 @@ public class ActiveProjectTree : IActiveProjectWatcher, IDisposable
     private void OnFileChanged(object sender, FileSystemEventArgs e)
     {
         if (e.ChangeType != WatcherChangeTypes.Changed) return;
-        
+
         var notification = new FileSystemChangeNotification
         {
             ChangeType = FileWatchEventType.Modified,
@@ -346,9 +346,9 @@ public class ActiveProjectTree : IActiveProjectWatcher, IDisposable
         if (!_disposed)
         {
             _disposed = true;
-            
+
             StopAsync().ConfigureAwait(false).GetAwaiter().GetResult(); // Fire-and-forget cleanup
-            
+
             try
             {
                 _watcher?.Dispose();

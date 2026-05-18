@@ -42,7 +42,7 @@ public class McpResourceAccessor : ITool, IDisposable
             }
 
             // Access the MCP resource via the connected server
-            var result = await _mcpClient.CallToolAsync("__access_resource", 
+            var result = await _mcpClient.CallToolAsync("__access_resource",
                 $"{{\"uri\": \"{resourceUri}\"}}");
 
             return !string.IsNullOrEmpty(result);

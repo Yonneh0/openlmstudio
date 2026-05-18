@@ -47,7 +47,7 @@ public class FileOperationsService : IFileOperationsService, IDisposable
             {
                 using var reader = new StreamReader(request.FilePath);
                 var lines = new List<string>();
-                
+
                 while (!reader.EndOfStream && lines.Count < request.MaxLines.Value)
                 {
                     string? line = await reader.ReadLineAsync();
@@ -81,7 +81,7 @@ public class FileOperationsService : IFileOperationsService, IDisposable
         try
         {
             bool overwritesExisting = File.Exists(request.FilePath);
-            
+
             // Ensure parent directory exists
             Directory.CreateDirectory(Path.GetDirectoryName(request.FilePath)!);
 
@@ -119,7 +119,7 @@ public class FileOperationsService : IFileOperationsService, IDisposable
                 return new FilePatchResult(0, 0, false);
 
             var lines = new List<string>(await File.ReadAllLinesAsync(request.FilePath, ct));
-            
+
             // Remove lines first (in reverse order to preserve indices)
             foreach (var lineNum in request.LinesToRemove.OrderByDescending(l => l))
             {
@@ -166,7 +166,7 @@ public class FileOperationsService : IFileOperationsService, IDisposable
             foreach (var filePath in Directory.EnumerateFiles(searchRoot, "*", new EnumerationOptions { RecurseSubdirectories = true }))
             {
                 if (ct.IsCancellationRequested) throw new OperationCanceledException(ct);
-                
+
                 try
                 {
                     string content = await File.ReadAllTextAsync(filePath);
@@ -197,7 +197,7 @@ public class FileOperationsService : IFileOperationsService, IDisposable
     public async Task<ProjectExplorerResult> ExploreProjectAsync(ProjectExplorerRequest? request = null, CancellationToken ct = default)
     {
         var nodes = new List<ProjectNode>();
-        
+
         string rootPath = request?.RootPath ?? GetActiveProjectRootPath() ?? Directory.GetCurrentDirectory();
         try
         {
@@ -232,7 +232,7 @@ public class FileOperationsService : IFileOperationsService, IDisposable
     private async Task<IReadOnlyList<string>> GetFilesRecursiveAsync(string directory, bool includeHidden)
     {
         var files = new List<string>();
-        
+
         foreach (var file in Directory.GetFiles(directory))
         {
             if (!includeHidden && Path.GetFileName(file)[0] == '.') continue;
@@ -240,7 +240,7 @@ public class FileOperationsService : IFileOperationsService, IDisposable
         }
 
         if (includeHidden) return files;  // Already included hidden dirs in recursion
-        
+
         return files;
     }
 

@@ -74,10 +74,10 @@ public class CommandExecutionService : ICommandExecutionService, IDisposable
             };
 
             process.Start();
-            
+
             // Track the process for cancellation monitoring
             _activeProcessIds.Add(process.Id);
-            
+
             string stdoutContent = await process.StandardOutput.ReadToEndAsync();
             string stderrContent = await process.StandardError.ReadToEndAsync();
             if (!string.IsNullOrEmpty(stdoutContent))
@@ -120,7 +120,7 @@ public class CommandExecutionService : ICommandExecutionService, IDisposable
                 if (proc.Id == processId && !proc.HasExited)
                     proc.Kill(true);  // Forceful kill on Windows
             }
-            
+
             _activeProcessIds.Remove(processId);
         }
         catch (Exception ex)
@@ -133,7 +133,7 @@ public class CommandExecutionService : ICommandExecutionService, IDisposable
     public IReadOnlyList<SandboxProcessInfo> GetActiveProcesses()
     {
         var results = new List<SandboxProcessInfo>();
-        
+
         foreach (var proc in Process.GetProcesses())
         {
             if (_activeProcessIds.Contains(proc.Id))
@@ -154,7 +154,7 @@ public class CommandExecutionService : ICommandExecutionService, IDisposable
         try
         {
             var proc = Process.GetProcessById(processId);
-            
+
             return new SandboxResourceUsage(
                 proc.TotalProcessorTime,
                 Convert.ToInt64(proc.PeakWorkingSet64),
@@ -173,7 +173,7 @@ public class CommandExecutionService : ICommandExecutionService, IDisposable
         if (!_disposed)
         {
             _disposed = true;
-            
+
             // Clean up any remaining active processes
             foreach (var procId in _activeProcessIds.ToList())
             {

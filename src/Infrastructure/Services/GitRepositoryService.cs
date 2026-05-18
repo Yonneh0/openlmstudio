@@ -39,7 +39,7 @@ public class GitRepositoryService : IGitRepositoryService, IDisposable
         try
         {
             var result = await RunGitCommandAsync(workingDirectory, "rev-parse --show-toplevel", null);
-            
+
             if (result.ExitCode != 0 || string.IsNullOrEmpty(result.StandardOutput))
             {
                 _repoRoot = null;
@@ -64,7 +64,7 @@ public class GitRepositoryService : IGitRepositoryService, IDisposable
         if (_repoRoot == null) throw new InvalidOperationException("Git repository not initialized.");
 
         var result = await RunGitCommandAsync(_repoRoot, "for-each-ref --format='%(refname:short)|%(objectname:short)|%(isHEAD)' refs/heads/", null);
-        
+
         if (result.ExitCode != 0) return Array.Empty<GitBranchInfo>();
 
         return ParseBranches(result.StandardOutput).AsReadOnly();
@@ -76,7 +76,7 @@ public class GitRepositoryService : IGitRepositoryService, IDisposable
         if (_repoRoot == null) throw new InvalidOperationException("Git repository not initialized.");
 
         var result = await RunGitCommandAsync(_repoRoot, "for-each-ref --format='%(refname:short)|%(objectname:short)|%(type)' refs/tags/", null);
-        
+
         if (result.ExitCode != 0) return Array.Empty<GitTagInfo>();
 
         return ParseTags(result.StandardOutput).AsReadOnly();
@@ -88,7 +88,7 @@ public class GitRepositoryService : IGitRepositoryService, IDisposable
         if (_repoRoot == null) throw new InvalidOperationException("Git repository not initialized.");
 
         var result = await RunGitCommandAsync(_repoRoot, "remote -v", null);
-        
+
         if (result.ExitCode != 0) return Array.Empty<GitRemoteInfo>();
 
         return ParseRemotes(result.StandardOutput).AsReadOnly();
@@ -100,7 +100,7 @@ public class GitRepositoryService : IGitRepositoryService, IDisposable
         if (_repoRoot == null) throw new InvalidOperationException("Git repository not initialized.");
 
         var result = await RunGitCommandAsync(_repoRoot, "name-rev --name-only HEAD", null);
-        
+
         if (result.ExitCode != 0) return null;
 
         return result.StandardOutput.Trim();
@@ -113,7 +113,7 @@ public class GitRepositoryService : IGitRepositoryService, IDisposable
 
         var refToUse = refName ?? "HEAD";
         var result = await RunGitCommandAsync(_repoRoot, $"rev-parse --verify {refToUse}", null);
-        
+
         return result.ExitCode == 0 ? result.StandardOutput.Trim() : null;
     }
 
@@ -124,7 +124,7 @@ public class GitRepositoryService : IGitRepositoryService, IDisposable
 
         var formatString = "%H|%s|%aN|%aE|%aI";
         var logArgs = $"--max-count={maxCount} --format=format:{formatString}";
-        
+
         if (!string.IsNullOrEmpty(pathFilter))
             logArgs += " -- ";
 
@@ -135,7 +135,7 @@ public class GitRepositoryService : IGitRepositoryService, IDisposable
             logArgs += " HEAD";
 
         var result = await RunGitCommandAsync(_repoRoot, logArgs, null);
-        
+
         if (result.ExitCode != 0 || string.IsNullOrEmpty(result.StandardOutput)) return Array.Empty<GitCommitInfo>();
 
         return ParseCommits(result.StandardOutput).AsReadOnly();
@@ -147,10 +147,10 @@ public class GitRepositoryService : IGitRepositoryService, IDisposable
         if (_repoRoot == null) throw new InvalidOperationException("Git repository not initialized.");
 
         var diffInfo = new GitDiffInfo();
-        
+
         // Determine the refs for the diff
         string leftRef, rightRef;
-        
+
         if (fromRef != null && toRef != null)
         {
             leftRef = fromRef;
@@ -160,7 +160,7 @@ public class GitRepositoryService : IGitRepositoryService, IDisposable
         {
             // Compare working directory against staged changes
             var result = await RunGitCommandAsync(_repoRoot, "diff --staged --numstat", null);
-            
+
             if (result.ExitCode != 0) return diffInfo;
 
             ParseNumStat(result.StandardOutput, diffInfo, includeUnifiedDiff: false);
@@ -170,21 +170,31 @@ public class GitRepositoryService : IGitRepositoryService, IDisposable
         {
             // Compare HEAD vs working directory
             var result = await RunGitCommandAsync(_repoRoot, "diff --numstat", null);
-            
+
             if (result.ExitCode != 0) return diffInfo;
 
             ParseNumStat(result.StandardOutput, diffInfo, includeUnifiedDiff: false);
             return diffInfo;
         }
-        else
+        else if (toRef != null)
         {
             leftRef = fromRef ?? "HEAD";
             rightRef = toRef;
         }
+        else
+        {
+            // Fallback: compare HEAD against working directory
+            var result = await RunGitCommandAsync(_repoRoot, "diff --numstat", null);
+
+            if (result.ExitCode != 0) return diffInfo;
+
+            ParseNumStat(result.StandardOutput, diffInfo, includeUnifiedDiff: false);
+            return diffInfo;
+        }
 
         // Get numstat for stats
         var numstatResult = await RunGitCommandAsync(_repoRoot, $"diff --numstat {EscapeArg(leftRef)}..{rightRef}", null);
-        
+
         if (numstatResult.ExitCode == 0 && !string.IsNullOrEmpty(numstatResult.StandardOutput))
             ParseNumStat(numstatResult.StandardOutput, diffInfo, includeUnifiedDiff: false);
 
@@ -192,7 +202,7 @@ public class GitRepositoryService : IGitRepositoryService, IDisposable
         if (includeUnifiedDiff)
         {
             var unifiedResult = await RunGitCommandAsync(_repoRoot, $"diff -U0 {EscapeArg(leftRef)}..{rightRef}", null);
-            
+
             if (unifiedResult.ExitCode == 0 && !string.IsNullOrEmpty(unifiedResult.StandardOutput))
                 diffInfo.UnifiedDiff = unifiedResult.StandardOutput;
         }
@@ -206,7 +216,7 @@ public class GitRepositoryService : IGitRepositoryService, IDisposable
         if (_repoRoot == null) throw new InvalidOperationException("Git repository not initialized.");
 
         var result = await RunGitCommandAsync(_repoRoot, "status --porcelain=v1", null);
-        
+
         if (result.ExitCode != 0 || string.IsNullOrEmpty(result.StandardOutput)) return Array.Empty<GitStatusEntry>();
 
         return ParseFileStatus(result.StandardOutput).AsReadOnly();
@@ -218,12 +228,12 @@ public class GitRepositoryService : IGitRepositoryService, IDisposable
         if (_repoRoot == null) throw new InvalidOperationException("Git repository not initialized.");
 
         var args = "ls-files --others --exclude-standard";
-        
+
         if (!string.IsNullOrEmpty(directoryFilter))
             args += $" \"{EscapeArg(directoryFilter)}\"";
 
         var result = await RunGitCommandAsync(_repoRoot, args, null);
-        
+
         if (result.ExitCode != 0 || string.IsNullOrEmpty(result.StandardOutput)) return Array.Empty<string>();
 
         return ParseUntrackedFiles(result.StandardOutput).AsReadOnly();
@@ -235,7 +245,7 @@ public class GitRepositoryService : IGitRepositoryService, IDisposable
         if (_repoRoot == null) throw new InvalidOperationException("Git repository not initialized.");
 
         var result = await RunGitCommandAsync(_repoRoot, $"blame --line-porcelain \"{EscapeArg(filePath)}\"", null);
-        
+
         if (result.ExitCode != 0 || string.IsNullOrEmpty(result.StandardOutput)) return new Dictionary<int, string?>();
 
         return ParseBlame(result.StandardOutput).AsReadOnly();
@@ -247,7 +257,7 @@ public class GitRepositoryService : IGitRepositoryService, IDisposable
         if (_repoRoot == null) throw new InvalidOperationException("Git repository not initialized.");
 
         var result = await RunGitCommandAsync(_repoRoot, $"checkout \"{EscapeArg(refName)}\"", null);
-        
+
         if (result.ExitCode != 0)
             _logger?.LogError("Failed to checkout ref: {RefName} - ExitCode: {ExitCode}", refName, result.ExitCode);
     }
@@ -255,6 +265,8 @@ public class GitRepositoryService : IGitRepositoryService, IDisposable
     /// <inheritdoc />
     public void Dispose()
     {
+        if (_disposed) return;
+        _disposed = true;
         // No unmanaged resources — git CLI processes are cleaned up automatically
     }
 
@@ -278,7 +290,7 @@ public class GitRepositoryService : IGitRepositoryService, IDisposable
                 startInfo.EnvironmentVariables[kvp.Key] = kvp.Value;
 
         using var process = Process.Start(startInfo)!;
-        
+
         var stdout = await process.StandardOutput.ReadToEndAsync();
         var stderr = await process.StandardError.ReadToEndAsync();
         await process.WaitForExitAsync();
@@ -289,7 +301,7 @@ public class GitRepositoryService : IGitRepositoryService, IDisposable
     private List<GitBranchInfo> ParseBranches(string output)
     {
         var branches = new List<GitBranchInfo>();
-        
+
         foreach (var line in output.Split(new[] { '\n' }, StringSplitOptions.RemoveEmptyEntries))
         {
             var parts = line.Split('|');
@@ -312,7 +324,7 @@ public class GitRepositoryService : IGitRepositoryService, IDisposable
     private List<GitTagInfo> ParseTags(string output)
     {
         var tags = new List<GitTagInfo>();
-        
+
         foreach (var line in output.Split(new[] { '\n' }, StringSplitOptions.RemoveEmptyEntries))
         {
             var parts = line.Split('|');
@@ -320,7 +332,7 @@ public class GitRepositoryService : IGitRepositoryService, IDisposable
 
             // Check if the tag is an annotated tag by looking at the type
             var isAnnotated = parts[2] == "tag";
-            
+
             tags.Add(new GitTagInfo
             {
                 Name = parts[0],
@@ -335,7 +347,7 @@ public class GitRepositoryService : IGitRepositoryService, IDisposable
     private List<GitRemoteInfo> ParseRemotes(string output)
     {
         var remotes = new List<GitRemoteInfo>();
-        
+
         foreach (var line in output.Split(new[] { '\n' }, StringSplitOptions.RemoveEmptyEntries))
         {
             // Format: origin  https://github.com/.../ (fetch/push)
@@ -359,7 +371,7 @@ public class GitRepositoryService : IGitRepositoryService, IDisposable
     private List<GitCommitInfo> ParseCommits(string output)
     {
         var commits = new List<GitCommitInfo>();
-        
+
         foreach (var line in output.Split(new[] { '\n' }, StringSplitOptions.RemoveEmptyEntries))
         {
             // Format: SHA|message|authorName|authorEmail|date
@@ -382,7 +394,7 @@ public class GitRepositoryService : IGitRepositoryService, IDisposable
     private void ParseNumStat(string output, GitDiffInfo diffInfo, bool includeUnifiedDiff)
     {
         var files = new List<GitDiffFileInfo>();
-        
+
         foreach (var line in output.Split(new[] { '\n' }, StringSplitOptions.RemoveEmptyEntries))
         {
             // Format: added\tdeleted\tfile_path (or \t for binary)
@@ -390,10 +402,10 @@ public class GitRepositoryService : IGitRepositoryService, IDisposable
             if (parts.Length < 3) continue;
 
             var fileInfo = new GitDiffFileInfo();
-            
+
             int.TryParse(parts[0], out var added);
             int.TryParse(parts[1], out var deleted);
-            
+
             // \t means binary file — skip it for stats purposes but record the path
             if (parts[0] == "\\")
             {
@@ -405,7 +417,7 @@ public class GitRepositoryService : IGitRepositoryService, IDisposable
             fileInfo.Path = parts[2];
             fileInfo.LinesAdded = added;
             fileInfo.LinesDeleted = deleted;
-            
+
             diffInfo.AddFile(fileInfo);
             diffInfo.LinesAdded += added;
             diffInfo.LinesDeleted += deleted;
@@ -415,7 +427,7 @@ public class GitRepositoryService : IGitRepositoryService, IDisposable
     private List<GitStatusEntry> ParseFileStatus(string output)
     {
         var statuses = new List<GitStatusEntry>();
-        
+
         foreach (var line in output.Split(new[] { '\n' }, StringSplitOptions.RemoveEmptyEntries))
         {
             // Format: XY filename (for v1 porcelain format)
@@ -424,7 +436,7 @@ public class GitRepositoryService : IGitRepositoryService, IDisposable
             var indexStatus = line[0];
             var workingTreeStatus = line[1];
             var fileName = line.Substring(2).Trim();
-            
+
             // Handle rename entries: R old_file -> new_file
             if (indexStatus == 'R' && fileName.Contains(" -> "))
             {
@@ -459,7 +471,7 @@ public class GitRepositoryService : IGitRepositoryService, IDisposable
     private List<string> ParseUntrackedFiles(string output)
     {
         var files = new List<string>();
-        
+
         foreach (var line in output.Split(new[] { '\n' }, StringSplitOptions.RemoveEmptyEntries))
             files.Add(line.Trim());
 
@@ -469,15 +481,15 @@ public class GitRepositoryService : IGitRepositoryService, IDisposable
     private Dictionary<int, string?> ParseBlame(string output)
     {
         var result = new Dictionary<int, string?>();
-        
+
         var lines = output.Split('\n', StringSplitOptions.None);
         int currentLineNum = 0;
-        
+
         for (int i = 0; i < lines.Length; i++)
         {
             // Blame porcelain format: first line of each entry has: full_sha start_line end_line [parent_info]
             var line = lines[i];
-            
+
             if (line.StartsWith(" ") || line.StartsWith("\t"))
                 continue;
 
@@ -487,12 +499,12 @@ public class GitRepositoryService : IGitRepositoryService, IDisposable
 
             int.TryParse(parts[2], out currentLineNum);
             currentLineNum--; // Line numbers are 1-based in blame output
-            
+
             if (currentLineNum <= 0) continue;
 
             // Get the message from the next lines or use abbreviated SHA as fallback
             var sha = parts[0];
-            
+
             // Look ahead for the commit message (starts with tab)
             string? message = null;
             for (int j = i + 1; j < Math.Min(i + 8, lines.Length); j++)
@@ -529,7 +541,7 @@ public class GitRepositoryService : IGitRepositoryService, IDisposable
     private string EscapeArg(string arg) => arg.Contains(' ') ? $"\"{arg}\"" : arg;
 
     // ---- Internal result type for git CLI execution ----
-    
+
     private readonly struct GitProcessResult(int ExitCode, string StandardOutput, string StandardError)
     {
         public int ExitCode { get; } = ExitCode;
