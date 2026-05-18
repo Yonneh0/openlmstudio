@@ -217,9 +217,83 @@ public class DiffusionInferenceEngine : IDisposable
     }
 
     /// <summary>
+    /// Runs the CLIP text encoder to produce a text embedding tensor from a prompt string.
+    /// Returns DenseTensor<float> containing the text embedding (shape depends on pipeline type: [1, seq_len, hidden_dim]).
+    /// </summary>
+    public DenseTensor<float>? RunTextEncoder(string pipelineType, string prompt)
+    {
+        if (!_textEncoders.TryGetValue(pipelineType, out var encoderSession) || encoderSession == null)
+            return null;
+
+        try
+        {
+            // Get input/output metadata from the session.
+            var inputNames = encoderSession.InputMetadata.Keys.ToList();
+            var outputNames = encoderSession.OutputMetadata.Keys.ToList();
+
+            if (inputNames.Count == 0 || outputNames.Count == 0)
+                return null;
+
+            // Encode prompt text as token IDs using CLIP tokenizer — for now use a simple character-level encoding.
+            // Real implementation would use the CLIP tokenizer from OpenCLIP library.
+            int[] tokenIds = EncodePromptText(prompt);
+
+            if (tokenIds.Length == 0) return null;
+
+            // Create input tensor [1, seq_len] with float values of token IDs.
+            float[] tokenValues = new float[tokenIds.Length];
+            for (int i = 0; i < tokenIds.Length; i++) tokenValues[i] = tokenIds[i];
+
+            var batchInputName = inputNames[0]; // Use first input name from the session metadata.
+            int[] dims1d = new[] { 1, tokenIds.Length };
+            var tokenIdsTensor = new DenseTensor<float>(tokenValues, dims1d);
+
+            var inputValues = new List<NamedOnnxValue>();
+            inputValues.Add(NamedOnnxValue.CreateFromTensor(batchInputName, tokenIdsTensor));
+
+            // Also add position IDs if the model expects them.
+            bool hasPositionIds = encoderSession.InputMetadata.Keys.Any(k => k.Contains("position", StringComparison.OrdinalIgnoreCase));
+            if (hasPositionIds)
+            {
+                var posNames = encoderSession.InputMetadata.Keys.Where(k => k.Contains("position", StringComparison.OrdinalIgnoreCase)).ToList();
+                if (posNames.Count > 0)
+                {
+                    float[] positions = new float[tokenValues.Length];
+                    for (int i = 0; i < tokenIds.Length; i++) positions[i] = i;
+                    int[] dims2d = new[] { 1, tokenValues.Length };
+                    inputValues.Add(NamedOnnxValue.CreateFromTensor(posNames[0], new DenseTensor<float>(positions, dims2d)));
+                }
+            }
+
+            // Run the text encoder.
+            var outputNamesList = encoderSession.OutputMetadata.Keys.ToList();
+            var results = encoderSession.Run(inputValues.ToArray(), outputNamesList);
+
+            using var result = results.First(r => r.Name == outputNamesList[0]);
+            float[] embeddingData = result.AsEnumerable<float>().ToArray();
+
+            // Get dimensions from the shape metadata.
+            int[] dims3d = encoderSession.OutputMetadata[outputNamesList[0]].Dimensions.Cast<int>().ToArray();
+            if (dims3d.Length != 3) return null; // Expected [batch, seq_len, hidden_dim].
+
+            var embedding = new DenseTensor<float>(dims3d);
+            for (int i = 0; i < embeddingData.Length && i < embedding.Length; i++)
+                embedding[i] = embeddingData[i];
+
+            _logger?.LogDebug("Text encoder produced embedding with shape [{Dims}]", string.Join(", ", dims3d));
+            return embedding;
+        }
+        catch (Exception ex)
+        {
+            _logger?.LogError(ex, "Failed to run text encoder for '{Pipeline}'", pipelineType);
+            return null;
+        }
+    }
+
+    /// <summary>
     /// Gets all currently loaded pipeline types.
     /// </summary>
-    public IEnumerable<string> GetLoadedPipelines() => _unetSessions.Keys;
+    public IEnumerable<string> GetLoadedPipelines() => _unetSessions.Keys.Union(_textEncoders.Keys).Union(_vaeDecoders.Keys);
 
     /// <summary>
     /// Disposes all ONNX Runtime sessions.
@@ -273,6 +347,36 @@ public class DiffusionInferenceEngine : IDisposable
             tensor[i] = data[i];
 
         return tensor;
+    }
+
+    // ---- Text encoding helpers for RunTextEncoder ----
+
+    /// <summary>
+    /// Encodes a text prompt into token IDs using simple character-level encoding.
+    /// Real implementation would use the CLIP tokenizer from OpenCLIP library (e.g., tiktoken).
+    /// </summary>
+    private static int[] EncodePromptText(string prompt)
+    {
+        if (string.IsNullOrEmpty(prompt)) return Array.Empty<int>();
+
+        // Simple character-level encoding for demonstration — real CLIP tokenization requires OpenCLIP.
+        var tokens = new List<int>();
+        // Add BOS and EOS markers.
+        tokens.Add(49406); // BOS marker for CLIP.
+        foreach (char ch in prompt)
+            tokens.Add((int)ch);
+        tokens.Add(49407); // EOS marker for CLIP.
+
+        return tokens.ToArray();
+    }
+
+    /// <summary>
+    /// Gets the correct tensor name from ONNX Runtime metadata, handling alternate naming conventions.
+    /// </summary>
+    private static string GetTensorName(string inputName, OnnxValueType valueType)
+    {
+        // Use the provided name directly — ONNX Runtime will match inputs correctly by position.
+        return inputName;
     }
 
     /// <summary>

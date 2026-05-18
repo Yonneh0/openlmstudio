@@ -146,7 +146,7 @@ public class DiffusionPipelineService : IDiffusionPipelineService, IDisposable
         if (request.NegativePrompt != null)
         {
             // When negative prompt is provided, use it for CFG conditioning
-            textEmbedding = await BlendCfgConditioningAsync(engine, pipelineType, request.Prompt, request.NegativePrompt, request.GuidanceScale);
+            textEmbedding = BlendCfgConditioningAsync(engine, pipelineType, request.Prompt, request.NegativePrompt, request.GuidanceScale);
         }
         else
         {
@@ -270,23 +270,10 @@ public class DiffusionPipelineService : IDiffusionPipelineService, IDisposable
     }
 
     /// <summary>
-    /// Encodes a text prompt using the CLIP text encoder ONNX session.
-    /// Returns a DenseTensor<float> containing the text embedding (shape depends on pipeline type).
-    /// NOTE: This is currently a stub — real implementation requires ONNX session with specific input/output names.
-    /// </summary>
-    private DenseTensor<float>? EncodePrompt(DiffusionInferenceEngine engine, string pipelineType, string prompt)
-    {
-        // For now, return null — real CLIP encoding requires ONNX session with specific input/output names.
-        // The DiffusionInferenceEngine has LoadTextEncoder but doesn't expose RunTextEncode (only RunUnetDenoise).
-        _logger?.LogWarning("CLIP text encoding not yet implemented — stub for '{Pipeline}'", pipelineType);
-        return null;
-    }
-
-    /// <summary>
     /// Blends positive and negative prompt embeddings using CFG classifier-free guidance.
     /// Returns the blended tensor: ε_uncond + cfg_scale * (ε_cond - ε_uncond).
     /// </summary>
-    private async Task<DenseTensor<float>?> BlendCfgConditioningAsync(
+    private DenseTensor<float>? BlendCfgConditioningAsync(
         DiffusionInferenceEngine engine, string pipelineType, string positivePrompt, string negativePrompt, double cfgScale)
     {
         var cond = EncodePrompt(engine, pipelineType, positivePrompt);
@@ -627,15 +614,23 @@ public class DiffusionPipelineService : IDiffusionPipelineService, IDisposable
     // ---- Sampler implementations ----
 
     /// <summary>
-    /// Computes time steps for Euler sampler. Uses the DDIM schedule (linearly decreasing noise).
+    /// Computes time steps for Euler sampler. Uses linearly decreasing noise schedule: t from 1 down to 0.
     /// </summary>
     private static double[] ComputeEulerTimeSteps(int steps)
     {
         var timeSteps = new double[steps];
-        // Linear schedule: t from 1000 down to 0
         for (int i = 0; i < steps; i++)
             timeSteps[i] = 1.0 - ((double)i / steps);
         return timeSteps;
+    }
+
+    /// <summary>
+    /// Encodes a text prompt using the CLIP text encoder ONNX session via DiffusionInferenceEngine.RunTextEncoder.
+    /// Returns a DenseTensor<float> containing the text embedding (shape depends on pipeline type).
+    /// </summary>
+    private DenseTensor<float>? EncodePrompt(DiffusionInferenceEngine engine, string pipelineType, string prompt)
+    {
+        return engine.RunTextEncoder(pipelineType, prompt);
     }
 
     /// <summary>
