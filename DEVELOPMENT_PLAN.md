@@ -275,11 +275,11 @@ OpenLMStudio/
   - Generate embeddings via `/v1/embeddings` endpoint
   - Support sentence-transformers format models
 
-### Phase 3 Summary — **UPDATED (May 18, 2026): Rate limiting + CORS middleware + SSE reconnection support**
+### Phase 3 Summary — **UPDATED (May 18, 2026): Rate limiting + CORS middleware + SSE reconnection support + multi-engine routing DTOs**
 | Category | Items Complete | Items Remaining |
 |----------|---------------|-----------------|
 | HTTP Server Foundation | **4 / 4** | ✓ All complete — HTTPS cert setup via SelfSignedCertificateGenerator (May 2026) |
-| OpenAI-Compatible Endpoints | **2 / 5** | Multi-engine routing, image/embedding inference endpoints |
+| OpenAI-Compatible Endpoints | **3 / 5** | Image/embedding inference endpoints; `/v1/chat/completions` now has `Type` field for multi-engine routing |
 | Anthropic-Compatible Endpoints | **1 / 2** | Response format compatibility layer (real IChatCompletionService integration added!) |
 | Server Management | **3 / 4** | ✓ Rate limiting complete; UI controls via Avalonia, API key auth needed |
 
@@ -290,8 +290,12 @@ OpenLMStudio/
 - Rate limiting middleware (`RateLimitMiddleware` + `IRateLimitService`) added with sliding window counter algorithm
 - CORS middleware added for cross-origin SSE/streaming requests
 - SSE reconnection support — `SseReconnectService` tracks active/completed sessions, `SseEventBuffer` buffers events for Last-Event-ID replay
+#### May 18, 2026 (later) Changes:
+- Multi-engine routing DTOs added — `OpenAIImageGenerationRequest`, `ChatCompletionRequest.Type`, `OpenApiRequest.Type` fields enable model-type-based engine routing
+- `/v1/images/generations` endpoint now uses real `IDiffusionPipelineService.GenerateImageAsync()` instead of returning 405 (returns Base64-encoded PNG via OpenAI-compatible format)
+- Image generation DTOs — `ImageGenerationResponse`, `ImageData` with B64Json/Width/Height/Seed fields for OpenAI compatibility
 | Diffusion Engine | 0 / 7 | Not started |
-| Image Generation Endpoints | 0 / 4 | Not started |
+| Image Generation Endpoints | **1 / 4** | ✓ `/v1/images/generations` now routes to IDiffusionPipelineService (returns Base64 image); inpainting/outpainting/list endpoints not yet implemented |
 | LoRA Adapter System | 0 / 5 | Not started |
 | VAE Pipeline Service | 0 / 4 | Not started |
 | Image Post-Processing | 0 / 4 | Not started |
