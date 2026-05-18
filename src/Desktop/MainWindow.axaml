@@ -1,18 +1,11 @@
-<Window x:Class="OpenLMStudio.Desktop.MainWindow"
-        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+<Window xmlns="https://github.com/avaloniaui"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
-        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
-        xmlns:local="clr-namespace:OpenLMStudio.Desktop"
-        mc:Ignorable="d"
-        Title="OpenLMStudio - Local LLM Server &#x26; Chat Client"
-        Height="750" Width="1400"
-        MinHeight="600" MinWidth="1000"
-        WindowStartupLocation="CenterScreen">
-    
-    <!-- Dark theme resources -->
+        x:Class="OpenLMStudio.Desktop.MainWindow"
+        Width="1400" Height="750"
+        MinWidth="1000" MinHeight="600">
+
     <Window.Resources>
-        <!-- Color constants -->
+        <!-- Color constants as SolidColorBrush resources for StaticResource binding -->
         <SolidColorBrush x:Key="BgPrimary" Color="#1E1E22"/>
         <SolidColorBrush x:Key="BgSecondary" Color="#252529"/>
         <SolidColorBrush x:Key="BgTertiary" Color="#2D2D30"/>
@@ -24,65 +17,49 @@
         <SolidColorBrush x:Key="AccentRed" Color="#FF6B6B"/>
         <SolidColorBrush x:Key="AccentOrange" Color="#FF9800"/>
         <SolidColorBrush x:Key="SendButtonColor" Color="#0E639C"/>
+    </Window.Resources>
 
-        <!-- Border style -->
-        <Style TargetType="Border">
-            <Setter Property="Background" Value="{StaticResource BgTertiary}"/>
-            <Setter Property="CornerRadius" Value="4"/>
-        </Style>
-
-        <!-- TextBlock style -->
-        <Style TargetType="TextBlock">
-            <Setter Property="Foreground" Value="{StaticResource TextPrimary}"/>
-            <Setter Property="FontFamily" Value="Segoe UI"/>
-        </Style>
-
+    <!-- Avalonia Style selectors for styling controls by class/type -->
+    <Window.Styles>
         <!-- Button styles -->
-        <Style x:Key="AccentButton" TargetType="Button">
+        <Style Selector="Button.accent">
             <Setter Property="Background" Value="{StaticResource AccentBlue}"/>
             <Setter Property="Foreground" Value="White"/>
             <Setter Property="Padding" Value="12,4"/>
-            <Setter Property="BorderThickness" Value="0"/>
-            <Setter Property="Cursor" Value="Hand"/>
         </Style>
 
-        <Style x:Key="ActionButton" TargetType="Button">
+        <Style Selector="Button.action">
             <Setter Property="Background" Value="{StaticResource SendButtonColor}"/>
             <Setter Property="Foreground" Value="White"/>
             <Setter Property="Padding" Value="8,4"/>
-            <Setter Property="BorderThickness" Value="0"/>
-            <Setter Property="Cursor" Value="Hand"/>
         </Style>
 
         <!-- Tab style for left sidebar -->
-        <Style x:Key="TabButton" TargetType="Button">
-            <Setter Property="Background" Value="Transparent"/>
+        <Style Selector="ToggleButton.tab">
+            <Setter Property="Background" Value="{StaticResource BgTertiary}"/>
             <Setter Property="Foreground" Value="{StaticResource TextPrimary}"/>
-            <Setter Property="Padding" Value="12,8"/>
-            <Setter Property="BorderThickness" Value="0"/>
-            <Setter Property="HorizontalContentAlignment" Value="Left"/>
-            <Setter Property="FontSize" Value="13"/>
+            <Setter Property="Padding" Value="12,6"/>
+            <Setter Property="BorderThickness" Value="0,0,0,2"/>
+            <Setter Property="FontSize" Value="12"/>
         </Style>
 
         <!-- Chat item style -->
-        <Style x:Key="ChatItemButton" TargetType="Button">
+        <Style Selector="Button.chatItem">
             <Setter Property="Background" Value="{StaticResource BgSecondary}"/>
             <Setter Property="Foreground" Value="{StaticResource TextPrimary}"/>
             <Setter Property="Padding" Value="12,8"/>
-            <Setter Property="BorderThickness" Value="0"/>
-            <Setter Property="HorizontalContentAlignment" Value="Left"/>
             <Setter Property="FontSize" Value="13"/>
         </Style>
 
-        <!-- Message bubble style -->
-        <Style x:Key="UserMessage" TargetType="Border">
+        <!-- Message bubble styles -->
+        <Style Selector="Border.userMessage">
             <Setter Property="Background" Value="{StaticResource BgSecondary}"/>
             <Setter Property="CornerRadius" Value="8,0,8,8"/>
             <Setter Property="Padding" Value="16,12"/>
             <Setter Property="Margin" Value="0,0,4,8"/>
         </Style>
 
-        <Style x:Key="AssistantMessage" TargetType="Border">
+        <Style Selector="Border.assistantMessage">
             <Setter Property="Background" Value="{StaticResource BgTertiary}"/>
             <Setter Property="CornerRadius" Value="0,8,8,8"/>
             <Setter Property="Padding" Value="16,12"/>
@@ -90,59 +67,106 @@
         </Style>
 
         <!-- Status indicator -->
-        <Style x:Key="StatusDot" TargetType="Ellipse">
+        <Style Selector="Ellipse.statusDot">
             <Setter Property="Fill" Value="{StaticResource AccentRed}"/>
             <Setter Property="Width" Value="10"/>
             <Setter Property="Height" Value="10"/>
             <Setter Property="Margin" Value="0,2,6,0"/>
         </Style>
 
-        <!-- ScrollViewer for chat history -->
-        <Style TargetType="ScrollViewer">
-            <Setter Property="VerticalScrollBarVisibility" Value="Auto"/>
-        </Style>
-
         <!-- Input area style -->
-        <Style x:Key="InputArea" TargetType="Border">
+        <Style Selector="Border.inputArea">
             <Setter Property="Background" Value="{StaticResource BgSecondary}"/>
             <Setter Property="CornerRadius" Value="4"/>
             <Setter Property="Padding" Value="12"/>
         </Style>
 
-        <!-- Tool tab style -->
-        <Style x:Key="ToolTabButton" TargetType="ToggleButton">
-            <Setter Property="Background" Value="{StaticResource BgTertiary}"/>
-            <Setter Property="Foreground" Value="{StaticResource TextPrimary}"/>
-            <Setter Property="Padding" Value="12,6"/>
-            <Setter Property="BorderThickness" Value="0,0,0,2"/>
-            <Setter Property="BorderBrush" Value="{x:Null}"/>
-            <Setter Property="FontSize" Value="12"/>
-        </Style>
-
         <!-- Search bar style -->
-        <Style x:Key="SearchBar" TargetType="Border">
+        <Style Selector="Border.searchBar">
             <Setter Property="Background" Value="{StaticResource BgSecondary}"/>
             <Setter Property="CornerRadius" Value="4"/>
             <Setter Property="Padding" Value="10,6"/>
         </Style>
 
-        <!-- ContextMenu for chat items -->
-        <ContextMenu x:Key="ChatItemContextMenu">
-            <MenuItem Header="Rename..." />
-            <Separator />
-            <MenuItem Header="Move to Folder..."/>
-            <MenuItem Header="Delete" Foreground="{StaticResource AccentRed}"/>
-        </ContextMenu>
-
-        <!-- Chat history scroll viewer -->
-        <Style TargetType="ScrollViewer">
-            <Setter Property="VerticalScrollBarVisibility" Value="Auto"/>
-            <Setter Property="HorizontalScrollBarVisibility" Value="Disabled"/>
+        <!-- ToggleButton for tool tabs -->
+        <Style Selector="ToggleButton.toolTab">
+            <Setter Property="Background" Value="{StaticResource BgTertiary}"/>
+            <Setter Property="Foreground" Value="{StaticResource TextPrimary}"/>
+            <Setter Property="Padding" Value="12,6"/>
+            <Setter Property="BorderThickness" Value="0,0,0,2"/>
+            <Setter Property="FontSize" Value="12"/>
         </Style>
-    </Window.Resources>
+
+        <!-- Settings tab style -->
+        <Style Selector="RadioButton.settingsTab">
+            <Setter Property="Background" Value="{StaticResource BgTertiary}"/>
+            <Setter Property="Foreground" Value="{StaticResource TextPrimary}"/>
+            <Setter Property="Padding" Value="16,8"/>
+            <Setter Property="BorderThickness" Value="0,0,0,2"/>
+            <Setter Property="FontSize" Value="13"/>
+        </Style>
+
+        <Style Selector="RadioButton.settingsTab:checked">
+            <Setter Property="Background" Value="{StaticResource BgSecondary}"/>
+            <Setter Property="Foreground" Value="{StaticResource AccentBlue}"/>
+            <Setter Property="BorderBrush" Value="{StaticResource AccentBlue}"/>
+        </Style>
+
+        <!-- Setting item style -->
+        <Style Selector="StackPanel.settingItem">
+            <Setter Property="Margin" Value="0,4,0,12"/>
+        </Style>
+
+        <!-- Label style for settings -->
+        <Style Selector="TextBlock.settingLabel">
+            <Setter Property="Foreground" Value="{StaticResource TextPrimary}"/>
+            <Setter Property="FontSize" Value="13"/>
+            <Setter Property="Margin" Value="0,0,0,4"/>
+        </Style>
+
+        <!-- Description style for settings -->
+        <Style Selector="TextBlock.settingDescription">
+            <Setter Property="Foreground" Value="{StaticResource TextSecondary}"/>
+            <Setter Property="FontSize" Value="12"/>
+            <Setter Property="Margin" Value="0,2,0,8"/>
+        </Style>
+
+        <!-- Input style for settings -->
+        <Style Selector="TextBox.settingInput">
+            <Setter Property="Background" Value="{StaticResource BgTertiary}"/>
+            <Setter Property="Foreground" Value="{StaticResource TextPrimary}"/>
+            <Setter Property="Padding" Value="8,6"/>
+            <Setter Property="BorderThickness" Value="1"/>
+            <Setter Property="BorderBrush" Value="#3A3A3E"/>
+        </Style>
+
+        <!-- Save button style for settings -->
+        <Style Selector="Button.saveBtn">
+            <Setter Property="Background" Value="{StaticResource AccentBlue}"/>
+            <Setter Property="Foreground" Value="White"/>
+            <Setter Property="Padding" Value="16,8"/>
+            <Setter Property="BorderThickness" Value="0"/>
+            <Setter Property="FontSize" Value="14"/>
+        </Style>
+
+        <!-- Cancel button style for settings -->
+        <Style Selector="Button.cancelBtn">
+            <Setter Property="Background" Value="{StaticResource BgTertiary}"/>
+            <Setter Property="Foreground" Value="{StaticResource TextPrimary}"/>
+            <Setter Property="Padding" Value="16,8"/>
+            <Setter Property="BorderThickness" Value="1"/>
+            <Setter Property="BorderBrush" Value="#3A3A3E"/>
+        </Style>
+
+        <!-- Toggle checkbox style for settings -->
+        <Style Selector="CheckBox.settingToggle">
+            <Setter Property="Foreground" Value="{StaticResource TextPrimary}"/>
+            <Setter Property="FontSize" Value="14"/>
+        </Style>
+    </Window.Styles>
 
     <!-- Three-panel layout: Left Sidebar | Center Chat | Right Sidebar -->
-    <Grid ShowGridLines="False">
+    <Grid>
         <Grid.ColumnDefinitions>
             <!-- Left sidebar: Fixed width for navigation -->
             <ColumnDefinition Width="280"/>
@@ -153,42 +177,31 @@
         </Grid.ColumnDefinitions>
 
         <!-- ===== LEFT SIDEBAR ===== -->
-        <Border Grid.Column="0" Background="{StaticResource BgPrimary}">
+        <Panel Grid.Column="0" Background="{StaticResource BgPrimary}">
             <DockPanel>
                 <!-- Header -->
                 <TextBlock Text="OpenLMStudio" 
-                           FontSize="18" FontWeight="Bold" 
+                           FontSize="18" FontWeight="SemiBold" 
                            Foreground="#4FC3F7"
                            Padding="16,16,16,8"
                            DockPanel.Dock="Top"/>
 
-                <!-- Search bar -->
-                <Border Grid.Row="0" Style="{StaticResource SearchBar}" Margin="8,0,8,0">
-                    <TextBox Text="{Binding SearchText, UpdateSourceTrigger=PropertyChanged}"
-                             Foreground="{StaticResource TextPrimary}"
-                             Background="Transparent"
-                             BorderThickness="0"
-                             Padding="10,6"
-                             FontSize="13">
-                        <TextBox.Resources>
-                            <Style TargetType="Border">
-                                <Setter Property="Background" Value="Transparent"/>
-                                <Setter Property="CornerRadius" Value="4"/>
-                            </Style>
-                            <Style TargetType="TextBox">
-                                <Setter Property="Foreground" Value="{StaticResource TextPrimary}"/>
-                                <Setter Property="CaretBrush" Value="{StaticResource TextPrimary}"/>
-                            </Style>
-                        </TextBox.Resources>
-                    </TextBox>
-                </Border>
+                        <!-- Search bar -->
+                        <Border Margin="8,0,8,0">
+                            <TextBox x:Name="SearchText"
+                                     Foreground="{StaticResource TextPrimary}"
+                                     Background="Transparent"
+                                     BorderThickness="0"
+                                     Padding="10,6"
+                                     FontSize="13"/>
+                        </Border>
 
                 <!-- Navigation tabs -->
                 <DockPanel Margin="12,12,12,0">
                     <!-- Chat tab content (default) -->
                     <StackPanel x:Name="ChatTabContent" DockPanel.Dock="Top">
-                        <!-- Tab title -->
-                        <TextBlock Text="Chats" FontWeight="SemiBold" Foreground="#4FC3F7" Padding="8,6"/>
+                        <!-- Tab title - clickable -->
+                        <TextBlock x:Name="_chatTabTitle" Text="Chats" FontWeight="SemiBold" Foreground="#4FC3F7" Padding="8,6" PointerPressed="OnChatTabPointerPressed"/>
                         
                         <!-- Chat list -->
                         <ScrollViewer HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Auto">
@@ -208,15 +221,18 @@
 
                     <!-- Server tab content -->
                     <StackPanel x:Name="ServerTabContent" DockPanel.Dock="Top">
-                        <TextBlock Text="Server Status" FontWeight="SemiBold" Foreground="#4FC3F7" Padding="8,6"/>
+                        <TextBlock x:Name="_serverTabTitle" Text="Server Status" FontWeight="SemiBold" Foreground="#4FC3F7" Padding="8,6" PointerPressed="OnServerTabPointerPressed"/>
                         
                         <!-- Server state indicator -->
                         <Border Background="{StaticResource BgSecondary}" CornerRadius="4" Margin="0,8,0,0">
                             <StackPanel>
-                                <TextBlock Text="Server: Stopped" Foreground="{StaticResource AccentRed}" Padding="12,8"/>
+                                <TextBlock x:Name="ServerStatusText" Text="Server: Stopped" Foreground="{StaticResource AccentRed}" Padding="12,8"/>
                                 <TextBlock x:Name="ServerPortText" Text="Port: 8080" Padding="12,4"/>
-                                <Button Content="Start Server" 
-                                        Style="{StaticResource ActionButton}"
+                                <Button x:Name="LeftServerStartStopButton"
+                                        Content="Start Server" 
+                                        Background="#0E639C"
+                                        Foreground="White"
+                                        Padding="8,4"
                                         Margin="8,8,8,8"
                                         HorizontalAlignment="Stretch"
                                         Height="36"/>
@@ -226,7 +242,7 @@
 
                     <!-- Models tab content -->
                     <StackPanel x:Name="ModelsTabContent" DockPanel.Dock="Top">
-                        <TextBlock Text="Models" FontWeight="SemiBold" Foreground="#4FC3F7" Padding="8,6"/>
+                        <TextBlock x:Name="_modelsTabTitle" Text="Models" FontWeight="SemiBold" Foreground="#4FC3F7" Padding="8,6" PointerPressed="OnModelsTabPointerPressed"/>
                         
                         <!-- Model list placeholder -->
                         <ScrollViewer HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Auto">
@@ -239,8 +255,11 @@
                         </ScrollViewer>
 
                         <!-- Add model button -->
-                        <Button Content="+ Add Model" 
-                                Style="{StaticResource ActionButton}"
+                        <Button x:Name="AddModelButton"
+                                Content="+ Add Model" 
+                                Background="#0E639C"
+                                Foreground="White"
+                                Padding="8,4"
                                 Margin="8,8,8,0"
                                 HorizontalAlignment="Stretch"
                                 Height="36"/>
@@ -248,28 +267,31 @@
 
                     <!-- Devices tab content -->
                     <StackPanel x:Name="DevicesTabContent" DockPanel.Dock="Top">
-                        <TextBlock Text="Devices" FontWeight="SemiBold" Foreground="#4FC3F7" Padding="8,6"/>
+                        <TextBlock x:Name="_devicesTabTitle" Text="Devices" FontWeight="SemiBold" Foreground="#4FC3F7" Padding="8,6" PointerPressed="OnDevicesTabPointerPressed"/>
                         
                         <!-- Device info placeholder -->
                         <Border Background="{StaticResource BgSecondary}" CornerRadius="4" Margin="0,8,0,0">
                             <StackPanel>
                                 <TextBlock Text="GPU: None Detected" Foreground="{StaticResource TextPrimary}" Padding="12,8"/>
-                                <TextBlock Text="CPU Cores: 8" Padding="12,4"/>
-                                <TextBlock Text="RAM: 32 GB Available" Padding="12,4"/>
+                                <TextBlock x:Name="CpuCoreText" Text="CPU Cores: 8" Padding="12,4"/>
+                                <TextBlock x:Name="RamInfoText" Text="RAM: 32 GB Available" Padding="12,4"/>
                             </StackPanel>
                         </Border>
 
                         <!-- Model loading info -->
                         <Border Background="{StaticResource BgSecondary}" CornerRadius="4" Margin="0,8,0,0">
                             <StackPanel>
-                                <TextBlock Text="Loaded Model: None" Foreground="{StaticResource TextPrimary}" Padding="12,8"/>
-                                <TextBlock Text="Context: 4096 tokens" Padding="12,4"/>
+                                <TextBlock x:Name="LoadedModelRightText" Text="Loaded Model: None" Foreground="{StaticResource TextPrimary}" Padding="12,8"/>
+                                <TextBlock x:Name="ContextLengthRightText" Text="Context: 4096 tokens" Padding="12,4"/>
                             </StackPanel>
                         </Border>
 
                         <!-- Load model button -->
-                        <Button Content="Load Model" 
-                                Style="{StaticResource ActionButton}"
+                        <Button x:Name="LoadModelButton"
+                                Content="Load Model" 
+                                Background="#0E639C"
+                                Foreground="White"
+                                Padding="8,4"
                                 Margin="8,8,8,0"
                                 HorizontalAlignment="Stretch"
                                 Height="36"/>
@@ -277,7 +299,7 @@
 
                     <!-- Image Generation tab content -->
                     <StackPanel x:Name="ImageGenTabContent" DockPanel.Dock="Top">
-                        <TextBlock Text="Image Generation" FontWeight="SemiBold" Foreground="#4FC3F7" Padding="8,6"/>
+                        <TextBlock Text="Image Generation" FontWeight="SemiBold" Foreground="#4FC3F7" Padding="8,6" PointerPressed="OnImageGenTabPointerPressed"/>
                         
                         <!-- Model selector -->
                         <Border Background="{StaticResource BgSecondary}" CornerRadius="4" Margin="0,8,0,0">
@@ -287,8 +309,7 @@
                                           Foreground="{StaticResource TextPrimary}"
                                           Background="{StaticResource BgTertiary}"
                                           Margin="8,4,8,8"
-                                          Height="32"
-                                          SelectionChanged="OnImageGenModelSelectorSelectionChanged"/>
+                                          Height="32"/>
                             </StackPanel>
                         </Border>
 
@@ -296,22 +317,22 @@
                         <Border Background="{StaticResource BgSecondary}" CornerRadius="4" Margin="0,8,0,0">
                             <StackPanel>
                                 <TextBlock Text="Prompt:" Foreground="{StaticResource TextPrimary}" Padding="12,4"/>
-                                <TextBox x:Name="ImageGenPromptInput" 
-                                         Foreground="{StaticResource TextPrimary}"
-                                         Background="{StaticResource BgTertiary}"
-                                         BorderThickness="0"
-                                         Margin="8,4,8,8"
-                                         Height="60"
-                                         VerticalScrollBarVisibility="Auto"/>
+                                 <TextBox x:Name="ImageGenPromptInput" 
+                                          Foreground="{StaticResource TextPrimary}"
+                                          Background="{StaticResource BgTertiary}"
+                                          BorderThickness="0"
+                                          Margin="8,4,8,8"
+                                          Height="60"
+                                          AcceptsReturn="True"/>
                                 
                                 <TextBlock Text="Negative Prompt (optional):" Foreground="{StaticResource TextPrimary}" Padding="12,4,12,2"/>
-                                <TextBox x:Name="ImageGenNegPromptInput" 
-                                         Foreground="{StaticResource TextPrimary}"
-                                         Background="{StaticResource BgTertiary}"
-                                         BorderThickness="0"
-                                         Margin="8,4,8,8"
-                                         Height="60"
-                                         VerticalScrollBarVisibility="Auto"/>
+                                 <TextBox x:Name="ImageGenNegPromptInput" 
+                                          Foreground="{StaticResource TextPrimary}"
+                                          Background="{StaticResource BgTertiary}"
+                                          BorderThickness="0"
+                                          Margin="8,4,8,8"
+                                          Height="60"
+                                          AcceptsReturn="True"/>
                             </StackPanel>
                         </Border>
 
@@ -328,10 +349,10 @@
                                               Background="{StaticResource BgTertiary}"
                                               Margin="8,0,0,0"
                                               Height="28">
-                                        <ComboBoxItem Content="512x512"/>
-                                        <ComboBoxItem Content="768x768"/>
-                                        <ComboBoxItem Content="1024x1024"/>
-                                        <ComboBoxItem Content="1280x720" IsSelected="True"/>
+                                        <TextBlock Text="512x512"/>
+                                        <TextBlock Text="768x768"/>
+                                        <TextBlock Text="1024x1024"/>
+                                        <TextBlock Text="1280x720" Foreground="{StaticResource TextPrimary}"/>
                                     </ComboBox>
                                 </DockPanel>
 
@@ -368,29 +389,32 @@
                                              Margin="8,0,0,0"
                                              Width="120"
                                              Height="28"/>
-                                    <Button Content="🎲" 
-                                            Style="{StaticResource ActionButton}"
-                                            Padding="6,4"
-                                            Margin="8,0,0,0"/>
+                                     <Button x:Name="RandomSeedButton"
+                                             Content="🎲" 
+                                             Background="#0E639C"
+                                             Foreground="White"
+                                             Padding="6,4"
+                                             Margin="8,0,0,0"/>
                                 </DockPanel>
                             </StackPanel>
                         </Border>
 
                         <!-- Generate button -->
                         <Border Background="{StaticResource BgSecondary}" CornerRadius="4" Margin="0,8,0,0">
-                            <Button x:Name="ImageGenGenerateBtn"
-                                    Content="Generate Image" 
-                                    Style="{StaticResource AccentButton}"
-                                    Height="40"
-                                    Margin="8"/>
+                             <Button x:Name="ImageGenGenerateBtn"
+                                     Content="Generate Image" 
+                                     Background="#4FC3F7"
+                                     Foreground="White"
+                                     Padding="12,4"
+                                     Height="40"
+                                     Margin="8"/>
                         </Border>
 
                         <!-- Progress indicator -->
                         <TextBlock x:Name="ImageGenProgressText" 
                                    Foreground="{StaticResource TextMuted}" 
                                    Padding="12,4"
-                                   FontSize="12"
-                                   Visibility="Collapsed"/>
+                                   FontSize="12"/>
 
                         <!-- Output display area -->
                         <Border Background="{StaticResource BgSecondary}" CornerRadius="4" Margin="0,8,0,0">
@@ -439,35 +463,30 @@
                     </StackPanel>
                 </DockPanel>
 
-                <!-- Bottom section - New Chat button -->
+                 <!-- Bottom section - New Chat button -->
                 <Border DockPanel.Dock="Bottom" Background="{StaticResource BgSecondary}" CornerRadius="4" Margin="12,0,12,8">
                     <Button x:Name="NewChatButton"
                             Content="+ New Chat" 
-                            Style="{StaticResource ActionButton}"
+                            Background="#0E639C"
+                            Foreground="White"
+                            Padding="8,4"
                             Height="36"/>
                 </Border>
 
-                <!-- Bottom section - Search button -->
-                <Border DockPanel.Dock="Bottom" Background="{StaticResource BgSecondary}" CornerRadius="4" Margin="12,0,12,8">
-                    <TextBlock Text="Search conversations..." 
-                               Foreground="{StaticResource TextMuted}" 
-                               Padding="10,6"
-                               FontSize="13"/>
-                </Border>
-
-                <!-- Settings icon -->
-                <Button Content="⚙️" 
+                <!-- Settings button -->
+                <Button x:Name="SettingsButton"
+                        Content="⚙️" 
                         DockPanel.Dock="Bottom"
                         Height="36"
                         Margin="12,8,12,12"
                         HorizontalAlignment="Stretch"
-                        Background="{StaticResource BgSecondary}"
+                        Background="#252529"
                         Foreground="{StaticResource TextPrimary}"/>
             </DockPanel>
-        </Border>
+        </Panel>
 
         <!-- ===== CENTER PANE (Chat Interface) ===== -->
-        <Border Grid.Column="1" Background="#1A1A1E">
+        <Panel Grid.Column="1" Background="#1A1A1E">
             <Grid>
                 <Grid.RowDefinitions>
                     <RowDefinition Height="Auto"/>
@@ -495,7 +514,7 @@
 
                         <!-- Streaming indicator -->
                         <Border Background="#333338" CornerRadius="4" Margin="16,0,0,0">
-                            <StackPanel Orientation="Horizontal" Visibility="Collapsed">
+                            <StackPanel Orientation="Horizontal" x:Name="StreamingIndicator">
                                 <Ellipse x:Name="StreamingIndicatorDot" 
                                          Width="10" Height="10" Fill="{StaticResource AccentGreen}" Margin="0,2,6,0"/>
                                 <TextBlock Text="Streaming" Padding="4,6" FontSize="13"/>
@@ -530,28 +549,20 @@
                                      Background="Transparent"
                                      BorderThickness="0"
                                      Padding="16,12"
-                                     FontSize="14"
-                                     AcceptsReturn="True"
-                                     VerticalScrollBarVisibility="Auto">
-                                <TextBox.Resources>
-                                    <Style TargetType="Border">
-                                        <Setter Property="Background" Value="Transparent"/>
-                                    </Style>
-                                    <Style TargetType="TextBox">
-                                        <Setter Property="Foreground" Value="{StaticResource TextPrimary}"/>
-                                        <Setter Property="CaretBrush" Value="{StaticResource TextPrimary}"/>
-                                    </Style>
-                                </TextBox.Resources>
-                            </TextBox>
+                                     FontSize="14"/>
                         </Border>
 
-                        <!-- Tool tabs -->
+                         <!-- Tool tabs -->
                         <StackPanel Grid.Row="1" Orientation="Horizontal" Margin="16,0,16,8">
                             <ToggleButton x:Name="CodeInterpreterToggle" Content="Code Interpreter" 
-                                          Style="{StaticResource ToolTabButton}" Padding="12,6"/>
-                            <TextBlock Text="" Foreground="#CCCCCC" FontSize="12" Padding="4,6"/>
+                                          Background="#2D2D30"
+                                          Foreground="{StaticResource TextPrimary}"
+                                          Padding="12,6"/>
+                             <TextBlock Text="" Foreground="#CCCCCC" FontSize="12" Padding="4,6"/>
                             <ToggleButton x:Name="ProjectManagementToggle" Content="Project Management" 
-                                          Style="{StaticResource ToolTabButton}" Padding="12,6"/>
+                                          Background="#2D2D30"
+                                          Foreground="{StaticResource TextPrimary}"
+                                          Padding="12,6"/>
                         </StackPanel>
 
                         <!-- Send button overlay -->
@@ -567,10 +578,10 @@
                     </Grid>
                 </Border>
             </Grid>
-        </Border>
+        </Panel>
 
         <!-- ===== RIGHT SIDEBAR (Server/Device Status) ===== -->
-        <Border Grid.Column="2" Background="{StaticResource BgPrimary}">
+        <Panel Grid.Column="2" Background="{StaticResource BgPrimary}">
             <DockPanel Margin="12">
                 <!-- Server status section -->
                 <TextBlock Text="Server" 
@@ -580,7 +591,7 @@
 
                 <Border Background="{StaticResource BgSecondary}" Margin="0,8,0,0">
                     <StackPanel>
-                        <TextBlock x:Name="ServerStatusText" Text="Server: Stopped" 
+                        <TextBlock x:Name="ServerStatusRight" Text="Server: Stopped" 
                                    Foreground="{StaticResource AccentRed}" Padding="12,8"/>
                         <TextBlock x:Name="ServerPortRightText" Text="Port: 8080" Padding="12,4"/>
                     </StackPanel>
@@ -596,8 +607,8 @@
                     <StackPanel>
                         <TextBlock Text="GPU: None Detected" 
                                    Foreground="{StaticResource TextPrimary}" Padding="12,8"/>
-                        <TextBlock x:Name="CpuCoreText" Text="CPU Cores: 8" Padding="12,4"/>
-                        <TextBlock x:Name="RamInfoText" Text="RAM: 32 GB Available" Padding="12,4"/>
+                        <TextBlock x:Name="CpuCoreRightText" Text="CPU Cores: 8" Padding="12,4"/>
+                        <TextBlock x:Name="RamInfoRightText" Text="RAM: 32 GB Available" Padding="12,4"/>
                     </StackPanel>
                 </Border>
 
@@ -609,20 +620,20 @@
 
                 <Border Background="{StaticResource BgSecondary}" Margin="0,8,0,0">
                     <StackPanel>
-                        <TextBlock x:Name="LoadedModelRightText" Text="Loaded Model: None" 
+                        <TextBlock x:Name="LoadedModelRightText2" Text="Loaded Model: None" 
                                    Foreground="{StaticResource TextPrimary}" Padding="12,8"/>
-                        <TextBlock x:Name="ContextLengthRightText" Text="Context: 4096 tokens" Padding="12,4"/>
+                        <TextBlock x:Name="ContextLengthRightText2" Text="Context: 4096 tokens" Padding="12,4"/>
                     </StackPanel>
                 </Border>
 
                 <!-- Start/Stop server button -->
-                <Button x:Name="ServerStartStopButton"
+                <Button x:Name="RightServerStartStopButton"
                         Content="Start Server" 
                         DockPanel.Dock="Bottom"
                         Height="36"
                         Margin="0,8,0,0"
                         HorizontalAlignment="Stretch"/>
             </DockPanel>
-        </Border>
+        </Panel>
     </Grid>
 </Window>

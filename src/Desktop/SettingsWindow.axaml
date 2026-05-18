@@ -1,12 +1,10 @@
-<Window x:Class="OpenLMStudio.Desktop.SettingsWindow"
-        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+<Window xmlns="https://github.com/avaloniaui"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-        Title="Settings - OpenLMStudio"
-        Height="700" Width="900"
-        WindowStartupLocation="CenterOwner">
-    
+        x:Class="OpenLMStudio.Desktop.SettingsWindow"
+        Width="900" Height="700">
+
     <Window.Resources>
-        <!-- Dark theme resources -->
+        <!-- Dark theme resources as SolidColorBrush for StaticResource binding -->
         <SolidColorBrush x:Key="BgPrimary" Color="#1E1E22"/>
         <SolidColorBrush x:Key="BgSecondary" Color="#252529"/>
         <SolidColorBrush x:Key="BgTertiary" Color="#2D2D30"/>
@@ -15,47 +13,45 @@
         <SolidColorBrush x:Key="AccentBlue" Color="#4FC3F7"/>
         <SolidColorBrush x:Key="AccentGreen" Color="#4CAF50"/>
         <SolidColorBrush x:Key="AccentRed" Color="#FF6B6B"/>
-        
+    </Window.Resources>
+
+    <!-- Avalonia Style selectors for styling controls by class/type -->
+    <Window.Styles>
         <!-- Tab style -->
-        <Style x:Key="SettingsTabButton" TargetType="RadioButton">
+        <Style Selector="RadioButton.settingsTab">
             <Setter Property="Background" Value="{StaticResource BgTertiary}"/>
             <Setter Property="Foreground" Value="{StaticResource TextPrimary}"/>
             <Setter Property="Padding" Value="16,8"/>
             <Setter Property="BorderThickness" Value="0,0,0,2"/>
-            <Setter Property="BorderBrush" Value="{x:Null}"/>
-            <Setter Property="FontSize" Value="13"/>
         </Style>
 
-        <Style x:Key="SettingsTabButtonActive" TargetType="RadioButton">
+        <Style Selector="RadioButton.settingsTab:checked">
             <Setter Property="Background" Value="{StaticResource BgSecondary}"/>
             <Setter Property="Foreground" Value="{StaticResource AccentBlue}"/>
-            <Setter Property="Padding" Value="16,8"/>
-            <Setter Property="BorderThickness" Value="0,0,0,2"/>
             <Setter Property="BorderBrush" Value="{StaticResource AccentBlue}"/>
-            <Setter Property="FontSize" Value="13"/>
         </Style>
 
         <!-- Setting item style -->
-        <Style x:Key="SettingItem" TargetType="StackPanel">
+        <Style Selector="StackPanel.settingItem">
             <Setter Property="Margin" Value="0,4,0,12"/>
         </Style>
 
         <!-- Label style -->
-        <Style x:Key="SettingLabel" TargetType="TextBlock">
+        <Style Selector="TextBlock.settingLabel">
             <Setter Property="Foreground" Value="{StaticResource TextPrimary}"/>
             <Setter Property="FontSize" Value="13"/>
             <Setter Property="Margin" Value="0,0,0,4"/>
         </Style>
 
         <!-- Description style -->
-        <Style x:Key="SettingDescription" TargetType="TextBlock">
+        <Style Selector="TextBlock.settingDescription">
             <Setter Property="Foreground" Value="{StaticResource TextSecondary}"/>
             <Setter Property="FontSize" Value="12"/>
             <Setter Property="Margin" Value="0,2,0,8"/>
         </Style>
 
         <!-- Input style -->
-        <Style x:Key="SettingInput" TargetType="TextBox">
+        <Style Selector="TextBox.settingInput">
             <Setter Property="Background" Value="{StaticResource BgTertiary}"/>
             <Setter Property="Foreground" Value="{StaticResource TextPrimary}"/>
             <Setter Property="Padding" Value="8,6"/>
@@ -64,7 +60,7 @@
         </Style>
 
         <!-- Save button style -->
-        <Style x:Key="SaveButton" TargetType="Button">
+        <Style Selector="Button.saveBtn">
             <Setter Property="Background" Value="{StaticResource AccentBlue}"/>
             <Setter Property="Foreground" Value="White"/>
             <Setter Property="Padding" Value="16,8"/>
@@ -73,7 +69,7 @@
         </Style>
 
         <!-- Cancel button style -->
-        <Style x:Key="CancelButton" TargetType="Button">
+        <Style Selector="Button.cancelBtn">
             <Setter Property="Background" Value="{StaticResource BgTertiary}"/>
             <Setter Property="Foreground" Value="{StaticResource TextPrimary}"/>
             <Setter Property="Padding" Value="16,8"/>
@@ -82,13 +78,13 @@
         </Style>
 
         <!-- Toggle style -->
-        <Style x:Key="SettingToggle" TargetType="CheckBox">
+        <Style Selector="CheckBox.settingToggle">
             <Setter Property="Foreground" Value="{StaticResource TextPrimary}"/>
             <Setter Property="FontSize" Value="14"/>
         </Style>
-    </Window.Resources>
+    </Window.Styles>
 
-    <Grid ShowGridLines="False">
+    <Grid>
         <Grid.RowDefinitions>
             <!-- Tab bar -->
             <RowDefinition Height="Auto"/>
@@ -98,30 +94,25 @@
             <RowDefinition Height="Auto"/>
         </Grid.RowDefinitions>
 
-        <!-- Tab navigation (using RadioButton for Windows App SDK compatibility) -->
+        <!-- Tab navigation (using RadioButton for Avalonia compatibility) -->
         <StackPanel Grid.Row="0" Orientation="Horizontal">
             <RadioButton x:Name="ServerTabButton" 
                          Content="Server"
-                         Style="{StaticResource SettingsTabButtonActive}"
-                         Tag="Server"
-                         Checked="OnTabChanged"/>
+                         Classes="settingsTab"
+                         IsChecked="True"/>
             
             <RadioButton x:Name="ModelTabButton"
                          Content="Model"
-                         Style="{StaticResource SettingsTabButton}"
-                         Tag="Model"
-                         Checked="OnTabChanged"/>
+                         Classes="settingsTab"/>
             
             <RadioButton x:Name="AgentTabButton"
                          Content="Agent"
-                         Style="{StaticResource SettingsTabButton}"
-                         Tag="Agent"
-                         Checked="OnTabChanged"/>
+                         Classes="settingsTab"/>
         </StackPanel>
 
         <!-- Settings content panels -->
         <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto">
-            <Grid ShowGridLines="False">
+            <Grid>
                 <!-- Server settings panel -->
                 <StackPanel x:Name="ServerSettingsPanel">
                     <Border Background="{StaticResource BgSecondary}" CornerRadius="4" Padding="20" Margin="0,0,0,16">
@@ -129,111 +120,111 @@
                     </Border>
 
                     <!-- Port setting -->
-                    <StackPanel Style="{StaticResource SettingItem}">
-                        <TextBlock Style="{StaticResource SettingLabel}" Text="Server Port"/>
-                        <TextBlock Style="{StaticResource SettingDescription}" 
+                    <StackPanel Classes="settingItem">
+                        <TextBlock Classes="settingLabel" Text="Server Port"/>
+                        <TextBlock Classes="settingDescription" 
                                    Text="The port the local API server will listen on. Default: 8080"/>
-                        <TextBox x:Name="PortSettingInput" Style="{StaticResource SettingInput}">
+                        <TextBox x:Name="PortSettingInput" Classes="settingInput">
                             <TextBox.Text>8080</TextBox.Text>
                         </TextBox>
                     </StackPanel>
 
                     <!-- HTTPS setting -->
-                    <StackPanel Style="{StaticResource SettingItem}">
-                        <TextBlock Style="{StaticResource SettingLabel}" Text="Enable HTTPS"/>
-                        <TextBlock Style="{StaticResource SettingDescription}" 
+                    <StackPanel Classes="settingItem">
+                        <TextBlock Classes="settingLabel" Text="Enable HTTPS"/>
+                        <TextBlock Classes="settingDescription" 
                                    Text="Use HTTPS for the local server (generates self-signed certificate automatically)"/>
-                        <CheckBox x:Name="HttpsEnabledCheckbox" Style="{StaticResource SettingToggle}">
+                        <CheckBox x:Name="HttpsEnabledCheckbox" Classes="settingToggle">
                             <CheckBox.Content>Enable HTTPS</CheckBox.Content>
                         </CheckBox>
                     </StackPanel>
 
                     <!-- API Key setting -->
-                    <StackPanel Style="{StaticResource SettingItem}">
-                        <TextBlock Style="{StaticResource SettingLabel}" Text="API Key (Optional)"/>
-                        <TextBlock Style="{StaticResource SettingDescription}" 
+                    <StackPanel Classes="settingItem">
+                        <TextBlock Classes="settingLabel" Text="API Key (Optional)"/>
+                        <TextBlock Classes="settingDescription" 
                                    Text="If set, clients must include this key in the Authorization header to use the API"/>
-                        <TextBox x:Name="ApiKeySettingInput" Style="{StaticResource SettingInput}"/>
+                        <TextBox x:Name="ApiKeySettingInput" Classes="settingInput"/>
                     </StackPanel>
 
                     <!-- Rate Limiting setting -->
-                    <StackPanel Style="{StaticResource SettingItem}">
-                        <TextBlock Style="{StaticResource SettingLabel}" Text="Rate Limiting (Requests/Minute)"/>
-                        <TextBlock Style="{StaticResource SettingDescription}" 
+                    <StackPanel Classes="settingItem">
+                        <TextBlock Classes="settingLabel" Text="Rate Limiting (Requests/Minute)"/>
+                        <TextBlock Classes="settingDescription" 
                                    Text="Maximum number of requests per minute from a single client. 0 = no limit."/>
-                        <TextBox x:Name="RateLimitSettingInput" Style="{StaticResource SettingInput}">
+                        <TextBox x:Name="RateLimitSettingInput" Classes="settingInput">
                             <TextBox.Text>60</TextBox.Text>
                         </TextBox>
                     </StackPanel>
 
                     <!-- Context Length setting -->
-                    <StackPanel Style="{StaticResource SettingItem}">
-                        <TextBlock Style="{StaticResource SettingLabel}" Text="Default Context Length (Tokens)"/>
-                        <TextBlock Style="{StaticResource SettingDescription}" 
+                    <StackPanel Classes="settingItem">
+                        <TextBlock Classes="settingLabel" Text="Default Context Length (Tokens)"/>
+                        <TextBlock Classes="settingDescription" 
                                    Text="Maximum number of tokens for the context window. Default: 4096."/>
-                        <TextBox x:Name="ContextLengthSettingInput" Style="{StaticResource SettingInput}">
+                        <TextBox x:Name="ContextLengthSettingInput" Classes="settingInput">
                             <TextBox.Text>4096</TextBox.Text>
                         </TextBox>
                     </StackPanel>
                 </StackPanel>
 
                 <!-- Model settings panel -->
-                <StackPanel x:Name="ModelSettingsPanel" Visibility="Collapsed">
+                <StackPanel x:Name="ModelSettingsPanel" IsVisible="False">
                     <Border Background="{StaticResource BgSecondary}" CornerRadius="4" Padding="20" Margin="0,0,0,16">
                         <TextBlock Text="Model Settings" FontWeight="SemiBold" Foreground="#4FC3F7" FontSize="18"/>
                     </Border>
 
                     <!-- Default model setting -->
-                    <StackPanel Style="{StaticResource SettingItem}">
-                        <TextBlock Style="{StaticResource SettingLabel}" Text="Default Model"/>
-                        <TextBlock Style="{StaticResource SettingDescription}" 
+                    <StackPanel Classes="settingItem">
+                        <TextBlock Classes="settingLabel" Text="Default Model"/>
+                        <TextBlock Classes="settingDescription" 
                                    Text="Model to use when no explicit model is selected."/>
                         <ComboBox x:Name="DefaultModelSelector" 
                                   Foreground="{StaticResource TextPrimary}"
                                   Background="{StaticResource BgTertiary}"
                                   Padding="8,6">
-                            <ComboBoxItem Content="Not Selected"/>
+                            <TextBlock Text="Not Selected"/>
                         </ComboBox>
                     </StackPanel>
 
                     <!-- Offload setting -->
-                    <StackPanel Style="{StaticResource SettingItem}">
-                        <TextBlock Style="{StaticResource SettingLabel}" Text="GPU Layer Offloading (n-gpu-layers)"/>
-                        <TextBlock Style="{StaticResource SettingDescription}" 
+                    <StackPanel Classes="settingItem">
+                        <TextBlock Classes="settingLabel" Text="GPU Layer Offloading (n-gpu-layers)"/>
+                        <TextBlock Classes="settingDescription" 
                                    Text="Number of layers to offload to GPU. 0 = CPU only. -1 = auto-detect."/>
-                        <Slider x:Name="GpuOffloadSlider" Minimum="-1" Maximum="999" Value="-1" TickFrequency="1"/>
+                        <Slider x:Name="GpuOffloadSlider" Minimum="-1" Maximum="999" Value="-1"/>
                     </StackPanel>
 
                     <!-- Context length override -->
-                    <StackPanel Style="{StaticResource SettingItem}">
-                        <TextBlock Style="{StaticResource SettingLabel}" Text="Context Length Override"/>
-                        <TextBlock Style="{StaticResource SettingDescription}" 
+                    <StackPanel Classes="settingItem">
+                        <TextBlock Classes="settingLabel" Text="Context Length Override"/>
+                        <TextBlock Classes="settingDescription" 
                                    Text="Override the default context window size. Leave empty to use model's native context."/>
-                        <TextBox x:Name="ContextLengthOverrideInput" Style="{StaticResource SettingInput}"/>
+                        <TextBox x:Name="ContextLengthOverrideInput" Classes="settingInput"/>
                     </StackPanel>
 
                     <!-- Temperature setting -->
-                    <StackPanel Style="{StaticResource SettingItem}">
-                        <TextBlock Style="{StaticResource SettingLabel}" Text="Default Temperature"/>
-                        <TextBlock Style="{StaticResource SettingDescription}" 
+                    <StackPanel Classes="settingItem">
+                        <TextBlock Classes="settingLabel" Text="Default Temperature"/>
+                        <TextBlock Classes="settingDescription" 
                                    Text="Controls randomness in responses. Higher = more creative, lower = more deterministic."/>
-                        <Slider x:Name="TemperatureSlider" Minimum="0" Maximum="2" Value="0.7" TickFrequency="0.1"/>
+                        <Slider x:Name="TemperatureSlider" Minimum="0" Maximum="2" Value="0.7"/>
                     </StackPanel>
 
                     <!-- Top-P setting -->
-                    <StackPanel Style="{StaticResource SettingItem}">
-                        <TextBlock Style="{StaticResource SettingLabel}" Text="Default Top-P"/>
-                        <TextBlock Style="{StaticResource SettingDescription}" 
+                    <StackPanel Classes="settingItem">
+                        <TextBlock Classes="settingLabel" Text="Default Top-P"/>
+                        <TextBlock Classes="settingDescription" 
                                    Text="Nucleus sampling parameter. Controls diversity by only considering tokens with cumulative probability >= top_p."/>
-                        <Slider x:Name="TopPValueSlider" Minimum="0" Maximum="1" Value="1.0" TickFrequency="0.05"/>
+                        <Slider x:Name="TopPValueSlider" Minimum="0" Maximum="1" Value="1.0"/>
                     </StackPanel>
 
                     <!-- Max Tokens setting -->
-                    <StackPanel Style="{StaticResource SettingItem}">
-                        <TextBlock Style="{StaticResource SettingLabel}" Text="Default Max Tokens"/>
-                        <TextBlock Style="{StaticResource SettingDescription}" 
+                    <StackPanel Classes="settingItem">
+                        <TextBlock Classes="settingLabel" Text="Default Max Tokens"/>
+                        <TextBlock Classes="settingDescription" 
                                    Text="Maximum number of tokens to generate in responses. 0 = no limit."/>
-                        <TextBox x:Name="MaxTokensSettingInput" Style="{StaticResource SettingInput}">
+                        <TextBox x:Name="MaxTokensSettingInput" Classes="settingInput">
                             <TextBox.Text>4096</TextBox.Text>
                         </TextBox>
                     </StackPanel>
@@ -244,28 +235,28 @@
                     </Border>
 
                     <!-- Image resolution -->
-                    <StackPanel Style="{StaticResource SettingItem}">
-                        <TextBlock Style="{StaticResource SettingLabel}" Text="Default Resolution"/>
+                    <StackPanel Classes="settingItem">
+                        <TextBlock Classes="settingLabel" Text="Default Resolution"/>
                         <ComboBox x:Name="ImageResSettingInput" 
                                   Foreground="{StaticResource TextPrimary}"
                                   Background="{StaticResource BgTertiary}"
                                   Padding="8,6">
-                            <ComboBoxItem Content="512x512"/>
-                            <ComboBoxItem Content="768x768"/>
-                            <ComboBoxItem Content="1024x1024" IsSelected="True"/>
+                            <TextBlock Text="512x512"/>
+                            <TextBlock Text="768x768"/>
+                            <TextBlock Text="1024x1024"/>
                         </ComboBox>
                     </StackPanel>
 
                     <!-- Image steps -->
-                    <StackPanel Style="{StaticResource SettingItem}">
-                        <TextBlock Style="{StaticResource SettingLabel}" Text="Default Steps"/>
-                        <Slider x:Name="ImageStepsSettingSlider" Minimum="1" Maximum="100" Value="30" TickFrequency="1"/>
+                    <StackPanel Classes="settingItem">
+                        <TextBlock Classes="settingLabel" Text="Default Steps"/>
+                        <Slider x:Name="ImageStepsSettingSlider" Minimum="1" Maximum="100" Value="30"/>
                     </StackPanel>
 
                     <!-- Image CFG scale -->
-                    <StackPanel Style="{StaticResource SettingItem}">
-                        <TextBlock Style="{StaticResource SettingLabel}" Text="Default CFG Scale"/>
-                        <Slider x:Name="ImageCfgSettingSlider" Minimum="1.0" Maximum="20.0" Value="7.5" TickFrequency="0.5"/>
+                    <StackPanel Classes="settingItem">
+                        <TextBlock Classes="settingLabel" Text="Default CFG Scale"/>
+                        <Slider x:Name="ImageCfgSettingSlider" Minimum="1.0" Maximum="20.0" Value="7.5"/>
                     </StackPanel>
 
                     <!-- Compression default -->
@@ -274,89 +265,89 @@
                     </Border>
 
                     <!-- Default compression -->
-                    <StackPanel Style="{StaticResource SettingItem}">
-                        <TextBlock Style="{StaticResource SettingLabel}" Text="Default Compression Strategy"/>
+                    <StackPanel Classes="settingItem">
+                        <TextBlock Classes="settingLabel" Text="Default Compression Strategy"/>
                         <ComboBox x:Name="CompressionStrategyInput" 
                                   Foreground="{StaticResource TextPrimary}"
                                   Background="{StaticResource BgTertiary}"
                                   Padding="8,6">
-                            <ComboBoxItem Content="None"/>
-                            <ComboBoxItem Content="Light" IsSelected="True"/>
-                            <ComboBoxItem Content="Medium"/>
-                            <ComboBoxItem Content="Aggressive"/>
+                            <TextBlock Text="None"/>
+                            <TextBlock Text="Light"/>
+                            <TextBlock Text="Medium"/>
+                            <TextBlock Text="Aggressive"/>
                         </ComboBox>
                     </StackPanel>
 
                     <!-- Token budget -->
-                    <StackPanel Style="{StaticResource SettingItem}">
-                        <TextBlock Style="{StaticResource SettingLabel}" Text="Default Token Budget (per chat)"/>
-                        <TextBox x:Name="TokenBudgetInput" Style="{StaticResource SettingInput}">
+                    <StackPanel Classes="settingItem">
+                        <TextBlock Classes="settingLabel" Text="Default Token Budget (per chat)"/>
+                        <TextBox x:Name="TokenBudgetInput" Classes="settingInput">
                             <TextBox.Text>4096</TextBox.Text>
                         </TextBox>
                     </StackPanel>
                 </StackPanel>
 
                 <!-- Agent settings panel -->
-                <StackPanel x:Name="AgentSettingsPanel" Visibility="Collapsed">
+                <StackPanel x:Name="AgentSettingsPanel" IsVisible="False">
                     <Border Background="{StaticResource BgSecondary}" CornerRadius="4" Padding="20" Margin="0,0,0,16">
                         <TextBlock Text="Agent Settings" FontWeight="SemiBold" Foreground="#4FC3F7" FontSize="18"/>
                     </Border>
 
                     <!-- Iteration limit -->
-                    <StackPanel Style="{StaticResource SettingItem}">
-                        <TextBlock Style="{StaticResource SettingLabel}" Text="Max Agent Iterations"/>
-                        <TextBlock Style="{StaticResource SettingDescription}" 
+                    <StackPanel Classes="settingItem">
+                        <TextBlock Classes="settingLabel" Text="Max Agent Iterations"/>
+                        <TextBlock Classes="settingDescription" 
                                    Text="Maximum number of iterations an agent task can run before being stopped."/>
-                        <TextBox x:Name="AgentIterationLimitInput" Style="{StaticResource SettingInput}">
+                        <TextBox x:Name="AgentIterationLimitInput" Classes="settingInput">
                             <TextBox.Text>50</TextBox.Text>
                         </TextBox>
                     </StackPanel>
 
                     <!-- Auto-commit threshold -->
-                    <StackPanel Style="{StaticResource SettingItem}">
-                        <TextBlock Style="{StaticResource SettingLabel}" Text="Auto-Commit File Threshold (KB)"/>
-                        <TextBlock Style="{StaticResource SettingDescription}" 
+                    <StackPanel Classes="settingItem">
+                        <TextBlock Classes="settingLabel" Text="Auto-Commit File Threshold (KB)"/>
+                        <TextBlock Classes="settingDescription" 
                                    Text="Files smaller than this size will be auto-committed without user review."/>
-                        <TextBox x:Name="AgentAutoCommitSizeInput" Style="{StaticResource SettingInput}">
+                        <TextBox x:Name="AgentAutoCommitSizeInput" Classes="settingInput">
                             <TextBox.Text>1024</TextBox.Text>
                         </TextBox>
                     </StackPanel>
 
                     <!-- Plan approval -->
-                    <StackPanel Style="{StaticResource SettingItem}">
-                        <TextBlock Style="{StaticResource SettingLabel}" Text="Require Plan Approval for Risky Operations"/>
-                        <CheckBox x:Name="AgentPlanApprovalCheckbox" Style="{StaticResource SettingToggle}">
+                    <StackPanel Classes="settingItem">
+                        <TextBlock Classes="settingLabel" Text="Require Plan Approval for Risky Operations"/>
+                        <CheckBox x:Name="AgentPlanApprovalCheckbox" Classes="settingToggle">
                             <CheckBox.Content>Require approval before executing risky operations (file writes, commands)</CheckBox.Content>
                         </CheckBox>
                     </StackPanel>
                 </StackPanel>
 
                 <!-- Data privacy panel -->
-                <StackPanel x:Name="DataPrivacyPanel" Visibility="Collapsed">
+                <StackPanel x:Name="DataPrivacyPanel" IsVisible="False">
                     <Border Background="{StaticResource BgSecondary}" CornerRadius="4" Padding="20" Margin="0,0,0,16">
-                        <TextBlock><Run>Data</Run><Run>Privacy&#x26;</Run><Run> Storage</Run></TextBlock>
+                        <TextBlock>Data Privacy &#38; Storage</TextBlock>
                     </Border>
 
                     <!-- Conversation encryption -->
-                    <StackPanel Style="{StaticResource SettingItem}">
-                        <TextBlock Style="{StaticResource SettingLabel}" Text="Encrypt Conversations at Rest"/>
-                        <TextBlock Style="{StaticResource SettingDescription}" 
+                    <StackPanel Classes="settingItem">
+                        <TextBlock Classes="settingLabel" Text="Encrypt Conversations at Rest"/>
+                        <TextBlock Classes="settingDescription" 
                                    Text="AES-256 encrypt all conversation data stored on disk. Requires a master password."/>
-                        <CheckBox x:Name="EncryptionEnabledCheckbox" Style="{StaticResource SettingToggle}">
+                        <CheckBox x:Name="EncryptionEnabledCheckbox" Classes="settingToggle">
                             <CheckBox.Content>Enable encryption</CheckBox.Content>
                         </CheckBox>
                     </StackPanel>
 
                     <!-- Export format -->
-                    <StackPanel Style="{StaticResource SettingItem}">
-                        <TextBlock Style="{StaticResource SettingLabel}" Text="Default Conversation Export Format"/>
+                    <StackPanel Classes="settingItem">
+                        <TextBlock Classes="settingLabel" Text="Default Conversation Export Format"/>
                         <ComboBox x:Name="ExportFormatInput" 
                                   Foreground="{StaticResource TextPrimary}"
                                   Background="{StaticResource BgTertiary}"
                                   Padding="8,6">
-                            <ComboBoxItem Content="JSON" IsSelected="True"/>
-                            <ComboBoxItem Content="Markdown"/>
-                            <ComboBoxItem Content="HTML"/>
+                            <TextBlock Text="JSON"/>
+                            <TextBlock Text="Markdown"/>
+                            <TextBlock Text="HTML"/>
                         </ComboBox>
                     </StackPanel>
 
@@ -366,19 +357,19 @@
                     </Border>
 
                     <!-- Retention policy -->
-                    <StackPanel Style="{StaticResource SettingItem}">
-                        <TextBlock Style="{StaticResource SettingLabel}" Text="Least Recently Used Model Cache Timeout (days)"/>
-                        <TextBlock Style="{StaticResource SettingDescription}" 
+                    <StackPanel Classes="settingItem">
+                        <TextBlock Classes="settingLabel" Text="Least Recently Used Model Cache Timeout (days)"/>
+                        <TextBlock Classes="settingDescription" 
                                    Text="Models not used within this period may be unloaded to free memory."/>
-                        <TextBox x:Name="CacheTimeoutInput" Style="{StaticResource SettingInput}">
+                        <TextBox x:Name="CacheTimeoutInput" Classes="settingInput">
                             <TextBox.Text>30</TextBox.Text>
                         </TextBox>
                     </StackPanel>
 
                     <!-- Auto-cleanup -->
-                    <StackPanel Style="{StaticResource SettingItem}">
-                        <TextBlock Style="{StaticResource SettingLabel}" Text="Auto-Cleanup Orphaned Model Files"/>
-                        <CheckBox x:Name="AutoCleanupCheckbox" Style="{StaticResource SettingToggle}">
+                    <StackPanel Classes="settingItem">
+                        <TextBlock Classes="settingLabel" Text="Auto-Cleanup Orphaned Model Files"/>
+                        <CheckBox x:Name="AutoCleanupCheckbox" Classes="settingToggle">
                             <CheckBox.Content>Delete model files that are no longer in the registry</CheckBox.Content>
                         </CheckBox>
                     </StackPanel>
@@ -390,13 +381,11 @@
         <Border Grid.Row="2" Background="{StaticResource BgPrimary}" Padding="16,8">
             <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
                 <Button Content="Cancel" 
-                        Style="{StaticResource CancelButton}"
-                        Margin="0,0,8,0"
-                        Width="100"/>
+                        Classes="cancelBtn"
+                        Margin="0,0,8,0"/>
                 <Button x:Name="SaveSettingsBtn"
                         Content="Save"
-                        Style="{StaticResource SaveButton}"
-                        Width="100"/>
+                        Classes="saveBtn"/>
             </StackPanel>
         </Border>
     </Grid>

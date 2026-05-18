@@ -2,24 +2,38 @@
 
   <PropertyGroup>
     <OutputType>WinExe</OutputType>
-    <TargetFramework>net8.0-windows10.0.22621</TargetFramework>
-    <UseWPF>true</UseWPF>
+    <TargetFramework>net8.0</TargetFramework>
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
     <RootNamespace>OpenLMStudio.Desktop</RootNamespace>
-    <ApplicationIcon />
   </PropertyGroup>
 
+  <!-- Avalonia UI packages for cross-platform support -->
+  <ItemGroup>
+    <PackageReference Include="Avalonia" Version="11.2.5" />
+    <PackageReference Include="Avalonia.Desktop" Version="11.2.5" />
+    <PackageReference Include="Avalonia.Themes.Fluent" Version="11.2.5" />
+    <PackageReference Include="Avalonia.Fonts.Inter" Version="11.2.5" />
+    <!-- Conditional compilation for Windows-only Avalonia features -->
+    <PackageReference Condition="$([MSBuild]::IsOsPlatform(Windows))" 
+                      Include="Avalonia.Win32" Version="11.2.5" />
+    <!-- Conditional for macOS -->
+    <PackageReference Condition="$([MSBuild]::IsOsPlatform(OSX))" 
+                      Include="Avalonia.MacOS" Version="11.2.5" />
+  </ItemGroup>
+
+  <!-- DI support for Avalonia apps -->
+  <ItemGroup>
+    <PackageReference Include="Avalonia.Xaml.Behaviors" Version="11.2.0.4" />
+    <PackageReference Include="Microsoft.Extensions.DependencyInjection" Version="8.0.1" />
+    <PackageReference Include="CommunityToolkit.Mvvm" Version="8.3.2" />
+  </ItemGroup>
+
+  <!-- Project references remain the same -->
   <ItemGroup>
     <ProjectReference Include="..\Domain\OpenLMStudio.Domain.csproj" />
     <ProjectReference Include="..\Application\OpenLMStudio.Application.csproj" />
     <ProjectReference Include="..\Infrastructure\OpenLMStudio.Infrastructure.csproj" />
-  </ItemGroup>
-
-  <ItemGroup>
-    <PackageReference Include="Microsoft.Extensions.Hosting" Version="8.0.1" />
-    <PackageReference Include="CommunityToolkit.Mvvm" Version="8.3.2" />
-    <PackageReference Include="Prism.Core" Version="9.0.537" />
   </ItemGroup>
 
 </Project>

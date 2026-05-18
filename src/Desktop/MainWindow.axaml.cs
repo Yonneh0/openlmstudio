@@ -1,14 +1,18 @@
-using System.Collections.ObjectModel;
-using System.ComponentModel;
-using System.Windows;
-using System.Windows.Controls;
-using System.Windows.Data;
-using System.Windows.Documents;
-using System.Windows.Input;
-using System.Windows.Media;
-using System.Windows.Media.Imaging;
-using System.Windows.Navigation;
-using System.Windows.Shapes;
+// Avalonia Window code-behind — converts WPF-specific types to Avalonia equivalents
+
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Threading.Tasks;
+using Avalonia;
+using Avalonia.Controls;
+using Avalonia.Controls.ApplicationLifetimes;
+using Avalonia.Input;
+using Avalonia.Interactivity;
+using Avalonia.Layout;
+using Avalonia.Media;
+using Avalonia.Markup.Xaml;
+using Avalonia.Threading;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using OpenLMStudio.Application.Interfaces;
@@ -17,10 +21,10 @@ using OpenLMStudio.Domain.Models;
 namespace OpenLMStudio.Desktop;
 
 /// <summary>
-/// Interaction logic for MainWindow.xaml.
+/// Interaction logic for MainWindow.axaml.
 /// Manages the main application window including chat list, conversation display, server controls, and tab navigation.
 /// </summary>
-public partial class MainWindow : Window, INotifyPropertyChanged
+public partial class MainWindow : Window
 {
     private readonly ILogger<MainWindow>? _logger;
     private readonly IConversationManager? _conversationManager;
@@ -42,6 +46,9 @@ public partial class MainWindow : Window, INotifyPropertyChanged
     {
         InitializeComponent();
 
+        // Set window title programmatically to avoid XAML entity reference issues with "&" character
+        this.Title = "OpenLMStudio - Local LLM Server & Chat Client";
+
         _logger = logger;
 
         // Use pre-resolved dependencies from App.OnStartup — if none are provided (for testing), fall back to DI resolution attempt.
@@ -62,13 +69,10 @@ public partial class MainWindow : Window, INotifyPropertyChanged
         RefreshChatListAsync();
     }
 
-    /// <summary>
-    /// Event fired when a property changes on the main window view model.
-    /// </summary>
-    public event PropertyChangedEventHandler? PropertyChanged;
-
-    private void OnPropertyChanged(string propertyName) =>
-        PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
+    private void InitializeComponent()
+    {
+        AvaloniaXamlLoader.Load(this);
+    }
 
     // ---- UI Event Handlers Setup ----
 
@@ -82,16 +86,16 @@ public partial class MainWindow : Window, INotifyPropertyChanged
         if (SendButton != null)
             SendButton.Click += OnSendMessageClicked;
 
-        // Server start/stop button
-        if (ServerStartStopButton != null)
-            ServerStartStopButton.Click += OnServerStartStopClicked;
+        // Server start/stop buttons - both left and right panels need handlers
+        if (LeftServerStartStopButton != null)
+            LeftServerStartStopButton.Click += OnServerStartStopClicked;
+
+        if (RightServerStartStopButton != null)
+            RightServerStartStopButton.Click += OnServerStartStopClicked;
 
         // Handle Enter key in input box for sending messages
         if (MessageInputBox != null)
             MessageInputBox.KeyDown += OnMessageInputKeyDown;
-
-        // Add click handlers to tab TextBlocks (they're not exposed as fields so we find them by name)
-        var allTextBlocks = FindChildren<TextBlock>(ChatTabContent).ToList();
     }
 
     // ---- Tab Navigation ----
@@ -101,33 +105,43 @@ public partial class MainWindow : Window, INotifyPropertyChanged
         _activeTab = tabName;
 
         // Hide all tab contents first
-        ChatTabContent.Visibility = Visibility.Collapsed;
-        ServerTabContent.Visibility = Visibility.Collapsed;
-        ModelsTabContent.Visibility = Visibility.Collapsed;
-        DevicesTabContent.Visibility = Visibility.Collapsed;
+        SetTabVisibility(ChatTabContent, false);
+        SetTabVisibility(ServerTabContent, false);
+        SetTabVisibility(ModelsTabContent, false);
+        SetTabVisibility(DevicesTabContent, false);
+        SetTabVisibility(ImageGenTabContent, false);
 
         // Show the selected tab content
         switch (tabName)
         {
             case "Chat":
-                ChatTabContent.Visibility = Visibility.Visible;
+                SetTabVisibility(ChatTabContent, true);
                 break;
             case "Server":
-                ServerTabContent.Visibility = Visibility.Visible;
+                SetTabVisibility(ServerTabContent, true);
                 UpdateServerStatus();
                 break;
             case "Models":
-                ModelsTabContent.Visibility = Visibility.Visible;
+                SetTabVisibility(ModelsTabContent, true);
                 RefreshModelListAsync();
                 break;
             case "Devices":
-                DevicesTabContent.Visibility = Visibility.Visible;
+                SetTabVisibility(DevicesTabContent, true);
                 UpdateDeviceStatus();
+                break;
+            case "ImageGen":
+                SetTabVisibility(ImageGenTabContent, true);
                 break;
         }
 
         // Update active tab styling
         UpdateActiveTab(tabName);
+    }
+
+    private void SetTabVisibility(StackPanel? panel, bool visible)
+    {
+        if (panel != null)
+            panel.IsVisible = visible;
     }
 
     private void UpdateActiveTab(string activeTabName)
@@ -152,7 +166,7 @@ public partial class MainWindow : Window, INotifyPropertyChanged
             if (tb == null) continue;
 
             // Only update the first TextBlock of each tab section (the tab title)
-            var parent = tb.Parent as FrameworkElement;
+            var parent = tb.Parent as Panel;
             if (parent?.Name != null &&
                 new[] { "ChatTabContent", "ServerTabContent", "ModelsTabContent", "DevicesTabContent" }
                     .Contains(parent.Name))
@@ -160,17 +174,15 @@ public partial class MainWindow : Window, INotifyPropertyChanged
                 if (activeTabName.Equals(tb.Text, StringComparison.OrdinalIgnoreCase))
                 {
                     tb.Foreground = new SolidColorBrush(Color.FromRgb(79, 195, 247)); // AccentBlue
-                    tb.FontWeight = FontWeights.SemiBold;
+                    tb.FontWeight = FontWeight.SemiBold;
                 }
                 else
                 {
                     tb.Foreground = new SolidColorBrush(Color.FromRgb(204, 204, 204)); // TextPrimary
-                    tb.FontWeight = FontWeights.Normal;
+                    tb.FontWeight = FontWeight.Normal;
                 }
             }
         }
-
-        OnPropertyChanged(nameof(_activeTab));
     }
 
     // ---- Chat List Management ----
@@ -213,14 +225,12 @@ public partial class MainWindow : Window, INotifyPropertyChanged
     private Button CreateChatListItem(Chat chat)
     {
         // Null-checked: chat.Name can be null but we have a fallback
-        var button = new Button
-        {
-            Content = chat.Name ?? $"Conversation {chat.Id.ToString("N").Substring(0, 8)}",
-            Style = (Style)FindResource("ChatItemButton"),
-            Tag = chat.Id,
-            Margin = new Thickness(0, 2, 0, 2),
-            HorizontalAlignment = HorizontalAlignment.Stretch
-        };
+        var button = new Button();
+        button.Content = chat.Name ?? $"Conversation {chat.Id.ToString("N").Substring(0, 8)}";
+        button.Classes.Add("chatItem");
+        button.Tag = chat.Id;
+        button.Margin = new Thickness(0, 2, 0, 2);
+        button.HorizontalAlignment = HorizontalAlignment.Stretch;
 
         // Highlight active/selected chat (null-checked for CS8602)
         if (_selectedChatId != null && _selectedChatId.Value == chat.Id)
@@ -232,15 +242,24 @@ public partial class MainWindow : Window, INotifyPropertyChanged
 #pragma warning disable CS8602 // Dereference of a possibly null reference
         var tokenCount = _conversationManager.CalculateTotalTokenCountAsync(chat.Id).GetAwaiter().GetResult();
 #pragma warning restore CS8602
-        var toolTip = new System.Windows.Controls.ToolTip();
-        toolTip.Content = $"Tokens: {tokenCount}";
-        button.ToolTip = toolTip;
+
+        // Use Avalonia's ToolTip.SetTip() attached method instead of Tooltip property
+        var toolTipText = new TextBlock { Text = $"Tokens: {tokenCount}" };
+        if (button.Parent is Border buttonBorder)
+            ToolTip.SetTip(button, toolTipText);
+        else
+            button.AttachedToVisualTree += (_, _) =>
+            {
+                var p = button.Parent as Border;
+                if (p != null && !(toolTipText.Parent is Panel))
+                    ToolTip.SetTip(p, toolTipText);
+            };
 
         button.Click += OnChatItemClicked;
         return button;
     }
 
-    private async void OnChatItemClicked(object sender, RoutedEventArgs e)
+    private async void OnChatItemClicked(object? sender, RoutedEventArgs e)
     {
         var chatIdObj = (sender as Button)?.Tag as Guid?;
 
@@ -261,9 +280,8 @@ public partial class MainWindow : Window, INotifyPropertyChanged
             {
                 // Reset to default style background
                 var fallback = new SolidColorBrush(Color.FromRgb(37, 37, 41));
-                child.Background = FindResource("ChatItemButton") is Style s
-                    ? (s.Setters.Cast<SetterBase>().OfType<Setter>()
-                        .First(x => x.Property == Border.BackgroundProperty).Value as Brush) ?? fallback
+                child.Background = child.Classes.Contains("chatItem")
+                    ? new SolidColorBrush(Color.FromRgb(37, 37, 41))
                     : fallback;
             }
         }
@@ -272,7 +290,7 @@ public partial class MainWindow : Window, INotifyPropertyChanged
         _ = LoadConversationMessagesAsync(chatIdObj.Value);
     }
 
-    private async void OnNewChatClicked(object sender, RoutedEventArgs e)
+    private async void OnNewChatClicked(object? sender, RoutedEventArgs e)
     {
         if (_conversationManager == null) return;
 
@@ -286,7 +304,6 @@ public partial class MainWindow : Window, INotifyPropertyChanged
     // ---- Conversation Message Loading and Display ----
 
     // Note: This is async Task (not async void) so it can be awaited by callers.
-    // It's invoked programmatically from OnChatItemClicked, not directly by the WPF event system.
     private async Task LoadConversationMessagesAsync(Guid chatId)
     {
         if (_conversationManager == null || _selectedChatId != chatId) return;
@@ -329,8 +346,7 @@ public partial class MainWindow : Window, INotifyPropertyChanged
             ChatTitleText.Text = "Chat Session";
 
             // Scroll to bottom of messages
-            if (MessageScrollViewer != null)
-                MessageScrollViewer.ScrollToBottom();
+            await ScrollToBottomAsync();
         }
         catch (Exception ex)
         {
@@ -354,11 +370,13 @@ public partial class MainWindow : Window, INotifyPropertyChanged
         {
             border.Background = new SolidColorBrush(Color.FromRgb(37, 37, 41));
             border.CornerRadius = new CornerRadius(8, 0, 8, 8);
+            border.Classes.Add("userMessage");
         }
         else // Assistant or Tool
         {
             border.Background = new SolidColorBrush(Color.FromRgb(45, 45, 48));
             border.CornerRadius = new CornerRadius(0, 8, 8, 8);
+            border.Classes.Add("assistantMessage");
         }
 
         var textBlock = new TextBlock
@@ -379,7 +397,7 @@ public partial class MainWindow : Window, INotifyPropertyChanged
             {
                 Text = "AI",
                 Foreground = new SolidColorBrush(Color.FromRgb(79, 195, 247)),
-                FontWeight = FontWeights.SemiBold,
+                FontWeight = FontWeight.SemiBold,
                 Margin = new Thickness(0, 0, 8, 4)
             });
 
@@ -409,7 +427,7 @@ public partial class MainWindow : Window, INotifyPropertyChanged
             {
                 Text = message.Role.ToString().ToUpper(),
                 Foreground = new SolidColorBrush(Color.FromRgb(79, 195, 247)),
-                FontWeight = FontWeights.SemiBold,
+                FontWeight = FontWeight.SemiBold,
                 Margin = new Thickness(0, 0, 8, 4)
             };
 
@@ -427,7 +445,7 @@ public partial class MainWindow : Window, INotifyPropertyChanged
 
     // ---- Server Start/Stop Controls ----
 
-    private async void OnServerStartStopClicked(object sender, RoutedEventArgs e)
+    private async void OnServerStartStopClicked(object? sender, RoutedEventArgs e)
     {
         if (_serverService == null) return;
 
@@ -440,10 +458,13 @@ public partial class MainWindow : Window, INotifyPropertyChanged
                 // Stop the server
                 await _serverService.StopAsync();
 
-                // Update UI to reflect stopped state
-                ServerStartStopButton.Content = "Start Server";
+                // Update UI to reflect stopped state (both buttons + both text blocks)
+                if (LeftServerStartStopButton != null) LeftServerStartStopButton.Content = "Start Server";
+                if (RightServerStartStopButton != null) RightServerStartStopButton.Content = "Start Server";
                 ServerStatusText.Text = "Server: Stopped";
                 ServerStatusText.Foreground = new SolidColorBrush(Color.FromRgb(255, 107, 107));
+                ServerStatusRight.Text = "Server: Stopped";
+                ServerStatusRight.Foreground = new SolidColorBrush(Color.FromRgb(255, 107, 107));
             }
             else
             {
@@ -451,10 +472,13 @@ public partial class MainWindow : Window, INotifyPropertyChanged
                 var configuration = new ServerConfiguration { Port = 8080 };
                 await _serverService.StartAsync(configuration);
 
-                // Update UI to reflect running state
-                ServerStartStopButton.Content = "Stop Server";
+                // Update UI to reflect running state (both buttons + both text blocks)
+                if (LeftServerStartStopButton != null) LeftServerStartStopButton.Content = "Stop Server";
+                if (RightServerStartStopButton != null) RightServerStartStopButton.Content = "Stop Server";
                 ServerStatusText.Text = $"Server: Running (Port {configuration.Port})";
                 ServerStatusText.Foreground = new SolidColorBrush(Color.FromRgb(76, 175, 80));
+                ServerStatusRight.Text = $"Server: Running (Port {configuration.Port})";
+                ServerStatusRight.Foreground = new SolidColorBrush(Color.FromRgb(76, 175, 80));
             }
 
             UpdateServerStatus();
@@ -462,7 +486,7 @@ public partial class MainWindow : Window, INotifyPropertyChanged
         catch (Exception ex)
         {
             _logger?.LogError(ex, "Error toggling server state");
-            MessageBox.Show($"Server error: {ex.Message}", "OpenLMStudio", MessageBoxButton.OK, MessageBoxImage.Error);
+            ShowError($"Server error: {ex.Message}");
         }
     }
 
@@ -472,14 +496,17 @@ public partial class MainWindow : Window, INotifyPropertyChanged
 
         var isRunning = _serverService.State != ServerState.Stopped;
 
-        // Update server status display across all UI elements
+        // Update server status display across all UI elements (both buttons + both text blocks)
         ServerStatusText.Text = $"Server: {(isRunning ? "Running" : "Stopped")}";
+        ServerStatusRight.Text = $"Server: {(isRunning ? "Running" : "Stopped")}";
 
-        ServerStartStopButton.Content = isRunning ? "Stop Server" : "Start Server";
+        if (LeftServerStartStopButton != null) LeftServerStartStopButton.Content = isRunning ? "Stop Server" : "Start Server";
+        if (RightServerStartStopButton != null) RightServerStartStopButton.Content = isRunning ? "Stop Server" : "Start Server";
 
         if (isRunning)
         {
             ServerStatusText.Foreground = new SolidColorBrush(Color.FromRgb(76, 175, 80)); // Green
+            ServerStatusRight.Foreground = new SolidColorBrush(Color.FromRgb(76, 175, 80)); // Green
 
             // Try to get port from the server service's configuration
             var srv = _serverService as OpenLMStudio.Infrastructure.Services.ServerService;
@@ -487,11 +514,13 @@ public partial class MainWindow : Window, INotifyPropertyChanged
             {
                 ServerPortRightText.Text = $"Port: {srv.Configuration.Port}";
                 ServerPortText.Text = $"Port: {srv.Configuration.Port}";
+                // Note: Right sidebar doesn't have a ServerPortRight display, only left side
             }
         }
         else
         {
             ServerStatusText.Foreground = new SolidColorBrush(Color.FromRgb(255, 107, 107)); // Red
+            ServerStatusRight.Foreground = new SolidColorBrush(Color.FromRgb(255, 107, 107)); // Red
             ServerPortRightText.Text = "Port: 8080 (default)";
             ServerPortText.Text = "Port: 8080 (default)";
         }
@@ -499,13 +528,12 @@ public partial class MainWindow : Window, INotifyPropertyChanged
 
     private void OnServerStateChanged(object? sender, ServerStateChangedEventArgs e)
     {
-        // Update UI on server state changes from the service itself
-        Dispatcher.Invoke(() => UpdateServerStatus());
+        // Update UI on server state changes from the service itself — use Avalonia's UIThread dispatcher
+        Dispatcher.UIThread.Invoke(() => UpdateServerStatus());
 
         if (e.NewState == ServerState.Error && !string.IsNullOrEmpty(e.Message))
         {
-            Dispatcher.Invoke(() =>
-                MessageBox.Show($"Server error: {e.Message}", "OpenLMStudio", MessageBoxButton.OK, MessageBoxImage.Warning));
+            Dispatcher.UIThread.Invoke(() => ShowError($"Server error: {e.Message}"));
         }
     }
 
@@ -568,26 +596,9 @@ public partial class MainWindow : Window, INotifyPropertyChanged
             var models = await _modelRepository.DiscoverModelsAsync();
 
             // Clear existing content from the scrollviewer and add model list
-            var parentPanel = ModelsTabContent?.Parent as DependencyObject;
-            if (parentPanel != null)
+            if (models.Any())
             {
-                foreach (var child in FindChildren<StackPanel>(parentPanel).ToList())
-                    ((FrameworkElement)child).Visibility = Visibility.Collapsed;
-            }
-
-            if (!models.Any())
-            {
-                // Show "No models" message in the tab's StackPanel directly
-                var textBlock = new TextBlock
-                {
-                    Text = "No models loaded",
-                    Foreground = new SolidColorBrush(Color.FromRgb(102, 102, 102)),
-                    Padding = new Thickness(12),
-                    FontSize = 12
-                };
-
-                // Find the existing scrollviewer's content stackpanel and add to it
-                var _scrollViewer = ModelsTabContent?.FindName("ScrollViewer");
+                // TODO: Add model items to the panel
             }
         }
         catch (Exception ex)
@@ -598,7 +609,7 @@ public partial class MainWindow : Window, INotifyPropertyChanged
 
     // ---- Message Sending ----
 
-    private async void OnSendMessageClicked(object sender, RoutedEventArgs e)
+    private async void OnSendMessageClicked(object? sender, RoutedEventArgs e)
     {
         if (_selectedChatId == null || _conversationManager == null) return;
 
@@ -639,14 +650,14 @@ public partial class MainWindow : Window, INotifyPropertyChanged
         catch (Exception ex)
         {
             _logger?.LogError(ex, "Error sending message");
-            MessageBox.Show($"Failed to send message: {ex.Message}", "OpenLMStudio", MessageBoxButton.OK, MessageBoxImage.Error);
+            ShowError($"Failed to send message: {ex.Message}");
         }
     }
 
-    private void OnMessageInputKeyDown(object sender, KeyEventArgs e)
+    private void OnMessageInputKeyDown(object? sender, KeyEventArgs e)
     {
         // Send on Enter (without Shift for multi-line), or Ctrl+Enter always
-        if (e.Key == Key.Return && (!Keyboard.Modifiers.HasFlag(ModifierKeys.Shift) || Keyboard.Modifiers.HasFlag(ModifierKeys.Control)))
+        if (e.Key == Key.Enter && (!e.KeyModifiers.HasFlag(KeyModifiers.Shift) || e.KeyModifiers.HasFlag(KeyModifiers.Control)))
         {
             OnSendMessageClicked(sender, e);
         }
@@ -673,8 +684,7 @@ public partial class MainWindow : Window, INotifyPropertyChanged
             if (assistantBorder != null)
                 MessageDisplayPanel?.Children.Add(assistantBorder);
 
-            if (MessageScrollViewer != null)
-                MessageScrollViewer.ScrollToBottom();
+            await ScrollToBottomAsync();
 
             _logger?.LogInformation("Getting assistant response for: {ChatId}", chatId);
 
@@ -707,15 +717,47 @@ public partial class MainWindow : Window, INotifyPropertyChanged
         string.IsNullOrEmpty(text) ? 0 : Math.Max(1, (text.Length + 3) / 4);
 
     /// <summary>
-    /// Gets the chat scroll viewer for scrolling to bottom after adding messages.
+    /// Scrolls the message display ScrollViewer to the bottom.
     /// </summary>
-    private ScrollViewer? MessageScrollViewer
+    private async Task ScrollToBottomAsync()
     {
-        get
+        var scrollViewer = FindScrollViewer(MessageDisplayPanel);
+        if (scrollViewer != null)
+            await Dispatcher.UIThread.InvokeAsync(() => scrollViewer.ScrollToEnd());
+    }
+
+    /// <summary>
+    /// Finds a ScrollViewer by recursively searching Panel descendants.
+    /// </summary>
+    private static ScrollViewer? FindScrollViewer(Panel parent, int maxDepth = 10)
+    {
+        if (parent == null || maxDepth <= 0) return null;
+
+        foreach (var child in parent.Children.OfType<Control>())
         {
-            var parent = MessageDisplayPanel?.Parent as DependencyObject;
-            return parent != null ? FindChild<ScrollViewer>(parent) : null;
+            // Check direct descendants first
+            if (child is ScrollViewer sv)
+                return sv;
+
+            // Then recurse into Panel children
+            if (child is Panel panel)
+            {
+                var result = FindScrollViewer(panel, maxDepth - 1);
+                if (result != null)
+                    return result;
+            }
         }
+
+        return null;
+    }
+
+    private static T? FindDirectDescendant<T>(Panel parent) where T : Control
+    {
+        foreach (var child in parent.Children.OfType<Control>())
+        {
+            if (child is T typedChild) return typedChild;
+        }
+        return default;
     }
 
     // ---- Helper Methods ----
@@ -725,35 +767,19 @@ public partial class MainWindow : Window, INotifyPropertyChanged
     /// </summary>
     private static IServiceProvider? GetAppServiceProvider()
     {
-        var appType = typeof(App).Assembly.CreateInstance("OpenLMStudio.Desktop.App");
+        var appType = typeof(App);
         if (appType == null) return null;
 
         try
         {
             // Try to access ApplicationServices property via reflection
-            var propInfo = (appType as System.Type)?.GetProperty("ApplicationServices",
+            var propInfo = appType.GetProperty("ApplicationServices",
                 System.Reflection.BindingFlags.Static | System.Reflection.BindingFlags.Public);
             return propInfo?.GetValue(null) as IServiceProvider;
         }
         catch
         {
             return null;
-        }
-    }
-
-    private static IEnumerable<T> FindChildren<T>(DependencyObject parent) where T : DependencyObject
-    {
-        if (parent == null) yield break;
-
-        for (var i = 0; i < VisualTreeHelper.GetChildrenCount(parent); i++)
-        {
-            var child = (T?)VisualTreeHelper.GetChild(parent, i);
-            if (child != null)
-            {
-                yield return child;
-                foreach (var descendant in FindChildren<T>(child))
-                    yield return descendant;
-            }
         }
     }
 
@@ -769,7 +795,7 @@ public partial class MainWindow : Window, INotifyPropertyChanged
             if (tab == null) continue;
 
             // Make the entire StackPanel clickable by attaching a Click handler to its first element
-            var child = tab.Children.OfType<UIElement>().FirstOrDefault();
+            var child = tab.Children.OfType<Control>().FirstOrDefault();
             if (child != null && !string.IsNullOrEmpty(tab.Name))
             {
                 try
@@ -777,31 +803,31 @@ public partial class MainWindow : Window, INotifyPropertyChanged
                     switch (tab.Name)
                     {
                         case "ChatTabContent":
-                            child.MouseLeftButtonUp += (_, _) => ShowTab("Chat"); break;
+                            child.PointerPressed += (_, _) => ShowTab("Chat"); break;
                         case "ServerTabContent":
-                            child.MouseLeftButtonUp += (_, _) => ShowTab("Server"); break;
+                            child.PointerPressed += (_, _) => ShowTab("Server"); break;
                         case "ModelsTabContent":
-                            child.MouseLeftButtonUp += (_, _) => ShowTab("Models"); break;
+                            child.PointerPressed += (_, _) => ShowTab("Models"); break;
                         case "DevicesTabContent":
-                            child.MouseLeftButtonUp += (_, _) => ShowTab("Devices"); break;
+                            child.PointerPressed += (_, _) => ShowTab("Devices"); break;
                     }
                 }
                 catch { /* Ignore errors on individual tab attaches */ }
             }
         }
 
-        // Also attach click handlers directly to the TabControl buttons in XAML for reliability
-        if (ChatTabContent?.Children.OfType<UIElement>().FirstOrDefault() is UIElement chatClickTarget)
-            chatClickTarget.MouseLeftButtonUp += (_, _) => ShowTab("Chat");
+        // Also attach click handlers directly to the TabControl buttons in XAML for reliability — use lambda instead of RoutedEventHandler
+        if (ChatTabContent?.Children.OfType<Control>().FirstOrDefault() is Control chatClickTarget)
+            chatClickTarget.PointerPressed += (_, _) => ShowTab("Chat");
 
-        var serverChild = ServerTabContent?.Children.OfType<UIElement>().FirstOrDefault();
-        serverChild?.AddHandler(UIElement.MouseLeftButtonUpEvent, new MouseButtonEventHandler((_, _) => ShowTab("Server")));
+        var serverChild = ServerTabContent?.Children.OfType<Control>().FirstOrDefault();
+        serverChild?.AddHandler(Control.PointerPressedEvent, (_, _) => ShowTab("Server"));
 
-        var modelsChild = ModelsTabContent?.Children.OfType<UIElement>().FirstOrDefault();
-        modelsChild?.AddHandler(UIElement.MouseLeftButtonUpEvent, new MouseButtonEventHandler((_, _) => ShowTab("Models")));
+        var modelsChild = ModelsTabContent?.Children.OfType<Control>().FirstOrDefault();
+        modelsChild?.AddHandler(Control.PointerPressedEvent, (_, _) => ShowTab("Models"));
 
-        var devicesChild = DevicesTabContent?.Children.OfType<UIElement>().FirstOrDefault();
-        devicesChild?.AddHandler(UIElement.MouseLeftButtonUpEvent, new MouseButtonEventHandler((_, _) => ShowTab("Devices")));
+        var devicesChild = DevicesTabContent?.Children.OfType<Control>().FirstOrDefault();
+        devicesChild?.AddHandler(Control.PointerPressedEvent, (_, _) => ShowTab("Devices"));
     }
 
     /// <summary>
@@ -831,25 +857,132 @@ public partial class MainWindow : Window, INotifyPropertyChanged
         return sp?.GetRequiredService<IModelRepository>();
     }
 
-    private static T? FindChild<T>(DependencyObject parent) where T : DependencyObject
+    private T? FindChild<T>(Panel parent, int maxDepth = 10) where T : Control
     {
-        if (parent == null) return null;
+        if (parent == null || maxDepth <= 0) return default;
 
-        for (var i = 0; i < VisualTreeHelper.GetChildrenCount(parent); i++)
+        foreach (var child in parent.Children.OfType<Control>())
         {
-            var child = (T?)VisualTreeHelper.GetChild(parent, i);
-            if (child != null) return child;
+            if (child is T typedChild)
+                return typedChild;
+
+            // Only recurse into Panels since Control doesn't have Children in Avalonia
+            if (child is Panel panel)
+            {
+                var result = FindChild<T>(panel, maxDepth - 1);
+                if (result != null)
+                    return result;
+            }
         }
 
-        return null;
+        return default;
+    }
+
+    /// <summary>
+    /// Shows an error dialog using Avalonia's Window.ShowDialog().
+    /// </summary>
+    private void ShowError(string message)
+    {
+        try
+        {
+            if (this.Owner is Window ownerWindow)
+                new Window { Content = new TextBlock { Text = message } }.ShowDialog(ownerWindow);
+            else
+                ShowStaticError(message); // Fallback to static method
+        }
+        catch
+        {
+            System.Diagnostics.Debug.WriteLine($"Error: {message}");
+        }
+    }
+
+    /// <summary>
+    /// Shows a static error dialog without owner window.
+    /// </summary>
+    private static void ShowStaticError(string message)
+    {
+        try
+        {
+            // Find the first available Window to use as parent (from App.ApplicationServices)
+            var appType = typeof(App);
+            var propInfo = appType.GetProperty("ApplicationServices",
+                System.Reflection.BindingFlags.Static | System.Reflection.BindingFlags.Public);
+            var serviceProvider = propInfo?.GetValue(null) as IServiceProvider;
+
+            // Try to find the first Window via Avalonia's application lifetime
+            if (serviceProvider != null && serviceProvider.GetService<IClassicDesktopStyleApplicationLifetime>() is IClassicDesktopStyleApplicationLifetime appLifetime)
+            {
+                foreach (var window in appLifetime.Windows)
+                {
+                    var w = window as Window;
+                    if (w != null)
+                        new Window { Content = new TextBlock { Text = message } }.ShowDialog(w);
+                    return;
+                }
+            }
+
+            // No parent window found — show without owner
+            var errorWin = new Window
+            {
+                Title = "OpenLMStudio - Error",
+                Width = 400,
+                Height = 250,
+                Content = new Border
+                {
+                    Background = new SolidColorBrush(Color.FromArgb(255, 37, 37, 41)),
+                    Child = new TextBlock
+                    {
+                        Text = message,
+                        Foreground = new SolidColorBrush(Color.FromArgb(255, 255, 255, 255)),
+                        Padding = new Thickness(20),
+                        FontSize = 14,
+                        TextWrapping = TextWrapping.Wrap
+                    }
+                }
+            };
+
+            if (App.ApplicationServices != null && App.ApplicationServices.GetService<IClassicDesktopStyleApplicationLifetime>() is IClassicDesktopStyleApplicationLifetime app)
+            {
+                foreach (var w in app.Windows)
+                {
+                    var win = w as Window;
+                    if (win != null)
+                        errorWin.ShowDialog(win);
+                    return;
+                }
+            }
+
+            errorWin.Show();
+        }
+        catch
+        {
+            System.Diagnostics.Debug.WriteLine($"Error: {message}");
+        }
     }
 
     /// <summary>
     /// Handler for ImageGenModelSelector SelectionChanged event.
     /// Updates the selected image generation model based on user selection.
     /// </summary>
-    private void OnImageGenModelSelectorSelectionChanged(object sender, SelectionChangedEventArgs e)
+    private void OnImageGenModelSelectorSelectionChanged(object? sender, SelectionChangedEventArgs e)
     {
         // TODO: Implement actual image generation model selection logic
     }
+
+    // ---- Tab Pointer Pressed Event Handlers ----
+
+    private void OnChatTabPointerPressed(object? sender, Avalonia.Input.PointerPressedEventArgs e) => ShowTab("Chat");
+
+    private void OnServerTabPointerPressed(object? sender, Avalonia.Input.PointerPressedEventArgs e) => ShowTab("Server");
+
+    private void OnModelsTabPointerPressed(object? sender, Avalonia.Input.PointerPressedEventArgs e) => ShowTab("Models");
+
+    private void OnDevicesTabPointerPressed(object? sender, Avalonia.Input.PointerPressedEventArgs e) => ShowTab("Devices");
+
+    private void OnImageGenTabPointerPressed(object? sender, Avalonia.Input.PointerPressedEventArgs e)
+    {
+        // ImageGen tab is not currently managed by the main tab system — show a placeholder message
+        ShowError("Image generation support requires diffusion engine integration (Phase 3).");
+    }
+
 }
