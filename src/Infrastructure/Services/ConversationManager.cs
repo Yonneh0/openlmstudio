@@ -179,6 +179,34 @@ public class FileConversationManager : IConversationManager, IDisposable
         }
     }
 
+    public async Task<IReadOnlyList<Message>> SearchMessagesInChatAsync(Guid chatId, string query)
+    {
+        var chat = await LoadChatAsync(chatId);
+
+        if (chat == null || chat.Messages == null || chat.Messages.Count == 0)
+            return new List<Message>();
+
+        try
+        {
+            var lowerQuery = query.ToLowerInvariant();
+            var results = new List<Message>();
+
+            foreach (var msg in chat.Messages)
+            {
+                if (msg.Content?.Contains(query, StringComparison.OrdinalIgnoreCase) == true)
+                    results.Add(msg);
+            }
+
+            // Return messages ordered chronologically (oldest first)
+            return results.OrderBy(m => m.CreatedAt).ToList();
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error searching messages in conversation: {ChatId}", chatId);
+            return new List<Message>();
+        }
+    }
+
     public async Task UpdateChatAsync(Guid chatId, object updates)
     {
         var chat = await LoadChatAsync(chatId);

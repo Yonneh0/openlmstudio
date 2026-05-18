@@ -228,6 +228,35 @@ public class ChatPersistenceService : IConversationManager, IDisposable
     }
 
     /// <inheritdoc />
+    public Task<IReadOnlyList<Message>> SearchMessagesInChatAsync(Guid chatId, string query)
+    {
+        var chat = LoadChatAsync(chatId).GetAwaiter().GetResult();
+
+        if (chat == null || chat.Messages == null || chat.Messages.Count == 0)
+            return Task.FromResult<IReadOnlyList<Message>>(new List<Message>());
+
+        try
+        {
+            var lowerQuery = query.ToLowerInvariant();
+            var results = new List<Message>();
+
+            foreach (var msg in chat.Messages)
+            {
+                if (msg.Content?.Contains(query, StringComparison.OrdinalIgnoreCase) == true)
+                    results.Add(msg);
+            }
+
+            // Return messages ordered chronologically (oldest first)
+            return Task.FromResult<IReadOnlyList<Message>>(results.OrderBy(m => m.CreatedAt).ToList());
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error searching messages in conversation: {ChatId}", chatId);
+            return Task.FromResult<IReadOnlyList<Message>>(new List<Message>());
+        }
+    }
+
+    /// <inheritdoc />
     public async Task UpdateChatAsync(Guid chatId, object updates)
     {
         var chat = await LoadChatAsync(chatId);

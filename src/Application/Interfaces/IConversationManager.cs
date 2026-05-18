@@ -130,6 +130,15 @@ public interface IConversationManager : IDisposable
     Task<IEnumerable<Chat>> SearchChatsAsync(string query);
 
     /// <summary>
+    /// Searches messages within a specific conversation for the given query term.
+    /// Returns messages whose content matches the search text, regardless of role type.
+    /// </summary>
+    /// <param name="chatId">The chat to search within.</param>
+    /// <param name="query">Search text to match against message content.</param>
+    /// <returns>List of matching messages ordered chronologically (oldest first).</returns>
+    Task<IReadOnlyList<Message>> SearchMessagesInChatAsync(Guid chatId, string query);
+
+    /// <summary>
     /// Updates the metadata for an existing chat.
     /// </summary>
     /// <param name="chatId">The chat to update.</param>
