@@ -26,7 +26,7 @@ public class WindowsDeviceMonitor : IDeviceMonitor, IDisposable
     public WindowsDeviceMonitor(ILogger<WindowsDeviceMonitor> logger)
     {
         _logger = logger;
-        
+
         // Poll for hardware updates every 10 seconds
         try
         {
@@ -38,7 +38,7 @@ public class WindowsDeviceMonitor : IDeviceMonitor, IDisposable
             _logger.LogDebug("WindowsDeviceMonitor: Timer not available on this platform");
             _monitoringTimer = null;
         }
-        
+
         // Initialize cached device info
         UpdateDeviceInfo();
     }
@@ -52,18 +52,18 @@ public class WindowsDeviceMonitor : IDeviceMonitor, IDisposable
     private IEnumerable<GpuDevice> GetGpus()
     {
         var gpus = new List<GpuDevice>();
-        
+
         // Try to get GPU info via WMI (Windows Management Instrumentation)
         try
         {
             var searcher = new System.Management.ManagementObjectSearcher(
                 "SELECT * FROM Win32_VideoController");
-            
+
             int index = 0;
             foreach (var device in searcher.Get())
             {
                 var mo = (System.Management.ManagementObject)device;
-                gpus.Add(new GpuDevice(index, 
+                gpus.Add(new GpuDevice(index,
                     mo["Name"]?.ToString() ?? "Unknown GPU",
                     mo["Manufacturer"]?.ToString() ?? "Unknown",
                     ParseAdapterRam(mo))
@@ -104,7 +104,7 @@ public class WindowsDeviceMonitor : IDeviceMonitor, IDisposable
         {
             var searcher = new System.Management.ManagementObjectSearcher(
                 "SELECT LoadPercentage FROM Win32_Processor");
-            
+
             double totalLoad = 0;
             int count = 0;
             foreach (var proc in searcher.Get())
@@ -113,7 +113,7 @@ public class WindowsDeviceMonitor : IDeviceMonitor, IDisposable
                 totalLoad += Convert.ToDouble(mo["LoadPercentage"]);
                 count++;
             }
-            
+
             return count > 0 ? totalLoad / count : 0;
         }
         catch (Exception ex)
@@ -132,11 +132,11 @@ public class WindowsDeviceMonitor : IDeviceMonitor, IDisposable
         {
             var searcher = new System.Management.ManagementObjectSearcher(
                 "SELECT FreePhysicalMemory, TotalVisibleMemorySize FROM Win32_OperatingSystem");
-            
+
             foreach (var mo in searcher.Get())
             {
                 var device = (System.Management.ManagementObject)mo;
-                
+
                 // WMI reports memory in KB, convert to bytes
                 long freeKb = Convert.ToInt64(device["FreePhysicalMemory"]);
                 return freeKb * 1024L;
@@ -152,7 +152,7 @@ public class WindowsDeviceMonitor : IDeviceMonitor, IDisposable
         {
             var searcher = new System.Management.ManagementObjectSearcher(
                 "SELECT TotalVisibleMemorySize FROM Win32_OperatingSystem");
-            
+
             foreach (var mo in searcher.Get())
             {
                 var device = (System.Management.ManagementObject)mo;
@@ -205,7 +205,7 @@ public class WindowsDeviceMonitor : IDeviceMonitor, IDisposable
         {
             var gpus = GetGpus().ToList();
             var cpu = Domain.Models.CpuInfo.CreateDefaultPlaceholder();
-            
+
             _cachedDeviceInfo = new DeviceInfo(cpu, gpus);
         }
         catch (Exception ex)
@@ -223,7 +223,7 @@ public class WindowsDeviceMonitor : IDeviceMonitor, IDisposable
         {
             var oldInfo = _cachedDeviceInfo;
             UpdateDeviceInfo();
-            
+
             // If device info changed, raise event
             DeviceInfoChanged?.Invoke(_cachedDeviceInfo!);
         }

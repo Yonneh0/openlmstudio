@@ -70,14 +70,14 @@ public class GgufParser : IDisposable
         try
         {
             using var stream = new FileStream(filePath, FileMode.Open, FileAccess.Read, FileShare.Read);
-            
+
             // Read magic number (4 bytes) - little-endian per GGUF spec
             var magicBytes = new byte[4];
             if (await stream.ReadAsync(magicBytes, 0, 4, cancellationToken) != 4)
                 return null;
 
             var magicNumber = BinaryPrimitives.ReadUInt32LittleEndian(magicBytes);
-            
+
             if (magicNumber != GgufMagicNumber)
             {
                 _logger?.LogWarning("Invalid GGUF magic number: 0x{Magic:X8} in file {Path}", magicNumber, filePath);
@@ -115,14 +115,15 @@ public class GgufParser : IDisposable
 
             // Parse key-value pairs to extract metadata
             var metadata = new Dictionary<string, object?>();
-            
+
             var maxPairs = (long)Math.Min(kvPairCount, 100L);
             for (var i = 0L; i < maxPairs; i++) // Limit iterations for safety
             {
                 try
                 {
                     var kvInfo = await ReadKeyValuePairAsync(stream, cancellationToken);
-                    if (kvInfo is (var key, var value)) {
+                    if (kvInfo is (var key, var value))
+                    {
                         metadata[key] = value ?? "";
                     }
                 }
@@ -226,7 +227,7 @@ public class GgufParser : IDisposable
         {
             ulong keyLengthUlong;
             string? key = null;
-            try 
+            try
             {
                 var keyLengthBytes = reader.ReadBytes(8);
                 keyLengthUlong = BinaryPrimitives.ReadUInt64LittleEndian(keyLengthBytes);
@@ -234,10 +235,10 @@ public class GgufParser : IDisposable
 
                 var keyBytes = reader.ReadBytes((int)keyLengthUlong);
                 key = System.Text.Encoding.UTF8.GetString(keyBytes);
-            } 
-            catch 
-            { 
-                return; 
+            }
+            catch
+            {
+                return;
             }
 
             // Read value type (4 bytes - uint32, little-endian per GGUF spec)
@@ -267,7 +268,7 @@ public class GgufParser : IDisposable
         // Read tensor data type (4 bytes - uint32, little-endian per GGUF spec)
         var dataTypeBytes = reader.ReadBytes(4);
         var dataType = BinaryPrimitives.ReadUInt32LittleEndian(dataTypeBytes);
-        
+
         metadata.TensorDataType = GetTensorDataTypeName(dataType);
     }
 
@@ -303,7 +304,7 @@ public class GgufParser : IDisposable
         try
         {
             var lowerKey = key.ToLowerInvariant();
-            
+
             if (lowerKey == "name")
                 metadata.Name = value;
             else if (lowerKey == "architecture")
@@ -336,7 +337,7 @@ public class GgufParser : IDisposable
 
         // Model parameters count
         var archKey = info.Architecture ?? "llama";
-        
+
         if (kvPairs.TryGetValue($"{archKey}.embedding_length", out var embeddingLen))
             info.EmbeddingDimension = Convert.ToInt32(embeddingLen);
 
@@ -363,7 +364,7 @@ public class GgufParser : IDisposable
         // Quantization detection - check for known quant patterns in KV pairs
         bool isQuantized = false;
         string? detectedQuantType = null;
-        
+
         foreach (var kvp in kvPairs)
         {
             var key = kvp.Key.ToLowerInvariant();
@@ -398,7 +399,7 @@ public class GgufParser : IDisposable
             return null;
 
         var keyLength = BinaryPrimitives.ReadUInt64LittleEndian(keyLenBytes);
-        
+
         if (keyLength > 1024) // Sanity check for key length
             return null;
 
@@ -478,7 +479,7 @@ public class GgufParser : IDisposable
         var lenBytes = new byte[8];
         stream.Read(lenBytes, 0, 8);
         var length = BinaryPrimitives.ReadUInt64LittleEndian(lenBytes);
-        
+
         if (length > 1024 * 1024) // Sanity: max 1MB string
             return null;
 
@@ -602,7 +603,7 @@ public record GgufHeaderInfo
     public ModelMetadata ToModelMetadata()
     {
         var name = ModelName ?? System.IO.Path.GetFileNameWithoutExtension(FilePath);
-        
+
         return new ModelMetadata
         {
             Id = name,

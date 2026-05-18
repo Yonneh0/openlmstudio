@@ -44,10 +44,10 @@ public class JsonModelRepository : IModelRepository, IDisposable
 
         // Search paths for GGUF models (text generation) and safetensors models (multi-modal)
         var defaultPaths = new List<string> { Path.Combine(_indexDirectory, "gguf") };
-        
+
         if (!string.IsNullOrEmpty(modelSearchPath))
             defaultPaths.Add(modelSearchPath);
-        
+
         _modelSearchPaths = defaultPaths;
 
         // Ensure directories exist
@@ -89,13 +89,13 @@ public class JsonModelRepository : IModelRepository, IDisposable
 
         // Scan for GGUF files not yet indexed
         var existingGgufIds = new HashSet<string>(_indexedGgufModels.Keys, StringComparer.OrdinalIgnoreCase);
-        
+
         foreach (var searchPath in _modelSearchPaths)
         {
             if (!Directory.Exists(searchPath)) continue;
 
             var ggufFiles = Directory.GetFiles(searchPath, "*.gguf", SearchOption.AllDirectories);
-            
+
             foreach (var file in ggufFiles)
             {
                 var fileId = Path.GetFileNameWithoutExtension(file);
@@ -105,7 +105,7 @@ public class JsonModelRepository : IModelRepository, IDisposable
 
             // Scan for safetensors models not yet indexed
             var existingMultiModalIds = new HashSet<string>(_indexedMultiModalModels.Keys, StringComparer.OrdinalIgnoreCase);
-            
+
             foreach (var file in Directory.GetFiles(searchPath, "*.safetensors", SearchOption.AllDirectories))
             {
                 var fileId = Path.GetFileNameWithoutExtension(file);
@@ -168,8 +168,8 @@ public class JsonModelRepository : IModelRepository, IDisposable
         var allGgufModels = DiscoverGgufModelsOnly();
 
         // Build multi-modal model list from index (convert to ModelMetadata wrapper for compatibility)
-        var allMultiModalModels = _indexedMultiModalModels != null 
-            ? _indexedMultiModalModels.Values.Select(ConvertToModelMetadata).ToList() 
+        var allMultiModalModels = _indexedMultiModalModels != null
+            ? _indexedMultiModalModels.Values.Select(ConvertToModelMetadata).ToList()
             : new List<ModelMetadata>();
 
         // Combine both lists and search across them
@@ -178,7 +178,7 @@ public class JsonModelRepository : IModelRepository, IDisposable
         if (!string.IsNullOrWhiteSpace(searchTerm))
         {
             var term = searchTerm.ToLowerInvariant();
-            allResults = allResults.Where(m => 
+            allResults = allResults.Where(m =>
                 m.Name.ToLowerInvariant().Contains(term) ||
                 m.Architecture.ToLowerInvariant().Contains(term));
         }
@@ -186,7 +186,7 @@ public class JsonModelRepository : IModelRepository, IDisposable
         if (!string.IsNullOrWhiteSpace(architecture))
         {
             // Match against architecture for GGUF models, or model type for multi-modal models (stored in Architecture field as alias)
-            allResults = allResults.Where(m => 
+            allResults = allResults.Where(m =>
                 m.Architecture.Equals(architecture, StringComparison.OrdinalIgnoreCase) ||
                 m.Type.Equals("multimodal", StringComparison.OrdinalIgnoreCase));
         }
@@ -199,7 +199,7 @@ public class JsonModelRepository : IModelRepository, IDisposable
     /// Filters by model type, search term, and pipeline type (e.g., "sdxl", "sd15").
     /// </summary>
     public async Task<IEnumerable<MultiModalModelMetadata>> SearchMultiModalModelsAsync(
-        string? searchTerm = null, 
+        string? searchTerm = null,
         ModelType? modelTypeFilter = null,
         string? pipelineTypeFilter = null)
     {
@@ -212,7 +212,7 @@ public class JsonModelRepository : IModelRepository, IDisposable
         if (!string.IsNullOrWhiteSpace(searchTerm))
         {
             var term = searchTerm.ToLowerInvariant();
-            results = results.Where(m => 
+            results = results.Where(m =>
                 m.Name.ToLowerInvariant().Contains(term) ||
                 m.Id.ToLowerInvariant().Contains(term));
         }
@@ -225,7 +225,7 @@ public class JsonModelRepository : IModelRepository, IDisposable
         if (!string.IsNullOrWhiteSpace(pipelineTypeFilter))
         {
             var pt = pipelineTypeFilter.ToLowerInvariant();
-            results = results.Where(m => 
+            results = results.Where(m =>
                 m.PipelineType?.ToLowerInvariant().Contains(pt) == true ||
                 m.CompatibleBaseModel?.ToLowerInvariant() == pt);
         }
@@ -253,11 +253,11 @@ public class JsonModelRepository : IModelRepository, IDisposable
 
         // Determine which type of model this is and update the appropriate index
         var isMultiModal = metadata.Type.Equals("multimodal", StringComparison.OrdinalIgnoreCase);
-        
+
         if (isMultiModal)
         {
             if (_indexedMultiModalModels == null) _indexedMultiModalModels = new Dictionary<string, MultiModalModelMetadata>();
-            
+
             // Note: ModelMetadata and MultiModalModelMetadata are unrelated types — cannot use 'as' cast.
             // Callers should use SaveMultiModalModelMetadataAsync for multimodal models instead of SaveModelMetadataAsync.
             _logger.LogWarning("SaveModelMetadata called with Type='multimodal' but model is not a MultiModalModelMetadata type. " +
@@ -352,7 +352,7 @@ public class JsonModelRepository : IModelRepository, IDisposable
     private Dictionary<string, ModelMetadata> LoadIndex()
     {
         var indexPath = Path.Combine(_indexDirectory, IndexFileName);
-        
+
         if (!File.Exists(indexPath))
             return new Dictionary<string, ModelMetadata>();
 
@@ -360,7 +360,7 @@ public class JsonModelRepository : IModelRepository, IDisposable
         {
             var json = File.ReadAllText(indexPath);
             var models = JsonSerializer.Deserialize<Dictionary<string, ModelMetadata>>(json);
-            
+
             // Validate entries still exist on disk
             if (models != null)
             {
@@ -387,7 +387,7 @@ public class JsonModelRepository : IModelRepository, IDisposable
     private Dictionary<string, MultiModalModelMetadata> LoadMultiModalIndex()
     {
         var mmIndexPath = Path.Combine(_indexDirectory, "model-index-multimodal.json");
-        
+
         if (!File.Exists(mmIndexPath))
             return new Dictionary<string, MultiModalModelMetadata>();
 
@@ -395,7 +395,7 @@ public class JsonModelRepository : IModelRepository, IDisposable
         {
             var json = File.ReadAllText(mmIndexPath);
             var models = JsonSerializer.Deserialize<Dictionary<string, MultiModalModelMetadata>>(json);
-            
+
             // Validate entries still exist on disk
             if (models != null)
             {
@@ -424,12 +424,12 @@ public class JsonModelRepository : IModelRepository, IDisposable
         try
         {
             var indexPath = Path.Combine(_indexDirectory, IndexFileName);
-            
+
             // Save GGUF models as the primary index (backward compatible)
             if (_indexedGgufModels != null && _indexedGgufModels.Count > 0)
             {
-                var options = new JsonSerializerOptions 
-                { 
+                var options = new JsonSerializerOptions
+                {
                     WriteIndented = true,
                     PropertyNamingPolicy = JsonNamingPolicy.CamelCase
                 };
@@ -440,8 +440,8 @@ public class JsonModelRepository : IModelRepository, IDisposable
             if (_indexedMultiModalModels != null && _indexedMultiModalModels.Count > 0)
             {
                 var mmIndexPath = Path.Combine(_indexDirectory, "model-index-multimodal.json");
-                var options = new JsonSerializerOptions 
-                { 
+                var options = new JsonSerializerOptions
+                {
                     WriteIndented = true,
                     PropertyNamingPolicy = JsonNamingPolicy.CamelCase
                 };
@@ -457,7 +457,7 @@ public class JsonModelRepository : IModelRepository, IDisposable
     private IReadOnlyList<ModelMetadata> GetAllModels()
     {
         var results = new List<ModelMetadata>();
-        
+
         if (_indexedGgufModels != null)
             results.AddRange(_indexedGgufModels.Values);
 
@@ -477,7 +477,7 @@ public class JsonModelRepository : IModelRepository, IDisposable
     private IReadOnlyList<ModelMetadata> DiscoverGgufModelsOnly()
     {
         if (_indexedGgufModels == null) _indexedGgufModels = LoadIndex();
-        
+
         var results = new List<ModelMetadata>();
         if (_indexedGgufModels != null)
             results.AddRange(_indexedGgufModels.Values);
@@ -512,13 +512,13 @@ public class JsonModelRepository : IModelRepository, IDisposable
         // Use the base name of the index file as the model ID
         var baseName = Path.GetFileNameWithoutExtension(indexPath).Replace(".index", "");
         var id = Path.GetFileNameWithoutExtension(baseName);
-        
+
         if (string.IsNullOrEmpty(id)) return;
 
         try
         {
             _indexedMultiModalModels ??= LoadMultiModalIndex();
-            
+
             // Create a MultiModalModelMetadata from the index info
             var metadata = new MultiModalModelMetadata
             {
@@ -556,7 +556,7 @@ public class JsonModelRepository : IModelRepository, IDisposable
             // Ensure Id matches filename without extension
             var fileId = Path.GetFileNameWithoutExtension(filePath);
             if (string.IsNullOrEmpty(fileId)) return;
-            
+
             metadata.Id = fileId;
             _indexedGgufModels ??= LoadIndex();
             _indexedGgufModels[fileId] = metadata;
@@ -576,7 +576,7 @@ public class JsonModelRepository : IModelRepository, IDisposable
         try
         {
             _indexedMultiModalModels ??= LoadMultiModalIndex();
-            
+
             // Create a ModelMetadata wrapper for compatibility with existing GGUF code paths
             var modelMeta = new ModelMetadata
             {
@@ -612,14 +612,14 @@ public class JsonModelRepository : IModelRepository, IDisposable
             };
 
             // Extract LoRA-specific metadata if applicable
-            var hasLoraWeights = headerInfo.TensorsMetadata.Any(t => 
+            var hasLoraWeights = headerInfo.TensorsMetadata.Any(t =>
                 t.Key.Contains("lora", StringComparison.OrdinalIgnoreCase) ||
                 t.Value.Shape.Length == 2 && t.Value.Shape[1] < t.Value.Shape[0]); // Likely rank matrix
 
             if (hasLoraWeights)
             {
                 multimodalMeta.ModelType = ModelType.Lora;
-                
+
                 // Detect LoRA variant format from tensor names
                 var hasHadamardTransforms = headerInfo.TensorsMetadata.Any(t => t.Key.Contains("_hadamard", StringComparison.OrdinalIgnoreCase));
                 if (hasHadamardTransforms)
@@ -631,7 +631,7 @@ public class JsonModelRepository : IModelRepository, IDisposable
                 foreach (var tensor in headerInfo.TensorsMetadata.Values.Where(t => t.Shape.Length == 2 && t.Shape[1] < t.Shape[0]))
                 {
                     multimodalMeta.Rank = (int)tensor.Shape[1];
-                    
+
                     // Calculate scaling factor as alpha/rank if lora_alpha is present
                     if (headerInfo.GlobalMetadata.TryGetValue("lora_alpha", out var alphaStr))
                     {
@@ -647,9 +647,9 @@ public class JsonModelRepository : IModelRepository, IDisposable
             if (!hasLoraWeights && headerInfo.GlobalMetadata.TryGetValue("pipeline_type", out var pipelineType))
             {
                 multimodalMeta.PipelineType = pipelineType;
-                
+
                 // Try to extract resolution from tensor shapes (first dimension of diffusion UNet)
-                foreach (var tensor in headerInfo.TensorsMetadata.Values.Where(t => 
+                foreach (var tensor in headerInfo.TensorsMetadata.Values.Where(t =>
                     t.Shape.Length == 4 && t.Shape[0] == 1)) // Likely a convolutional layer with batch dim
                 {
                     multimodalMeta.DefaultResolution = Math.Max((int)Math.Sqrt(tensor.Shape[2] * tensor.Shape[3]), 512);
@@ -674,7 +674,7 @@ public class JsonModelRepository : IModelRepository, IDisposable
     public void Dispose()
     {
         // Save any pending index changes on disposal
-        if ((_indexedGgufModels != null && _indexedGgufModels.Count > 0) || 
+        if ((_indexedGgufModels != null && _indexedGgufModels.Count > 0) ||
             (_indexedMultiModalModels != null && _indexedMultiModalModels.Count > 0))
             SaveIndex();
     }

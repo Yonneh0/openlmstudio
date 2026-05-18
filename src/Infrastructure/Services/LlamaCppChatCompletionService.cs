@@ -35,7 +35,7 @@ public class LlamaCppChatCompletionService : IChatCompletionService, IDisposable
         _logger = logger;
         _modelRepository = modelRepository;
         _ggufParser = ggufParser;
-        
+
         _logger.LogInformation("LlamaCppChatCompletionService initialized (native bindings pending)");
     }
 
@@ -48,7 +48,7 @@ public class LlamaCppChatCompletionService : IChatCompletionService, IDisposable
             throw new FileNotFoundException($"Model not found: {request.ModelId}");
         }
 
-        _logger.LogInformation("Processing completion request for model: {ModelId}, messages: {MessageCount}", 
+        _logger.LogInformation("Processing completion request for model: {ModelId}, messages: {MessageCount}",
             request.ModelId, request.Messages.Count);
 
         // Validate context length constraint - check if any message exceeds the model's max context
@@ -104,7 +104,7 @@ public class LlamaCppChatCompletionService : IChatCompletionService, IDisposable
             yield break;
         }
 
-        _logger.LogInformation("Streaming completion for model: {ModelId}, messages: {MessageCount}", 
+        _logger.LogInformation("Streaming completion for model: {ModelId}, messages: {MessageCount}",
             request.ModelId, request.Messages.Count);
 
         // Validate context length constraint
@@ -134,7 +134,7 @@ public class LlamaCppChatCompletionService : IChatCompletionService, IDisposable
     {
         if (_disposed) return;
         _disposed = true;
-        
+
         // Cleanup llama.cpp context handles and model unloading
         try
         {
@@ -159,7 +159,7 @@ public class LlamaCppChatCompletionService : IChatCompletionService, IDisposable
             return null;
         }
 
-        _logger.LogInformation("Loading model into memory: {ModelId} ({Architecture})", 
+        _logger.LogInformation("Loading model into memory: {ModelId} ({Architecture})",
             modelId, metadata.Architecture);
 
         var loadedInstance = new LoadedModelInstance
@@ -175,7 +175,7 @@ public class LlamaCppChatCompletionService : IChatCompletionService, IDisposable
         // 3. llava_load_model_from_file - load the model weights
 
         loadedInstance.State = ModelLoadState.Loaded;
-        _logger.LogInformation("Model loaded successfully: {ModelId} ({Architecture})", 
+        _logger.LogInformation("Model loaded successfully: {ModelId} ({Architecture})",
             modelId, metadata.Architecture);
 
         return loadedInstance;
@@ -211,7 +211,7 @@ public class LlamaCppChatCompletionService : IChatCompletionService, IDisposable
     {
         // Use IModelRepository for actual metadata lookup instead of placeholder
         var metadata = await _modelRepository.GetModelByIdAsync(modelId);
-        
+
         if (metadata != null)
             return metadata;
 
@@ -244,7 +244,7 @@ public class LlamaCppChatCompletionService : IChatCompletionService, IDisposable
             // Search for .gguf files matching the model ID
             var pattern = $"{modelId}*.gguf";
             var matches = Directory.GetFiles(searchPath, pattern);
-            
+
             if (matches.Any())
                 return matches.First();
 
@@ -260,9 +260,9 @@ public class LlamaCppChatCompletionService : IChatCompletionService, IDisposable
     private string GeneratePlaceholderResponse(ModelMetadata metadata, ChatRequest request)
     {
         // TODO: Real inference requires llama.cpp native binding integration via P/Invoke or ML.NET ONNX Runtime
-        
-        var contextInfo = metadata.ContextLength > 0 
-            ? $"{metadata.ContextLength} tokens" 
+
+        var contextInfo = metadata.ContextLength > 0
+            ? $"{metadata.ContextLength} tokens"
             : "unknown";
 
         return $"[Placeholder Response] - Model '{metadata.Name ?? request.ModelId}' ({metadata.Architecture}, {contextInfo} context). " +
@@ -276,7 +276,7 @@ public class LlamaCppChatCompletionService : IChatCompletionService, IDisposable
     /// <summary>
     /// Standardized token counting method using consistent estimation: ~1 token per 4 characters for English.
     /// </summary>
-    private static int EstimateTokenCount(string text) => 
+    private static int EstimateTokenCount(string text) =>
         string.IsNullOrEmpty(text) ? 0 : (text.Length + 3) / 4;
 
     /// <summary>
@@ -285,14 +285,14 @@ public class LlamaCppChatCompletionService : IChatCompletionService, IDisposable
     private int EstimateTotalTokenCount(List<Message> messages)
     {
         var totalTokens = 0;
-        
+
         foreach (var message in messages)
         {
             // Use token count if available, otherwise estimate
-            totalTokens += message.TokenCount > 0 
-                ? message.TokenCount 
+            totalTokens += message.TokenCount > 0
+                ? message.TokenCount
                 : EstimateTokenCount(message.Content);
-            
+
             // Add tokens for tool calls if present
             if (message.ToolCalls != null && message.ToolCalls.Any())
             {
@@ -315,7 +315,7 @@ public class LlamaCppChatCompletionService : IChatCompletionService, IDisposable
             // Remove first non-system message
             var removableIndex = truncated.FindLastIndex(
                 m => m.Role == MessageRole.User || m.Role == MessageRole.Tool);
-            
+
             if (removableIndex >= 0)
                 truncated.RemoveAt(removableIndex);
             else
@@ -347,18 +347,18 @@ public class LlamaCppChatService : IChatCompletionService, IDisposable
     public LlamaCppChatService(ILogger<LlamaCppChatService>? logger = null)
     {
         _logger = logger;
-        
+
         // Try to wrap the real service if DI resolves its dependencies
         try
         {
             var modelRepo = Activator.CreateInstance(typeof(IModelRepository)) as IModelRepository;
             var ggufParser = new GgufParser();
-            
+
             if (modelRepo != null)
             {
                 _wrappedService = new LlamaCppChatCompletionService(
                     NullLogger<LlamaCppChatCompletionService>.Instance,
-                    modelRepo, 
+                    modelRepo,
                     ggufParser);
                 return;
             }
@@ -377,12 +377,12 @@ public class LlamaCppChatService : IChatCompletionService, IDisposable
             return await _wrappedService.GetCompletionAsync(request);
 
         _logger?.LogWarning("LlamaCppChatService: Stub implementation - real inference pending native integration");
-        
+
         var metadata = await GetFallbackMetadata(request.ModelId);
         return new ChatResponseChoice(
-            new Message 
-            { 
-                Role = MessageRole.Assistant, 
+            new Message
+            {
+                Role = MessageRole.Assistant,
                 Content = $"[Stub Response] - Model '{request.ModelId}' ({metadata.Architecture}). " +
                           "Real inference requires llama.cpp native binding integration.",
                 TokenCount = EstimateTokenCount("stub response"),
@@ -445,7 +445,7 @@ public class LlamaCppChatService : IChatCompletionService, IDisposable
         foreach (var path in searchPaths)
         {
             if (!Directory.Exists(path)) continue;
-            
+
             var ggufFiles = Directory.GetFiles(path, "*.gguf", SearchOption.AllDirectories);
             return ggufFiles.FirstOrDefault();
         }
@@ -463,6 +463,6 @@ public class LlamaCppChatService : IChatCompletionService, IDisposable
     /// <summary>
     /// Standardized token counting method using consistent estimation: ~1 token per 4 characters for English.
     /// </summary>
-    private static int EstimateTokenCount(string text) => 
+    private static int EstimateTokenCount(string text) =>
         string.IsNullOrEmpty(text) ? 0 : (text.Length + 3) / 4;
 }

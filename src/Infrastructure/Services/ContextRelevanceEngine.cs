@@ -20,13 +20,13 @@ public class ContextRelevanceEngine : IContextRelevanceEngine, IDisposable
     public async Task<List<RelevanceScore>> ScoreSegmentsAsync(Guid chatId, List<ContextSegment> segments, string goalText)
     {
         if (segments == null || !segments.Any() || string.IsNullOrEmpty(goalText))
-            return segments.Select(s => new RelevanceScore(s.Id, 0)).ToList();
+            return new();
 
         var scores = new List<(Guid SegmentId, double Score)>();
 
         // Extract key terms from the goal text for semantic matching
         var goalTerms = ExtractKeyTerms(goalText);
-        
+
         foreach (var segment in segments)
         {
             if (segment.IsSuppressed)
@@ -62,7 +62,7 @@ public class ContextRelevanceEngine : IContextRelevanceEngine, IDisposable
 
         // Dynamic threshold: higher when budget is tight, lower when we have room
         var baseThreshold = 0.3; // Default: include anything with at least 30% relevance
-        
+
         if (budgetRatio > 0.7) return baseThreshold - 0.1; // More generous when lots of space
         if (budgetRatio < 0.2) return Math.Min(0.9, baseThreshold + 0.5); // Very strict when almost out
 
@@ -72,13 +72,13 @@ public class ContextRelevanceEngine : IContextRelevanceEngine, IDisposable
     }
 
     /// <inheritdoc />
-    public List<ContextSegment> OrderByRelevance(List<ContextSegment> segments, string goalText)
+    public List<ContextSegment> OrderByRelevance(List<ContextSegment>? segments, string goalText)
     {
         if (segments == null || !segments.Any() || string.IsNullOrEmpty(goalText))
-            return new(segments); // Return a copy without ordering
+            return [];
 
         var scores = ScoreSegmentsAsync(Guid.Empty, segments, goalText).GetAwaiter().GetResult();
-        
+
         // Map segment IDs to their relevance scores for sorting
         var scoreMap = scores.ToDictionary(s => s.SegmentId, s => s.Score);
 
@@ -98,7 +98,7 @@ public class ContextRelevanceEngine : IContextRelevanceEngine, IDisposable
     private static HashSet<string> ExtractKeyTerms(string text)
     {
         var terms = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
-        
+
         if (string.IsNullOrEmpty(text))
             return terms;
 
@@ -112,11 +112,11 @@ public class ContextRelevanceEngine : IContextRelevanceEngine, IDisposable
         };
 
         var words = text.Split(new[] { ' ', '.', ',', ':', ';', '?', '!', '/', '\\' }, StringSplitOptions.RemoveEmptyEntries);
-        
+
         foreach (var word in words)
         {
             var cleanWord = word.Trim().ToLowerInvariant();
-            
+
             // Skip stop words and very short words
             if (cleanWord.Length < 3 || stopWords.Contains(cleanWord))
                 continue;
@@ -159,10 +159,10 @@ public class ContextRelevanceEngine : IContextRelevanceEngine, IDisposable
         {
             // Count occurrences of each term in the segment
             var count = CountSubstrings(lowerContent, term);
-            
+
             if (count > 0)
                 weightedScore += term.Length * count; // Weight longer terms more heavily
-            
+
             if (count > 0)
                 termHits = termHits.GetValueOrDefault(0) + 1;
         }
@@ -172,7 +172,7 @@ public class ContextRelevanceEngine : IContextRelevanceEngine, IDisposable
 
         // Normalize: divide by number of terms found, then scale to 0-1 range
         var normalized = weightedScore / Math.Max(goalTerms.Count * goalTerms.Max(t => t.Length), 1);
-        
+
         // Exponential decay for high values (diminishing returns)
         return Math.Clamp(normalized / Math.Sqrt(1 + normalized), 0, 1);
     }
@@ -187,7 +187,7 @@ public class ContextRelevanceEngine : IContextRelevanceEngine, IDisposable
             return 0;
 
         var lowerContent = content.ToLowerInvariant();
-        
+
         // Look for file paths in the segment that match with the goal text
         var pathPatternMatches = CountSubstrings(lowerContent, "/") + CountSubstrings(lowerContent, "\\");
         if (pathPatternMatches > 0)
@@ -196,7 +196,7 @@ public class ContextRelevanceEngine : IContextRelevanceEngine, IDisposable
         // Look for code identifiers that appear in both content and goal text
         var codeTerms = ExtractCodeIdentifiers(content);
         var goalCodeTerms = ExtractCodeIdentifiers(goalText);
-        
+
         int matchedTerms = 0;
         foreach (var term in codeTerms)
         {
@@ -206,7 +206,7 @@ public class ContextRelevanceEngine : IContextRelevanceEngine, IDisposable
 
         var maxCount = codeTerms.Count > goalCodeTerms.Count ? codeTerms.Count : goalCodeTerms.Count;
         if (maxCount == 0) return 0;
-        
+
         return Math.Clamp((double)matchedTerms / maxCount, 0, 1);
     }
 
@@ -217,7 +217,7 @@ public class ContextRelevanceEngine : IContextRelevanceEngine, IDisposable
 
         var count = 0;
         var index = 0;
-        
+
         while ((index = haystack.IndexOf(needle, index, StringComparison.Ordinal)) >= 0)
         {
             count++;
@@ -233,19 +233,27 @@ public class ContextRelevanceEngine : IContextRelevanceEngine, IDisposable
     private static HashSet<string> ExtractCodeIdentifiers(string text)
     {
         var terms = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
-        
+
         if (string.IsNullOrEmpty(text))
             return terms;
 
         // Match camelCase and PascalCase identifiers
         var camelMatch = System.Text.RegularExpressions.Regex.Matches(text, "[a-z]+[A-Z][a-zA-Z]*");
         foreach (var match in camelMatch)
-            terms.Add(match.ToString());
+        {
+            var m = match.ToString();
+            if (!string.IsNullOrEmpty(m))
+                terms.Add(m);
+        }
 
         // Match snake_case identifiers  
         var snakeMatch = System.Text.RegularExpressions.Regex.Matches(text, "[a-z]+_[a-z]+");
         foreach (var match in snakeMatch)
-            terms.Add(match.ToString().ToLowerInvariant());
+        {
+            var m = match.ToString();
+            if (!string.IsNullOrEmpty(m))
+                terms.Add(m.ToLowerInvariant());
+        }
 
         return terms;
     }

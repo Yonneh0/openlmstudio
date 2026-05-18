@@ -31,7 +31,7 @@ public class SqliteTaskContextStore : ITaskContextStore, IDisposable
         _logger = logger;
         _resolver = resolver;
         _dbFactory = dbFactory;
-        
+
         // Ensure tasks directory exists and database is initialized
         InitializeDatabase();
     }
@@ -54,7 +54,7 @@ public class SqliteTaskContextStore : ITaskContextStore, IDisposable
             selectCmd.Parameters.AddWithValue("@taskId", snapshot.TaskId.ToString());
 
             var count = Convert.ToInt32(await selectCmd.ExecuteScalarAsync()!);
-            
+
             if (count > 0)
             {
                 // Update existing row — this is effectively an upsert
@@ -66,7 +66,7 @@ public class SqliteTaskContextStore : ITaskContextStore, IDisposable
                 await InsertIntoTableAsync(connection, snapshot);
             }
 
-            _logger?.LogInformation("Task context created/updated: TaskId={TaskId}, State={State}", 
+            _logger?.LogInformation("Task context created/updated: TaskId={TaskId}, State={State}",
                 snapshot.TaskId, snapshot.CurrentState);
         }
         catch (Exception ex) when (ex is IOException or SqliteException or InvalidOperationException)
@@ -94,7 +94,7 @@ public class SqliteTaskContextStore : ITaskContextStore, IDisposable
             cmd.Parameters.AddWithValue("@taskId", taskId.ToString());
 
             await using var reader = await cmd.ExecuteReaderAsync();
-            
+
             if (await reader.ReadAsync())
                 return ReadSnapshotFromReader(reader);
 
@@ -126,7 +126,7 @@ public class SqliteTaskContextStore : ITaskContextStore, IDisposable
             selectCmd.Parameters.AddWithValue("@taskId", snapshot.TaskId.ToString());
 
             var count = Convert.ToInt32(await selectCmd.ExecuteScalarAsync()!);
-            
+
             if (count == 0)
             {
                 // Row doesn't exist — insert it
@@ -138,7 +138,7 @@ public class SqliteTaskContextStore : ITaskContextStore, IDisposable
                 await UpdateInternalAsync(connection, snapshot);
             }
 
-            _logger?.LogDebug("Task context updated: TaskId={TaskId}, State={State}", 
+            _logger?.LogDebug("Task context updated: TaskId={TaskId}, State={State}",
                 snapshot.TaskId, snapshot.CurrentState);
         }
         catch (Exception ex) when (ex is IOException or SqliteException or InvalidOperationException)
@@ -154,7 +154,7 @@ public class SqliteTaskContextStore : ITaskContextStore, IDisposable
         try
         {
             await using var connection = _dbFactory.CreateConnection(_resolver.GetTaskContextDatabasePath(taskId.ToString()));
-            
+
             // Ensure the table exists before attempting to delete from it
             try
             {
@@ -227,11 +227,11 @@ public class SqliteTaskContextStore : ITaskContextStore, IDisposable
     public async Task<List<TaskContextSnapshot>> ListActiveByChatIdAsync(Guid chatId)
     {
         var results = new List<TaskContextSnapshot>();
-        
+
         try
         {
             await using var connection = _dbFactory.CreateConnection(_resolver.GetTaskContextDatabasePath(chatId.ToString()));
-            
+
             // Check if database exists first
             try
             {
@@ -242,7 +242,7 @@ public class SqliteTaskContextStore : ITaskContextStore, IDisposable
                 using var cmd = new SqliteCommand(sql, connection);
 
                 await using var reader = await cmd.ExecuteReaderAsync();
-                
+
                 while (await reader.ReadAsync())
                     results.Add(ReadSnapshotFromReader(reader));
             }
@@ -264,7 +264,7 @@ public class SqliteTaskContextStore : ITaskContextStore, IDisposable
     public async Task<List<TaskContextSnapshot>> ListArchivedAsync()
     {
         var results = new List<TaskContextSnapshot>();
-        
+
         try
         {
             // Archived snapshots are stored per-task-id in their own .db files under the tasks/ directory.
@@ -386,34 +386,36 @@ public class SqliteTaskContextStore : ITaskContextStore, IDisposable
             AiAnalysisJson, CreatedAt, UpdatedAt
         ) VALUES (@taskId, @desc, @state, @ctxJson, @toolJson, @fileTree, @gitStatus, @entitiesJson, @tokenCount, @aiAnalysisJson, @createdAt, @updatedAt);";
 
-        var compressedContext = snapshot.CompressedContext != null && snapshot.CompressedContext.Any() 
-            ? JsonSerializer.Serialize(snapshot.CompressedContext, _jsonOptions) 
+        var compressedContext = snapshot.CompressedContext != null && snapshot.CompressedContext.Any()
+            ? JsonSerializer.Serialize(snapshot.CompressedContext, _jsonOptions)
             : null;
-        
-        var toolResultsCache = snapshot.ToolResultsCache != null && snapshot.ToolResultsCache.Any() 
-            ? JsonSerializer.Serialize(snapshot.ToolResultsCache.ToDictionary(k => k.Key, v => JsonSerializer.Serialize(v.Value, _jsonOptions)), _jsonOptions) 
+
+        var toolResultsCache = snapshot.ToolResultsCache != null && snapshot.ToolResultsCache.Any()
+            ? JsonSerializer.Serialize(snapshot.ToolResultsCache.ToDictionary(k => k.Key, v => JsonSerializer.Serialize(v.Value, _jsonOptions)), _jsonOptions)
             : null;
-        
-        var relevantEntitiesJson = snapshot.RelevantEntities?.Any() == true 
-            ? JsonSerializer.Serialize(snapshot.RelevantEntities, _jsonOptions) 
+
+        var relevantEntitiesJson = snapshot.RelevantEntities?.Any() == true
+            ? JsonSerializer.Serialize(snapshot.RelevantEntities, _jsonOptions)
             : null;
 
         string? aiAnalysisJson;
         if (snapshot.AiAnalysis != null)
         {
             // Serialize AiAnalysisResult with its own context — handle nested ContextSegment serialization
-            var analysisDict = new Dictionary<string, object>
-            {
-                ["AnalyzedChatHistory"] = snapshot.AiAnalysis.AnalyzedChatHistory?.Any() == true 
-                    ? JsonSerializer.Serialize(snapshot.AiAnalysis.AnalyzedChatHistory, _jsonOptions)
-                    : (object?)null,
-                ["ProjectStateAtTimeOfAnalysis"] = snapshot.AiAnalysis.ProjectStateAtTimeOfAnalysis ?? (object?)null,
-                ["RelevantContextSegmentIds"] = snapshot.AiAnalysis.RelevantContextSegmentIds?.Any() == true 
-                    ? JsonSerializer.Serialize(snapshot.AiAnalysis.RelevantContextSegmentIds, _jsonOptions)
-                    : (object?)null,
-                ["AnalysisTokenCount"] = snapshot.AiAnalysis.AnalysisTokenCount,
-                ["AnalyzedAt"] = snapshot.AiAnalysis.AnalyzedAt.ToString("o")
-            };
+            var analysisDict = new Dictionary<string, object?>();
+
+            if (snapshot.AiAnalysis.AnalyzedChatHistory != null && snapshot.AiAnalysis.AnalyzedChatHistory.Any())
+                analysisDict["AnalyzedChatHistory"] = JsonSerializer.Serialize(snapshot.AiAnalysis.AnalyzedChatHistory, _jsonOptions);
+
+            if (snapshot.AiAnalysis.ProjectStateAtTimeOfAnalysis != null)
+                analysisDict["ProjectStateAtTimeOfAnalysis"] = snapshot.AiAnalysis.ProjectStateAtTimeOfAnalysis;
+
+            if (snapshot.AiAnalysis.RelevantContextSegmentIds != null && snapshot.AiAnalysis.RelevantContextSegmentIds.Any())
+                analysisDict["RelevantContextSegmentIds"] = JsonSerializer.Serialize(snapshot.AiAnalysis.RelevantContextSegmentIds, _jsonOptions);
+
+            analysisDict["AnalysisTokenCount"] = snapshot.AiAnalysis.AnalysisTokenCount;
+            analysisDict["AnalyzedAt"] = snapshot.AiAnalysis.AnalyzedAt.ToString("o");
+
             aiAnalysisJson = JsonSerializer.Serialize(analysisDict, _jsonOptions);
         }
         else
@@ -455,35 +457,37 @@ public class SqliteTaskContextStore : ITaskContextStore, IDisposable
             UpdatedAt = @updatedAt
         WHERE TaskId = @taskId;";
 
-        var compressedContext = snapshot.CompressedContext != null && snapshot.CompressedContext.Any() 
-            ? JsonSerializer.Serialize(snapshot.CompressedContext, _jsonOptions) 
+        var compressedContext = snapshot.CompressedContext != null && snapshot.CompressedContext.Any()
+            ? JsonSerializer.Serialize(snapshot.CompressedContext, _jsonOptions)
             : null;
-        
-        var toolResultsCache = snapshot.ToolResultsCache != null && snapshot.ToolResultsCache.Any() 
-            ? JsonSerializer.Serialize(snapshot.ToolResultsCache.ToDictionary(k => k.Key, v => JsonSerializer.Serialize(v.Value, _jsonOptions)), _jsonOptions) 
+
+        var toolResultsCache = snapshot.ToolResultsCache != null && snapshot.ToolResultsCache.Any()
+            ? JsonSerializer.Serialize(snapshot.ToolResultsCache.ToDictionary(k => k.Key, v => JsonSerializer.Serialize(v.Value, _jsonOptions)), _jsonOptions)
             : null;
-        
-        var relevantEntitiesJson = snapshot.RelevantEntities?.Any() == true 
-            ? JsonSerializer.Serialize(snapshot.RelevantEntities, _jsonOptions) 
+
+        var relevantEntitiesJson = snapshot.RelevantEntities?.Any() == true
+            ? JsonSerializer.Serialize(snapshot.RelevantEntities, _jsonOptions)
             : null;
 
         string? aiAnalysisJson;
         if (snapshot.AiAnalysis != null)
         {
             // Serialize AiAnalysisResult with its own context — handle nested ContextSegment serialization
-            var analysisDict = new Dictionary<string, object>
-            {
-                ["AnalyzedChatHistory"] = snapshot.AiAnalysis.AnalyzedChatHistory?.Any() == true 
-                    ? JsonSerializer.Serialize(snapshot.AiAnalysis.AnalyzedChatHistory, _jsonOptions)
-                    : (object?)null,
-                ["ProjectStateAtTimeOfAnalysis"] = snapshot.AiAnalysis.ProjectStateAtTimeOfAnalysis ?? (object?)null,
-                ["RelevantContextSegmentIds"] = snapshot.AiAnalysis.RelevantContextSegmentIds?.Any() == true 
-                    ? JsonSerializer.Serialize(snapshot.AiAnalysis.RelevantContextSegmentIds, _jsonOptions)
-                    : (object?)null,
-                ["AnalysisTokenCount"] = snapshot.AiAnalysis.AnalysisTokenCount,
-                ["AnalyzedAt"] = snapshot.AiAnalysis.AnalyzedAt.ToString("o")
-            };
-            aiAnalysisJson = JsonSerializer.Serialize(analysisDict, _jsonOptions);
+            var analysisDict2 = new Dictionary<string, object?>();
+
+            if (snapshot.AiAnalysis.AnalyzedChatHistory != null && snapshot.AiAnalysis.AnalyzedChatHistory.Any())
+                analysisDict2["AnalyzedChatHistory"] = JsonSerializer.Serialize(snapshot.AiAnalysis.AnalyzedChatHistory, _jsonOptions);
+
+            if (snapshot.AiAnalysis.ProjectStateAtTimeOfAnalysis != null)
+                analysisDict2["ProjectStateAtTimeOfAnalysis"] = snapshot.AiAnalysis.ProjectStateAtTimeOfAnalysis;
+
+            if (snapshot.AiAnalysis.RelevantContextSegmentIds != null && snapshot.AiAnalysis.RelevantContextSegmentIds.Any())
+                analysisDict2["RelevantContextSegmentIds"] = JsonSerializer.Serialize(snapshot.AiAnalysis.RelevantContextSegmentIds, _jsonOptions);
+
+            analysisDict2["AnalysisTokenCount"] = snapshot.AiAnalysis.AnalysisTokenCount;
+            analysisDict2["AnalyzedAt"] = snapshot.AiAnalysis.AnalyzedAt.ToString("o");
+
+            aiAnalysisJson = JsonSerializer.Serialize(analysisDict2, _jsonOptions);
         }
         else
         {
@@ -512,7 +516,7 @@ public class SqliteTaskContextStore : ITaskContextStore, IDisposable
     {
         var taskId = new Guid(reader.GetString(reader.GetOrdinal("TaskId")));
         var description = reader.GetString(reader.GetOrdinal("Description"));
-        
+
         string currentStateStr;
         try
         {
@@ -527,15 +531,15 @@ public class SqliteTaskContextStore : ITaskContextStore, IDisposable
                 throw;
         }
 
-        var currentEnum = Enum.TryParse<AgentState>(currentStateStr, true, out var parsed) 
+        var currentEnum = Enum.TryParse<AgentState>(currentStateStr, true, out var parsed)
             ? parsed : AgentState.Planning;
 
         // Read optional JSON fields with null safety
         string? compressedContextJson;
         try
         {
-            compressedContextJson = reader.IsDBNull(reader.GetOrdinal("CompressedContextJson")) 
-                ? null 
+            compressedContextJson = reader.IsDBNull(reader.GetOrdinal("CompressedContextJson"))
+                ? null
                 : (string)reader.GetValue(reader.GetOrdinal("CompressedContextJson"));
         }
         catch
@@ -547,8 +551,8 @@ public class SqliteTaskContextStore : ITaskContextStore, IDisposable
         string? toolResultsCacheJson;
         try
         {
-            toolResultsCacheJson = reader.IsDBNull(reader.GetOrdinal("ToolResultsCacheJson")) 
-                ? null 
+            toolResultsCacheJson = reader.IsDBNull(reader.GetOrdinal("ToolResultsCacheJson"))
+                ? null
                 : (string)reader.GetValue(reader.GetOrdinal("ToolResultsCacheJson"));
         }
         catch
@@ -560,8 +564,8 @@ public class SqliteTaskContextStore : ITaskContextStore, IDisposable
         string? activeFileTree;
         try
         {
-            activeFileTree = reader.IsDBNull(reader.GetOrdinal("ActiveFileTree")) 
-                ? null 
+            activeFileTree = reader.IsDBNull(reader.GetOrdinal("ActiveFileTree"))
+                ? null
                 : (string)reader.GetValue(reader.GetOrdinal("ActiveFileTree"));
         }
         catch
@@ -573,8 +577,8 @@ public class SqliteTaskContextStore : ITaskContextStore, IDisposable
         string? gitStatusSnapshot;
         try
         {
-            gitStatusSnapshot = reader.IsDBNull(reader.GetOrdinal("GitStatusSnapshot")) 
-                ? null 
+            gitStatusSnapshot = reader.IsDBNull(reader.GetOrdinal("GitStatusSnapshot"))
+                ? null
                 : (string)reader.GetValue(reader.GetOrdinal("GitStatusSnapshot"));
         }
         catch
@@ -586,8 +590,8 @@ public class SqliteTaskContextStore : ITaskContextStore, IDisposable
         string? relevantEntitiesJson;
         try
         {
-            relevantEntitiesJson = reader.IsDBNull(reader.GetOrdinal("RelevantEntitiesJson")) 
-                ? null 
+            relevantEntitiesJson = reader.IsDBNull(reader.GetOrdinal("RelevantEntitiesJson"))
+                ? null
                 : (string)reader.GetValue(reader.GetOrdinal("RelevantEntitiesJson"));
         }
         catch
@@ -610,8 +614,8 @@ public class SqliteTaskContextStore : ITaskContextStore, IDisposable
         string? aiAnalysisJson;
         try
         {
-            aiAnalysisJson = reader.IsDBNull(reader.GetOrdinal("AiAnalysisJson")) 
-                ? null 
+            aiAnalysisJson = reader.IsDBNull(reader.GetOrdinal("AiAnalysisJson"))
+                ? null
                 : (string)reader.GetValue(reader.GetOrdinal("AiAnalysisJson"));
         }
         catch
@@ -645,8 +649,8 @@ public class SqliteTaskContextStore : ITaskContextStore, IDisposable
             TaskId = taskId,
             Description = description,
             CurrentState = currentEnum,
-            CompressedContext = compressedContextJson != null 
-                ? JsonSerializer.Deserialize<List<ContextSegment>>(compressedContextJson, _jsonOptions) ?? [] 
+            CompressedContext = compressedContextJson != null
+                ? JsonSerializer.Deserialize<List<ContextSegment>>(compressedContextJson, _jsonOptions) ?? []
                 : [],
             ToolResultsCache = toolResultsCacheJson != null && !string.IsNullOrEmpty(toolResultsCacheJson)
                 ? DeserializeToolResultsCache(toolResultsCacheJson)
@@ -668,15 +672,15 @@ public class SqliteTaskContextStore : ITaskContextStore, IDisposable
     private TaskContextSnapshot ReadArchivedSnapshotFromReader(SqliteDataReader reader)
     {
         var taskId = new Guid(reader.GetString(reader.GetOrdinal("TaskId")));
-        
+
         // Archived snapshots don't have CurrentState - default to Completed
         var currentEnum = AgentState.Completed;
 
         string? compressedContextJson;
         try
         {
-            compressedContextJson = reader.IsDBNull(reader.GetOrdinal("CompressedContextJson")) 
-                ? null 
+            compressedContextJson = reader.IsDBNull(reader.GetOrdinal("CompressedContextJson"))
+                ? null
                 : (string)reader.GetValue(reader.GetOrdinal("CompressedContextJson"));
         }
         catch
@@ -688,8 +692,8 @@ public class SqliteTaskContextStore : ITaskContextStore, IDisposable
         string? toolResultsCacheJson;
         try
         {
-            toolResultsCacheJson = reader.IsDBNull(reader.GetOrdinal("ToolResultsCacheJson")) 
-                ? null 
+            toolResultsCacheJson = reader.IsDBNull(reader.GetOrdinal("ToolResultsCacheJson"))
+                ? null
                 : (string)reader.GetValue(reader.GetOrdinal("ToolResultsCacheJson"));
         }
         catch
@@ -701,8 +705,8 @@ public class SqliteTaskContextStore : ITaskContextStore, IDisposable
         string? activeFileTree;
         try
         {
-            activeFileTree = reader.IsDBNull(reader.GetOrdinal("ActiveFileTree")) 
-                ? null 
+            activeFileTree = reader.IsDBNull(reader.GetOrdinal("ActiveFileTree"))
+                ? null
                 : (string)reader.GetValue(reader.GetOrdinal("ActiveFileTree"));
         }
         catch
@@ -714,8 +718,8 @@ public class SqliteTaskContextStore : ITaskContextStore, IDisposable
         string? gitStatusSnapshot;
         try
         {
-            gitStatusSnapshot = reader.IsDBNull(reader.GetOrdinal("GitStatusSnapshot")) 
-                ? null 
+            gitStatusSnapshot = reader.IsDBNull(reader.GetOrdinal("GitStatusSnapshot"))
+                ? null
                 : (string)reader.GetValue(reader.GetOrdinal("GitStatusSnapshot"));
         }
         catch
@@ -727,8 +731,8 @@ public class SqliteTaskContextStore : ITaskContextStore, IDisposable
         string? relevantEntitiesJson;
         try
         {
-            relevantEntitiesJson = reader.IsDBNull(reader.GetOrdinal("RelevantEntitiesJson")) 
-                ? null 
+            relevantEntitiesJson = reader.IsDBNull(reader.GetOrdinal("RelevantEntitiesJson"))
+                ? null
                 : (string)reader.GetValue(reader.GetOrdinal("RelevantEntitiesJson"));
         }
         catch
@@ -761,8 +765,8 @@ public class SqliteTaskContextStore : ITaskContextStore, IDisposable
         string? archivedDescription;
         try
         {
-            archivedDescription = reader.IsDBNull(reader.GetOrdinal("Description")) 
-                ? null 
+            archivedDescription = reader.IsDBNull(reader.GetOrdinal("Description"))
+                ? null
                 : (string)reader.GetValue(reader.GetOrdinal("Description"));
         }
         catch
@@ -776,8 +780,8 @@ public class SqliteTaskContextStore : ITaskContextStore, IDisposable
             TaskId = taskId,
             Description = archivedDescription ?? "",
             CurrentState = currentEnum,
-            CompressedContext = compressedContextJson != null 
-                ? JsonSerializer.Deserialize<List<ContextSegment>>(compressedContextJson, _jsonOptions) ?? [] 
+            CompressedContext = compressedContextJson != null
+                ? JsonSerializer.Deserialize<List<ContextSegment>>(compressedContextJson, _jsonOptions) ?? []
                 : [],
             ToolResultsCache = toolResultsCacheJson != null && !string.IsNullOrEmpty(toolResultsCacheJson)
                 ? DeserializeToolResultsCache(toolResultsCacheJson)
@@ -802,7 +806,7 @@ public class SqliteTaskContextStore : ITaskContextStore, IDisposable
 
             // Parse AnalyzedChatHistory (nested JSON string containing ContextSegment[])
             List<ContextSegment>? analyzedChatHistory = null;
-            if (root.TryGetProperty("AnalyzedChatHistory", out var chatHistoryProp) && 
+            if (root.TryGetProperty("AnalyzedChatHistory", out var chatHistoryProp) &&
                 !chatHistoryProp.ValueKind.Equals(System.Text.Json.JsonValueKind.Null))
             {
                 var historyJson = chatHistoryProp.GetString();
@@ -812,7 +816,7 @@ public class SqliteTaskContextStore : ITaskContextStore, IDisposable
 
             // Parse ProjectStateAtTimeOfAnalysis
             string? projectState = null;
-            if (root.TryGetProperty("ProjectStateAtTimeOfAnalysis", out var stateProp) && 
+            if (root.TryGetProperty("ProjectStateAtTimeOfAnalysis", out var stateProp) &&
                 !stateProp.ValueKind.Equals(System.Text.Json.JsonValueKind.Null))
             {
                 projectState = stateProp.GetString();
@@ -820,7 +824,7 @@ public class SqliteTaskContextStore : ITaskContextStore, IDisposable
 
             // Parse RelevantContextSegmentIds
             List<string>? relevantSegmentIds = null;
-            if (root.TryGetProperty("RelevantContextSegmentIds", out var idsProp) && 
+            if (root.TryGetProperty("RelevantContextSegmentIds", out var idsProp) &&
                 !idsProp.ValueKind.Equals(System.Text.Json.JsonValueKind.Null))
             {
                 var idsJson = idsProp.GetString();
@@ -832,7 +836,7 @@ public class SqliteTaskContextStore : ITaskContextStore, IDisposable
             long analysisTokenCount = 0;
             try
             {
-                if (root.TryGetProperty("AnalysisTokenCount", out var tokenProp) && 
+                if (root.TryGetProperty("AnalysisTokenCount", out var tokenProp) &&
                     !tokenProp.ValueKind.Equals(System.Text.Json.JsonValueKind.Null))
                     analysisTokenCount = tokenProp.GetInt64();
             }
@@ -845,7 +849,7 @@ public class SqliteTaskContextStore : ITaskContextStore, IDisposable
             DateTime analyzedAt;
             try
             {
-                if (root.TryGetProperty("AnalyzedAt", out var timeProp) && 
+                if (root.TryGetProperty("AnalyzedAt", out var timeProp) &&
                     !timeProp.ValueKind.Equals(System.Text.Json.JsonValueKind.Null))
                     analyzedAt = DateTime.Parse(timeProp.GetString() ?? "");
                 else

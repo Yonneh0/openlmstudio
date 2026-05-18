@@ -31,7 +31,7 @@ public class TaskContextPruner : ITaskContextPruner, IDisposable
         // Mark as archive-on-completion and set state to Completed
         snapshot.ArchiveOnCompletion = true;
         snapshot.CurrentState = AgentState.Completed;
-        
+
         await _taskContextStore.UpdateAsync(snapshot);
 
         _logger?.LogInformation("Archived task context for TaskId={TaskId}", taskId);
@@ -48,7 +48,7 @@ public class TaskContextPruner : ITaskContextPruner, IDisposable
         // and trigger archive via the store's Delete with CompressAndArchive strategy.
         snapshot.ArchiveOnCompletion = true;
         snapshot.CurrentState = AgentState.Completed;
-        
+
         await _taskContextStore.UpdateAsync(snapshot);
 
         _logger?.LogInformation("Compressed and archived task context for TaskId={TaskId}", taskId);
@@ -59,7 +59,7 @@ public class TaskContextPruner : ITaskContextPruner, IDisposable
     {
         // Delete the snapshot — user should confirm via dialog before calling.
         await _taskContextStore.DeleteAsync(taskId, ContextPruneStrategy.Discard);
-        
+
         _logger?.LogInformation("Discarded task context for TaskId={TaskId}", taskId);
     }
 

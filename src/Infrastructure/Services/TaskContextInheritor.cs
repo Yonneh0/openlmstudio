@@ -57,11 +57,11 @@ public class TaskContextInheritor : ITaskContextInheritor, IDisposable
         if (childBudget.RemainingTokens < 512 && parentSnapshot.CompressedContextTokenCount > MaxParentToChildPropagationTokens)
         {
             // Child is tight on budget — only propagate critical info
-            childSnapshot.CompressedContext = FilterByRelevance(parentSnapshot.CompressedContext, topN: 8);
+            childSnapshot.CompressedContext = parentSnapshot.CompressedContext != null ? FilterByRelevance(parentSnapshot.CompressedContext, topN: 8) : new();
             childSnapshot.RelevantEntities = parentSnapshot.RelevantEntities?.Take(10).ToList() ?? new();
         }
 
-        _logger?.LogInformation("Created child inheritance for TaskId={ChildTaskId} from parent {ParentTaskId}", 
+        _logger?.LogInformation("Created child inheritance for TaskId={ChildTaskId} from parent {ParentTaskId}",
             childTaskId, parentTaskId);
 
         return childSnapshot;

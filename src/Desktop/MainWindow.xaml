@@ -288,7 +288,7 @@
                                           Background="{StaticResource BgTertiary}"
                                           Margin="8,4,8,8"
                                           Height="32"
-                                          SelectionChanged="ImageGenModelSelector_SelectionChanged"/>
+                                          SelectionChanged="OnImageGenModelSelectorSelectionChanged"/>
                             </StackPanel>
                         </Border>
 

@@ -26,7 +26,7 @@ public partial class MainWindow : Window, INotifyPropertyChanged
     private readonly IConversationManager? _conversationManager;
     private readonly IServerService? _serverService;
     private readonly IModelRepository? _modelRepository;
-    
+
     // Tab tracking
     private string _activeTab = "Chat";
     private Guid? _selectedChatId;
@@ -43,7 +43,7 @@ public partial class MainWindow : Window, INotifyPropertyChanged
         InitializeComponent();
 
         _logger = logger;
-        
+
         // Use pre-resolved dependencies from App.OnStartup — if none are provided (for testing), fall back to DI resolution attempt.
         _conversationManager = conversationManager ?? ResolveConversationManagerFromAppServices();
         _serverService = serverService ?? ResolveServerServiceFromAppServices();
@@ -55,10 +55,10 @@ public partial class MainWindow : Window, INotifyPropertyChanged
 
         // Set up event handlers for UI interactions
         SetupEventHandlers();
-        
+
         // Load tab click handlers (they need access to this instance's ShowTab method)
         AttachTabClickHandlers();
-        
+
         RefreshChatListAsync();
     }
 
@@ -66,8 +66,8 @@ public partial class MainWindow : Window, INotifyPropertyChanged
     /// Event fired when a property changes on the main window view model.
     /// </summary>
     public event PropertyChangedEventHandler? PropertyChanged;
-    
-    private void OnPropertyChanged(string propertyName) => 
+
+    private void OnPropertyChanged(string propertyName) =>
         PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
 
     // ---- UI Event Handlers Setup ----
@@ -99,7 +99,7 @@ public partial class MainWindow : Window, INotifyPropertyChanged
     private void ShowTab(string tabName)
     {
         _activeTab = tabName;
-        
+
         // Hide all tab contents first
         ChatTabContent.Visibility = Visibility.Collapsed;
         ServerTabContent.Visibility = Visibility.Collapsed;
@@ -134,26 +134,26 @@ public partial class MainWindow : Window, INotifyPropertyChanged
     {
         // Update styling for all tab TextBlocks to show which is active
         var tabs = new List<TextBlock?>();
-        
+
         if (ChatTabContent != null)
             tabs.Add(ChatTabContent.Children.OfType<TextBlock>().FirstOrDefault());
-        
+
         if (ServerTabContent != null)
             tabs.Add(ServerTabContent.Children.OfType<TextBlock>().FirstOrDefault());
-        
+
         if (ModelsTabContent != null)
             tabs.Add(ModelsTabContent.Children.OfType<TextBlock>().FirstOrDefault());
-        
+
         if (DevicesTabContent != null)
             tabs.Add(DevicesTabContent.Children.OfType<TextBlock>().FirstOrDefault());
-        
+
         foreach (var tb in tabs)
         {
             if (tb == null) continue;
-            
+
             // Only update the first TextBlock of each tab section (the tab title)
             var parent = tb.Parent as FrameworkElement;
-            if (parent?.Name != null && 
+            if (parent?.Name != null &&
                 new[] { "ChatTabContent", "ServerTabContent", "ModelsTabContent", "DevicesTabContent" }
                     .Contains(parent.Name))
             {
@@ -182,7 +182,7 @@ public partial class MainWindow : Window, INotifyPropertyChanged
         try
         {
             var chats = await _conversationManager.ListChatsAsync();
-            
+
             // Clear existing chat list
             ChatListPanel?.Children.Clear();
 
@@ -243,7 +243,7 @@ public partial class MainWindow : Window, INotifyPropertyChanged
     private async void OnChatItemClicked(object sender, RoutedEventArgs e)
     {
         var chatIdObj = (sender as Button)?.Tag as Guid?;
-        
+
         if (!chatIdObj.HasValue)
             return;
 
@@ -261,7 +261,7 @@ public partial class MainWindow : Window, INotifyPropertyChanged
             {
                 // Reset to default style background
                 var fallback = new SolidColorBrush(Color.FromRgb(37, 37, 41));
-                child.Background = FindResource("ChatItemButton") is Style s 
+                child.Background = FindResource("ChatItemButton") is Style s
                     ? (s.Setters.Cast<SetterBase>().OfType<Setter>()
                         .First(x => x.Property == Border.BackgroundProperty).Value as Brush) ?? fallback
                     : fallback;
@@ -278,7 +278,7 @@ public partial class MainWindow : Window, INotifyPropertyChanged
 
         var newChat = await _conversationManager.CreateChatAsync("New Chat");
         RefreshChatListAsync();
-        
+
         // Automatically select the new chat (fire-and-forget since this is async void)
         _ = LoadConversationMessagesAsync(newChat.Id);
     }
@@ -294,7 +294,7 @@ public partial class MainWindow : Window, INotifyPropertyChanged
         try
         {
             var messages = await _conversationManager.GetMessagesAsync(chatId);
-            
+
             // Clear existing message display
             MessageDisplayPanel?.Children.Clear();
 
@@ -306,7 +306,7 @@ public partial class MainWindow : Window, INotifyPropertyChanged
                     Foreground = new SolidColorBrush(Color.FromRgb(170, 170, 170)),
                     FontSize = 14
                 };
-                
+
                 MessageDisplayPanel?.Children.Add(new Border
                 {
                     Background = new SolidColorBrush(Color.FromRgb(37, 37, 41)),
@@ -373,7 +373,7 @@ public partial class MainWindow : Window, INotifyPropertyChanged
         if (message.Role == MessageRole.Assistant && message.ToolCalls?.Any() == true)
         {
             var stackPanel = new StackPanel();
-            
+
             // Role label for assistant messages
             stackPanel.Children.Add(new TextBlock
             {
@@ -404,7 +404,7 @@ public partial class MainWindow : Window, INotifyPropertyChanged
         {
             // Add role label for user/system messages
             var stackPanel = new StackPanel();
-            
+
             var roleLabel = new TextBlock
             {
                 Text = message.Role.ToString().ToUpper(),
@@ -415,7 +415,7 @@ public partial class MainWindow : Window, INotifyPropertyChanged
 
             if (message.Role == MessageRole.User)
                 roleLabel.Foreground = new SolidColorBrush(Color.FromRgb(76, 175, 80)); // Green for user
-            
+
             stackPanel.Children.Add(roleLabel);
             stackPanel.Children.Add(textBlock);
 
@@ -439,7 +439,7 @@ public partial class MainWindow : Window, INotifyPropertyChanged
             {
                 // Stop the server
                 await _serverService.StopAsync();
-                
+
                 // Update UI to reflect stopped state
                 ServerStartStopButton.Content = "Start Server";
                 ServerStatusText.Text = "Server: Stopped";
@@ -474,13 +474,13 @@ public partial class MainWindow : Window, INotifyPropertyChanged
 
         // Update server status display across all UI elements
         ServerStatusText.Text = $"Server: {(isRunning ? "Running" : "Stopped")}";
-        
+
         ServerStartStopButton.Content = isRunning ? "Stop Server" : "Start Server";
 
         if (isRunning)
         {
             ServerStatusText.Foreground = new SolidColorBrush(Color.FromRgb(76, 175, 80)); // Green
-            
+
             // Try to get port from the server service's configuration
             var srv = _serverService as OpenLMStudio.Infrastructure.Services.ServerService;
             if (srv?.Configuration != null)
@@ -501,10 +501,10 @@ public partial class MainWindow : Window, INotifyPropertyChanged
     {
         // Update UI on server state changes from the service itself
         Dispatcher.Invoke(() => UpdateServerStatus());
-        
+
         if (e.NewState == ServerState.Error && !string.IsNullOrEmpty(e.Message))
         {
-            Dispatcher.Invoke(() => 
+            Dispatcher.Invoke(() =>
                 MessageBox.Show($"Server error: {e.Message}", "OpenLMStudio", MessageBoxButton.OK, MessageBoxImage.Warning));
         }
     }
@@ -525,7 +525,7 @@ public partial class MainWindow : Window, INotifyPropertyChanged
                 if (deviceMonitor != null)
                 {
                     CpuCoreText.Text = $"CPU Cores: {Environment.ProcessorCount}";
-                    
+
                     // Get available memory
                     try
                     {
@@ -566,7 +566,7 @@ public partial class MainWindow : Window, INotifyPropertyChanged
         try
         {
             var models = await _modelRepository.DiscoverModelsAsync();
-            
+
             // Clear existing content from the scrollviewer and add model list
             var parentPanel = ModelsTabContent?.Parent as DependencyObject;
             if (parentPanel != null)
@@ -603,7 +603,7 @@ public partial class MainWindow : Window, INotifyPropertyChanged
         if (_selectedChatId == null || _conversationManager == null) return;
 
         var messageText = MessageInputBox?.Text ?? string.Empty;
-        
+
         if (string.IsNullOrWhiteSpace(messageText))
             return;
 
@@ -630,7 +630,8 @@ public partial class MainWindow : Window, INotifyPropertyChanged
                 MessageDisplayPanel?.Children.Add(userBorder);
 
             // Send to chat service and get response (fire-and-forget since it's async void)
-            _ = Task.Run(async () => {
+            _ = Task.Run(async () =>
+            {
                 if (_conversationManager != null && _selectedChatId.HasValue)
                     await GetAssistantResponseAsync(_selectedChatId.Value, userMessage.Content!);
             });
@@ -681,12 +682,12 @@ public partial class MainWindow : Window, INotifyPropertyChanged
             // For now, show a placeholder response
             if (assistantBorder != null)
                 assistantBorder.Child = new TextBlock
-            {
-                Text = "Assistant response requires IChatCompletionService integration.\n\nTo enable real responses:\n1. Install llama.cpp native bindings (libllama.dll)\n2. Configure in appsettings.json: \"Inference\": { \"Backend\": \"llama-cpp\" }",
-                Foreground = new SolidColorBrush(Color.FromRgb(170, 170, 170)),
-                FontSize = 14,
-                Margin = new Thickness(0)
-            };
+                {
+                    Text = "Assistant response requires IChatCompletionService integration.\n\nTo enable real responses:\n1. Install llama.cpp native bindings (libllama.dll)\n2. Configure in appsettings.json: \"Inference\": { \"Backend\": \"llama-cpp\" }",
+                    Foreground = new SolidColorBrush(Color.FromRgb(170, 170, 170)),
+                    FontSize = 14,
+                    Margin = new Thickness(0)
+                };
 
             // Update token count display
             var totalTokens = await _conversationManager.CalculateTotalTokenCountAsync(chatId);
@@ -702,7 +703,7 @@ public partial class MainWindow : Window, INotifyPropertyChanged
 
     // ---- Utility Methods ----
 
-    private int EstimateTokenCount(string text) => 
+    private int EstimateTokenCount(string text) =>
         string.IsNullOrEmpty(text) ? 0 : Math.Max(1, (text.Length + 3) / 4);
 
     /// <summary>
@@ -730,7 +731,7 @@ public partial class MainWindow : Window, INotifyPropertyChanged
         try
         {
             // Try to access ApplicationServices property via reflection
-            var propInfo = (appType as System.Type)?.GetProperty("ApplicationServices", 
+            var propInfo = (appType as System.Type)?.GetProperty("ApplicationServices",
                 System.Reflection.BindingFlags.Static | System.Reflection.BindingFlags.Public);
             return propInfo?.GetValue(null) as IServiceProvider;
         }
@@ -766,7 +767,7 @@ public partial class MainWindow : Window, INotifyPropertyChanged
         foreach (var tab in tabPanels)
         {
             if (tab == null) continue;
-            
+
             // Make the entire StackPanel clickable by attaching a Click handler to its first element
             var child = tab.Children.OfType<UIElement>().FirstOrDefault();
             if (child != null && !string.IsNullOrEmpty(tab.Name))
@@ -792,7 +793,7 @@ public partial class MainWindow : Window, INotifyPropertyChanged
         // Also attach click handlers directly to the TabControl buttons in XAML for reliability
         if (ChatTabContent?.Children.OfType<UIElement>().FirstOrDefault() is UIElement chatClickTarget)
             chatClickTarget.MouseLeftButtonUp += (_, _) => ShowTab("Chat");
-        
+
         var serverChild = ServerTabContent?.Children.OfType<UIElement>().FirstOrDefault();
         serverChild?.AddHandler(UIElement.MouseLeftButtonUpEvent, new MouseButtonEventHandler((_, _) => ShowTab("Server")));
 
@@ -841,5 +842,14 @@ public partial class MainWindow : Window, INotifyPropertyChanged
         }
 
         return null;
+    }
+
+    /// <summary>
+    /// Handler for ImageGenModelSelector SelectionChanged event.
+    /// Updates the selected image generation model based on user selection.
+    /// </summary>
+    private void OnImageGenModelSelectorSelectionChanged(object sender, SelectionChangedEventArgs e)
+    {
+        // TODO: Implement actual image generation model selection logic
     }
 }

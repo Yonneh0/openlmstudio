@@ -87,11 +87,12 @@ Every file change you make **MUST** be committed to git. This is not optional.
   ```
 
 #### Commit Workflow
-1. **Complete the logical change** — all related file modifications are done
-2. **Stage changes**: `git add` (use specific paths, not wildcards when possible)
-3. **Write commit message** following conventions above
-4. **Commit**: `git commit -m "..."` or multi-line: `git commit` then paste the body
-5. **Verify**: check `git status` is clean before proceeding
+1. **Validate build errors/warnings/format** - prior to commiting changes, always ensure `dotnet build` completes cleanly with NO warnings, and `dotnet format` has been ran to keep formatting consistant.
+2. **Complete the logical change** — all related file modifications are done
+3. **Stage changes**: `git add` (use specific paths, not wildcards when possible)
+4. **Write commit message** following conventions above
+5. **Commit**: `git commit -m "..."` or multi-line: `git commit` then paste the body
+6. **Verify**: check `git status` is clean before proceeding
 
 #### What NOT to Do
 - ❌ Never skip commits — uncommitted code can be lost

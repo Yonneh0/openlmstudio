@@ -104,6 +104,11 @@ public static class DependencyInjection
         // SelfSignedCertificateGenerator generates cross-platform self-signed certs for local HTTPS development
         services.AddSingleton<ISelfSignedCertificateService, Services.SelfSignedCertificateGenerator>();
 
+        // ---- Phase 7: Agent Harness ----
+
+        // AgentTaskProgressTracker tracks agentic task progress through stages (NotStarted → InProgress → Reviewing → Completed/Failed)
+        services.AddSingleton<ITaskProgressTracker, Services.AgentTaskProgressTracker>();
+
         return services;
     }
 

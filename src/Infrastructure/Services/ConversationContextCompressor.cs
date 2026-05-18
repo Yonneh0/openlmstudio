@@ -21,9 +21,9 @@ public class ConversationContextCompressor : IContextCompressor, IDisposable
     public async Task<CompressionResult> CompressAsync(IEnumerable<ContextSegment> segments, CompressionLevel level)
     {
         if (level == CompressionLevel.None)
-            return new CompressionResult(segments.ToList(), 
-                segments.Sum(s => s.TokenCount), 
-                segments.Sum(s => s.TokenCount), 
+            return new CompressionResult(segments.ToList(),
+                segments.Sum(s => s.TokenCount),
+                segments.Sum(s => s.TokenCount),
                 0);
 
         var segmentList = segments.ToList();
@@ -35,9 +35,9 @@ public class ConversationContextCompressor : IContextCompressor, IDisposable
         var compressibleSegments = segmentList.Where(s => !s.IsPinned && !s.IsSuppressed).ToList();
 
         if (!compressibleSegments.Any())
-            return new CompressionResult(pinnedSegments, 
-                pinnedSegments.Sum(s => s.TokenCount), 
-                pinnedSegments.Sum(s => s.TokenCount), 
+            return new CompressionResult(pinnedSegments,
+                pinnedSegments.Sum(s => s.TokenCount),
+                pinnedSegments.Sum(s => s.TokenCount),
                 0);
 
         // Sort compressible segments by relevance (most recent first) for temporal decay
@@ -65,7 +65,7 @@ public class ConversationContextCompressor : IContextCompressor, IDisposable
         var compressedTokenCount = compressed.Sum(s => s.TokenCount);
         var ratio = originalTokenCount > 0 ? (double)(originalTokenCount - compressedTokenCount) / originalTokenCount : 0;
 
-        _logger?.LogDebug("Compression applied at level {Level}: {OriginalTokens} → {CompressedTokens} tokens ({Ratio:P1})", 
+        _logger?.LogDebug("Compression applied at level {Level}: {OriginalTokens} → {CompressedTokens} tokens ({Ratio:P1})",
             level, originalTokenCount, compressedTokenCount, ratio);
 
         return new CompressionResult(compressed, originalTokenCount, compressedTokenCount, ratio);
@@ -76,7 +76,7 @@ public class ConversationContextCompressor : IContextCompressor, IDisposable
     {
         // Decompression is not possible for segments that were lossily compressed.
         // For lossless compression (summarization), the summary IS the compressed form — no decompression needed.
-        _logger?.LogDebug("DecompressAsync called for segment {SegmentId} with role {Role}", 
+        _logger?.LogDebug("DecompressAsync called for segment {SegmentId} with role {Role}",
             compressedSegment.Id, compressedSegment.Role);
 
         return null; // No meaningful decompression exists for context compression
@@ -119,7 +119,7 @@ public class ConversationContextCompressor : IContextCompressor, IDisposable
             {
                 // Extract key phrases from older content
                 var compressedContent = ExtractKeyPhrases(segment.Content, maxPhrases: 5);
-                
+
                 if (!string.IsNullOrEmpty(compressedContent))
                 {
                     result.Add(new ContextSegment
@@ -161,7 +161,7 @@ public class ConversationContextCompressor : IContextCompressor, IDisposable
             {
                 // Tool outputs: condense to just the key result
                 var condensedContent = CondenseToolOutput(segment.Content, MaxSummaryLength);
-                
+
                 if (!string.IsNullOrEmpty(condensedContent))
                 {
                     result.Add(new ContextSegment
@@ -286,7 +286,7 @@ public class ConversationContextCompressor : IContextCompressor, IDisposable
 
         // Simple heuristic: extract sentences/lines and pick the most meaningful ones
         var sentences = SplitSentences(content);
-        
+
         // Score each sentence by length and presence of key terms
         var scored = new List<(int Index, double Score)>();
         var keyTerms = new[] { "important", "critical", "key", "result", "output", "error", "fix", "change" };
@@ -308,7 +308,7 @@ public class ConversationContextCompressor : IContextCompressor, IDisposable
 
         // Sort by score descending and take top N
         var selected = scored.OrderByDescending(s => s.Score).Take(maxPhrases);
-        
+
         var phrases = new List<string>();
         foreach (var item in selected)
         {
@@ -342,8 +342,8 @@ public class ConversationContextCompressor : IContextCompressor, IDisposable
 
             int score = 0;
             var lowerLine = line.ToLowerInvariant();
-            
-            if (lowerLine.Contains("success") || lowerLine.Contains("completed") || 
+
+            if (lowerLine.Contains("success") || lowerLine.Contains("completed") ||
                 lowerLine.Contains("output") || lowerLine.Contains("result"))
                 score += 10;
             else if (lowerLine.Contains("error") || lowerLine.Contains("fail") || lowerLine.Contains("exception"))
@@ -360,8 +360,8 @@ public class ConversationContextCompressor : IContextCompressor, IDisposable
             }
         }
 
-        return !string.IsNullOrEmpty(bestLine) 
-            ? TruncateToLength(bestLine, maxLength) 
+        return !string.IsNullOrEmpty(bestLine)
+            ? TruncateToLength(bestLine, maxLength)
             : TruncateToLength(content, maxLength);
     }
 
@@ -375,7 +375,7 @@ public class ConversationContextCompressor : IContextCompressor, IDisposable
 
         // Extract the core meaning by taking key phrases and truncating
         var sentences = SplitSentences(content);
-        
+
         if (!sentences.Any())
             return TruncateToLength(content, maxLength);
 
@@ -406,7 +406,7 @@ public class ConversationContextCompressor : IContextCompressor, IDisposable
 
         // Look for the command/tool name and result status
         var lines = SplitSentences(content);
-        
+
         foreach (var line in lines)
         {
             if (string.IsNullOrEmpty(line)) continue;
@@ -439,14 +439,14 @@ public class ConversationContextCompressor : IContextCompressor, IDisposable
 
         // Look for the core request/question pattern
         var sentences = SplitSentences(content);
-        
+
         foreach (var sentence in sentences)
         {
             if (string.IsNullOrEmpty(sentence)) continue;
 
             // Check for question/intent patterns
             var lowerSentence = sentence.ToLowerInvariant();
-            if (lowerSentence.StartsWith("how", StringComparison.Ordinal) || 
+            if (lowerSentence.StartsWith("how", StringComparison.Ordinal) ||
                 lowerSentence.StartsWith("what", StringComparison.Ordinal) ||
                 lowerSentence.StartsWith("can you", StringComparison.Ordinal) ||
                 lowerSentence.StartsWith("please", StringComparison.Ordinal))
@@ -477,14 +477,14 @@ public class ConversationContextCompressor : IContextCompressor, IDisposable
 
         // Look for the primary action/description in assistant responses
         var sentences = SplitSentences(content);
-        
+
         foreach (var sentence in sentences)
         {
             if (string.IsNullOrEmpty(sentence)) continue;
 
             // Prefer sentences that describe actions or changes
             var lowerSentence = sentence.ToLowerInvariant();
-            if (lowerSentence.Contains("done") || lowerSentence.Contains("changed") || 
+            if (lowerSentence.Contains("done") || lowerSentence.Contains("changed") ||
                 lowerSentence.Contains("updated") || lowerSentence.Contains("created"))
             {
                 return TruncateToLength(sentence, maxLength - 2) + "]";
@@ -512,10 +512,10 @@ public class ConversationContextCompressor : IContextCompressor, IDisposable
             return new();
 
         var result = new List<string>();
-        
+
         // Split by sentence-ending punctuation and newlines
         var parts = content.Split(new[] { '\n', '.', '!', '?' }, StringSplitOptions.RemoveEmptyEntries);
-        
+
         foreach (var part in parts)
         {
             var trimmed = part.Trim();
@@ -534,7 +534,7 @@ public class ConversationContextCompressor : IContextCompressor, IDisposable
         if (string.IsNullOrEmpty(text))
             return text ?? "";
 
-        return text.Length > maxLength 
+        return text.Length > maxLength
             ? text.Substring(0, Math.Max(1, maxLength - 3)) + "..."
             : text;
     }
@@ -542,6 +542,6 @@ public class ConversationContextCompressor : IContextCompressor, IDisposable
     /// <summary>
     /// Standardized token counting method using consistent estimation: ~1 token per 4 characters for English.
     /// </summary>
-    private static int EstimateTokenCount(string text) => 
+    private static int EstimateTokenCount(string text) =>
         string.IsNullOrEmpty(text) ? 0 : (text.Length + 3) / 4;
 }

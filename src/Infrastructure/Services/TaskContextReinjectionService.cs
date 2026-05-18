@@ -35,7 +35,7 @@ public class TaskContextReinjectionService : ITaskContextReinjectionService, IDi
             OverallCompression = CompressionLevel.None // Already compressed by prior pass
         };
 
-        _logger?.LogDebug("Fast reinjection for TaskId={TaskId}: {SegmentCount} segments restored", 
+        _logger?.LogDebug("Fast reinjection for TaskId={TaskId}: {SegmentCount} segments restored",
             taskId, window.Segments.Count);
 
         return window;
@@ -57,7 +57,7 @@ public class TaskContextReinjectionService : ITaskContextReinjectionService, IDi
     public async Task<ReinjectionSummary> GetReinjectionSummaryAsync(Guid taskId)
     {
         var snapshot = await _taskContextStore.GetByTaskIdAsync(taskId);
-        
+
         if (snapshot == null || !snapshot.CompressedContext.Any())
             return new ReinjectionSummary();
 

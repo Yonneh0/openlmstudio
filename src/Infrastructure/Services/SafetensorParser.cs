@@ -19,7 +19,7 @@ namespace OpenLMStudio.Infrastructure.Services;
 /// </summary>
 public class SafetensorParser : IDisposable
 {
-        private const ulong MaxHeaderSizeUlong = 1024UL * 1024UL * 10UL; // 10MB max header (safety limit)
+    private const ulong MaxHeaderSizeUlong = 1024UL * 1024UL * 10UL; // 10MB max header (safety limit)
     private readonly ILogger<SafetensorParser>? _logger;
 
     /// <summary>
@@ -69,7 +69,7 @@ public class SafetensorParser : IDisposable
         try
         {
             using var stream = new FileStream(filePath, FileMode.Open, FileAccess.Read, FileShare.Read);
-            
+
             // Read header size (8 bytes, little-endian uint64)
             var headerSizeBytes = new byte[8];
             if (await stream.ReadAsync(headerSizeBytes, 0, 8, cancellationToken) != 8)
@@ -107,27 +107,28 @@ public class SafetensorParser : IDisposable
                     var tensorName = property.Name;
                     var dtypeString = property.Value.GetProperty("dtype").GetString();
                     var shapeArray = new long[property.Value.GetProperty("shape").GetArrayLength()];
-                    
+
                     for (var i = 0; i < shapeArray.Length; i++)
                         shapeArray[i] = property.Value.GetProperty("shape")[i].GetInt64();
 
                     var startOffset = property.Value.GetProperty("data_offsets")[0].GetInt64();
                     var endOffset = property.Value.GetProperty("data_offsets")[1].GetInt64();
 
+                    var dtypeOrDefault = dtypeString ?? "unknown";
                     tensorsMetadata[tensorName] = new TensorMetadata
                     {
                         Name = tensorName,
-                        Dtype = dtypeString ?? "unknown",
+                        Dtype = dtypeOrDefault,
                         Shape = shapeArray,
                         StartOffset = startOffset,
                         EndOffset = endOffset,
                         NumElements = shapeArray.Aggregate(1L, (a, b) => a * b),
-                        ByteSize = GetByteSizeForDtype(dtypeString)
+                        ByteSize = GetByteSizeForDtype(dtypeOrDefault)
                     };
                 }
                 catch (Exception ex) when (ex is KeyNotFoundException or InvalidOperationException)
                 {
-                    _logger?.LogWarning(ex, "Failed to parse tensor metadata for: {TensorName} in {FilePath}", 
+                    _logger?.LogWarning(ex, "Failed to parse tensor metadata for: {TensorName} in {FilePath}",
                         property.Name, filePath);
                 }
             }
@@ -195,7 +196,7 @@ public class SafetensorParser : IDisposable
         try
         {
             var json = await File.ReadAllTextAsync(indexPath, cancellationToken);
-            
+
             using var doc = JsonDocument.Parse(json);
             var root = doc.RootElement;
 
@@ -257,7 +258,7 @@ public class SafetensorParser : IDisposable
             using var sha256 = SHA256.Create();
             using var stream = new FileStream(filePath, FileMode.Open, FileAccess.Read, FileShare.Read);
             var hashBytes = await sha256.ComputeHashAsync(stream, cancellationToken);
-            
+
             // Convert to hex string (lowercase)
             return BitConverter.ToString(hashBytes).Replace("-", "").ToLowerInvariant();
         }
@@ -278,7 +279,7 @@ public class SafetensorParser : IDisposable
             using var md5 = MD5.Create();
             using var stream = new FileStream(filePath, FileMode.Open, FileAccess.Read, FileShare.Read);
             var hashBytes = await md5.ComputeHashAsync(stream, cancellationToken);
-            
+
             return BitConverter.ToString(hashBytes).Replace("-", "").ToLowerInvariant();
         }
         catch (Exception ex) when (ex is System.IO.IOException or UnauthorizedAccessException)
@@ -301,7 +302,7 @@ public class SafetensorParser : IDisposable
     {
         if (string.IsNullOrEmpty(dtype))
             return 0;
-        
+
         DtypeByteSizeMap.TryGetValue(dtype.ToLowerInvariant(), out var size);
         return size;
     }
@@ -345,7 +346,7 @@ public class SafetensorsHeaderInfo : IDisposable
     /// <summary>
     /// Estimated total parameter count from tensor shapes.
     /// </summary>
-        public long EstimatedTotalParameters { get; set; }
+    public long EstimatedTotalParameters { get; set; }
 
     /// <summary>
     /// Metadata about each tensor (name, dtype, shape, offsets).

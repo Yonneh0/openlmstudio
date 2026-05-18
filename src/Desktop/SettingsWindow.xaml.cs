@@ -32,7 +32,7 @@ public partial class SettingsWindow : Window
 
     private void OnTabChanged(object sender, RoutedEventArgs e)
     {
-        var tabButton = (ToggleButton)sender;
+        var tabButton = (RadioButton)sender;
         var activeTab = tabButton.Tag as string ?? "Server";
 
         // Hide all panels first
@@ -60,7 +60,7 @@ public partial class SettingsWindow : Window
         UpdateTabStyling(tabButton);
     }
 
-    private void UpdateTabStyling(ToggleButton activeButton)
+    private void UpdateTabStyling(RadioButton activeButton)
     {
         var activeStyle = (Style)FindResource("SettingsTabButtonActive");
         var inactiveStyle = (Style)FindResource("SettingsTabButton");
@@ -102,7 +102,7 @@ public partial class SettingsWindow : Window
         catch (Exception ex)
         {
             _logger?.LogError(ex, "Error saving settings");
-            MessageBox.Show($"Failed to save settings: {ex.Message}", "OpenLMStudio", 
+            MessageBox.Show($"Failed to save settings: {ex.Message}", "OpenLMStudio",
                 MessageBoxButton.OK, MessageBoxImage.Error);
         }
     }

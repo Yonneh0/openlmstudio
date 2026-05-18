@@ -16,6 +16,14 @@ namespace OpenLMStudio.Infrastructure.Services;
 public class AppDataDirectoryResolver : IDisposable
 {
     private readonly ILogger<AppDataDirectoryResolver>? _logger;
+
+    /// <summary>
+    /// Creates a new instance of the directory resolver.
+    /// </summary>
+    public AppDataDirectoryResolver(ILogger<AppDataDirectoryResolver>? logger = null)
+    {
+        _logger = logger;
+    }
     private static string? _cachedAppDataPath;
 
     /// <summary>
@@ -51,7 +59,7 @@ public class AppDataDirectoryResolver : IDisposable
             // Linux: $XDG_CONFIG_HOME/OpenLMStudio or ~/.config/OpenLMStudio
             var xdgConfig = Environment.GetEnvironmentVariable("XDG_CONFIG_HOME");
             string linuxPath;
-            
+
             if (!string.IsNullOrEmpty(xdgConfig))
             {
                 linuxPath = System.IO.Path.Combine(xdgConfig, "OpenLMStudio");
@@ -153,7 +161,7 @@ public class SqliteDatabaseFactory : IDisposable
     public SqliteDatabaseFactory(ILogger<SqliteDatabaseFactory>? logger = null)
     {
         _logger = logger;
-        
+
         // Initialize SQLitePCLRaw (this must be called once per process before any DB access)
         Batteries.Init();
     }

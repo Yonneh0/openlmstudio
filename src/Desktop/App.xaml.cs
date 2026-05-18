@@ -33,10 +33,10 @@ public partial class App : global::System.Windows.Application
         {
             // Create DI container with all application services registered
             var serviceCollection = new ServiceCollection();
-            
+
             // Register logging
             serviceCollection.AddLogging(builder => builder.AddConsole().SetMinimumLevel(LogLevel.Information));
-            
+
             // Register application-layer types (DTOs) and infrastructure implementations
             serviceCollection.AddApplicationTypes();
             serviceCollection.AddInfrastructureServices();
@@ -45,11 +45,16 @@ public partial class App : global::System.Windows.Application
             var serviceProvider = serviceCollection.BuildServiceProvider();
             ApplicationServices = serviceProvider;
 
-            _ = CreateAndShowMainWindow(serviceProvider);
+            var mainWindow = CreateAndShowMainWindow(serviceProvider);
+            if (mainWindow != null && global::System.Windows.Application.Current != null)
+            {
+                global::System.Windows.Application.Current.MainWindow = mainWindow;
+                mainWindow.Show();
+            }
         }
         catch (Exception ex)
         {
-            MessageBox.Show($"Failed to initialize application:\n{ex.Message}", "OpenLMStudio - Error", 
+            MessageBox.Show($"Failed to initialize application:\n{ex.Message}", "OpenLMStudio - Error",
                 MessageBoxButton.OK, MessageBoxImage.Error);
             Shutdown(1);
         }
@@ -78,7 +83,7 @@ public partial class App : global::System.Windows.Application
         }
         catch (Exception ex)
         {
-            MessageBox.Show($"Failed to create main window:\n{ex.Message}", "OpenLMStudio - Error", 
+            MessageBox.Show($"Failed to create main window:\n{ex.Message}", "OpenLMStudio - Error",
                 MessageBoxButton.OK, MessageBoxImage.Error);
             return null!; // Will cause Shutdown(1) in caller
         }

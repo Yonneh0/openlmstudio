@@ -24,7 +24,6 @@ public class ChatContextManager : IChatContextManager, IDisposable
         Converters = { new JsonStringEnumConverter(JsonNamingPolicy.CamelCase) }
     };
 
-    private static readonly string DbTableName = "ChatContextSegments";
     private static readonly string MessagesTableName = "ChatMessages";
     private static readonly string PinDbTableName = "PinSegmentStates";
     private static readonly string SuppressDbTableName = "SuppressSegmentStates";
@@ -38,9 +37,9 @@ public class ChatContextManager : IChatContextManager, IDisposable
         _logger = logger;
         _resolver = resolver;
         _dbFactory = dbFactory;
-        
+
         InitializeDatabases();
-        
+
         // Ensure all appdata subdirectories are created on first run
         _resolver.InitializeSubdirectories();
     }
@@ -49,7 +48,7 @@ public class ChatContextManager : IChatContextManager, IDisposable
     public async Task<ContextWindow> GetCompressedContextAsync(Guid chatId, CompressionLevel compressionLevel = CompressionLevel.Medium)
     {
         var window = ContextWindow.CreateEmpty();
-        
+
         try
         {
             await using var connection = _dbFactory.CreateConnection(_resolver.GetConversationDatabasePath(chatId.ToString()));
@@ -57,10 +56,10 @@ public class ChatContextManager : IChatContextManager, IDisposable
 
             // Get pinned segments (always included at full detail)
             var pinnedSegments = await GetPinnedSegmentsInternalAsync(connection, chatId);
-            
+
             // Get suppressed segments to exclude them
             var suppressedSegmentIds = await GetSuppressedSegmentsInternalAsync(connection, chatId);
-            
+
             // Get all regular context segments
             var allSegments = await GetAllContextSegmentsInternalAsync(connection, chatId);
 
@@ -77,7 +76,7 @@ public class ChatContextManager : IChatContextManager, IDisposable
             {
                 var compressor = new ConversationContextCompressor((ILogger<ConversationContextCompressor>?)null);
                 var compressionResult = await compressor.CompressAsync(regularSegments, compressionLevel);
-                
+
                 // Keep pinned segments uncompressed and merge with compressed regular segments
                 window.Segments.AddRange(pinnedSegments);
                 window.Segments.AddRange(compressionResult.CompressedSegments);
@@ -93,7 +92,7 @@ public class ChatContextManager : IChatContextManager, IDisposable
 
             window.OverallCompression = compressionLevel;
 
-            _logger?.LogDebug("Compressed context retrieved for chat {ChatId}: {SegmentCount} segments, {TotalTokens} tokens", 
+            _logger?.LogDebug("Compressed context retrieved for chat {ChatId}: {SegmentCount} segments, {TotalTokens} tokens",
                 chatId, window.Segments.Count, window.TotalTokenCount);
         }
         catch (Exception ex) when (ex is IOException or Microsoft.Data.Sqlite.SqliteException)
@@ -152,7 +151,7 @@ public class ChatContextManager : IChatContextManager, IDisposable
 
             await cmd.ExecuteNonQueryAsync();
 
-            _logger?.LogDebug("Custom context injected for chat {ChatId}: Type={InjectionType}", 
+            _logger?.LogDebug("Custom context injected for chat {ChatId}: Type={InjectionType}",
                 chatId, injectionType);
 
             return segment;
@@ -191,7 +190,7 @@ public class ChatContextManager : IChatContextManager, IDisposable
 
             await cmd.ExecuteNonQueryAsync();
 
-            _logger?.LogDebug("Pin state updated for segment {SegmentId} in chat {ChatId}: IsPinned={IsPinned}", 
+            _logger?.LogDebug("Pin state updated for segment {SegmentId} in chat {ChatId}: IsPinned={IsPinned}",
                 segmentId, chatId, isPinned);
         }
         catch (Exception ex) when (ex is IOException or Microsoft.Data.Sqlite.SqliteException)
@@ -230,7 +229,7 @@ public class ChatContextManager : IChatContextManager, IDisposable
                 await cmd.ExecuteNonQueryAsync();
             }
 
-            _logger?.LogDebug("Suppress state updated for segment {SegmentId} in chat {ChatId}: IsSuppressed={IsSuppressed}", 
+            _logger?.LogDebug("Suppress state updated for segment {SegmentId} in chat {ChatId}: IsSuppressed={IsSuppressed}",
                 segmentId, chatId, isSuppressed);
         }
         catch (Exception ex) when (ex is IOException or Microsoft.Data.Sqlite.SqliteException)
@@ -267,7 +266,7 @@ public class ChatContextManager : IChatContextManager, IDisposable
     private async Task<List<ContextSegment>> GetPinnedSegmentsInternalAsync(Microsoft.Data.Sqlite.SqliteConnection connection, Guid chatId)
     {
         var pinned = new List<ContextSegment>();
-        
+
         try
         {
             await EnsurePinTableExists(connection);
@@ -298,7 +297,7 @@ public class ChatContextManager : IChatContextManager, IDisposable
     private async Task<List<Guid>> GetSuppressedSegmentsInternalAsync(Microsoft.Data.Sqlite.SqliteConnection connection, Guid chatId)
     {
         var suppressed = new List<Guid>();
-        
+
         try
         {
             await EnsureSuppressTableExists(connection);
@@ -324,7 +323,7 @@ public class ChatContextManager : IChatContextManager, IDisposable
     private async Task<List<ContextSegment>> GetCustomInjectionsInternalAsync(Microsoft.Data.Sqlite.SqliteConnection connection, Guid chatId)
     {
         var injections = new List<ContextSegment>();
-        
+
         try
         {
             await EnsureCustomInjectionsTableExists(connection);
@@ -337,11 +336,11 @@ public class ChatContextManager : IChatContextManager, IDisposable
             while (await reader.ReadAsync())
             {
                 string roleStr;
-                try { roleStr = reader.GetString(reader.GetOrdinal("Role")); } 
+                try { roleStr = reader.GetString(reader.GetOrdinal("Role")); }
                 catch { break; }
 
                 int injectionTypeInt;
-                try { injectionTypeInt = Convert.ToInt32(reader.GetString(reader.GetOrdinal("InjectionType"))); } 
+                try { injectionTypeInt = Convert.ToInt32(reader.GetString(reader.GetOrdinal("InjectionType"))); }
                 catch { break; }
 
                 var segment = new ContextSegment
@@ -368,7 +367,7 @@ public class ChatContextManager : IChatContextManager, IDisposable
     private async Task<List<ContextSegment>> GetAllContextSegmentsInternalAsync(Microsoft.Data.Sqlite.SqliteConnection connection, Guid chatId)
     {
         var segments = new List<ContextSegment>();
-        
+
         try
         {
             await EnsureCustomInjectionsTableExists(connection);
@@ -384,7 +383,7 @@ public class ChatContextManager : IChatContextManager, IDisposable
             while (await reader.ReadAsync())
             {
                 string roleStr;
-                try { roleStr = reader.GetString(reader.GetOrdinal("Role")); } 
+                try { roleStr = reader.GetString(reader.GetOrdinal("Role")); }
                 catch { break; }
 
                 segments.Add(new ContextSegment
@@ -486,6 +485,6 @@ public class ChatContextManager : IChatContextManager, IDisposable
         cmd.ExecuteNonQuery();
     }
 
-    private static int EstimateTokenCount(string text) => 
+    private static int EstimateTokenCount(string text) =>
         string.IsNullOrEmpty(text) ? 0 : (text.Length + 3) / 4;
 }

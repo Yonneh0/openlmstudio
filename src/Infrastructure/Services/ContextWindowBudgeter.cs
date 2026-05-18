@@ -50,7 +50,7 @@ public class ContextWindowBudgeter : IContextWindowBudgeter, IDisposable
     {
         var budget = await GetOrCreateBudgetInternalAsync(chatId);
         budget.Deduct(injectionType, tokens);
-        
+
         // Check if auto-eviction needed after deduction
         if (budget.RemainingTokens < 0 && budget.CompressionStrategy != CompressionLevel.Aggressive)
         {
@@ -67,7 +67,7 @@ public class ContextWindowBudgeter : IContextWindowBudgeter, IDisposable
             return false;
 
         var evicted = 0L;
-        
+
         // Sort segments by relevance score (ascending — lowest first)
         var segmentsToEvict = budget.Segments
             .Where(s => !s.IsPinned && s.InjectionType != ContextInjectionType.SystemPrompt && s.InjectionType != ContextInjectionType.TaskContextSnapshot)
@@ -118,7 +118,7 @@ public class ContextWindowBudgeter : IContextWindowBudgeter, IDisposable
             throw new ArgumentException("Max tokens must be positive.", nameof(maxTokens));
 
         var newBudget = ChatBudgetState.CreateDefault(chatId, maxTokens);
-        
+
         // Try to update first; if it doesn't exist, add it with the default
         if (!_budgetStates.TryGetValue(chatId, out _))
             _budgetStates.TryAdd(chatId, newBudget);
@@ -126,7 +126,7 @@ public class ContextWindowBudgeter : IContextWindowBudgeter, IDisposable
             _budgetStates[chatId] = CreateOrExpandBudget(chatId, maxTokens, _budgetStates[chatId]);
 
         _logger?.LogDebug("Set budget for chat {ChatId}: maxTokens={MaxTokens}", chatId, maxTokens);
-        
+
         return Task.CompletedTask;
     }
 
@@ -157,7 +157,7 @@ public class ContextWindowBudgeter : IContextWindowBudgeter, IDisposable
         {
             // Recompute relevance score based on recency and other factors
             var score = ComputeRelevanceScore(segment);
-            
+
             await budget.SetSegmentRelevanceAsync(segment.Id, score);
         }
     }
@@ -175,10 +175,10 @@ public class ContextWindowBudgeter : IContextWindowBudgeter, IDisposable
             return existing; // Budget unchanged
 
         var newBudget = ChatBudgetState.CreateDefault(chatId, maxTokens);
-        
+
         // Preserve allocation proportions for system prompt portion
         newBudget.BudgetAllocation = existing.BudgetAllocation.ToDictionary();
-        
+
         return newBudget;
     }
 
@@ -245,7 +245,7 @@ internal class ChatBudgetState : IDisposable
     private readonly ConcurrentDictionary<Guid, float> _segmentRelevanceScores = new();
     private readonly ConcurrentBag<(Guid SegmentId, long TokenCount)> _evictionCandidates = new();
 
-    public List<ContextSegment> Segments => 
+    public List<ContextSegment> Segments =>
         _segmentRelevanceScores.Keys.Select(id => ContextSegment.CreateEmptyWithRelevance(id)).ToList();
 
     internal static ChatBudgetState CreateDefault(Guid chatId, int maxTokens)
@@ -255,8 +255,8 @@ internal class ChatBudgetState : IDisposable
             ChatId = chatId,
             MaximumTokens = maxTokens,
             RemainingTokens = maxTokens,
-            BudgetAllocation = new Dictionary<ContextInjectionType, long> 
-                { [ContextInjectionType.SystemPrompt] = (long)(maxTokens / 4.0) }
+            BudgetAllocation = new Dictionary<ContextInjectionType, long>
+            { [ContextInjectionType.SystemPrompt] = (long)(maxTokens / 4.0) }
         };
     }
 
@@ -269,7 +269,7 @@ internal class ChatBudgetState : IDisposable
         }
 
         RemainingTokens -= tokens;
-        
+
         // Track per-type allocation
         BudgetAllocation[injectionType] = BudgetAllocation.GetValueOrDefault(injectionType) + tokens;
     }
@@ -277,7 +277,7 @@ internal class ChatBudgetState : IDisposable
     internal void MarkSegmentForEviction(Guid segmentId, long tokenCount)
     {
         _evictionCandidates.Add((segmentId, tokenCount));
-        
+
         // Remove from tracking and add back tokens to budget
         if (_segmentRelevanceScores.TryRemove(segmentId, out _))
             RemainingTokens += tokenCount;
@@ -290,7 +290,7 @@ internal class ChatBudgetState : IDisposable
 
     internal bool IsAllSegmentsPinned()
     {
-        return _segmentRelevanceScores.Count == 0 || 
+        return _segmentRelevanceScores.Count == 0 ||
                Segments.All(s => s.IsPinned);
     }
 

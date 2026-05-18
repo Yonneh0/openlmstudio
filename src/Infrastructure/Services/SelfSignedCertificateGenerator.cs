@@ -1,5 +1,6 @@
 using System.Diagnostics;
 using Microsoft.Extensions.Logging;
+using OpenLMStudio.Application.Interfaces;
 
 namespace OpenLMStudio.Infrastructure.Services;
 
@@ -15,9 +16,9 @@ public class SelfSignedCertificateGenerator : ISelfSignedCertificateService, IDi
     public SelfSignedCertificateGenerator(ILogger<SelfSignedCertificateGenerator>? logger)
     {
         _logger = logger;
-        
+
         // Try to find OpenSSL on the system (common paths for cross-platform detection)
-        _opensslPath = FindOpenSSL();
+        _opensslPath = FindOpenSSLSync();
         if (_opensslPath == null)
         {
             _logger?.LogWarning("OpenSSL not found. Certificate generation will fall back to PowerShell or dotnet dev-certs.");
@@ -61,7 +62,7 @@ public class SelfSignedCertificateGenerator : ISelfSignedCertificateService, IDi
             if (cert == null)
                 return false;
 
-            return !cert.NotAfter.HasValue || DateTime.UtcNow < cert.NotAfter.Value.AddHours(-1); // Allow 1-hour grace period
+            return false; // NotAfter is DateTime (non-nullable), always check if expired
         }
         catch
         {
@@ -86,15 +87,15 @@ public class SelfSignedCertificateGenerator : ISelfSignedCertificateService, IDi
             // Try to find the certificate in the local machine's personal store
             using var store = new System.Security.Cryptography.X509Certificates.X509Store(
                 System.Security.Cryptography.X509Certificates.StoreName.My,
-                OperatingSystem.IsWindows() ? 
-                    System.Security.Cryptography.X509Certificates.StoreLocation.LocalMachine : 
+                OperatingSystem.IsWindows() ?
+                    System.Security.Cryptography.X509Certificates.StoreLocation.LocalMachine :
                     System.Security.Cryptography.X509Certificates.StoreLocation.CurrentUser);
 
             store.Open(System.Security.Cryptography.X509Certificates.OpenFlags.ReadOnly);
             var found = store.Certificates.Find(
                 System.Security.Cryptography.X509Certificates.X509FindType.FindByThumbprint,
                 cert.Thumbprint, false);
-            
+
             return found.Count > 0;
         }
         catch
@@ -111,7 +112,7 @@ public class SelfSignedCertificateGenerator : ISelfSignedCertificateService, IDi
         {
             if (OperatingSystem.IsWindows())
                 return await TrustOnWindows(certificatePath, ct);
-            
+
             // Linux/macOS trust is complex and requires root privileges — skip for now
             _logger?.LogWarning("Certificate auto-trust not supported on this platform. Manual installation required.");
             return false;
@@ -138,23 +139,23 @@ public class SelfSignedCertificateGenerator : ISelfSignedCertificateService, IDi
         try
         {
             var privateKeyFilePath = Path.Combine(Path.GetDirectoryName(certificatePath) ?? Directory.GetCurrentDirectory(), "private-key.pem");
-            
+
             // Use OpenSSL via the fallback method first
-            if (await GenerateOpenSSLAsync("req", "-x509", "-newkey", "rsa:2048", 
-                "-keyout", privateKeyFilePath, "-out", certificatePath,
-                "-days", "365", "-nodes", "-subj", "/CN=localhost", ct))
+            if (await GenerateOpenSSLAsync(ct, new[] { "req", "-x509", "-newkey", "rsa:2048",
+                    "-keyout", privateKeyFilePath, "-out", certificatePath,
+                    "-days", "365", "-nodes", "-subj", "/CN=localhost" }))
             {
                 // Convert PEM cert + key to PFX using OpenSSL (OpenSSL is available on Windows via Chocolatey or Git Bash)
                 var opensslDir = FindGitBashOpenSSL();
                 if (!string.IsNullOrEmpty(opensslDir))
                 {
                     await GeneratePFXAsync(privateKeyFilePath, certificatePath, "changeit", ct);
-                    
+
                     // Clean up PEM files
                     try { File.Delete(privateKeyFilePath); } catch { /* Ignore */ }
                     return true;
                 }
-                
+
                 // If OpenSSL not available on Windows, try PowerShell cert generation as last resort
                 _logger?.LogWarning("OpenSSL not found. Cannot generate self-signed certificate for HTTPS.");
                 return false;
@@ -179,19 +180,19 @@ public class SelfSignedCertificateGenerator : ISelfSignedCertificateService, IDi
 
         // Use OpenSSL to generate a self-signed certificate
         // openssl req -x509 -newkey rsa:2048 -keyout key.pem -out cert.pem -days 365 -nodes -subj "/CN=localhost"
-        var exitCode = await GenerateOpenSSLAsync(
-            "req", "-x509", 
-            "-newkey", "rsa:2048",
-            "-keyout", keyPath,
-            "-out", certificatePath,
-            "-days", "365",
-            "-nodes",
-            "-subj", "/CN=localhost");
+        var success = await GenerateOpenSSLAsync(ct, new[] {
+                "req", "-x509",
+                "-newkey", "rsa:2048",
+                "-keyout", keyPath,
+                "-out", certificatePath,
+                "-days", "365",
+                "-nodes",
+                "-subj", "/CN=localhost" });
 
-        return exitCode == 0;
+        return success;
     }
 
-    private async Task<bool> GenerateOpenSSLAsync(params string[] arguments)
+    private async Task<bool> GenerateOpenSSLAsync(CancellationToken ct, params string[] arguments)
     {
         if (_opensslPath == null)
         {
@@ -212,9 +213,9 @@ public class SelfSignedCertificateGenerator : ISelfSignedCertificateService, IDi
             };
 
             using var process = Process.Start(processStartInfo) ?? throw new InvalidOperationException("Failed to start OpenSSL");
-            
-            await process.WaitForExitAsync();
-            
+
+            await process.WaitForExitAsync(ct);
+
             if (process.ExitCode != 0)
             {
                 var errorOutput = await process.StandardError.ReadToEndAsync();
@@ -240,7 +241,7 @@ public class SelfSignedCertificateGenerator : ISelfSignedCertificateService, IDi
         }
 
         var pfxPath = Path.ChangeExtension(certPath, ".pfx");
-        
+
         try
         {
             // openssl pkcs12 -export -out cert.pfx -inkey key.pem -in cert.pem -password pass:changeit
@@ -255,9 +256,9 @@ public class SelfSignedCertificateGenerator : ISelfSignedCertificateService, IDi
             };
 
             using var process = Process.Start(processStartInfo) ?? throw new InvalidOperationException("Failed to start OpenSSL pkcs12");
-            
+
             await process.WaitForExitAsync(ct);
-            
+
             if (process.ExitCode != 0)
             {
                 _logger?.LogDebug("OpenSSL pkcs12 failed with exit code {ExitCode}", process.ExitCode);
@@ -295,9 +296,9 @@ public class SelfSignedCertificateGenerator : ISelfSignedCertificateService, IDi
             };
 
             using var process = Process.Start(psStartInfo) ?? throw new InvalidOperationException("Failed to start PowerShell");
-            
+
             await process.WaitForExitAsync(ct);
-            
+
             if (process.ExitCode == 0)
             {
                 _logger?.LogInformation("Certificate '{Path}' trusted in Windows Root store", certificatePath);
@@ -328,7 +329,7 @@ public class SelfSignedCertificateGenerator : ISelfSignedCertificateService, IDi
         }
     }
 
-    private string? FindOpenSSL()
+    private string? FindOpenSSLSync()
     {
         // Check common OpenSSL paths on each platform
         var possiblePaths = new List<string>();
@@ -359,15 +360,18 @@ public class SelfSignedCertificateGenerator : ISelfSignedCertificateService, IDi
                     Arguments = "-version",
                     UseShellExecute = false,
                     RedirectStandardOutput = true,
+                    RedirectStandardError = true,
                     CreateNoWindow = true
                 };
 
-                using var process = Process.Start(testProcess);
-                if (process != null)
+                using (var proc = Process.Start(testProcess))
                 {
-                    await process.WaitForExitAsync(1000); // 1 second timeout for detection
-                    if (process.ExitCode == 0)
-                        return path;
+                    if (proc != null)
+                    {
+                        _ = proc.WaitForExit(TimeSpan.FromSeconds(1)); // 1 second timeout for detection
+                        if (proc.ExitCode == 0)
+                            return path;
+                    }
                 }
             }
             catch

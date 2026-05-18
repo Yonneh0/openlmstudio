@@ -41,8 +41,8 @@ public class ContextBudgetIndicator
     public Dictionary<string, long> BudgetAllocationSummary { get; set; } = new();
 
     /// <summary>Returns an empty indicator for when no budget exists for a chat.</summary>
-    public static ContextBudgetIndicator CreateEmpty() => new() 
-        { MaximumTokens = 0, UsedTokens = 0, RemainingTokens = 0, PercentageUsed = 0f };
+    public static ContextBudgetIndicator CreateEmpty() => new()
+    { MaximumTokens = 0, UsedTokens = 0, RemainingTokens = 0, PercentageUsed = 0f };
 }
 
 /// <summary>Color zones for UI display of context budget indicator.</summary>

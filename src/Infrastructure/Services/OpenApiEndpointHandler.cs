@@ -27,11 +27,11 @@ public static class OpenApiEndpointHandler
         app.MapGet("/v1/models/list", async (IModelRepository repo, HttpContext context) =>
         {
             var models = await repo.ListModelsAsync();
-            
+
             var modelInfos = new List<object>();
             foreach (var model in models)
             {
-                modelInfos.Add(new 
+                modelInfos.Add(new
                 {
                     id = model.Id.ToString(),
                     obj = "model",
@@ -44,8 +44,8 @@ public static class OpenApiEndpointHandler
             }
 
             context.Response.StatusCode = 200;
-            await context.Response.WriteAsJsonAsync(new 
-            { 
+            await context.Response.WriteAsJsonAsync(new
+            {
                 obj = "list",
                 data = modelInfos
             });
@@ -57,7 +57,7 @@ public static class OpenApiEndpointHandler
             try
             {
                 var request = await context.Request.ReadFromJsonAsync<OpenApiRequest>();
-                
+
                 if (request == null || string.IsNullOrEmpty(request.Model))
                 {
                     context.Response.StatusCode = 400;
@@ -93,9 +93,9 @@ public static class OpenApiEndpointHandler
 
                 // Non-streaming response - use GetCompletionAsync from IChatCompletionService interface
                 var responseChoice = await service.GetCompletionAsync(chatRequest);
-                
-                var contentLength = !string.IsNullOrEmpty(responseChoice.Message.Content) 
-                    ? responseChoice.Message.Content.Length 
+
+                var contentLength = !string.IsNullOrEmpty(responseChoice.Message.Content)
+                    ? responseChoice.Message.Content.Length
                     : 0;
 
                 var response = new OpenApiResponse
@@ -120,11 +120,11 @@ public static class OpenApiEndpointHandler
                     usage = new OpenApiUsage
                     {
                         prompt_tokens = messages.Sum(m => m.TokenCount > 0 ? m.TokenCount : EstimateTokenCount(m.Content)),
-                        completion_tokens = !string.IsNullOrEmpty(responseChoice.Message.Content) 
+                        completion_tokens = !string.IsNullOrEmpty(responseChoice.Message.Content)
                             ? (responseChoice.Message.TokenCount > 0 ? responseChoice.Message.TokenCount : EstimateTokenCount(responseChoice.Message.Content))
                             : 0,
-                        total_tokens = messages.Sum(m => m.TokenCount > 0 ? m.TokenCount : EstimateTokenCount(m.Content)) + 
-                                      (!string.IsNullOrEmpty(responseChoice.Message.Content) 
+                        total_tokens = messages.Sum(m => m.TokenCount > 0 ? m.TokenCount : EstimateTokenCount(m.Content)) +
+                                      (!string.IsNullOrEmpty(responseChoice.Message.Content)
                                           ? (responseChoice.Message.TokenCount > 0 ? responseChoice.Message.TokenCount : EstimateTokenCount(responseChoice.Message.Content))
                                           : 0)
                     }
@@ -138,7 +138,7 @@ public static class OpenApiEndpointHandler
                 context.Response.StatusCode = 500;
                 await context.Response.WriteAsJsonAsync(new ErrorResponse
                 {
-                        message = ex.Message,
+                    message = ex.Message,
                     code = "internal_error",
                     type = "server_error"
                 });
@@ -167,7 +167,7 @@ public static class OpenApiEndpointHandler
     /// <summary>
     /// Standardized token counting method using consistent estimation: ~1 token per 4 characters for English.
     /// </summary>
-    private static int EstimateTokenCount(string? text) => 
+    private static int EstimateTokenCount(string? text) =>
         string.IsNullOrEmpty(text) ? 0 : (text.Length + 3) / 4;
 }
 

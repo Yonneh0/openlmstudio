@@ -36,8 +36,8 @@ public class FileConversationManager : IConversationManager, IDisposable
 
     public async Task<Chat> CreateChatAsync(string name, string? modelId = null)
     {
-        var chat = new Chat 
-        { 
+        var chat = new Chat
+        {
             Id = Guid.NewGuid(),
             Name = name ?? "Untitled Chat",
             ModelId = modelId,
@@ -54,7 +54,7 @@ public class FileConversationManager : IConversationManager, IDisposable
     public async Task<Chat?> LoadChatAsync(Guid chatId)
     {
         var filePath = GetChatFilePath(chatId);
-        
+
         if (!File.Exists(filePath))
         {
             _logger.LogWarning("Conversation not found: {Id}", chatId);
@@ -65,13 +65,13 @@ public class FileConversationManager : IConversationManager, IDisposable
         {
             var json = await File.ReadAllTextAsync(filePath);
             var chat = JsonSerializer.Deserialize<Chat>(json, JsonOptions);
-            
+
             if (chat != null)
             {
                 // Ensure messages list is initialized
                 chat.Messages ??= new List<Message>();
             }
-            
+
             return chat;
         }
         catch (Exception ex)
@@ -84,7 +84,7 @@ public class FileConversationManager : IConversationManager, IDisposable
     public async Task DeleteChatAsync(Guid chatId)
     {
         var filePath = GetChatFilePath(chatId);
-        
+
         if (File.Exists(filePath))
         {
             File.Delete(filePath);
@@ -95,7 +95,7 @@ public class FileConversationManager : IConversationManager, IDisposable
     public async Task AddMessageAsync(Guid chatId, Message message)
     {
         var chat = await LoadChatAsync(chatId);
-        
+
         if (chat == null)
         {
             _logger.LogWarning("Cannot add message - conversation not found: {ChatId}", chatId);
@@ -104,7 +104,7 @@ public class FileConversationManager : IConversationManager, IDisposable
 
         // Initialize messages list if needed
         chat.Messages ??= new List<Message>();
-        
+
         // Set message ID and timestamp if not set
         if (message.Id == default)
             message.Id = Guid.NewGuid();
@@ -113,10 +113,10 @@ public class FileConversationManager : IConversationManager, IDisposable
 
         chat.Messages.Add(message);
         chat.MessageCount = chat.Messages.Count;
-        
+
         // Update token count for this message using consistent estimation method
         message.TokenCount = EstimateTokenCount(message.Content);
-        
+
         chat.TotalTokenCount += message.TokenCount;
         chat.LastMessageAt = DateTime.UtcNow;
         chat.UpdatedAt = DateTime.UtcNow;
@@ -127,12 +127,12 @@ public class FileConversationManager : IConversationManager, IDisposable
     public async Task<List<Message>> GetMessagesAsync(Guid chatId, int? limit = null)
     {
         var chat = await LoadChatAsync(chatId);
-        
+
         if (chat == null || chat.Messages == null || chat.Messages.Count == 0)
             return new List<Message>();
 
-        var messages = limit.HasValue 
-            ? chat.Messages.Skip(Math.Max(0, chat.Messages.Count - limit.Value)).ToList() 
+        var messages = limit.HasValue
+            ? chat.Messages.Skip(Math.Max(0, chat.Messages.Count - limit.Value)).ToList()
             : chat.Messages.ToList();
 
         return messages;
@@ -144,12 +144,12 @@ public class FileConversationManager : IConversationManager, IDisposable
         {
             var lowerQuery = query.ToLowerInvariant();
             var chats = await ListChatsAsync();
-            
+
             // Search by name or content
             var results = new List<Chat>();
             foreach (var chat in chats)
             {
-                if (!string.IsNullOrEmpty(chat.Name) && 
+                if (!string.IsNullOrEmpty(chat.Name) &&
                     chat.Name.Contains(query, StringComparison.OrdinalIgnoreCase))
                 {
                     results.Add(chat);
@@ -182,7 +182,7 @@ public class FileConversationManager : IConversationManager, IDisposable
     public async Task UpdateChatAsync(Guid chatId, object updates)
     {
         var chat = await LoadChatAsync(chatId);
-        
+
         if (chat == null)
         {
             _logger.LogWarning("Cannot update - conversation not found: {ChatId}", chatId);
@@ -193,7 +193,7 @@ public class FileConversationManager : IConversationManager, IDisposable
         foreach (var prop in updates.GetType().GetProperties())
         {
             var value = prop.GetValue(updates);
-            
+
             switch (prop.Name.ToLowerInvariant())
             {
                 case "name":
@@ -217,14 +217,14 @@ public class FileConversationManager : IConversationManager, IDisposable
     public async Task<int> CalculateTotalTokenCountAsync(Guid chatId)
     {
         var messages = GetMessagesAsync(chatId).GetAwaiter().GetResult();
-        
+
         return messages.Sum(m => m.TokenCount > 0 ? m.TokenCount : EstimateTokenCount(m.Content));
     }
 
     public async Task ExportChatAsync(Guid chatId, string destinationPath)
     {
         var chat = await LoadChatAsync(chatId);
-        
+
         if (chat == null)
         {
             _logger.LogWarning("Cannot export - conversation not found: {ChatId}", chatId);
@@ -249,7 +249,7 @@ public class FileConversationManager : IConversationManager, IDisposable
                 TotalTokenCount = chat.TotalTokenCount,
                 MessageCount = chat.Messages?.Count ?? 0,
                 Tags = new List<string>(chat.Tags),
-                Messages = chat.Messages != null 
+                Messages = chat.Messages != null
                     ? chat.Messages.Select(m => new Message
                     {
                         Id = m.Id,
@@ -259,12 +259,12 @@ public class FileConversationManager : IConversationManager, IDisposable
                         TokenCount = m.TokenCount > 0 ? m.TokenCount : EstimateTokenCount(m.Content),
                         CreatedAt = m.CreatedAt,
                         IsStreaming = false // Never persist streaming state
-                    }).ToList() 
+                    }).ToList()
                     : new List<Message>()
             };
 
             var jsonContent = JsonSerializer.Serialize(persistedChat, JsonOptions);
-            
+
             Directory.CreateDirectory(Path.GetDirectoryName(destinationPath) ?? _storagePath);
             await File.WriteAllTextAsync(destinationPath, jsonContent);
 
@@ -290,10 +290,10 @@ public class FileConversationManager : IConversationManager, IDisposable
             // Generate a new ID to avoid conflicts and save to current directory
             chat.Id = Guid.NewGuid();
             chat.Messages ??= new List<Message>();
-            
+
             Directory.CreateDirectory(_storagePath);
             await File.WriteAllTextAsync(
-                Path.Combine(_storagePath, $"{chat.Id}.json"), 
+                Path.Combine(_storagePath, $"{chat.Id}.json"),
                 JsonSerializer.Serialize(chat, JsonOptions));
 
             _logger.LogInformation("Imported conversation: {SourcePath} -> {ChatId}", sourcePath, chat.Id);
@@ -314,7 +314,7 @@ public class FileConversationManager : IConversationManager, IDisposable
                 return Task.FromResult(Enumerable.Empty<Chat>());
 
             var allFiles = Directory.GetFiles(_storagePath, "*.json");
-            
+
             var chats = new List<Chat>();
             foreach (var file in allFiles)
             {
@@ -322,7 +322,7 @@ public class FileConversationManager : IConversationManager, IDisposable
                 {
                     var jsonContent = File.ReadAllText(file);
                     var chat = JsonSerializer.Deserialize<Chat>(jsonContent, JsonOptions);
-                    
+
                     if (chat != null && !string.IsNullOrEmpty(chat.Id.ToString()))
                         chats.Add(chat);
                 }
@@ -348,7 +348,7 @@ public class FileConversationManager : IConversationManager, IDisposable
         try
         {
             var guid = Guid.TryParse(chatId, out var parsedGuid) ? parsedGuid : default(Guid);
-            
+
             if (guid == default)
                 return 0;
 
@@ -363,7 +363,7 @@ public class FileConversationManager : IConversationManager, IDisposable
     private async Task SaveChatAsync(Chat chat)
     {
         var filePath = GetChatFilePath(chat.Id);
-        
+
         Directory.CreateDirectory(Path.GetDirectoryName(filePath) ?? _storagePath);
 
         // Create a copy of messages with streaming state cleared for persistence
@@ -405,7 +405,7 @@ public class FileConversationManager : IConversationManager, IDisposable
     /// <summary>
     /// Standardized token counting method using consistent estimation: ~1 token per 4 characters for English.
     /// </summary>
-    private static int EstimateTokenCount(string text) => 
+    private static int EstimateTokenCount(string text) =>
         string.IsNullOrEmpty(text) ? 0 : (text.Length + 3) / 4;
 
     public void Dispose()

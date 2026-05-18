@@ -31,7 +31,7 @@ public class ChatPersistenceService : IConversationManager, IDisposable
     public ChatPersistenceService(ILogger<ChatPersistenceService> logger)
     {
         _logger = logger;
-        
+
         // Default to user's OpenLMStudio data directory
         var userDataPath = Path.Combine(
             Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
@@ -50,7 +50,7 @@ public class ChatPersistenceService : IConversationManager, IDisposable
         try
         {
             var allFiles = Directory.GetFiles(_conversationsDirectory, "*.json", SearchOption.AllDirectories);
-            
+
             var chats = new List<Chat>();
             foreach (var file in allFiles)
             {
@@ -58,7 +58,7 @@ public class ChatPersistenceService : IConversationManager, IDisposable
                 {
                     var jsonContent = File.ReadAllText(file);
                     var chat = JsonSerializer.Deserialize<Chat>(jsonContent, JsonOptions);
-                    
+
                     if (chat != null)
                         chats.Add(chat);
                 }
@@ -108,7 +108,7 @@ public class ChatPersistenceService : IConversationManager, IDisposable
             {
                 var jsonContent = File.ReadAllText(file);
                 var chat = JsonSerializer.Deserialize<Chat>(jsonContent, JsonOptions);
-                
+
                 if (chat != null && chat.Id == chatId)
                     return chat;
             }
@@ -125,14 +125,14 @@ public class ChatPersistenceService : IConversationManager, IDisposable
     public async Task DeleteChatAsync(Guid chatId)
     {
         var files = Directory.GetFiles(_conversationsDirectory, "*.json", SearchOption.AllDirectories);
-        
+
         foreach (var file in files)
         {
             try
             {
                 var jsonContent = File.ReadAllText(file);
                 var chat = JsonSerializer.Deserialize<Chat>(jsonContent, JsonOptions);
-                
+
                 if (chat != null && chat.Id == chatId)
                 {
                     File.Delete(file);
@@ -151,7 +151,7 @@ public class ChatPersistenceService : IConversationManager, IDisposable
     public async Task AddMessageAsync(Guid chatId, Message message)
     {
         var chat = await LoadChatAsync(chatId);
-        
+
         if (chat == null)
         {
             _logger.LogWarning("Cannot add message - conversation not found: {ChatId}", chatId);
@@ -174,12 +174,12 @@ public class ChatPersistenceService : IConversationManager, IDisposable
     public Task<List<Message>> GetMessagesAsync(Guid chatId, int? limit = null)
     {
         var chat = LoadChatAsync(chatId).GetAwaiter().GetResult();
-        
+
         if (chat == null || chat.Messages == null)
             return Task.FromResult(new List<Message>());
 
-        var messages = limit.HasValue 
-            ? chat.Messages.TakeLast(limit.Value).ToList() 
+        var messages = limit.HasValue
+            ? chat.Messages.TakeLast(limit.Value).ToList()
             : chat.Messages.ToList();
 
         return Task.FromResult(messages);
@@ -192,12 +192,12 @@ public class ChatPersistenceService : IConversationManager, IDisposable
         {
             var lowerQuery = query.ToLowerInvariant();
             var chats = await ListChatsAsync();
-            
+
             // Search by name or content
             var results = new List<Chat>();
             foreach (var chat in chats)
             {
-                if (!string.IsNullOrEmpty(chat.Name) && 
+                if (!string.IsNullOrEmpty(chat.Name) &&
                     chat.Name.Contains(query, StringComparison.OrdinalIgnoreCase))
                 {
                     results.Add(chat);
@@ -231,7 +231,7 @@ public class ChatPersistenceService : IConversationManager, IDisposable
     public async Task UpdateChatAsync(Guid chatId, object updates)
     {
         var chat = await LoadChatAsync(chatId);
-        
+
         if (chat == null)
         {
             _logger.LogWarning("Cannot update - conversation not found: {ChatId}", chatId);
@@ -242,7 +242,7 @@ public class ChatPersistenceService : IConversationManager, IDisposable
         foreach (var prop in updates.GetType().GetProperties())
         {
             var value = prop.GetValue(updates);
-            
+
             switch (prop.Name.ToLowerInvariant())
             {
                 case "name":
@@ -263,7 +263,7 @@ public class ChatPersistenceService : IConversationManager, IDisposable
     public Task<int> CalculateTotalTokenCountAsync(Guid chatId)
     {
         var messages = GetMessagesAsync(chatId).GetAwaiter().GetResult();
-        
+
         return Task.FromResult(messages.Sum(m => m.TokenCount > 0 ? m.TokenCount : EstimateTokenCount(m.Content)));
     }
 
@@ -271,7 +271,7 @@ public class ChatPersistenceService : IConversationManager, IDisposable
     public async Task ExportChatAsync(Guid chatId, string destinationPath)
     {
         var chat = await LoadChatAsync(chatId);
-        
+
         if (chat == null)
         {
             _logger.LogWarning("Cannot export - conversation not found: {ChatId}", chatId);
@@ -282,14 +282,14 @@ public class ChatPersistenceService : IConversationManager, IDisposable
         {
             // Determine source file path for the chat (use StoragePath if available, otherwise search directories)
             string? sourcePath = null;
-            
+
             if (!string.IsNullOrEmpty(chat.StoragePath))
             {
                 var dir = Path.GetDirectoryName(chat.StoragePath);
                 if (!string.IsNullOrEmpty(dir))
                 {
                     sourcePath = Path.Combine(dir, $"{chat.Id}.json");
-                    
+
                     if (!File.Exists(sourcePath))
                     {
                         // Try root directory as fallback
@@ -302,14 +302,14 @@ public class ChatPersistenceService : IConversationManager, IDisposable
             {
                 // Search in all folders for the chat file (same logic as LoadChatAsync)
                 var files = Directory.GetFiles(_conversationsDirectory, "*.json", SearchOption.AllDirectories);
-                
+
                 foreach (var file in files)
                 {
                     try
                     {
                         var jsonContent = File.ReadAllText(file);
                         var loadedChat = JsonSerializer.Deserialize<Chat>(jsonContent, JsonOptions);
-                        
+
                         if (loadedChat != null && loadedChat.Id == chatId)
                         {
                             sourcePath = file;
@@ -321,7 +321,7 @@ public class ChatPersistenceService : IConversationManager, IDisposable
                         // Skip files that can't be read
                     }
                 }
-                
+
                 sourcePath ??= Path.Combine(_conversationsDirectory, $"{chat.Id}.json");
             }
 
@@ -356,10 +356,10 @@ public class ChatPersistenceService : IConversationManager, IDisposable
 
             // Generate a new ID to avoid conflicts and save to current directory
             chat.Id = Guid.NewGuid();
-            
+
             Directory.CreateDirectory(_conversationsDirectory);
             await File.WriteAllTextAsync(
-                Path.Combine(_conversationsDirectory, $"{chat.Id}.json"), 
+                Path.Combine(_conversationsDirectory, $"{chat.Id}.json"),
                 JsonSerializer.Serialize(chat, JsonOptions));
 
             _logger.LogInformation("Imported conversation: {SourcePath} -> {ChatId}", sourcePath, chat.Id);
@@ -378,7 +378,7 @@ public class ChatPersistenceService : IConversationManager, IDisposable
         try
         {
             var guid = Guid.TryParse(chatId, out var parsedGuid) ? parsedGuid : default(Guid);
-            
+
             if (guid == default)
                 return 0;
 
@@ -401,14 +401,14 @@ public class ChatPersistenceService : IConversationManager, IDisposable
     private async Task SaveChatAsync(Chat chat)
     {
         var directory = !string.IsNullOrEmpty(chat.StoragePath)
-            ? Path.GetDirectoryName(chat.StoragePath) 
+            ? Path.GetDirectoryName(chat.StoragePath)
             ?? _conversationsDirectory
             : _conversationsDirectory;
 
         Directory.CreateDirectory(directory);
 
         var filePath = Path.Combine(directory, $"{chat.Id}.json");
-        
+
         // Create a copy of messages with updated token counts and timestamps for persistence
         var persistedChat = new Chat
         {
@@ -417,25 +417,25 @@ public class ChatPersistenceService : IConversationManager, IDisposable
             StoragePath = chat.StoragePath,
             CreatedAt = chat.CreatedAt,
             UpdatedAt = DateTime.UtcNow, // Always update the timestamp on save
-            Messages = chat.Messages != null 
+            Messages = chat.Messages != null
                 ? chat.Messages.Select(m => new Message
                 {
                     Id = m.Id,
                     Role = m.Role,
                     Content = m.Content,
-                    ToolCalls = m.ToolCalls != null && m.ToolCalls.Any() 
+                    ToolCalls = m.ToolCalls != null && m.ToolCalls.Any()
                         ? new List<ToolCall>(m.ToolCalls.Select(tc => new ToolCall(tc.Id, tc.FunctionName, tc.ArgumentsJson, tc.Result)))
                         : new List<ToolCall>(),
                     TokenCount = m.TokenCount > 0 ? m.TokenCount : EstimateTokenCount(m.Content),
                     CreatedAt = m.CreatedAt,
                     IsStreaming = false // Never persist streaming state
-                }).ToList() 
+                }).ToList()
                 : new List<Message>()
         };
 
         await File.WriteAllTextAsync(filePath, JsonSerializer.Serialize(persistedChat, JsonOptions));
     }
 
-    private static int EstimateTokenCount(string text) => 
+    private static int EstimateTokenCount(string text) =>
         string.IsNullOrEmpty(text) ? 0 : Math.Max(1, (text.Length + TokensPerCharacter - 1) / TokensPerCharacter);
 }

@@ -76,7 +76,7 @@ public interface IModelRepository
     /// Filters by model type, search term, and pipeline type (e.g., "sdxl", "sd15").
     /// </summary>
     Task<IEnumerable<MultiModalModelMetadata>> SearchMultiModalModelsAsync(
-        string? searchTerm = null, 
+        string? searchTerm = null,
         ModelType? modelTypeFilter = null,
         string? pipelineTypeFilter = null);
 

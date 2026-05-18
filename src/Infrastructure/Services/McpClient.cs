@@ -54,14 +54,14 @@ public class McpStdioClient : IMcpClient, IDisposable
         }
 
         _process = new Process { StartInfo = startInfo };
-        
+
         try
         {
             _process.Start();
-            
+
             // Wait a moment for the process to initialize
             await Task.Delay(1000);
-            
+
             if (_process.HasExited)
             {
                 _logger.LogError("MCP server process exited unexpectedly");
@@ -80,14 +80,14 @@ public class McpStdioClient : IMcpClient, IDisposable
             };
 
             var response = await SendMcpMessageAsync(initMessage);
-            
+
             if (response != null && response.Result?["status"]?.ToString() == "success")
             {
                 _isConnected = true;
-                
+
                 // Discover available tools
                 await DiscoverToolsInternal();
-                
+
                 ToolsDiscovered?.Invoke(this, EventArgs.Empty);
                 _logger.LogInformation("MCP client connected successfully");
             }
@@ -109,7 +109,7 @@ public class McpStdioClient : IMcpClient, IDisposable
             };
 
             await SendMcpMessageAsync(shutdownMessage);
-            
+
             try
             {
                 _process.Kill();
@@ -120,7 +120,7 @@ public class McpStdioClient : IMcpClient, IDisposable
                 // Ignore if process can't be killed gracefully
             }
         }
-        
+
         _isConnected = false;
     }
 
@@ -133,25 +133,25 @@ public class McpStdioClient : IMcpClient, IDisposable
         };
 
         var response = await SendMcpMessageAsync(discoverMessage);
-        
+
         if (response?.Result is System.Text.Json.Nodes.JsonObject toolsObj)
         {
             // Parse the tools array using JsonDocument and GetRawValue() for .NET 8+ compatibility
             var resultJson = JsonSerializer.Serialize(toolsObj);
             using var doc = System.Text.Json.JsonDocument.Parse(resultJson);
-            
+
             DiscoveredTools.Clear();
-            
-            if (doc.RootElement.TryGetProperty("tools", out var toolsProp) && 
+
+            if (doc.RootElement.TryGetProperty("tools", out var toolsProp) &&
                 toolsProp.ValueKind == System.Text.Json.JsonValueKind.Array)
             {
                 foreach (var tool in toolsProp.EnumerateArray())
                 {
                     var name = GetJsonStringValue(tool, "name");
                     var description = GetJsonStringValue(tool, "description");
-                    
+
                     Dictionary<string, object>? schema = null;
-                    if (tool.TryGetProperty("inputSchema", out var schemaProp) && 
+                    if (tool.TryGetProperty("inputSchema", out var schemaProp) &&
                         schemaProp.ValueKind == System.Text.Json.JsonValueKind.Object)
                     {
                         // Serialize the JsonElement back to JSON string for .NET 8+ compatibility
@@ -196,7 +196,7 @@ public class McpStdioClient : IMcpClient, IDisposable
         };
 
         var response = await SendMcpMessageAsync(toolCallMessage);
-        
+
         if (response == null)
             return null;
 
@@ -214,25 +214,25 @@ public class McpStdioClient : IMcpClient, IDisposable
         };
 
         var response = await SendMcpMessageAsync(discoverMessage);
-        
+
         if (response?.Result is System.Text.Json.Nodes.JsonObject toolsObj)
         {
             // Parse the tools array using JsonDocument and GetRawValue() for .NET 8+ compatibility
             var resultJson = JsonSerializer.Serialize(toolsObj);
             using var doc = System.Text.Json.JsonDocument.Parse(resultJson);
-            
+
             DiscoveredTools.Clear();
-            
-            if (doc.RootElement.TryGetProperty("tools", out var toolsProp) && 
+
+            if (doc.RootElement.TryGetProperty("tools", out var toolsProp) &&
                 toolsProp.ValueKind == System.Text.Json.JsonValueKind.Array)
             {
                 foreach (var tool in toolsProp.EnumerateArray())
                 {
                     var name = GetJsonStringValue(tool, "name");
                     var description = GetJsonStringValue(tool, "description");
-                    
+
                     Dictionary<string, object>? schema = null;
-                    if (tool.TryGetProperty("inputSchema", out var schemaProp) && 
+                    if (tool.TryGetProperty("inputSchema", out var schemaProp) &&
                         schemaProp.ValueKind == System.Text.Json.JsonValueKind.Object)
                     {
                         // Serialize the JsonElement back to JSON string for .NET 8+ compatibility
@@ -253,14 +253,14 @@ public class McpStdioClient : IMcpClient, IDisposable
         if (_process?.StandardInput == null) return null;
 
         var json = JsonSerializer.Serialize(message);
-        
+
         try
         {
             await _process.StandardInput.WriteLineAsync(json);
             await _process.StandardInput.FlushAsync();
-            
+
             var responseText = await _process.StandardOutput.ReadLineAsync();
-            
+
             if (responseText != null)
             {
                 return JsonSerializer.Deserialize<McpMessage>(responseText);
@@ -283,7 +283,7 @@ public class McpStdioClient : IMcpClient, IDisposable
             {
                 var shutdownMessage = new McpMessage { Method = "shutdown" };
                 SendMcpMessageAsync(shutdownMessage).Wait();
-                
+
                 _process.Kill();
                 _process.WaitForExit(1000);
             }

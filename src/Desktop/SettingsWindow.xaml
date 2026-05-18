@@ -17,7 +17,7 @@
         <SolidColorBrush x:Key="AccentRed" Color="#FF6B6B"/>
         
         <!-- Tab style -->
-        <Style x:Key="SettingsTabButton" TargetType="ToggleButton">
+        <Style x:Key="SettingsTabButton" TargetType="RadioButton">
             <Setter Property="Background" Value="{StaticResource BgTertiary}"/>
             <Setter Property="Foreground" Value="{StaticResource TextPrimary}"/>
             <Setter Property="Padding" Value="16,8"/>
@@ -26,7 +26,7 @@
             <Setter Property="FontSize" Value="13"/>
         </Style>
 
-        <Style x:Key="SettingsTabButtonActive" TargetType="ToggleButton">
+        <Style x:Key="SettingsTabButtonActive" TargetType="RadioButton">
             <Setter Property="Background" Value="{StaticResource BgSecondary}"/>
             <Setter Property="Foreground" Value="{StaticResource AccentBlue}"/>
             <Setter Property="Padding" Value="16,8"/>
@@ -98,25 +98,25 @@
             <RowDefinition Height="Auto"/>
         </Grid.RowDefinitions>
 
-        <!-- Tab navigation -->
+        <!-- Tab navigation (using RadioButton for Windows App SDK compatibility) -->
         <StackPanel Grid.Row="0" Orientation="Horizontal">
-            <ToggleButton x:Name="ServerTabButton" 
-                          Content="Server"
-                          Style="{StaticResource SettingsTabButtonActive}"
-                          Tag="Server"
-                          Checked="OnTabChanged"/>
+            <RadioButton x:Name="ServerTabButton" 
+                         Content="Server"
+                         Style="{StaticResource SettingsTabButtonActive}"
+                         Tag="Server"
+                         Checked="OnTabChanged"/>
             
-            <ToggleButton x:Name="ModelTabButton"
-                          Content="Model"
-                          Style="{StaticResource SettingsTabButton}"
-                          Tag="Model"
-                          Checked="OnTabChanged"/>
+            <RadioButton x:Name="ModelTabButton"
+                         Content="Model"
+                         Style="{StaticResource SettingsTabButton}"
+                         Tag="Model"
+                         Checked="OnTabChanged"/>
             
-            <ToggleButton x:Name="AgentTabButton"
-                          Content="Agent"
-                          Style="{StaticResource SettingsTabButton}"
-                          Tag="Agent"
-                          Checked="OnTabChanged"/>
+            <RadioButton x:Name="AgentTabButton"
+                         Content="Agent"
+                         Style="{StaticResource SettingsTabButton}"
+                         Tag="Agent"
+                         Checked="OnTabChanged"/>
         </StackPanel>
 
         <!-- Settings content panels -->
@@ -294,8 +294,9 @@
                             <TextBox.Text>4096</TextBox.Text>
                         </TextBox>
                     </StackPanel>
+                </StackPanel>
 
-                    <!-- Agent settings panel -->
+                <!-- Agent settings panel -->
                 <StackPanel x:Name="AgentSettingsPanel" Visibility="Collapsed">
                     <Border Background="{StaticResource BgSecondary}" CornerRadius="4" Padding="20" Margin="0,0,0,16">
                         <TextBlock Text="Agent Settings" FontWeight="SemiBold" Foreground="#4FC3F7" FontSize="18"/>
@@ -328,11 +329,12 @@
                             <CheckBox.Content>Require approval before executing risky operations (file writes, commands)</CheckBox.Content>
                         </CheckBox>
                     </StackPanel>
+                </StackPanel>
 
-                    <!-- Data privacy panel -->
+                <!-- Data privacy panel -->
                 <StackPanel x:Name="DataPrivacyPanel" Visibility="Collapsed">
                     <Border Background="{StaticResource BgSecondary}" CornerRadius="4" Padding="20" Margin="0,0,0,16">
-                        <TextBlock Text="Data Privacy & Storage" FontWeight="SemiBold" Foreground="#4FC3F7" FontSize="18"/>
+                        <TextBlock><Run>Data</Run><Run>Privacy&#x26;</Run><Run> Storage</Run></TextBlock>
                     </Border>
 
                     <!-- Conversation encryption -->
@@ -382,6 +384,7 @@
                     </StackPanel>
                 </StackPanel>
             </Grid>
+        </ScrollViewer>
 
         <!-- Buttons row -->
         <Border Grid.Row="2" Background="{StaticResource BgPrimary}" Padding="16,8">

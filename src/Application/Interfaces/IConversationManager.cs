@@ -222,6 +222,11 @@ public interface IDeviceMonitor : IDisposable
 public interface IServerService : IDisposable
 {
     /// <summary>
+    /// Gets whether the server is currently running.
+    /// </summary>
+    bool IsRunning { get; }
+
+    /// <summary>
     /// Gets the current state of the server service.
     /// </summary>
     ServerState State { get; }
@@ -229,7 +234,7 @@ public interface IServerService : IDisposable
     /// <summary>
     /// Gets the base URL where the server is listening (null if not running).
     /// </summary>
-    string? BaseUrl => State == ServerState.Running 
+    string? BaseUrl => State == ServerState.Running
         ? $"{(Configuration.UseHttps ? "https" : "http")}://{Configuration.Host}:{Configuration.Port}"
         : null;
 
@@ -237,11 +242,6 @@ public interface IServerService : IDisposable
     /// Gets the server configuration.
     /// </summary>
     ServerConfiguration Configuration { get; }
-
-    /// <summary>
-    /// Event raised when the server state changes.
-    /// </summary>
-    event EventHandler<ServerStateChangedEventArgs>? StateChanged;
 
     /// <summary>
     /// Starts the local server with the given configuration.
@@ -267,7 +267,12 @@ public interface IServerService : IDisposable
     /// <summary>
     /// Generates a self-signed certificate for HTTPS development.
     /// </summary>
-    Task GenerateSelfSignedCertificateAsync(string certificatePath, string keyPath);
+    Task GenerateSelfSignedCertificateAsync(string certificatePath, string keyPath, CancellationToken ct = default);
+
+    /// <summary>
+    /// Event raised when the server state changes from one state to another.
+    /// </summary>
+    event EventHandler<ServerStateChangedEventArgs>? StateChanged;
 }
 
 /// <summary>

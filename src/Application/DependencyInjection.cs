@@ -38,10 +38,10 @@ public static class DependencyInjection
     {
         // The endpoint handler is a static class - no DI registration needed
         // It will be invoked directly via the application builder extension method
-        
+
         // Register any dependencies the OpenAPI endpoints need to resolve from DI
         services.AddSingleton<Microsoft.Extensions.Logging.ILoggerFactory>();
-        
+
         return;
     }
 

@@ -36,7 +36,7 @@ public class LoadedModelInstance : IDisposable
     public string ModelId { get; set; } = string.Empty;
     public ModelMetadata Metadata { get; set; } = null!;
     public ModelLoadState State { get; set; } = ModelLoadState.Unloaded;
-    
+
     /// <summary>
     /// GPU memory usage in MB for this model instance.
     /// </summary>
@@ -66,7 +66,7 @@ public class LoadedModelInstance : IDisposable
     {
         if (_disposed) return;
         _disposed = true;
-        
+
         // Release GPU memory and inference context handles
         GpuContextHandle = IntPtr.Zero;
         InferenceContextHandle = IntPtr.Zero;

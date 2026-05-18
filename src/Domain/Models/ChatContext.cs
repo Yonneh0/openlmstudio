@@ -41,7 +41,7 @@ public class ContextSegment : IDisposable
         new() { Id = id, RelevanceScore = 0f };
 
     /// <summary>Standardized token counting: ~1 token per 4 characters for English.</summary>
-    private static int EstimateTokenCount(string text) => 
+    private static int EstimateTokenCount(string text) =>
         string.IsNullOrEmpty(text) ? 0 : (text.Length + 3) / 4;
 
     public void Dispose() { /* No unmanaged resources */ }
@@ -120,12 +120,12 @@ public class ContextBudget : IDisposable
     public long RemainingTokens { get; private set; }
     public Dictionary<ContextInjectionType, long> BudgetAllocation { get; set; } = new();
 
-    public static ContextBudget CreateDefault(int maxTokens = 8192) => 
-        new() 
-        { 
-            MaximumTokens = maxTokens, 
+    public static ContextBudget CreateDefault(int maxTokens = 8192) =>
+        new()
+        {
+            MaximumTokens = maxTokens,
             RemainingTokens = maxTokens,
-            BudgetAllocation = new Dictionary<ContextInjectionType, long> { [ContextInjectionType.SystemPrompt] = (long)(maxTokens / 4.0) } 
+            BudgetAllocation = new Dictionary<ContextInjectionType, long> { [ContextInjectionType.SystemPrompt] = (long)(maxTokens / 4.0) }
         };
 
     public void Deduct(long tokens)
