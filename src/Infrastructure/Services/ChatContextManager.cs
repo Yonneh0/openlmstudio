@@ -389,7 +389,7 @@ public class ChatContextManager : IChatContextManager, IDisposable
 
                 segments.Add(new ContextSegment
                 {
-                    Id = new Guid(reader.GetString(reader.GetOrdinal("Id"))),
+                    Id = new Guid(reader.GetString(reader.GetOrdinal("SegmentId"))),
                     Content = reader.IsDBNull(reader.GetOrdinal("Content")) ? string.Empty : reader.GetString(reader.GetOrdinal("Content")),
                     Role = (MessageRole)int.Parse(roleStr, System.Globalization.NumberStyles.Integer),
                     TokenCount = reader.IsDBNull(reader.GetOrdinal("TokenCount")) ? 0 : Convert.ToInt32(reader.GetString(reader.GetOrdinal("TokenCount")))
