@@ -37,47 +37,65 @@ public class AppDataDirectoryResolver : IDisposable
 
         try
         {
-            // Windows: %APPDATA%\OpenLMStudio
-            var appData = Environment.GetEnvironmentVariable("APPDATA");
-            if (!string.IsNullOrEmpty(appData))
+            // Use .NET's built-in OS detection for reliable cross-platform behavior.
+            // This handles edge cases that environment variable checks miss, such as:
+            // - Windows with WSL where APPDATA might not be set
+            // - macOS without APPDATA set (correctly) but also without HOME (shouldn't happen on macOS typically)
+            if (OperatingSystem.IsWindows())
             {
-                _cachedAppDataPath = System.IO.Path.Combine(appData, "OpenLMStudio");
+                _cachedAppDataPath = Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData);
+                _cachedAppDataPath = System.IO.Path.Combine(_cachedAppDataPath, "OpenLMStudio");
                 _logger?.LogDebug("Windows AppData directory: {Path}", _cachedAppDataPath);
-                return _cachedAppDataPath;
             }
-
-            // macOS: ~/Library/Application Support/OpenLMStudio
-            var home = Environment.GetEnvironmentVariable("HOME");
-            if (!string.IsNullOrEmpty(home))
+            else if (OperatingSystem.IsMacOS())
             {
-                var macosPath = System.IO.Path.Combine(home, "Library", "Application Support", "OpenLMStudio");
-                _cachedAppDataPath = macosPath;
+                var home = Environment.GetFolderPath(Environment.SpecialFolder.UserProfile);
+                _cachedAppDataPath = System.IO.Path.Combine(home, "Library", "Application Support", "OpenLMStudio");
                 _logger?.LogDebug("macOS Application Support directory: {Path}", _cachedAppDataPath);
-                return _cachedAppDataPath;
             }
-
-            // Linux: $XDG_CONFIG_HOME/OpenLMStudio or ~/.config/OpenLMStudio
-            var xdgConfig = Environment.GetEnvironmentVariable("XDG_CONFIG_HOME");
-            string linuxPath;
-
-            if (!string.IsNullOrEmpty(xdgConfig))
+            else if (OperatingSystem.IsLinux())
             {
-                linuxPath = System.IO.Path.Combine(xdgConfig, "OpenLMStudio");
-            }
-            else if (home != null)
-            {
-                linuxPath = System.IO.Path.Combine(home, ".config", "OpenLMStudio");
+                // Linux: $XDG_CONFIG_HOME/OpenLMStudio or ~/.config/OpenLMStudio
+                var xdgConfig = Environment.GetEnvironmentVariable("XDG_CONFIG_HOME");
+                string linuxPath;
+
+                if (!string.IsNullOrEmpty(xdgConfig))
+                {
+                    linuxPath = System.IO.Path.Combine(xdgConfig, "OpenLMStudio");
+                }
+                else
+                {
+                    var home = Environment.GetFolderPath(Environment.SpecialFolder.UserProfile);
+                    linuxPath = System.IO.Path.Combine(home, ".config", "OpenLMStudio");
+                }
+
+                _cachedAppDataPath = linuxPath;
+                _logger?.LogDebug("Linux XDG_CONFIG_HOME/AppData directory: {Path}", _cachedAppDataPath);
             }
             else
             {
-                throw new InvalidOperationException("Cannot determine home directory for Linux appdata path.");
+                // Unknown OS — fall back to HOME-based approach as last resort
+                var home = Environment.GetEnvironmentVariable("HOME");
+                if (!string.IsNullOrEmpty(home))
+                {
+                    _cachedAppDataPath = System.IO.Path.Combine(home, ".config", "OpenLMStudio");
+                    _logger?.LogWarning("Unknown operating system — falling back to Linux-style config directory: {Path}", _cachedAppDataPath);
+                }
+                else
+                {
+                    throw new PlatformNotSupportedException(
+                        "Cannot determine the application data directory for this platform. Please set $HOME or $XDG_CONFIG_HOME environment variables.");
+                }
             }
 
-            _cachedAppDataPath = linuxPath;
-            _logger?.LogDebug("Linux XDG_CONFIG_HOME/AppData directory: {Path}", _cachedAppDataPath);
+            if (_cachedAppDataPath == null)
+            {
+                throw new InvalidOperationException("Failed to determine AppData directory — this should not be reached.");
+            }
+
             return _cachedAppDataPath;
         }
-        catch (Exception ex)
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
         {
             _logger?.LogError(ex, "Failed to determine AppData directory");
             throw;
@@ -157,14 +175,29 @@ public class AppDataDirectoryResolver : IDisposable
 public class SqliteDatabaseFactory : IDisposable
 {
     private readonly ILogger<SqliteDatabaseFactory>? _logger;
+    private static volatile bool _sqliteInitialized;
 
     public SqliteDatabaseFactory(ILogger<SqliteDatabaseFactory>? logger = null)
     {
         _logger = logger;
 
-        // Initialize SQLitePCLRaw (this must be called once per process before any DB access)
-        Batteries.Init();
+        // Initialize SQLitePCLRaw (this must be called once per process before any DB access).
+        // Uses double-checked locking to avoid contention after first initialization.
+        if (!_sqliteInitialized)
+        {
+            lock (_lockObject)
+            {
+                if (!_sqliteInitialized)
+                {
+                    Batteries.Init();
+                    _sqliteInitialized = true;
+                    _logger?.LogDebug("SQLitePCLRaw initialized successfully");
+                }
+            }
+        }
     }
+
+    private static readonly object _lockObject = new object();
 
     /// <summary>
     /// Creates a connection to an existing SQLite database or creates it if it doesn't exist.
@@ -176,6 +209,32 @@ public class SqliteDatabaseFactory : IDisposable
             Directory.CreateDirectory(directory);
 
         return new Microsoft.Data.Sqlite.SqliteConnection($"Data Source={databasePath}");
+    }
+
+    /// <summary>
+    /// Ensures the database file exists and creates it if not. This is a no-op wrapper for consistency
+    /// with other Ensure* methods in the codebase — actual creation happens via CreateConnection above.
+    /// </summary>
+    public async Task EnsureDatabaseExistsAsync(Microsoft.Data.Sqlite.SqliteConnection connection)
+    {
+        await using var cmd = new Microsoft.Data.Sqlite.SqliteCommand("SELECT 1", connection);
+        try
+        {
+            await connection.OpenAsync();
+            await cmd.ExecuteNonQueryAsync();
+        }
+        catch (Microsoft.Data.Sqlite.SqliteException ex) when (ex.SqliteErrorCode == 26) // SQLITE_CANTOPEN — file doesn't exist yet, create it
+        {
+            var dbPath = connection.Database;
+            if (!string.IsNullOrEmpty(dbPath))
+            {
+                _logger?.LogDebug("Creating new database at: {DatabasePath}", dbPath);
+                Directory.CreateDirectory(System.IO.Path.GetDirectoryName(dbPath) ?? string.Empty);
+            }
+            await using var cmd2 = new Microsoft.Data.Sqlite.SqliteCommand("SELECT 1", connection);
+            await connection.OpenAsync();
+            await cmd2.ExecuteNonQueryAsync();
+        }
     }
 
     public void Dispose()

@@ -72,14 +72,14 @@ public class ConversationContextCompressor : IContextCompressor, IDisposable
     }
 
     /// <inheritdoc />
-    public async Task<string?> DecompressAsync(ContextSegment compressedSegment)
+    public Task<string?> DecompressAsync(ContextSegment compressedSegment)
     {
-        // Decompression is not possible for segments that were lossily compressed.
-        // For lossless compression (summarization), the summary IS the compressed form — no decompression needed.
+        // Returns null because context compression is lossy — there is no way to reverse it.
+        // The summary IS the compressed form; original content cannot be recovered.
         _logger?.LogDebug("DecompressAsync called for segment {SegmentId} with role {Role}",
             compressedSegment.Id, compressedSegment.Role);
 
-        return null; // No meaningful decompression exists for context compression
+        return Task.FromResult<string?>(null);
     }
 
     public void Dispose()
@@ -505,6 +505,10 @@ public class ConversationContextCompressor : IContextCompressor, IDisposable
 
     /// <summary>
     /// Splits text into sentences/lines for processing.
+    /// Uses a smarter approach that preserves common abbreviations and decimal numbers:
+    /// - Preserves periods after single-letter words (e.g., "A.", "I.")
+    /// - Preserves periods in decimal numbers (e.g., "3.14")
+    /// - Splits on newlines, exclamation marks, question marks unconditionally
     /// </summary>
     private static List<string> SplitSentences(string content)
     {
@@ -513,17 +517,104 @@ public class ConversationContextCompressor : IContextCompressor, IDisposable
 
         var result = new List<string>();
 
-        // Split by sentence-ending punctuation and newlines
-        var parts = content.Split(new[] { '\n', '.', '!', '?' }, StringSplitOptions.RemoveEmptyEntries);
+        // First split by newlines to get line-level chunks
+        var lines = content.Split('\n', StringSplitOptions.RemoveEmptyEntries);
 
-        foreach (var part in parts)
+        foreach (var line in lines)
         {
-            var trimmed = part.Trim();
-            if (!string.IsNullOrEmpty(trimmed))
-                result.Add(trimmed);
+            var trimmedLine = line.Trim();
+            if (string.IsNullOrEmpty(trimmedLine)) continue;
+
+            // Split by exclamation and question marks (always sentence boundaries)
+            var partsByPunctuation = trimmedLine.Split(new[] { '!', '?' }, StringSplitOptions.RemoveEmptyEntries);
+
+            foreach (var part in partsByPunctuation)
+            {
+                var trimmedPart = part.Trim();
+                if (!string.IsNullOrEmpty(trimmedPart))
+                {
+                    // Further split on periods, but preserve common abbreviations:
+                    // - Single-letter words followed by period (e.g., "A.", "I.")
+                    // - Decimal numbers like "3.14" — skip splitting inside numbers
+                    var innerParts = SplitByPeriodSafely(trimmedPart);
+
+                    foreach (var ip in innerParts)
+                    {
+                        var trimmedIp = ip.Trim();
+                        if (!string.IsNullOrEmpty(trimmedIp))
+                            result.Add(trimmedIp);
+                    }
+                }
+            }
         }
 
         return result;
+    }
+
+    /// <summary>
+    /// Splits text on period boundaries while preserving common abbreviations and decimal numbers.
+    /// </summary>
+    private static List<string> SplitByPeriodSafely(string text)
+    {
+        var parts = new List<string>();
+        int startIndex = 0;
+
+        for (int i = 0; i < text.Length; i++)
+        {
+            if (text[i] == '.')
+            {
+                // Check if this period is part of a decimal number (preceded by digit, followed by digit)
+                bool isDecimalPeriod = false;
+                if (i > 0 && char.IsDigit(text[i - 1]) && i < text.Length - 1 && char.IsDigit(text[i + 1]))
+                    isDecimalPeriod = true;
+
+                // Check for single-letter abbreviation: "A.", "I." — period after a letter with space or end of string after it
+                bool isSingleLetterAbbreviation = false;
+                if (i > startIndex && char.IsAsciiLetter(text[i - 1]) && i == startIndex + 1)
+                {
+                    // Single-letter abbreviation: the text before this position should be a single letter
+                    var precedingText = text.Substring(startIndex, i - startIndex).Trim();
+                    if (precedingText.Length == 1 && char.IsAsciiLetter(precedingText[0]))
+                        isSingleLetterAbbreviation = true;
+                }
+
+                // Check for common multi-letter abbreviations: "Dr.", "Mr.", "vs.", etc.
+                bool isKnownAbbreviation = false;
+                if (i > startIndex && i < text.Length - 1)
+                {
+                    var precedingText = text.Substring(startIndex, i - startIndex).Trim();
+                    var followingChar = text[i + 1];
+                    if (!char.IsAsciiLetter(followingChar)) // Not a continuation of the word — it's an abbreviation period
+                    {
+                        var lowerPreceding = precedingText.ToLowerInvariant();
+                        isKnownAbbreviation = lowerPreceding switch
+                        {
+                            "dr" or "mr" or "ms" or "vs" or "etc" or "sgt" or "gen" => true,
+                            _ => false
+                        };
+                    }
+                }
+
+                if (!isDecimalPeriod && !isSingleLetterAbbreviation && !isKnownAbbreviation)
+                {
+                    var segment = text.Substring(startIndex, i - startIndex).Trim();
+                    if (!string.IsNullOrEmpty(segment))
+                        parts.Add(segment);
+
+                    startIndex = i + 1; // Skip the period character
+                }
+            }
+        }
+
+        // Add any remaining text after the last period
+        if (startIndex < text.Length)
+        {
+            var remainder = text.Substring(startIndex).Trim();
+            if (!string.IsNullOrEmpty(remainder))
+                parts.Add(remainder);
+        }
+
+        return parts;
     }
 
     /// <summary>

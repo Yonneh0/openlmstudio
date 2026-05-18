@@ -36,7 +36,7 @@ public class ContextSegment : IDisposable
             TokenCount = message.TokenCount > 0 ? message.TokenCount : EstimateTokenCount(message.Content)
         };
 
-    /// <summary>Creates an empty segment with the given ID and relevance score (used by budget system).</summary>
+    /// <summary>Creates an empty segment with the given ID and relevance score. Used by the context window budgeter as a placeholder for eviction slots — Content is intentionally empty and TokenCount defaults to zero.</summary>
     public static ContextSegment CreateEmptyWithRelevance(Guid id) =>
         new() { Id = id, RelevanceScore = 0f };
 
@@ -50,10 +50,10 @@ public class ContextSegment : IDisposable
 /// <summary>Represents an agentic task state (Idle, Planning, Acting, etc.).</summary>
 public enum AgentState
 {
-    /// <summary>Agent is idle and ready to start a new task.</summary>
+    /// <summary>Agent is idle and ready to start a new task. Set when the agent has completed its work and no further actions are pending.</summary>
     Idle = 0,
 
-    /// <summary>Agent has not yet begun working on this task.</summary>
+    /// <summary>Agent has not yet begun working on this task. This is the initial state before any processing occurs.</summary>
     NotStarted = 1,
     /// <summary>Agent is planning the approach for this task.</summary>
     Planning,

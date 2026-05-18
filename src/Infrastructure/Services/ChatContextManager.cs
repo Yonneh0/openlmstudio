@@ -271,19 +271,51 @@ public class ChatContextManager : IChatContextManager, IDisposable
         {
             await EnsurePinTableExists(connection);
 
-            var sql = $@"SELECT SegmentId FROM ""{PinDbTableName}"" WHERE ChatId = @chatId AND IsPinned = 1";
-            using var cmd = new Microsoft.Data.Sqlite.SqliteCommand(sql, connection);
-            cmd.Parameters.AddWithValue("@chatId", chatId.ToString());
-
-            await using var reader = await cmd.ExecuteReaderAsync();
-            while (await reader.ReadAsync())
+            // Fetch the segment IDs that are pinned for this chat
+            await using (var cmd = new Microsoft.Data.Sqlite.SqliteCommand(
+                $@"SELECT SegmentId FROM ""{PinDbTableName}"" WHERE ChatId = @chatId AND IsPinned = 1", connection))
             {
-                pinned.Add(new ContextSegment
+                cmd.Parameters.AddWithValue("@chatId", chatId.ToString());
+
+                await using var reader = await cmd.ExecuteReaderAsync();
+                while (await reader.ReadAsync())
                 {
-                    Id = new Guid(reader.GetString(reader.GetOrdinal("SegmentId"))),
-                    IsPinned = true,
-                    Role = MessageRole.System // Pinned segments default to system role context
-                });
+                    pinned.Add(new ContextSegment
+                    {
+                        Id = new Guid(reader.GetString(reader.GetOrdinal("SegmentId"))),
+                        IsPinned = true,
+                        Role = MessageRole.System // Pinned segments default to system role context
+                    });
+                }
+            }
+
+            // Now fetch Content for each pinned segment from ChatMessages table
+            if (pinned.Count > 0)
+            {
+                await EnsureChatMessagesTableExists(connection);
+
+                foreach (var segment in pinned)
+                {
+                    try
+                    {
+                        using var cmd = new Microsoft.Data.Sqlite.SqliteCommand(
+                            $@"SELECT Content, Role, TokenCount FROM ""{MessagesTableName}"" WHERE ChatId = @chatId AND SegmentId = @segmentId", connection);
+                        cmd.Parameters.AddWithValue("@chatId", chatId.ToString());
+                        cmd.Parameters.AddWithValue("@segmentId", segment.Id.ToString());
+
+                        await using var reader = await cmd.ExecuteReaderAsync();
+                        if (await reader.ReadAsync())
+                        {
+                            segment.Content = reader.IsDBNull(reader.GetOrdinal("Content")) ? string.Empty : reader.GetString(reader.GetOrdinal("Content"));
+                            segment.Role = (MessageRole)int.Parse(reader.GetString(reader.GetOrdinal("Role")), System.Globalization.NumberStyles.Integer);
+                            segment.TokenCount = reader.IsDBNull(reader.GetOrdinal("TokenCount")) ? 0 : Convert.ToInt32(reader.GetString(reader.GetOrdinal("TokenCount")));
+                        }
+                    }
+                    catch (Exception ex) when (!(ex is IOException or Microsoft.Data.Sqlite.SqliteException))
+                    {
+                        _logger?.LogWarning(ex, "Failed to fetch content for pinned segment {SegmentId} in chat {ChatId}", segment.Id, chatId);
+                    }
+                }
             }
         }
         catch (Microsoft.Data.Sqlite.SqliteException ex) when (ex.SqliteErrorCode == 1)
@@ -337,11 +369,19 @@ public class ChatContextManager : IChatContextManager, IDisposable
             {
                 string roleStr;
                 try { roleStr = reader.GetString(reader.GetOrdinal("Role")); }
-                catch { break; }
+                catch (Exception ex)
+                {
+                    _logger?.LogWarning(ex, "Failed to read Role column for segment in chat {ChatId}", chatId);
+                    continue;
+                }
 
                 int injectionTypeInt;
                 try { injectionTypeInt = Convert.ToInt32(reader.GetString(reader.GetOrdinal("InjectionType"))); }
-                catch { break; }
+                catch (Exception ex) when (ex is FormatException or OverflowException)
+                {
+                    _logger?.LogWarning(ex, "Failed to read InjectionType column for segment in chat {ChatId}", chatId);
+                    continue;
+                }
 
                 var segment = new ContextSegment
                 {
@@ -384,7 +424,11 @@ public class ChatContextManager : IChatContextManager, IDisposable
             {
                 string roleStr;
                 try { roleStr = reader.GetString(reader.GetOrdinal("Role")); }
-                catch { break; }
+                catch (Exception ex)
+                {
+                    _logger?.LogWarning(ex, "Failed to read Role column for segment in chat {ChatId}", chatId);
+                    continue;
+                }
 
                 segments.Add(new ContextSegment
                 {
@@ -450,16 +494,12 @@ public class ChatContextManager : IChatContextManager, IDisposable
     {
         try
         {
-            // Ensure contexts directory exists
+            // Ensure contexts directory exists - per-chat DB files will be created lazily when needed
             _resolver.GetSubDirectory("contexts");
 
-            // Create ChatMessages table if it doesn't exist - maps conversation messages to context segments
-            var connection = _dbFactory.CreateConnection(_resolver.GetConversationDatabasePath("init"));
-            await using (connection)
-            {
-                await connection.OpenAsync();
-                await EnsureChatMessagesTableExists(connection);
-            }
+            // Ensure metadata directory exists for future use (settings, config)
+            var metadataDir = Path.Combine(_resolver.GetAppDataDirectory(), "metadata");
+            Directory.CreateDirectory(metadataDir);
         }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
         {
@@ -477,12 +517,11 @@ public class ChatContextManager : IChatContextManager, IDisposable
             TokenCount INTEGER NOT NULL DEFAULT 0,
             IsCompressed INTEGER NOT NULL DEFAULT 0,
             InjectionType INTEGER NOT NULL DEFAULT 0,
-            CreatedAt TEXT NOT NULL,
-            CONSTRAINT FK_ChatMessages_Chats FOREIGN KEY (ChatId) REFERENCES ChatContextSegments(ChatId)
+            CreatedAt TEXT NOT NULL
         );";
 
         using var cmd = new Microsoft.Data.Sqlite.SqliteCommand(createSql, connection);
-        cmd.ExecuteNonQuery();
+        await cmd.ExecuteNonQueryAsync();
     }
 
     private static int EstimateTokenCount(string text) =>
