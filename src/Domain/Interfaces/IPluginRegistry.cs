@@ -70,6 +70,17 @@ public interface IPluginRegistry : IDisposable
     /// Gets the sandbox policy for a plugin, returning the default if none set.
     /// </summary>
     Task<PluginSandboxPolicy> GetSandboxPolicyAsync(string pluginId);
+
+    /// <summary>
+    /// Fetches full details of a single plugin from the remote registry (includes download URL).
+    /// Returns null if the plugin is not found in the registry.
+    /// </summary>
+    Task<PluginDefinition?> GetPluginFromRegistryAsync(string pluginId);
+
+    /// <summary>
+    /// Lists all available plugins from the remote registry catalog (including download URLs for installation).
+    /// </summary>
+    Task<IEnumerable<PluginDefinition>> ListRegistryPluginsAsync();
 }
 
 /// <summary>

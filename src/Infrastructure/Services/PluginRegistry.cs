@@ -231,6 +231,63 @@ public class PluginRegistry : Domain.Interfaces.IPluginRegistry
     }
 
     /// <inheritdoc />
+    public async Task<Domain.Interfaces.PluginDefinition?> GetPluginFromRegistryAsync(string pluginId)
+    {
+        if (_registryUrl == null || _httpClient == null)
+            throw new InvalidOperationException("No plugin registry configured.");
+
+        try
+        {
+            // Fetch full plugin details from the remote registry API (includes download URL, latest version, etc.)
+            var url = $"{_registryUrl}/api/plugins/{Uri.EscapeDataString(pluginId)}";
+            var response = await _httpClient.GetAsync(url);
+            if (!response.IsSuccessStatusCode)
+            {
+                // Return null for missing plugins rather than throwing — allows graceful handling in UI
+                if (response.StatusCode == System.Net.HttpStatusCode.NotFound)
+                    return null;
+
+                throw new HttpRequestException($"Registry plugin lookup failed: {response.StatusCode}");
+            }
+
+            var jsonContent = await response.Content.ReadAsStringAsync();
+            var definition = System.Text.Json.JsonSerializer.Deserialize<Domain.Interfaces.PluginDefinition>(jsonContent);
+            return definition ?? null;
+        }
+        catch (Exception ex)
+        {
+            _logger?.LogError(ex, "Error fetching plugin '{PluginId}' from registry", pluginId);
+            return null;
+        }
+    }
+
+    /// <inheritdoc />
+    public async Task<IEnumerable<Domain.Interfaces.PluginDefinition>> ListRegistryPluginsAsync()
+    {
+        if (_registryUrl == null || _httpClient == null)
+            throw new InvalidOperationException("No plugin registry configured.");
+
+        try
+        {
+            // Fetch the full catalog of available plugins from the remote registry API
+            var url = $"{_registryUrl}/api/plugins";
+            var response = await _httpClient.GetAsync(url);
+            if (!response.IsSuccessStatusCode)
+                throw new HttpRequestException($"Registry plugin listing failed: {response.StatusCode}");
+
+            // Deserialize the JSON response — returns a list of available plugins with download URLs
+            var jsonContent = await response.Content.ReadAsStringAsync();
+            var definitions = System.Text.Json.JsonSerializer.Deserialize<Domain.Interfaces.PluginDefinition[]>(jsonContent);
+            return definitions ?? Array.Empty<Domain.Interfaces.PluginDefinition>();
+        }
+        catch (Exception ex)
+        {
+            _logger?.LogError(ex, "Error listing registry plugins");
+            return Array.Empty<Domain.Interfaces.PluginDefinition>();
+        }
+    }
+
+    /// <inheritdoc />
     public async Task InstallPluginAsync(Domain.Interfaces.PluginDefinition plugin, CancellationToken ct = default)
     {
         if (plugin.IsInstalled)
