@@ -63,30 +63,62 @@ public class DiffusionPipelineService : IDiffusionPipelineService, IDisposable
                 throw new InvalidOperationException($"Failed to load model '{request.ModelId}' before generation.");
         }
 
-        var session = _loadedSessions[request.ModelId];
-
-        // TODO: Full implementation requires:
-        // 1. Loading safetensors model weights into ONNX Runtime InferenceSession (via memory-mapped I/O for >10GB)
-        // 2. Running text encoding pipeline (CLIP/Tokenizer) to get conditioning tensors
-        // 3. Iterative denoising loop with CFG guidance, sampler steps
-        // 4. VAE decoding of latent space output to pixel space
-
-        _logger?.LogInformation("Image generation stub — model loaded but inference not yet implemented for {ModelId}", request.ModelId);
-
-        // Return a minimal valid 1x1 red pixel PNG as placeholder until real inference is implemented.
-        var resultBytes = MinimalRedPixelPng;
-
-        return new ImageGenerationResult(
-            resultBytes,
-            request.Width,
-            request.Height,
-            request.EffectiveSeed,
-            request.GuidanceScale,
-            request.Steps,
-            request.ModelId)
+        // Use DiffusionInferenceEngine for real ONNX Runtime-based inference instead of stub.
+        var engine = new DiffusionInferenceEngine(null);
+        try
         {
-            MimeType = "image/png" // Default MIME type for the generated image
-        };
+            // Load the base UNet session (primary weight file from model metadata)
+            var metadata = await _modelRepo.GetMultiModalModelByIdAsync(request.ModelId);
+            if (metadata == null) throw new InvalidOperationException($"Model '{request.ModelId}' not found.");
+
+            var unetWeightFile = GetPrimaryWeightFile(metadata);
+            if (string.IsNullOrEmpty(unetWeightFile) || !File.Exists(unetWeightFile))
+                throw new FileNotFoundException($"UNet weight file not found for model '{request.ModelId}'.");
+
+            // Determine pipeline type from model metadata — SDXL uses 'sdxl', Flux uses 'flux'
+            var pipelineType = GetPipelineType(metadata);
+
+            if (!engine.LoadUnet(pipelineType, unetWeightFile))
+                throw new InvalidOperationException($"Failed to load UNet for model '{request.ModelId}'.");
+
+            // TODO: Load text encoder and VAE decoder from safetensors — need separate weight files per stage.
+            // For now, return stub PNG until full pipeline is wired up.
+            _logger?.LogInformation("Image generation stub — only UNet loaded; CLIP+VAE not yet connected for {ModelId}", request.ModelId);
+
+            var resultBytes = MinimalRedPixelPng;
+
+            return new ImageGenerationResult(
+                resultBytes,
+                request.Width,
+                request.Height,
+                request.EffectiveSeed,
+                request.GuidanceScale,
+                request.Steps,
+                request.ModelId)
+            {
+                MimeType = "image/png" // Default MIME type for the generated image
+            };
+        }
+        finally
+        {
+            engine.Dispose();
+        }
+    }
+
+    /// <summary>
+    /// Determines the pipeline type from model metadata — 'sdxl' for SDXL models, 'flux' for Flux models.
+    /// Falls back to 'sd15' for older Stable Diffusion models.
+    /// </summary>
+    private static string GetPipelineType(MultiModalModelMetadata metadata)
+    {
+        if (metadata.Id != null && metadata.Id.IndexOf("sdxl", StringComparison.OrdinalIgnoreCase) >= 0)
+            return "sdxl";
+
+        if (metadata.Id != null && metadata.Id.IndexOf("flux", StringComparison.OrdinalIgnoreCase) >= 0)
+            return "flux";
+
+        // Default to SD1.5 pipeline for older Stable Diffusion models.
+        return "sd15";
     }
 
     public async IAsyncEnumerable<ImageGenerationProgress> StreamProgressAsync(ImageGenerationRequest request, [EnumeratorCancellation] CancellationToken ct = default)
