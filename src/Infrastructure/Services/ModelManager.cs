@@ -197,6 +197,7 @@ public class ModelManager : IModelManager, IDisposable
             {
                 // Use device monitor to get GPU memory info — falls back to CPU-only when unavailable.
                 var gpuDevices = await _deviceMonitor.GetGpuDevicesAsync();
+
                 long totalVram = 0;
                 long freeVram = 0;
 
@@ -204,10 +205,13 @@ public class ModelManager : IModelManager, IDisposable
                 {
                     try
                     {
-                        // Attempt to read GPU memory via Vulkan.NET / nvidia-ml-net — these are not yet integrated.
-                        // For now, report -1 for VRAM (unknown).
-                        totalVram += -1;
-                        freeVram += -1;
+                        // Use actual GPU VRAM data from DeviceInfo — subtract used memory to get free VRAM.
+                        if (gpu.IsActive && gpu.TotalMemoryBytes > 0)
+                        {
+                            var gpuFreeVram = gpu.TotalMemoryBytes - gpu.UsedMemoryBytes;
+                            totalVram += gpu.TotalMemoryBytes;
+                            freeVram += Math.Max(0, gpuFreeVram); // Clamp to non-negative in case UsedMemory > Total
+                        }
                     }
                     catch
                     {
@@ -215,7 +219,7 @@ public class ModelManager : IModelManager, IDisposable
                     }
                 }
 
-                if (gpuDevices.Any())
+                if (gpuDevices.Any(g => g.IsActive && g.TotalMemoryBytes > 0))
                 {
                     return new DeviceMemoryInfo(totalVram, freeVram, 0, 0);
                 }
