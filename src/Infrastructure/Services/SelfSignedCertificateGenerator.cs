@@ -6,7 +6,7 @@ namespace OpenLMStudio.Infrastructure.Services;
 
 /// <summary>
 /// Generates and manages self-signed HTTPS certificates for local server development.
-/// Supports cross-platform certificate generation using OpenSSL (Linux/macOS) or PowerShell cert commands (Windows).
+/// Supports cross-platform certificate generation using OpenSSL (Linux/macOS) or dotnet dev-certs (Windows fallback).
 /// </summary>
 public class SelfSignedCertificateGenerator : ISelfSignedCertificateService, IDisposable
 {
@@ -133,14 +133,10 @@ public class SelfSignedCertificateGenerator : ISelfSignedCertificateService, IDi
     {
         // Use OpenSSL if available (e.g., Git Bash, WSL)
         if (_opensslPath != null)
-            return await GenerateOnUnix(certificatePath, keyPath, ct);
-
-        // Fall back to PowerShell for Windows-specific cert generation
-        try
         {
             var privateKeyFilePath = Path.Combine(Path.GetDirectoryName(certificatePath) ?? Directory.GetCurrentDirectory(), "private-key.pem");
 
-            // Use OpenSSL via the fallback method first
+            // Use OpenSSL to generate PEM cert + key
             if (await GenerateOpenSSLAsync(ct, new[] { "req", "-x509", "-newkey", "rsa:2048",
                     "-keyout", privateKeyFilePath, "-out", certificatePath,
                     "-days", "365", "-nodes", "-subj", "/CN=localhost" }))
@@ -156,18 +152,18 @@ public class SelfSignedCertificateGenerator : ISelfSignedCertificateService, IDi
                     return true;
                 }
 
-                // If OpenSSL not available on Windows, try PowerShell cert generation as last resort
-                _logger?.LogWarning("OpenSSL not found. Cannot generate self-signed certificate for HTTPS.");
-                return false;
+                // If OpenSSL not available on Windows for PFX conversion, fall back to dotnet dev-certs
             }
 
-            return false;
+            _logger?.LogDebug("OpenSSL cert generation failed or PFX conversion unavailable. Falling back to dotnet dev-certs.");
         }
-        catch (Exception ex)
-        {
-            _logger?.LogError(ex, "Failed to generate Windows certificate via OpenSSL fallback");
-            return false;
-        }
+
+        // Use .NET dev-certs as the primary fallback for Windows (works without external dependencies)
+        if (await GenerateWithDotNetDevCertsAsync(certificatePath, ct))
+            return true;
+
+        _logger?.LogWarning("No OpenSSL or dotnet dev-certs available. Cannot generate self-signed certificate for HTTPS.");
+        return false;
     }
 
     private async Task<bool> GenerateOnUnix(string certificatePath, string keyPath, CancellationToken ct)
@@ -276,6 +272,42 @@ public class SelfSignedCertificateGenerator : ISelfSignedCertificateService, IDi
         }
         catch
         {
+            return false;
+        }
+    }
+
+    private async Task<bool> GenerateWithDotNetDevCertsAsync(string certificatePath, CancellationToken ct)
+    {
+        // Use dotnet dev-certs for cross-platform cert generation (no external dependencies needed)
+        try
+        {
+            var processStartInfo = new ProcessStartInfo
+            {
+                FileName = "dotnet",
+                Arguments = $"dev-certs https --export-path \"{certificatePath}\" --overwrite",
+                UseShellExecute = false,
+                RedirectStandardOutput = true,
+                RedirectStandardError = true,
+                CreateNoWindow = true
+            };
+
+            using var process = Process.Start(processStartInfo) ?? throw new InvalidOperationException("Failed to start dotnet");
+
+            await process.WaitForExitAsync(ct);
+
+            if (process.ExitCode == 0 && File.Exists(certificatePath))
+            {
+                _logger?.LogInformation("Certificate '{Path}' generated via dotnet dev-certs", certificatePath);
+                return true;
+            }
+
+            var errorOutput = await process.StandardError.ReadToEndAsync();
+            _logger?.LogDebug("dotnet dev-certs failed with exit code {ExitCode}: {Error}", process.ExitCode, errorOutput);
+            return false;
+        }
+        catch (Exception ex)
+        {
+            _logger?.LogError(ex, "Failed to generate certificate via dotnet dev-certs");
             return false;
         }
     }
