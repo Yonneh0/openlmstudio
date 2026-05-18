@@ -267,27 +267,80 @@ public class SqliteTaskContextStore : ITaskContextStore, IDisposable
         
         try
         {
-            // Search across all task databases for archived snapshots - they may be in different .db files per task ID
-            // First, check the main database that might contain an Archived table
-            await using var connection = _dbFactory.CreateConnection(_resolver.GetTaskContextDatabasePath("archived"));
+            // Archived snapshots are stored per-task-id in their own .db files under the tasks/ directory.
+            // Each database may have a TaskContextSnapshots_Archived table with archived copies of deleted rows.
+            var tasksDir = _resolver.GetSubDirectory("tasks");
+            var dbFiles = Directory.GetFiles(tasksDir, "*.db");
 
-            try
+            foreach (var dbFile in dbFiles)
             {
-                await connection.OpenAsync();
+                try
+                {
+                    await using var connection = _dbFactory.CreateConnection(dbFile);
+                    await connection.OpenAsync();
 
-                var sql = "SELECT * FROM TaskContextSnapshots_Archived ORDER BY ArchivedAt DESC";
-                using var cmd = new SqliteCommand(sql, connection);
+                    // Check if this database has an archived table for any task ID
+                    var taskId = Guid.Parse(Path.GetFileNameWithoutExtension(dbFile));
 
-                await using var reader = await cmd.ExecuteReaderAsync();
-                
-                while (await reader.ReadAsync())
-                    results.Add(ReadArchivedSnapshotFromReader(reader));
+                    // Try to read from the archived sub-table (created during Delete with Archive strategy)
+                    try
+                    {
+                        var sql = $"SELECT * FROM \"{DbTableName}_Archived\" WHERE TaskId = @taskId ORDER BY ArchivedAt DESC";
+                        using var cmd = new SqliteCommand(sql, connection);
+                        cmd.Parameters.AddWithValue("@taskId", taskId.ToString());
+
+                        await using var reader = await cmd.ExecuteReaderAsync();
+
+                        while (await reader.ReadAsync())
+                            results.Add(ReadArchivedSnapshotFromReader(reader));
+                    }
+                    catch (SqliteException ex) when (ex.SqliteErrorCode == 1)
+                    {
+                        // Archived table doesn't exist in this DB — skip
+                    }
+                }
+                catch (Exception ex) when (ex is IOException or InvalidOperationException)
+                {
+                    _logger?.LogDebug(ex, "Error reading task database: {DbFile}", dbFile);
+                }
             }
-            catch (SqliteException ex) when (ex.SqliteErrorCode == 1)
+
+            // Also search for archived snapshots that may have been stored in the parent tasks directory itself.
+            // Some implementations archive to a central archive location — check the metadata/ directory as well.
+            var metaDir = _resolver.GetSubDirectory("metadata");
+            var dbFiles2 = Directory.GetFiles(metaDir, "*.db");
+
+            foreach (var dbFile in dbFiles2)
             {
-                // Archived database doesn't exist — return empty list
-                _logger?.LogDebug("No archived task context database exists");
+                try
+                {
+                    await using var connection = _dbFactory.CreateConnection(dbFile);
+                    await connection.OpenAsync();
+
+                    // Try reading from the archived sub-table
+                    try
+                    {
+                        var sql = $"SELECT * FROM \"{DbTableName}_Archived\" ORDER BY ArchivedAt DESC";
+                        using var cmd = new SqliteCommand(sql, connection);
+
+                        await using var reader = await cmd.ExecuteReaderAsync();
+
+                        while (await reader.ReadAsync())
+                            results.Add(ReadArchivedSnapshotFromReader(reader));
+                    }
+                    catch (SqliteException ex) when (ex.SqliteErrorCode == 1)
+                    {
+                        // Archived table doesn't exist in this DB — skip
+                    }
+                }
+                catch (Exception ex) when (ex is IOException or InvalidOperationException)
+                {
+                    _logger?.LogDebug(ex, "Error reading metadata database: {DbFile}", dbFile);
+                }
             }
+
+            // Sort all results by ArchivedAt descending
+            results.Sort((a, b) => b.CreatedAt.CompareTo(a.CreatedAt));
         }
         catch (Exception ex) when (ex is IOException or InvalidOperationException)
         {
