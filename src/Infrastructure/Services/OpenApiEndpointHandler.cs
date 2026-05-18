@@ -51,8 +51,8 @@ public static class OpenApiEndpointHandler
             });
         });
 
-        // OpenAI-compatible: /v1/chat/completions - Main chat endpoint
-        app.MapPost("/v1/chat/completions", async (IChatCompletionService service, HttpContext context) =>
+        // OpenAI-compatible: /v1/chat/completions - Main chat endpoint (with multi-engine routing)
+        app.MapPost("/v1/chat/completions", async (IChatCompletionService service, IModelRepository repo, HttpContext context) =>
         {
             try
             {
@@ -70,6 +70,36 @@ public static class OpenApiEndpointHandler
                     return;
                 }
 
+                // Route based on model type if Type field is specified (multi-engine routing)
+                var modelType = request.Type?.ToLower() ?? null;
+                
+                // If Type specifies image generation, route to /v1/images/generations instead
+                if (modelType == "image" || modelType == "diffusion")
+                {
+                    context.Response.StatusCode = 405;
+                    await context.Response.WriteAsJsonAsync(new ErrorResponse
+                    {
+                        message = "Image generation requires using /v1/images/generations endpoint.",
+                        code = "wrong_endpoint",
+                        type = "endpoint_not_available"
+                    });
+                    return;
+                }
+
+                // If Type specifies embedding, route to /v1/embeddings instead
+                if (modelType == "embedding")
+                {
+                    context.Response.StatusCode = 405;
+                    await context.Response.WriteAsJsonAsync(new ErrorResponse
+                    {
+                        message = "Embedding generation requires using /v1/embeddings endpoint.",
+                        code = "wrong_endpoint",
+                        type = "endpoint_not_available"
+                    });
+                    return;
+                }
+
+                // Default: text generation (no Type field or explicit "text") — use chat completion service
                 // Convert OpenAI request to our domain model
                 var messages = new List<Message>();
                 foreach (var msg in request.Messages ?? Array.Empty<OpenApiMessage>())
