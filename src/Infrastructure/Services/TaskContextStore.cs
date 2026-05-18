@@ -369,6 +369,7 @@ public class SqliteTaskContextStore : ITaskContextStore, IDisposable
             GitStatusSnapshot TEXT,
             RelevantEntitiesJson TEXT,
             CompressedContextTokenCount INTEGER NOT NULL DEFAULT 0,
+            AiAnalysisJson TEXT,
             CreatedAt TEXT NOT NULL,
             UpdatedAt TEXT NOT NULL
         );";
@@ -382,8 +383,8 @@ public class SqliteTaskContextStore : ITaskContextStore, IDisposable
         var insertSql = $@"INSERT INTO ""{DbTableName}"" (
             TaskId, Description, CurrentState, CompressedContextJson, ToolResultsCacheJson,
             ActiveFileTree, GitStatusSnapshot, RelevantEntitiesJson, CompressedContextTokenCount,
-            CreatedAt, UpdatedAt
-        ) VALUES (@taskId, @desc, @state, @ctxJson, @toolJson, @fileTree, @gitStatus, @entitiesJson, @tokenCount, @createdAt, @updatedAt);";
+            AiAnalysisJson, CreatedAt, UpdatedAt
+        ) VALUES (@taskId, @desc, @state, @ctxJson, @toolJson, @fileTree, @gitStatus, @entitiesJson, @tokenCount, @aiAnalysisJson, @createdAt, @updatedAt);";
 
         var compressedContext = snapshot.CompressedContext != null && snapshot.CompressedContext.Any() 
             ? JsonSerializer.Serialize(snapshot.CompressedContext, _jsonOptions) 
@@ -397,6 +398,29 @@ public class SqliteTaskContextStore : ITaskContextStore, IDisposable
             ? JsonSerializer.Serialize(snapshot.RelevantEntities, _jsonOptions) 
             : null;
 
+        string? aiAnalysisJson;
+        if (snapshot.AiAnalysis != null)
+        {
+            // Serialize AiAnalysisResult with its own context — handle nested ContextSegment serialization
+            var analysisDict = new Dictionary<string, object>
+            {
+                ["AnalyzedChatHistory"] = snapshot.AiAnalysis.AnalyzedChatHistory?.Any() == true 
+                    ? JsonSerializer.Serialize(snapshot.AiAnalysis.AnalyzedChatHistory, _jsonOptions)
+                    : (object?)null,
+                ["ProjectStateAtTimeOfAnalysis"] = snapshot.AiAnalysis.ProjectStateAtTimeOfAnalysis ?? (object?)null,
+                ["RelevantContextSegmentIds"] = snapshot.AiAnalysis.RelevantContextSegmentIds?.Any() == true 
+                    ? JsonSerializer.Serialize(snapshot.AiAnalysis.RelevantContextSegmentIds, _jsonOptions)
+                    : (object?)null,
+                ["AnalysisTokenCount"] = snapshot.AiAnalysis.AnalysisTokenCount,
+                ["AnalyzedAt"] = snapshot.AiAnalysis.AnalyzedAt.ToString("o")
+            };
+            aiAnalysisJson = JsonSerializer.Serialize(analysisDict, _jsonOptions);
+        }
+        else
+        {
+            aiAnalysisJson = null;
+        }
+
         using (var cmd = new SqliteCommand(insertSql, connection))
         {
             cmd.Parameters.AddWithValue("@taskId", snapshot.TaskId.ToString());
@@ -408,6 +432,7 @@ public class SqliteTaskContextStore : ITaskContextStore, IDisposable
             cmd.Parameters.AddWithValue("@gitStatus", snapshot.GitStatusSnapshot ?? (object)DBNull.Value);
             cmd.Parameters.AddWithValue("@entitiesJson", relevantEntitiesJson ?? (object)DBNull.Value);
             cmd.Parameters.AddWithValue("@tokenCount", snapshot.CompressedContextTokenCount);
+            cmd.Parameters.AddWithValue("@aiAnalysisJson", aiAnalysisJson ?? (object)DBNull.Value);
             cmd.Parameters.AddWithValue("@createdAt", snapshot.CreatedAt.ToString("o"));
             cmd.Parameters.AddWithValue("@updatedAt", snapshot.UpdatedAt.ToString("o"));
 
@@ -426,6 +451,7 @@ public class SqliteTaskContextStore : ITaskContextStore, IDisposable
             GitStatusSnapshot = @gitStatus,
             RelevantEntitiesJson = @entitiesJson,
             CompressedContextTokenCount = @tokenCount,
+            AiAnalysisJson = @aiAnalysisJson,
             UpdatedAt = @updatedAt
         WHERE TaskId = @taskId;";
 
@@ -441,6 +467,29 @@ public class SqliteTaskContextStore : ITaskContextStore, IDisposable
             ? JsonSerializer.Serialize(snapshot.RelevantEntities, _jsonOptions) 
             : null;
 
+        string? aiAnalysisJson;
+        if (snapshot.AiAnalysis != null)
+        {
+            // Serialize AiAnalysisResult with its own context — handle nested ContextSegment serialization
+            var analysisDict = new Dictionary<string, object>
+            {
+                ["AnalyzedChatHistory"] = snapshot.AiAnalysis.AnalyzedChatHistory?.Any() == true 
+                    ? JsonSerializer.Serialize(snapshot.AiAnalysis.AnalyzedChatHistory, _jsonOptions)
+                    : (object?)null,
+                ["ProjectStateAtTimeOfAnalysis"] = snapshot.AiAnalysis.ProjectStateAtTimeOfAnalysis ?? (object?)null,
+                ["RelevantContextSegmentIds"] = snapshot.AiAnalysis.RelevantContextSegmentIds?.Any() == true 
+                    ? JsonSerializer.Serialize(snapshot.AiAnalysis.RelevantContextSegmentIds, _jsonOptions)
+                    : (object?)null,
+                ["AnalysisTokenCount"] = snapshot.AiAnalysis.AnalysisTokenCount,
+                ["AnalyzedAt"] = snapshot.AiAnalysis.AnalyzedAt.ToString("o")
+            };
+            aiAnalysisJson = JsonSerializer.Serialize(analysisDict, _jsonOptions);
+        }
+        else
+        {
+            aiAnalysisJson = null;
+        }
+
         using (var cmd = new SqliteCommand(updateSql, connection))
         {
             cmd.Parameters.AddWithValue("@taskId", snapshot.TaskId.ToString());
@@ -452,13 +501,14 @@ public class SqliteTaskContextStore : ITaskContextStore, IDisposable
             cmd.Parameters.AddWithValue("@gitStatus", snapshot.GitStatusSnapshot ?? (object)DBNull.Value);
             cmd.Parameters.AddWithValue("@entitiesJson", relevantEntitiesJson ?? (object)DBNull.Value);
             cmd.Parameters.AddWithValue("@tokenCount", snapshot.CompressedContextTokenCount);
+            cmd.Parameters.AddWithValue("@aiAnalysisJson", aiAnalysisJson ?? (object)DBNull.Value);
             cmd.Parameters.AddWithValue("@updatedAt", DateTime.UtcNow.ToString("o"));
 
             await cmd.ExecuteNonQueryAsync();
         }
     }
 
-    private TaskContextSnapshot ReadSnapshotFromReader(SqliteDataReader reader)
+    private TaskContextSnapshot ReadSnapshotFromReader(SqliteDataReader reader, bool isArchived = false)
     {
         var taskId = new Guid(reader.GetString(reader.GetOrdinal("TaskId")));
         var description = reader.GetString(reader.GetOrdinal("Description"));
@@ -557,6 +607,19 @@ public class SqliteTaskContextStore : ITaskContextStore, IDisposable
             compressedContextTokenCount = 0;
         }
 
+        string? aiAnalysisJson;
+        try
+        {
+            aiAnalysisJson = reader.IsDBNull(reader.GetOrdinal("AiAnalysisJson")) 
+                ? null 
+                : (string)reader.GetValue(reader.GetOrdinal("AiAnalysisJson"));
+        }
+        catch
+        {
+            // Handle missing column in older schema
+            aiAnalysisJson = null;
+        }
+
         string createdAtStr;
         try
         {
@@ -594,6 +657,9 @@ public class SqliteTaskContextStore : ITaskContextStore, IDisposable
                 ? JsonSerializer.Deserialize<List<string>>(relevantEntitiesJson, _jsonOptions) ?? []
                 : [],
             CompressedContextTokenCount = compressedContextTokenCount,
+            AiAnalysis = aiAnalysisJson != null && !string.IsNullOrEmpty(aiAnalysisJson)
+                ? DeserializeAiAnalysisResult(aiAnalysisJson)
+                : null,
             CreatedAt = DateTime.Parse(createdAtStr),
             UpdatedAt = DateTime.Parse(updatedAtStr)
         };
@@ -725,6 +791,85 @@ public class SqliteTaskContextStore : ITaskContextStore, IDisposable
             CreatedAt = DateTime.Parse(archivedAtStr),
             UpdatedAt = DateTime.Parse(archivedAtStr)
         };
+    }
+
+    private AiAnalysisResult? DeserializeAiAnalysisResult(string json)
+    {
+        try
+        {
+            using var doc = System.Text.Json.JsonDocument.Parse(json);
+            var root = doc.RootElement;
+
+            // Parse AnalyzedChatHistory (nested JSON string containing ContextSegment[])
+            List<ContextSegment>? analyzedChatHistory = null;
+            if (root.TryGetProperty("AnalyzedChatHistory", out var chatHistoryProp) && 
+                !chatHistoryProp.ValueKind.Equals(System.Text.Json.JsonValueKind.Null))
+            {
+                var historyJson = chatHistoryProp.GetString();
+                if (!string.IsNullOrEmpty(historyJson))
+                    analyzedChatHistory = JsonSerializer.Deserialize<List<ContextSegment>>(historyJson, _jsonOptions);
+            }
+
+            // Parse ProjectStateAtTimeOfAnalysis
+            string? projectState = null;
+            if (root.TryGetProperty("ProjectStateAtTimeOfAnalysis", out var stateProp) && 
+                !stateProp.ValueKind.Equals(System.Text.Json.JsonValueKind.Null))
+            {
+                projectState = stateProp.GetString();
+            }
+
+            // Parse RelevantContextSegmentIds
+            List<string>? relevantSegmentIds = null;
+            if (root.TryGetProperty("RelevantContextSegmentIds", out var idsProp) && 
+                !idsProp.ValueKind.Equals(System.Text.Json.JsonValueKind.Null))
+            {
+                var idsJson = idsProp.GetString();
+                if (!string.IsNullOrEmpty(idsJson))
+                    relevantSegmentIds = JsonSerializer.Deserialize<List<string>>(idsJson, _jsonOptions);
+            }
+
+            // Parse AnalysisTokenCount
+            long analysisTokenCount = 0;
+            try
+            {
+                if (root.TryGetProperty("AnalysisTokenCount", out var tokenProp) && 
+                    !tokenProp.ValueKind.Equals(System.Text.Json.JsonValueKind.Null))
+                    analysisTokenCount = tokenProp.GetInt64();
+            }
+            catch
+            {
+                // Ignore parse errors for this field
+            }
+
+            // Parse AnalyzedAt
+            DateTime analyzedAt;
+            try
+            {
+                if (root.TryGetProperty("AnalyzedAt", out var timeProp) && 
+                    !timeProp.ValueKind.Equals(System.Text.Json.JsonValueKind.Null))
+                    analyzedAt = DateTime.Parse(timeProp.GetString() ?? "");
+                else
+                    analyzedAt = DateTime.UtcNow;
+            }
+            catch
+            {
+                analyzedAt = DateTime.UtcNow;
+            }
+
+            return new AiAnalysisResult
+            {
+                AnalyzedChatHistory = analyzedChatHistory,
+                ProjectStateAtTimeOfAnalysis = projectState,
+                RelevantContextSegmentIds = relevantSegmentIds ?? new(),
+                AnalysisTokenCount = analysisTokenCount,
+                AnalyzedAt = analyzedAt
+            };
+        }
+        catch
+        {
+            // Return null on parse failure to maintain backward compatibility
+            return null;
+        }
     }
 
     private Dictionary<string, ContextSegment> DeserializeToolResultsCache(string json)
