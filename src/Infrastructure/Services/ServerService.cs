@@ -147,20 +147,45 @@ public class ServerService : IServerService, IDisposable
             serverOptions.ListenAnyIP(Configuration.Port);
             if (Configuration.UseHttps)
             {
-                try
-                {
-                    var httpsCertPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "dev-cert.pfx");
-                    var keyPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "dev-key.pem");
+                var httpsCertPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "dev-cert.pfx");
+                var keyPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "dev-key.pem");
 
-                    if (File.Exists(httpsCertPath))
+                // If HTTPS is enabled but no cert exists yet, try to auto-generate one
+                if (!File.Exists(httpsCertPath))
+                {
+                    _logger?.LogInformation("HTTPS certificate not found at '{CertPath}', attempting to generate...", httpsCertPath);
+                    TryGenerateCertificate(httpsCertPath, keyPath).GetAwaiter().GetResult();
+                    
+                    // Check again after generation attempt
+                    if (!File.Exists(httpsCertPath))
                     {
-                        serverOptions.ListenAnyIP(443, opts => opts.UseHttps(httpsCertPath));
+                        _logger?.LogWarning("HTTPS certificate not found at '{CertPath}', falling back to HTTP", httpsCertPath);
                     }
                 }
-                catch
+
+                var certToUse = File.Exists(httpsCertPath) ? httpsCertPath : keyPath; // Use whichever exists (PFX or PEM+key)
+                
+                try
                 {
-                    // Fall back to HTTP if HTTPS cert is not available
-                    _logger?.LogWarning("HTTPS certificate not found at 'dev-cert.pfx', falling back to HTTP");
+                    if (File.Exists(certToUse))
+                    {
+                        _logger?.LogInformation("HTTPS certificate found at '{CertPath}'", certToUse);
+                        
+                        if (certToUse.EndsWith(".pfx", StringComparison.OrdinalIgnoreCase))
+                        {
+                            // Use PFX with password
+                            serverOptions.ListenAnyIP(443, opts => opts.UseHttps(certToUse));
+                        }
+                        else if (File.Exists(keyPath))
+                        {
+                            // Use PEM cert + key pair for Kestrel
+                            serverOptions.ListenAnyIP(443, opts => opts.UseHttps(certToUse, keyPath));
+                        }
+                    }
+                }
+                catch (Exception ex)
+                {
+                    _logger?.LogWarning(ex, "Failed to use HTTPS certificate at '{CertPath}', falling back to HTTP", certToUse);
                 }
             }
         });
@@ -995,6 +1020,68 @@ public class ServerService : IServerService, IDisposable
             NewState = newState,
             Message = message
         });
+    }
+
+    /// <summary>
+    /// Attempts to auto-generate a self-signed HTTPS certificate if one doesn't exist.
+    /// </summary>
+    private static async Task TryGenerateCertificate(string httpsCertPath, string keyPath)
+    {
+        try
+        {
+            // Use positional placeholders for string.Format: {0} = cert path, {1} = key path
+            var opensslArgs = "req -x509 -newkey rsa:2048 -keyout \"{1}\" -out \"{0}\" -days 365 -nodes -subj \"/CN=localhost\"";
+            
+            // Try various OpenSSL paths
+            var possibleOpenSSLPaths = new[] {
+                "openssl", // Check PATH first (Unix-like systems)
+                @"C:\Program Files\OpenSSL-Win64\bin\openssl.exe",
+                @"C:\Program Files (x86)\OpenSSL-Win32\bin\openssl.exe"
+            };
+
+            foreach (var opensslPath in possibleOpenSSLPaths)
+            {
+                try
+                {
+                    var psi = new ProcessStartInfo
+                    {
+                        FileName = opensslPath,
+                        Arguments = string.Format(opensslArgs, httpsCertPath.Replace("\"", "\\\""), keyPath.Replace("\"", "\\\"")),
+                        UseShellExecute = false,
+                        RedirectStandardOutput = true,
+                        RedirectStandardError = true,
+                        CreateNoWindow = true
+                    };
+
+                    using var proc = Process.Start(psi);
+                    if (proc != null)
+                    {
+                        await proc.WaitForExitAsync();
+                        if (File.Exists(httpsCertPath))
+                        {
+                            // Successfully generated — also copy the cert as .crt for wider compatibility
+                            try
+                            {
+                                var crtPath = Path.ChangeExtension(httpsCertPath, ".crt");
+                                File.Copy(httpsCertPath, crtPath, true);
+                            }
+                            catch { /* Ignore copy errors */ }
+                            return; // Success — exit early
+                        }
+                    }
+                }
+                catch
+                {
+                    // OpenSSL at this path didn't work, try next one
+                }
+            }
+
+            // All attempts failed — silently ignore since the user can manually generate a cert
+        }
+        catch
+        {
+            // Ignore any errors during auto-generation
+        }
     }
 
     // ---- Private Helpers ----
