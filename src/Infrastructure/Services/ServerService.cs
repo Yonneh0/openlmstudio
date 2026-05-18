@@ -679,17 +679,21 @@ public class ServerService : IServerService, IDisposable
 
                 var result = await pipeline.GenerateImageAsync(request);
 
-                // Return response in OpenAI-compatible format
+                // Return response in OpenAI-compatible format — data[] with B64Json, Width, Height, Seed
+                var imageDataList = new List<object>
+                {
+                    new
+                    {
+                        b64_json = Convert.ToBase64String(result.ImageBytes),
+                        width = result.Width,
+                        height = result.Height,
+                        seed = result.Seed
+                    }
+                };
+
                 var response = new
                 {
-                    data = new[]
-                    {
-                        new
-                        {
-                            url = result.DataUri,
-                            revised_prompt = request.NegativePrompt ?? ""
-                        }
-                    },
+                    data = imageDataList,
                     @object = "list",
                     created = DateTimeOffset.UtcNow.ToUnixTimeSeconds()
                 };
@@ -731,19 +735,21 @@ public class ServerService : IServerService, IDisposable
 
                 var result = await pipeline.GenerateInpaintingAsync(request);
 
-                // Return response in OpenAI-compatible format
+                // Return response in OpenAI-compatible format — data[] with b64_json, width, height, seed
+                var imageDataList = new List<object>
+                {
+                    new
+                    {
+                        b64_json = Convert.ToBase64String(result.ImageBytes),
+                        width = result.Width,
+                        height = result.Height,
+                        seed = result.Seed
+                    }
+                };
+
                 var response = new
                 {
-                    data = new[]
-                    {
-                        new
-                        {
-                            url = result.DataUri,
-                            width = request.Width > 0 ? (int?)request.Width : null,
-                            height = request.Height > 0 ? (int?)request.Height : null,
-                            seed = request.Seed
-                        }
-                    },
+                    data = imageDataList,
                     @object = "list",
                     created = DateTimeOffset.UtcNow.ToUnixTimeSeconds()
                 };
@@ -785,19 +791,21 @@ public class ServerService : IServerService, IDisposable
 
                 var result = await pipeline.GenerateOutpaintingAsync(request);
 
-                // Return response in OpenAI-compatible format
+                // Return response in OpenAI-compatible format — data[] with b64_json, width, height, seed
+                var imageDataList = new List<object>
+                {
+                    new
+                    {
+                        b64_json = Convert.ToBase64String(result.ImageBytes),
+                        width = result.Width,
+                        height = result.Height,
+                        seed = result.Seed
+                    }
+                };
+
                 var response = new
                 {
-                    data = new[]
-                    {
-                        new
-                        {
-                            url = result.DataUri,
-                            width = request.Width > 0 ? (int?)request.Width : null,
-                            height = request.Height > 0 ? (int?)request.Height : null,
-                            seed = request.Seed
-                        }
-                    },
+                    data = imageDataList,
                     @object = "list",
                     created = DateTimeOffset.UtcNow.ToUnixTimeSeconds()
                 };
