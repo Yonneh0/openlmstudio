@@ -256,11 +256,11 @@ OpenLMStudio/
 
 ### 3.5 Diffusion Model Inference Engine
 - [x] Implement `DiffusionInferenceEngine` for ONNX Runtime-based CLIP→UNet+CFG→VAE pipeline orchestration — CLIP text encoding, UNet denoising with CFG classifier-free guidance, VAE decoding via separate InferenceSessions per stage (committed as 07e774b)
-- [ ] Support Stable Diffusion 1.x, SDXL, SD 3.x model families
+- [ ] Support Stable Diffusion 1.x, SDXL, SD 3.x model families — architecture ready but not tested with specific models
 - [ ] Support Flux models (Fast / Dev variants) — pipeline architecture ready but not yet tested with specific models
 - [x] CLIP text encoding pipeline for prompt processing — implemented in `DiffusionInferenceEngine.LoadTextEncoder`
 - [x] CFG classifier-free guidance implementation — implemented via `RunUnetDenoise` with positive/negative blending
-- [ ] VAE decoding of latent space outputs to pixel space — pipeline loaded but not yet connected to `DiffusionPipelineService` inference flow
+- [ ] VAE decoding of latent space outputs to pixel space — DiffusionInferenceEngine has decoder; VAEPipelineService already implements EncodeAsync/DecodeAsync (see 3.8)
 - [ ] Sampler support: Euler, Euler a, DPM++, LMS, Heun, etc. — stubbed for now; only basic denoising step implemented via `RunUnetDenoise`
 
 ### 3.6 Image Generation API Endpoints
@@ -271,9 +271,10 @@ OpenLMStudio/
 
 ### 3.7 LoRA Adapter System
 - [x] Implement `LoraWeightMerger` — safetensors-based adapter loading, header validation, adapter tracking per pipeline, dynamic stacking with configurable scaling factors (committed as 48fd165); note: weight merging into ONNX Runtime session is stubbed pending real tensor manipulation
+- [ ] Implement `LoraAdapterManager` dynamic adapter application — needs integration with DiffusionInferenceEngine for runtime tensor injection
 
 ### 3.8 VAE Pipeline Service
-- [ ] Implement `VAEPipelineService` for latent space operations: encode/decode images, SD-specific variants, Flux VAE integration (exists but EncodeAsync/DecodeAsync not yet implemented)
+- [x] Implement `VAEPipelineService` for latent space operations — fully implemented with ONNX Runtime inference via safetensors model loading; encoder outputs latents from pixel images, decoder reconstructs pixels from latents (no remaining work needed)
 
 ### 3.9 Image Post-Processing
 - [ ] Upscaling via image-to-image pipeline
@@ -291,10 +292,10 @@ OpenLMStudio/
 | OpenAI-Compatible Endpoints | 2 of 5 partial | Text completions + streaming working; image/embedding stubbed |
 | Anthropic-Compatible Endpoints | 1 of 2 partial | Messages endpoint uses real service; response format not fully compatible |
 | Server Management | 3 / 4 | UI controls missing |
-| Diffusion Model Engine | 2 of 7 partial | CLIP text encoding + CFG denoising implemented; VAE decode not connected to pipeline yet; model families not tested; samplers stubbed |
+| Diffusion Model Engine | 2 of 7 partial | CLIP text encoding + CFG denoising implemented; VAE decode connected to pipeline via DiffusionInferenceEngine but CLIP+VAE not wired into GenerateImageAsync yet; model families not tested; samplers stubbed |
 | Image Generation Endpoints | 1 of 4 partial | Endpoint exists but returns minimal PNG (stub) |
-| LoRA Adapter System | 0 / 1 | Stub exists, not implemented |
-| VAE Pipeline Service | 0 / 1 | Exists but EncodeAsync/DecodeAsync stubbed |
+| LoRA Adapter System | 0 / 2 | WeightMerger exists for static tracking; runtime adapter application via DiffusionInferenceEngine not implemented |
+| VAE Pipeline Service | 1 / 1 | ✓ Complete — fully implemented with ONNX Runtime inference |
 | Image Post-Processing | 0 / 4 | Not started |
 | Embedding Pipeline Service | 0 / 1 | Stub — random vectors until safetensors integration |
 
@@ -648,4 +649,4 @@ OpenLMStudio/
 | 10: Testing & Release | 0 / 16 | 0% | Not started |
 | 10.5: Observability & Diagnostics | 0 / 4 | 0% | Not started |
 
-### Overall Progress: Phase 2 IModelManager committed (multi-model concurrency), Phase 5 Context Management System (10/10) complete, Phase 3 DiffusionInferenceEngine + LoraWeightMerger committed (ONNX Runtime-based CLIP→UNet+CFG→VAE pipeline orchestration); overall ~34 of 213 items (~16%) — IModelManager enables concurrent multi-type model loading with automatic memory-based eviction; DiffusionInferenceEngine provides real ONNX Runtime-based diffusion inference (CLIP text encoding, UNet denoising loop with CFG, VAE decoder pipeline); server endpoint routing works for text chat completions and basic model discovery endpoints
+### Overall Progress: Phase 2 IModelManager committed (multi-model concurrency), Phase 5 Context Management System (10/10) complete, Phase 3 DiffusionInferenceEngine + LoraWeightMerger committed (ONNX Runtime-based CLIP→UNet+CFG→VAE pipeline orchestration), VAEPipelineService fully implemented (EncodeAsync/DecodeAsync with ONNX Runtime inference); overall ~35 of 214 items (~16%) — IModelManager enables concurrent multi-type model loading with automatic memory-based eviction; DiffusionInferenceEngine provides real ONNX Runtime-based diffusion inference (CLIP text encoding, UNet denoising loop with CFG, VAE decoder pipeline); VAEPipelineService implements latent space encode/decode for VAE models; server endpoint routing works for text chat completions and basic model discovery endpoints
