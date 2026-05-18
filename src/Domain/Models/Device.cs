@@ -45,7 +45,16 @@ public record Device(
             new Dictionary<string, string> { { "cores", coreCount.ToString() } });
 
     /// <summary>
-    /// Available memory for model loading.
+    /// Available memory for model loading. For GPUs, this is the free VRAM (TotalVRAM - UsedVRAM).
+    /// For CPUs, this returns the total system RAM tracked by DeviceMonitor — updated externally via SetAvailableMemoryOverride().
     /// </summary>
-    public long AvailableMemory => Type == "GPU" ? MemoryBytes - UsedMemoryBytes : long.MaxValue;
+    public long AvailableMemory => Type == "GPU" ? MemoryBytes - UsedMemoryBytes : _availableMemoryOverride ?? MemoryBytes;
+
+    private long? _availableMemoryOverride;
+
+    /// <summary>
+    /// Overrides the available memory value for CPU devices with actual system RAM data from DeviceMonitor.
+    /// For GPU devices, AvailableMemory is always computed as TotalVRAM - UsedVRAM and this override has no effect.
+    /// </summary>
+    public void SetAvailableMemoryOverride(long bytes) => _availableMemoryOverride = bytes;
 }

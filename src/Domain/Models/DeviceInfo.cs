@@ -1,3 +1,6 @@
+using System.Collections.Generic;
+using System.Linq;
+
 namespace OpenLMStudio.Domain.Models;
 
 /// <summary>
@@ -66,6 +69,18 @@ public record GpuDevice
         Vendor = vendor ?? throw new ArgumentNullException(nameof(vendor));
         TotalMemoryBytes = totalMemoryBytes;
     }
+
+    /// <summary>
+    /// Creates a GPU device instance with CUDA/Rocm support flags pre-configured.
+    /// </summary>
+    public static GpuDevice CreateCudaEnabled(int id, string name, long totalMemoryBytes)
+        => new(id, name, "NVIDIA", totalMemoryBytes) { HasCudaSupport = true };
+
+    /// <summary>
+    /// Creates a GPU device instance with ROCm support flags pre-configured.
+    /// </summary>
+    public static GpuDevice CreateRocmEnabled(int id, string name, long totalMemoryBytes)
+        => new(id, name, "AMD", totalMemoryBytes) { HasRocmSupport = true };
 
     /// <summary>
     /// Creates a default placeholder GPU device for testing.

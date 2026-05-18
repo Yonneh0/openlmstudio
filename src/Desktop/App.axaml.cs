@@ -118,12 +118,12 @@ public partial class App : Avalonia.Application
 
         // Create and show the main window — Avalonia doesn't auto-create a MainWindow like WPF does.
         // We must create it manually here after DI is set up.
-        if (this.ApplicationLifetime is IClassicDesktopStyleApplicationLifetime desktop)
+        if (this.ApplicationLifetime is IClassicDesktopStyleApplicationLifetime desktop && ApplicationServices != null)
         {
             try
             {
                 System.Diagnostics.Debug.WriteLine("[App] Creating main window");
-                var mainWindow = CreateAndShowMainWindow(ApplicationServices!);
+                var mainWindow = CreateAndShowMainWindow(ApplicationServices);
                 System.Diagnostics.Debug.WriteLine("[App] Showing main window");
                 mainWindow.Show();
                 System.Diagnostics.Debug.WriteLine("[App] Main window shown successfully");

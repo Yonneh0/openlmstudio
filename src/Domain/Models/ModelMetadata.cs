@@ -104,7 +104,7 @@ public class ModelMetadata : IDisposable
     /// <summary>
     /// Model format/quantization type (e.g., "Q4_0", "Q8_0", "F16") - alias for Quantization.
     /// </summary>
-    [Obsolete("Use Quantization instead. Kept for OpenAI API compatibility.")]
+    [Obsolete("Use Quantization instead of Format. Kept for backward compatibility with OpenAI API consumers that expect 'format' field in response payloads.")]
     public string Format => Quantization;
 
     /// <summary>

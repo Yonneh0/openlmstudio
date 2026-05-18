@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using System.Threading;
 using Microsoft.Extensions.Logging;
 using OpenLMStudio.Application.Interfaces;
 using OpenLMStudio.Domain.Models;
@@ -204,9 +205,89 @@ public class WindowsDeviceMonitor : IDeviceMonitor, IDisposable
         try
         {
             var gpus = GetGpus().ToList();
-            var cpu = Domain.Models.CpuInfo.CreateDefaultPlaceholder();
 
-            _cachedDeviceInfo = new DeviceInfo(cpu, gpus);
+            // Try to get CPU info via WMI (Windows Management Instrumentation)
+            CpuInfo cpuInfo;
+            try
+            {
+                var coreCount = 0;
+
+                // Get physical cores
+                try
+                {
+                    var procSearcher = new System.Management.ManagementObjectSearcher(
+                        "SELECT NumberOfCores FROM Win32_Processor");
+                    foreach (var proc in procSearcher.Get())
+                    {
+                        coreCount += Convert.ToInt32(((System.Management.ManagementObject)proc)["NumberOfCores"]);
+                    }
+                }
+                catch { /* Ignore, fall through to logical processor count */ }
+
+                // Get logical processors if physical cores not available or as fallback
+                if (coreCount == 0)
+                {
+                    try
+                    {
+                        var searcher = new System.Management.ManagementObjectSearcher(
+                            "SELECT NumberOfLogicalProcessors FROM Win32_Processor");
+                        foreach (var proc in searcher.Get())
+                        {
+                            coreCount += Convert.ToInt32(((System.Management.ManagementObject)proc)["NumberOfLogicalProcessors"]);
+                        }
+                    }
+                    catch { /* Ignore, fall through to default */ }
+                }
+
+                // Get CPU model name
+                string cpuModel = "Unknown CPU";
+                try
+                {
+                    var moSearcher = new System.Management.ManagementObjectSearcher(
+                        "SELECT Name FROM Win32_Processor");
+                    foreach (var proc in moSearcher.Get())
+                    {
+                        cpuModel = ((System.Management.ManagementObject)proc)["Name"]?.ToString() ?? "Unknown CPU";
+                        break;
+                    }
+                }
+                catch
+                {
+                    cpuModel = "Unknown CPU";
+                }
+
+                // Get available RAM via WMI
+                long availableRamBytes = 0;
+                try
+                {
+                    var ramSearcher = new System.Management.ManagementObjectSearcher(
+                        "SELECT TotalVisibleMemorySize FROM Win32_OperatingSystem");
+                    foreach (var mo in ramSearcher.Get())
+                    {
+                        var device = (System.Management.ManagementObject)mo;
+                        long totalKb = Convert.ToInt64(device["TotalVisibleMemorySize"]);
+                        availableRamBytes = totalKb * 1024L; // KB to bytes
+                    }
+                }
+                catch
+                {
+                    availableRamBytes = 0;
+                }
+
+                cpuInfo = new CpuInfo(cpuModel, coreCount, coreCount, availableRamBytes);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "Failed to query CPU information via WMI");
+                cpuInfo = Domain.Models.CpuInfo.CreateDefaultPlaceholder();
+            }
+
+            // Update CPU device with actual system RAM for model offloading decisions
+            var cpuDevice = Device.CreateCpu(cpuInfo.Model, cpuInfo.PhysicalCoreCount);
+            if (cpuInfo.AvailableMemoryBytes > 0)
+                cpuDevice.SetAvailableMemoryOverride(cpuInfo.AvailableMemoryBytes);
+
+            _cachedDeviceInfo = new DeviceInfo(cpuInfo, gpus);
         }
         catch (Exception ex)
         {
