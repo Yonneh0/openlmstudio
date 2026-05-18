@@ -384,15 +384,7 @@
                                 <TextBlock Text="Context Budget:" Foreground="{StaticResource TextPrimary}" Padding="12,4"/>
                                 
                                 <!-- Visual budget bar -->
-                                <Border x:Name="ContextBudgetBar" Background="#3A3A3E" CornerRadius="4" Height="8" Margin="8,4,8,8">
-                                    <Border.Background>
-                                        <LinearGradientBrush StartPoint="0,0.5" EndPoint="1,0.5">
-                                            <GradientStop Color="{StaticResource AccentGreen}" Offset="0"/>
-                                            <GradientStop Color="{StaticResource AccentOrange}" Offset="0.75"/>
-                                            <GradientStop Color="{StaticResource AccentRed}" Offset="1"/>
-                                        </LinearGradientBrush>
-                                    </Border.Background>
-                                </Border>
+                                <Border x:Name="ContextBudgetBar" Background="#3A3A3E" CornerRadius="4" Height="8" Margin="8,4,8,8"/>
                                 
                                 <!-- Budget text info -->
                                 <TextBlock x:Name="ContextBudgetText" Text="Budget: 0 / 4096 tokens used" Foreground="{StaticResource TextSecondary}" Padding="8,0" FontSize="11"/>
@@ -833,7 +825,9 @@
                 <!-- Right sidebar tabs -->
                 <StackPanel DockPanel.Dock="Top" Orientation="Horizontal" Margin="0,0,0,8">
                     <RadioButton x:Name="RightContextTabButton" Content="Context" Classes="settingsTab" IsChecked="True"/>
+                    <TextBlock Text="" Foreground="#CCCCCC" FontSize="12" Padding="4,6"/>
                     <RadioButton x:Name="RightServerTabButton" Content="Server" Classes="settingsTab"/>
+                    <TextBlock Text="" Foreground="#CCCCCC" FontSize="12" Padding="4,6"/>
                     <RadioButton x:Name="RightDevicesTabButton" Content="Devices" Classes="settingsTab"/>
                 </StackPanel>
 
@@ -845,13 +839,9 @@
                             <TextBlock Text="Context Budget:" FontWeight="SemiBold" Foreground="#4FC3F7" Padding="8,8"/>
                             
                             <!-- Visual budget bar -->
-                            <Border x:Name="RightBudgetBar" Background="#3A3A3E" CornerRadius="4" Height="10" Margin="8,4">
+                            <Border x:Name="RightBudgetBar" CornerRadius="4" Height="10" Margin="8,4">
                                 <Border.Background>
-                                    <LinearGradientBrush StartPoint="0,0.5" EndPoint="1,0.5">
-                                        <GradientStop Color="#4CAF50" Offset="0"/>
-                                        <GradientStop Color="#FF9800" Offset="0.75"/>
-                                        <GradientStop Color="#FF6B6B" Offset="1"/>
-                                    </LinearGradientBrush>
+                                    <SolidColorBrush Color="#3A3A3E"/>
                                 </Border.Background>
                             </Border>
                             
