@@ -3,6 +3,7 @@ using System.Linq;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Microsoft.ML.OnnxRuntime;
+using Microsoft.ML.OnnxRuntime.Tensors;
 using OpenLMStudio.Application.Interfaces;
 using OpenLMStudio.Domain.Models;
 
@@ -63,7 +64,7 @@ public class EmbeddingPipelineService : IEmbeddingPipelineService, IDisposable
 
     public async Task<float[]> GenerateAsync(string modelId, string inputText, CancellationToken ct = default)
     {
-        // Ensure model is loaded (ONNX session for future real inference).
+        // Ensure model is loaded.
         if (!_loadedSessions.ContainsKey(modelId))
         {
             var wasLoaded = await LoadModelAsync(modelId);
@@ -73,20 +74,120 @@ public class EmbeddingPipelineService : IEmbeddingPipelineService, IDisposable
 
         _logger?.LogDebug("Generating embedding for model '{ModelId}' with input text: {InputText}", modelId, inputText);
 
-        // TODO: Real ONNX inference requires safetensors tensor manipulation and actual embedding models.
-        // Placeholder: generate random normalized vector of default dimensionality.
-        var rng = new Random();
-        var vector = new float[DefaultEmbeddingDimension];
-        for (int i = 0; i < DefaultEmbeddingDimension; i++)
-            vector[i] = (float)rng.NextDouble() * 2f - 1f;
+        var session = _loadedSessions[modelId];
+        if (session == null)
+        {
+            _logger?.LogError("ONNX Runtime session is null for model '{ModelId}'", modelId);
+            throw new InvalidOperationException($"ONNX Runtime session not available for embedding model '{modelId}'.");
+        }
+
+        // Tokenize input text into token IDs.
+        int[] tokenIds = TokenizeInput(inputText, session.InputMetadata.Keys.First());
+
+        if (tokenIds.Length == 0)
+        {
+            _logger?.LogWarning("Tokenized input is empty for model '{ModelId}'", modelId);
+            return new float[DefaultEmbeddingDimension];
+        }
+
+        // Create input tensor [1, seq_length] with float values of token IDs.
+        float[] tokenValues = new float[tokenIds.Length];
+        for (int i = 0; i < tokenIds.Length; i++)
+            tokenValues[i] = tokenIds[i];
+
+        var dims2d = new int[] { 1, tokenIds.Length };
+        var inputTensor = new DenseTensor<float>(tokenValues, dims2d);
+
+        // Build input values from ONNX Runtime session metadata.
+        var inputNames = session.InputMetadata.Keys.ToList();
+        var outputNames = session.OutputMetadata.Keys.ToList();
+
+        if (inputNames.Count == 0 || outputNames.Count == 0)
+        {
+            _logger?.LogError("ONNX Runtime session for embedding model '{ModelId}' has no valid I/O tensors", modelId);
+            throw new InvalidOperationException($"ONNX Runtime session for embedding model '{modelId}' has no valid I/O tensors.");
+        }
+
+        var inputValues = new List<NamedOnnxValue>();
+        inputValues.Add(NamedOnnxValue.CreateFromTensor(inputNames[0], inputTensor));
+
+        // Also add attention mask if the model expects it.
+        bool hasAttentionMask = session.InputMetadata.Keys.Any(k => k.Contains("attention", StringComparison.OrdinalIgnoreCase) || k.Contains("mask", StringComparison.OrdinalIgnoreCase));
+        if (hasAttentionMask)
+        {
+            var maskNames = session.InputMetadata.Keys.Where(k => k.Contains("attention", StringComparison.OrdinalIgnoreCase) || k.Contains("mask", StringComparison.OrdinalIgnoreCase)).ToList();
+            float[] attentionMaskValues = new float[tokenIds.Length];
+            for (int i = 0; i < tokenIds.Length; i++)
+                attentionMaskValues[i] = 1f; // All tokens are part of the sequence.
+
+            int[] dims3d = new[] { 1, tokenIds.Length };
+            inputValues.Add(NamedOnnxValue.CreateFromTensor(maskNames[0], new DenseTensor<float>(attentionMaskValues, dims3d)));
+        }
+
+        // Also add position IDs if the model expects them.
+        bool hasPositionIds = session.InputMetadata.Keys.Any(k => k.Contains("position", StringComparison.OrdinalIgnoreCase));
+        if (hasPositionIds)
+        {
+            var posNames = session.InputMetadata.Keys.Where(k => k.Contains("position", StringComparison.OrdinalIgnoreCase)).ToList();
+            float[] positions = new float[tokenIds.Length];
+            for (int i = 0; i < tokenIds.Length; i++)
+                positions[i] = i;
+
+            int[] dims4d = new[] { 1, tokenIds.Length };
+            inputValues.Add(NamedOnnxValue.CreateFromTensor(posNames[0], new DenseTensor<float>(positions, dims4d)));
+        }
+
+        // Run ONNX inference.
+        var results = session.Run(inputValues.ToArray(), outputNames);
+
+        using var result = results.First(r => r.Name == outputNames[outputNames.Count - 1]); // Use last output (typically the embedding).
+        float[] embeddingData = result.AsEnumerable<float>().ToArray();
+
+        // Extract the actual embedding dimension from the output tensor shape.
+        var outputNode = session.OutputMetadata[outputNames.Last()];
+        int[] dims3d2 = outputNode.Dimensions.Cast<int>().ToArray();
+        int actualDimension;
+
+        if (dims3d2.Length == 2)
+            // [batch, embedding_dim] — take first batch item.
+            actualDimension = dims3d2[1];
+        else if (dims3d2.Length == 3)
+            // [batch, seq_len, embedding_dim] — take mean over sequence dimension.
+            actualDimension = dims3d2[2];
+        else
+            // Unknown shape — use default or the last dimension.
+            actualDimension = outputNode.Dimensions.Length > 0 ? outputNode.Dimensions.Last() : DefaultEmbeddingDimension;
+
+        if (embeddingData.Length != actualDimension && dims3d2.Length == 2)
+        {
+            _logger?.LogWarning("ONNX Runtime embedding output size ({OutputSize}) doesn't match dimension ({Expected}), using default", actualDimension, embeddingData.Length);
+            return embeddingData; // Return whatever we got.
+        }
+
+        if (dims3d2.Length == 3)
+        {
+            // Mean-pool over the sequence dimension: [1, seq_len, dim] → [dim].
+            var pooled = new float[actualDimension];
+            for (int i = 0; i < actualDimension && i < embeddingData.Length / dims3d2[1]; i++)
+                pooled[i] = embeddingData.Skip(i).Take(embeddingData.Length / dims3d2[1]).Sum() / dims3d2[1];
+
+            // Normalize the vector to unit length.
+            var magnitude = Math.Sqrt(pooled.Sum(v => v * v));
+            if (magnitude > 0)
+                for (int i = 0; i < actualDimension; i++)
+                    pooled[i] /= (float)magnitude;
+
+            return pooled;
+        }
 
         // Normalize the vector to unit length.
-        var magnitude = Math.Sqrt(vector.Sum(v => v * v));
-        if (magnitude > 0)
-            for (int i = 0; i < DefaultEmbeddingDimension; i++)
-                vector[i] /= (float)magnitude;
+        var magnitude2 = Math.Sqrt(embeddingData.Sum(v => v * v));
+        if (magnitude2 > 0)
+            for (int i = 0; i < embeddingData.Length; i++)
+                embeddingData[i] /= (float)magnitude2;
 
-        return vector;
+        _logger?.LogDebug("Generated {Dimension}-dimensional embedding for model '{ModelId}'", actualDimension, modelId);
+        return embeddingData;
     }
 
     public async Task<float[][]> GenerateBatchAsync(string modelId, IReadOnlyList<string> inputs, CancellationToken ct = default)
@@ -101,24 +202,151 @@ public class EmbeddingPipelineService : IEmbeddingPipelineService, IDisposable
 
         _logger?.LogDebug("Generating batch embeddings for model '{ModelId}' with {Count} inputs", modelId, inputs.Count);
 
-        // TODO: Real ONNX inference requires safetensors tensor manipulation and actual embedding models.
-        var rng = new Random();
-        var results = new float[inputs.Count][];
+        var session = _loadedSessions[modelId];
+        if (session == null)
+            throw new InvalidOperationException($"ONNX Runtime session not available for embedding model '{modelId}'.");
 
-        for (int i = 0; i < inputs.Count; i++)
+        // Build batch input tensor [batch_size, seq_length] with float values of token IDs.
+        var allTokenIds = inputs.Select(input => TokenizeInput(input, session.InputMetadata.Keys.First())).ToList();
+        int maxSeqLength = allTokenIds.Max(ids => ids.Length);
+
+        if (maxSeqLength == 0)
+            return Enumerable.Repeat(new float[DefaultEmbeddingDimension], inputs.Count).ToArray();
+
+        // Pad each token array to the same length for batch tensor creation.
+        var paddedTokens = new List<int[]>();
+        foreach (var ids in allTokenIds)
         {
-            results[i] = new float[DefaultEmbeddingDimension];
-            for (int j = 0; j < DefaultEmbeddingDimension; j++)
-                results[i][j] = (float)rng.NextDouble() * 2f - 1f;
-
-            // Normalize the vector to unit length.
-            var magnitude = Math.Sqrt(results[i].Sum(v => v * v));
-            if (magnitude > 0)
-                for (int j = 0; j < DefaultEmbeddingDimension; j++)
-                    results[i][j] /= (float)magnitude;
+            if (ids.Length == maxSeqLength)
+                paddedTokens.Add(ids);
+            else
+            {
+                int[] padded = new int[maxSeqLength];
+                for (int i = 0; i < ids.Length; i++)
+                    padded[i] = ids[i];
+                // Pad with zeros (padding token).
+                paddedTokens.Add(padded);
+            }
         }
 
-        return results;
+        float[] batchTokenValues = new float[inputs.Count * maxSeqLength];
+        for (int b = 0; b < inputs.Count; b++)
+        {
+            int offset = b * maxSeqLength;
+            for (int i = 0; i < maxSeqLength; i++)
+                batchTokenValues[offset + i] = paddedTokens[b][i];
+        }
+
+        var dims2d = new int[] { inputs.Count, maxSeqLength };
+        var inputTensor = new DenseTensor<float>(batchTokenValues, dims2d);
+
+        // Build input values from ONNX Runtime session metadata.
+        var inputNames = session.InputMetadata.Keys.ToList();
+        var outputNames = session.OutputMetadata.Keys.ToList();
+
+        if (inputNames.Count == 0 || outputNames.Count == 0)
+            throw new InvalidOperationException($"ONNX Runtime session for embedding model '{modelId}' has no valid I/O tensors.");
+
+        var inputValues = new List<NamedOnnxValue>();
+        inputValues.Add(NamedOnnxValue.CreateFromTensor(inputNames[0], inputTensor));
+
+        // Also add attention mask if the model expects it.
+        bool hasAttentionMask = session.InputMetadata.Keys.Any(k => k.Contains("attention", StringComparison.OrdinalIgnoreCase) || k.Contains("mask", StringComparison.OrdinalIgnoreCase));
+        if (hasAttentionMask)
+        {
+            var maskNames = session.InputMetadata.Keys.Where(k => k.Contains("attention", StringComparison.OrdinalIgnoreCase) || k.Contains("mask", StringComparison.OrdinalIgnoreCase)).ToList();
+            float[] attentionMaskValues = new float[inputs.Count * maxSeqLength];
+            for (int b = 0; b < inputs.Count; b++)
+            {
+                int offset = b * maxSeqLength;
+                for (int i = 0; i < allTokenIds[b].Length; i++)
+                    attentionMaskValues[offset + i] = 1f; // Real tokens have mask=1, padding has mask=0.
+            }
+
+            int[] dims3d = new[] { inputs.Count, maxSeqLength };
+            inputValues.Add(NamedOnnxValue.CreateFromTensor(maskNames[0], new DenseTensor<float>(attentionMaskValues, dims3d)));
+        }
+
+        // Also add position IDs if the model expects them.
+        bool hasPositionIds = session.InputMetadata.Keys.Any(k => k.Contains("position", StringComparison.OrdinalIgnoreCase));
+        if (hasPositionIds)
+        {
+            var posNames = session.InputMetadata.Keys.Where(k => k.Contains("position", StringComparison.OrdinalIgnoreCase)).ToList();
+            float[] positions = new float[inputs.Count * maxSeqLength];
+            for (int b = 0; b < inputs.Count; b++)
+            {
+                int offset = b * maxSeqLength;
+                for (int i = 0; i < maxSeqLength; i++)
+                    positions[offset + i] = i;
+            }
+
+            int[] dims4d = new[] { inputs.Count, maxSeqLength };
+            inputValues.Add(NamedOnnxValue.CreateFromTensor(posNames[0], new DenseTensor<float>(positions, dims4d)));
+        }
+
+        // Run ONNX inference.
+        var results = session.Run(inputValues.ToArray(), outputNames);
+
+        using var result = results.First(r => r.Name == outputNames[outputNames.Count - 1]);
+        float[] embeddingData = result.AsEnumerable<float>().ToArray();
+
+        // Extract the actual embedding dimension from the output tensor shape.
+        var outputNode = session.OutputMetadata[outputNames.Last()];
+        int[] dims3d2 = outputNode.Dimensions.Cast<int>().ToArray();
+        int actualDimension;
+
+        if (dims3d2.Length == 2)
+            // [batch_size, embedding_dim]
+            actualDimension = dims3d2[1];
+        else if (dims3d2.Length == 3)
+            // [batch_size, seq_len, embedding_dim] — mean-pool over sequence dimension.
+            actualDimension = dims3d2[2];
+        else
+            // Unknown shape — use default or the last dimension.
+            actualDimension = outputNode.Dimensions.Length > 0 ? outputNode.Dimensions.Last() : DefaultEmbeddingDimension;
+
+        var batchResults = new float[inputs.Count][];
+
+        if (dims3d2.Length == 3)
+        {
+            for (int b = 0; b < inputs.Count; b++)
+            {
+                int offset = b * maxSeqLength * actualDimension;
+                // Mean-pool over the sequence dimension.
+                var pooled = new float[actualDimension];
+                for (int i = 0; i < actualDimension && i < embeddingData.Length / inputs.Count / maxSeqLength; i++)
+                    pooled[i] = embeddingData.Skip(offset + i).Take(embeddingData.Length / inputs.Count / maxSeqLength).Sum() / maxSeqLength;
+
+                // Normalize the vector to unit length.
+                var magnitude = Math.Sqrt(pooled.Sum(v => v * v));
+                if (magnitude > 0)
+                    for (int j = 0; j < actualDimension; j++)
+                        pooled[j] /= (float)magnitude;
+
+                batchResults[b] = pooled;
+            }
+        }
+        else
+        {
+            for (int b = 0; b < inputs.Count; b++)
+            {
+                int offset = b * actualDimension;
+                var vector = new float[actualDimension];
+                for (int i = 0; i < actualDimension && offset + i < embeddingData.Length; i++)
+                    vector[i] = embeddingData[offset + i];
+
+                // Normalize the vector to unit length.
+                var magnitude2 = Math.Sqrt(vector.Sum(v => v * v));
+                if (magnitude2 > 0)
+                    for (int j = 0; j < actualDimension; j++)
+                        vector[j] /= (float)magnitude2;
+
+                batchResults[b] = vector;
+            }
+        }
+
+        _logger?.LogDebug("Generated {Count} embeddings of dimension {Dim}", inputs.Count, actualDimension);
+        return batchResults;
     }
 
     public async Task<IEnumerable<MultiModalModelMetadata>> GetAvailableModelsAsync()
@@ -275,5 +503,38 @@ public class EmbeddingPipelineService : IEmbeddingPipelineService, IDisposable
         foreach (var session in _loadedSessions.Values.Where(s => s != null))
             session?.Dispose();
         _loadedSessions.Clear();
+    }
+
+    // ---- Private helpers ----
+
+    /// <summary>
+    /// Tokenizes input text into token IDs for ONNX Runtime inference.
+    /// Uses simple character-level encoding as a placeholder — real implementation would use the model's tokenizer.
+    /// </summary>
+    private static int[] TokenizeInput(string inputText, string firstInputName)
+    {
+        if (string.IsNullOrEmpty(inputText))
+            return Array.Empty<int>();
+
+        // Simple character-level encoding for demonstration.
+        var tokens = new List<int>();
+
+        // Check if the model expects special BOS/EOS markers (common for transformer models).
+        bool needsBosEos = firstInputName.Contains("input", StringComparison.OrdinalIgnoreCase) ||
+            firstInputName.Contains("token", StringComparison.OrdinalIgnoreCase);
+        if (needsBosEos)
+        {
+            tokens.Add(102); // BOS marker for CLIP/BERT-like models.
+        }
+
+        foreach (char ch in inputText)
+            tokens.Add((int)ch);
+
+        if (needsBosEos)
+        {
+            tokens.Add(103); // EOS marker for CLIP/BERT-like models.
+        }
+
+        return tokens.ToArray();
     }
 }

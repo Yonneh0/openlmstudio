@@ -6,6 +6,16 @@ using OpenLMStudio.Domain.Models;
 namespace OpenLMStudio.Application.Interfaces;
 
 /// <summary>
+/// Represents a LoRA adapter weight tensor delta for runtime application to ONNX Runtime inference.
+/// The Weight property is the scaling factor applied: output += Weight * DeltaData.
+/// </summary>
+public record LoraDeltaTensor(
+    string TensorName,
+    float[] DeltaData,
+    int[] Shape,
+    double Weight = 1.0);
+
+/// <summary>
 /// Defines the sampling algorithm used for diffusion image generation.
 /// Each sampler has different noise scheduling and convergence properties.
 /// </summary>

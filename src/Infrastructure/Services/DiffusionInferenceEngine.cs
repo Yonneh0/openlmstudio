@@ -2,8 +2,8 @@ using System.Buffers.Binary;
 using Microsoft.Extensions.Logging;
 using Microsoft.ML.OnnxRuntime;
 using Microsoft.ML.OnnxRuntime.Tensors;
+using OpenLMStudio.Application.Interfaces;
 using OpenLMStudio.Application.Types;
-using OpenLMStudio.Domain.Models;
 
 namespace OpenLMStudio.Infrastructure.Services;
 
@@ -113,6 +113,17 @@ public class DiffusionInferenceEngine : IDisposable
     public DenseTensor<float>? RunUnetDenoise(string pipelineType, DenseTensor<float> latents, DenseTensor<float> textEmbedding,
         double cfgScale, int stepIndex, int totalSteps)
     {
+        return RunUnetDenoise(pipelineType, latents, textEmbedding, cfgScale, stepIndex, totalSteps, null);
+    }
+
+    /// <summary>
+    /// Runs the UNet denoising loop with CFG classifier-free guidance.
+    /// If LoRA delta tensors are provided, applies them to the UNet output after each step.
+    /// Returns latent space tensor [1, channels, height/8, width/8].
+    /// </summary>
+    public DenseTensor<float>? RunUnetDenoise(string pipelineType, DenseTensor<float> latents, DenseTensor<float> textEmbedding,
+        double cfgScale, int stepIndex, int totalSteps, IReadOnlyList<LoraDeltaTensor>? loraDeltas)
+    {
         if (!_unetSessions.TryGetValue(pipelineType, out var unetSession) || unetSession == null)
             return null;
 
@@ -139,11 +150,27 @@ public class DiffusionInferenceEngine : IDisposable
                     {
                         blended[i] = unconditionedOutput[i] + (float)(scale * (conditionedOutput[i] - unconditionedOutput[i]));
                     }
+
+                    if (loraDeltas != null && loraDeltas.Count > 0)
+                    {
+                        // Apply LoRA delta tensors — add weighted deltas to the UNet output.
+                        return ApplyLoraDeltas(blended, loraDeltas);
+                    }
+
                     return blended;
                 }
 
                 // If unconditional prediction failed, fall back to conditional only
+                if (loraDeltas != null && loraDeltas.Count > 0 && conditionedOutput != null)
+                    return ApplyLoraDeltas(conditionedOutput, loraDeltas);
+
                 return conditionedOutput;
+            }
+
+            if (loraDeltas != null && loraDeltas.Count > 0 && conditionedOutput != null)
+            {
+                // Apply LoRA delta tensors — add weighted deltas to the UNet output.
+                return ApplyLoraDeltas(conditionedOutput, loraDeltas);
             }
 
             return conditionedOutput;
@@ -347,6 +374,41 @@ public class DiffusionInferenceEngine : IDisposable
             tensor[i] = data[i];
 
         return tensor;
+    }
+
+    /// <summary>
+    /// Applies LoRA delta tensors to a UNet denoising output. Each delta is added as: output += weight * delta.
+    /// </summary>
+    private DenseTensor<float>? ApplyLoraDeltas(DenseTensor<float> output, IReadOnlyList<LoraDeltaTensor> loraDeltas)
+    {
+        try
+        {
+            var result = new DenseTensor<float>(output.Dimensions);
+
+            // Start with a copy of the original output.
+            for (int i = 0; i < output.Length; i++)
+                result[i] = output[i];
+
+            // Apply each LoRA delta tensor — accumulate weighted deltas into the output.
+            foreach (var lora in loraDeltas)
+            {
+                if (lora.DeltaData == null || lora.DeltaData.Length == 0)
+                    continue;
+
+                // Skip if sizes don't match — clamp to fit the output tensor size (convert long → int for safety).
+                int applyCount = unchecked((int)Math.Min((long)lora.DeltaData.Length, (long)result.Length));
+                double weightScaled = lora.Weight;
+                for (int i = 0; i < applyCount; i++)
+                    result[i] += (float)(weightScaled * lora.DeltaData[i]);
+            }
+
+            return result;
+        }
+        catch (Exception ex)
+        {
+            _logger?.LogError(ex, "Failed to apply LoRA delta tensors to UNet output");
+            return null;
+        }
     }
 
     // ---- Text encoding helpers for RunTextEncoder ----
