@@ -50,6 +50,8 @@ public class ContextSegment : IDisposable
 /// <summary>Represents an agentic task state (Planning, Acting, etc.).</summary>
 public enum AgentState
 {
+    /// <summary>Agent has not yet begun working on this task.</summary>
+    NotStarted,
     /// <summary>Agent is planning the approach for this task.</summary>
     Planning,
     /// <summary>Agent is actively executing actions.</summary>
