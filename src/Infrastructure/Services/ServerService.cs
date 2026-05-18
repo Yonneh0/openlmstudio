@@ -155,7 +155,7 @@ public class ServerService : IServerService, IDisposable
                 {
                     _logger?.LogInformation("HTTPS certificate not found at '{CertPath}', attempting to generate...", httpsCertPath);
                     TryGenerateCertificate(httpsCertPath, keyPath).GetAwaiter().GetResult();
-                    
+
                     // Check again after generation attempt
                     if (!File.Exists(httpsCertPath))
                     {
@@ -164,13 +164,13 @@ public class ServerService : IServerService, IDisposable
                 }
 
                 var certToUse = File.Exists(httpsCertPath) ? httpsCertPath : keyPath; // Use whichever exists (PFX or PEM+key)
-                
+
                 try
                 {
                     if (File.Exists(certToUse))
                     {
                         _logger?.LogInformation("HTTPS certificate found at '{CertPath}'", certToUse);
-                        
+
                         if (certToUse.EndsWith(".pfx", StringComparison.OrdinalIgnoreCase))
                         {
                             // Use PFX with password
@@ -1031,7 +1031,7 @@ public class ServerService : IServerService, IDisposable
         {
             // Use positional placeholders for string.Format: {0} = cert path, {1} = key path
             var opensslArgs = "req -x509 -newkey rsa:2048 -keyout \"{1}\" -out \"{0}\" -days 365 -nodes -subj \"/CN=localhost\"";
-            
+
             // Try various OpenSSL paths
             var possibleOpenSSLPaths = new[] {
                 "openssl", // Check PATH first (Unix-like systems)
