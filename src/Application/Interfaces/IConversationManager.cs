@@ -18,6 +18,13 @@ public class ServerConfiguration
     public int TimeoutSeconds { get; set; } = 60;
     public bool AllowCors { get; set; } = true;
     public string ApiKey { get; set; } = string.Empty;
+
+    // Rate limiting settings (Phase 3.4)
+    public bool EnableRateLimiting { get; set; } = false;
+    public int MaxRequestsPerMinute { get; set; } = 60;
+
+    // CORS settings per origin (when AllowCors is true)
+    public List<string> AllowedOrigins { get; set; } = new();
 }
 
 /// <summary>

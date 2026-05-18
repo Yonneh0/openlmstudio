@@ -174,7 +174,56 @@ public class ServerService : IServerService, IDisposable
             builder.Services.AddSingleton(_modelRepository);
         }
 
+        // Register rate limiter if enabled
+        if (Configuration.EnableRateLimiting)
+        {
+            builder.Services.AddRateLimiting(Configuration.MaxRequestsPerMinute, TimeSpan.FromMinutes(1));
+            _logger?.LogInformation("Rate limiting enabled: {MaxRequests} requests per minute", Configuration.MaxRequestsPerMinute);
+        }
+
+        // Register CORS if configured
+        if (Configuration.AllowCors)
+        {
+            var corsOrigins = Configuration.AllowedOrigins;
+            if (!corsOrigins.Any())
+            {
+                // Default: allow all origins in development mode
+                corsOrigins = new List<string> { "*" };
+            }
+
+            builder.Services.AddCors(options =>
+            {
+                options.AddPolicy("OpenLMStudio", policy =>
+                {
+                    if (corsOrigins.Contains("*"))
+                    {
+                        policy.AllowAnyOrigin().AllowAnyMethod().AllowAnyHeader();
+                    }
+                    else
+                    {
+                        policy.WithOrigins(corsOrigins.ToArray())
+                            .AllowAnyMethod()
+                            .AllowAnyHeader();
+                    }
+                });
+            });
+
+            _logger?.LogInformation("CORS enabled for origins: {Origins}", string.Join(", ", corsOrigins));
+        }
+
         var app = builder.Build();
+
+        // Apply CORS middleware if configured (must be before endpoints)
+        if (Configuration.AllowCors)
+        {
+            app.UseCors("OpenLMStudio");
+        }
+
+        // Apply rate limiting if enabled (before endpoints, after CORS)
+        if (Configuration.EnableRateLimiting)
+        {
+            app.UseMiddleware<RateLimitMiddleware>(Configuration.MaxRequestsPerMinute, TimeSpan.FromMinutes(1));
+        }
 
         // === OpenAI-Compatible Endpoints ===
 
