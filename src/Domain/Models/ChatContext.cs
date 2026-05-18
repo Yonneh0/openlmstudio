@@ -22,6 +22,9 @@ public class ContextSegment : IDisposable
     /// <summary>Whether the segment is suppressed (not sent to AI).</summary>
     public bool IsSuppressed { get; set; }
 
+    /// <summary>Relevance score assigned by ContextRelevanceEngine. Higher = more relevant.</summary>
+    public float RelevanceScore { get; set; }
+
     public static ContextSegment CreateUncompressed(Message message) =>
         new()
         {
@@ -32,6 +35,10 @@ public class ContextSegment : IDisposable
             IsPinned = false,
             TokenCount = message.TokenCount > 0 ? message.TokenCount : EstimateTokenCount(message.Content)
         };
+
+    /// <summary>Creates an empty segment with the given ID and relevance score (used by budget system).</summary>
+    internal static ContextSegment CreateEmptyWithRelevance(Guid id) =>
+        new() { Id = id, RelevanceScore = 0f };
 
     /// <summary>Standardized token counting: ~1 token per 4 characters for English.</summary>
     private static int EstimateTokenCount(string text) => 
