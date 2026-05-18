@@ -274,6 +274,169 @@
                                 HorizontalAlignment="Stretch"
                                 Height="36"/>
                     </StackPanel>
+
+                    <!-- Image Generation tab content -->
+                    <StackPanel x:Name="ImageGenTabContent" DockPanel.Dock="Top">
+                        <TextBlock Text="Image Generation" FontWeight="SemiBold" Foreground="#4FC3F7" Padding="8,6"/>
+                        
+                        <!-- Model selector -->
+                        <Border Background="{StaticResource BgSecondary}" CornerRadius="4" Margin="0,8,0,0">
+                            <StackPanel>
+                                <TextBlock Text="Select Model:" Foreground="{StaticResource TextPrimary}" Padding="12,4"/>
+                                <ComboBox x:Name="ImageGenModelSelector" 
+                                          Foreground="{StaticResource TextPrimary}"
+                                          Background="{StaticResource BgTertiary}"
+                                          Margin="8,4,8,8"
+                                          Height="32"
+                                          SelectionChanged="ImageGenModelSelector_SelectionChanged"/>
+                            </StackPanel>
+                        </Border>
+
+                        <!-- Prompt input -->
+                        <Border Background="{StaticResource BgSecondary}" CornerRadius="4" Margin="0,8,0,0">
+                            <StackPanel>
+                                <TextBlock Text="Prompt:" Foreground="{StaticResource TextPrimary}" Padding="12,4"/>
+                                <TextBox x:Name="ImageGenPromptInput" 
+                                         Foreground="{StaticResource TextPrimary}"
+                                         Background="{StaticResource BgTertiary}"
+                                         BorderThickness="0"
+                                         Margin="8,4,8,8"
+                                         Height="60"
+                                         VerticalScrollBarVisibility="Auto"/>
+                                
+                                <TextBlock Text="Negative Prompt (optional):" Foreground="{StaticResource TextPrimary}" Padding="12,4,12,2"/>
+                                <TextBox x:Name="ImageGenNegPromptInput" 
+                                         Foreground="{StaticResource TextPrimary}"
+                                         Background="{StaticResource BgTertiary}"
+                                         BorderThickness="0"
+                                         Margin="8,4,8,8"
+                                         Height="60"
+                                         VerticalScrollBarVisibility="Auto"/>
+                            </StackPanel>
+                        </Border>
+
+                        <!-- Parameter controls -->
+                        <Border Background="{StaticResource BgSecondary}" CornerRadius="4" Margin="0,8,0,0">
+                            <StackPanel>
+                                <TextBlock Text="Parameters:" Foreground="{StaticResource TextPrimary}" Padding="12,4"/>
+                                
+                                <!-- Resolution -->
+                                <DockPanel Margin="8,4,8,4">
+                                    <TextBlock Text="Resolution:" Width="70" Foreground="{StaticResource TextSecondary}"/>
+                                    <ComboBox x:Name="ImageGenResolutionSelector" 
+                                              Foreground="{StaticResource TextPrimary}"
+                                              Background="{StaticResource BgTertiary}"
+                                              Margin="8,0,0,0"
+                                              Height="28">
+                                        <ComboBoxItem Content="512x512"/>
+                                        <ComboBoxItem Content="768x768"/>
+                                        <ComboBoxItem Content="1024x1024"/>
+                                        <ComboBoxItem Content="1280x720" IsSelected="True"/>
+                                    </ComboBox>
+                                </DockPanel>
+
+                                <!-- Steps -->
+                                <DockPanel Margin="8,4,8,4">
+                                    <TextBlock Text="Steps:" Width="70" Foreground="{StaticResource TextSecondary}"/>
+                                    <Slider x:Name="ImageGenStepsSlider" 
+                                            Minimum="1" Maximum="50" Value="20"
+                                            Margin="8,0,8,0"
+                                            TickFrequency="1"
+                                            IsSnapToTickEnabled="True"/>
+                                    <TextBlock Text="{Binding ElementName=ImageGenStepsSlider, Path=Value, StringFormat={}{0:F0}}" 
+                                               Width="30" Foreground="{StaticResource TextSecondary}"/>
+                                </DockPanel>
+
+                                <!-- CFG Scale -->
+                                <DockPanel Margin="8,4,8,4">
+                                    <TextBlock Text="CFG:" Width="70" Foreground="{StaticResource TextSecondary}"/>
+                                    <Slider x:Name="ImageGenCfgSlider" 
+                                            Minimum="1.0" Maximum="20.0" Value="7.5" IsSnapToTickEnabled="True"
+                                            TickFrequency="0.5"
+                                            Margin="8,0,8,0"/>
+                                    <TextBlock Text="{Binding ElementName=ImageGenCfgSlider, Path=Value, StringFormat={}{0:F1}}" 
+                                               Width="35" Foreground="{StaticResource TextSecondary}"/>
+                                </DockPanel>
+
+                                <!-- Seed -->
+                                <DockPanel Margin="8,4,8,4">
+                                    <TextBlock Text="Seed:" Width="70" Foreground="{StaticResource TextSecondary}"/>
+                                    <TextBox x:Name="ImageGenSeedInput" 
+                                             Foreground="{StaticResource TextPrimary}"
+                                             Background="{StaticResource BgTertiary}"
+                                             BorderThickness="0"
+                                             Margin="8,0,0,0"
+                                             Width="120"
+                                             Height="28"/>
+                                    <Button Content="🎲" 
+                                            Style="{StaticResource ActionButton}"
+                                            Padding="6,4"
+                                            Margin="8,0,0,0"/>
+                                </DockPanel>
+                            </StackPanel>
+                        </Border>
+
+                        <!-- Generate button -->
+                        <Border Background="{StaticResource BgSecondary}" CornerRadius="4" Margin="0,8,0,0">
+                            <Button x:Name="ImageGenGenerateBtn"
+                                    Content="Generate Image" 
+                                    Style="{StaticResource AccentButton}"
+                                    Height="40"
+                                    Margin="8"/>
+                        </Border>
+
+                        <!-- Progress indicator -->
+                        <TextBlock x:Name="ImageGenProgressText" 
+                                   Foreground="{StaticResource TextMuted}" 
+                                   Padding="12,4"
+                                   FontSize="12"
+                                   Visibility="Collapsed"/>
+
+                        <!-- Output display area -->
+                        <Border Background="{StaticResource BgSecondary}" CornerRadius="4" Margin="0,8,0,0">
+                            <StackPanel>
+                                <TextBlock Text="Output:" Foreground="{StaticResource TextPrimary}" Padding="12,4"/>
+                                <Border x:Name="ImageGenOutputArea" 
+                                        Background="{StaticResource BgTertiary}"
+                                        CornerRadius="4"
+                                        Margin="8,4,8,8">
+                                    <TextBlock Text="Generated image will appear here" 
+                                               Foreground="{StaticResource TextMuted}"
+                                               Padding="20"
+                                               FontSize="13"/>
+                                </Border>
+                            </StackPanel>
+                        </Border>
+
+                        <!-- Batch generation section -->
+                        <Border Background="{StaticResource BgSecondary}" CornerRadius="4" Margin="0,8,0,0">
+                            <StackPanel>
+                                <TextBlock Text="Batch Generation:" Foreground="{StaticResource TextPrimary}" Padding="12,4"/>
+                                <DockPanel Margin="8,4,8,4">
+                                    <TextBlock Text="Count:" Width="70" Foreground="{StaticResource TextSecondary}"/>
+                                    <Slider x:Name="ImageGenBatchSizeSlider" 
+                                            Minimum="1" Maximum="16" Value="1"
+                                            Margin="8,0,8,0"
+                                            TickFrequency="1"
+                                            IsSnapToTickEnabled="True"/>
+                                    <TextBlock Text="{Binding ElementName=ImageGenBatchSizeSlider, Path=Value, StringFormat={}{0:F0}}" 
+                                               Width="30" Foreground="{StaticResource TextSecondary}"/>
+                                </DockPanel>
+                            </StackPanel>
+                        </Border>
+
+                        <!-- LoRA Adapter section -->
+                        <Border Background="{StaticResource BgSecondary}" CornerRadius="4" Margin="0,8,0,0">
+                            <StackPanel>
+                                <TextBlock Text="LoRA Adapters:" Foreground="{StaticResource TextPrimary}" Padding="12,4"/>
+                                <ComboBox x:Name="ImageGenLoraSelector" 
+                                          Foreground="{StaticResource TextPrimary}"
+                                          Background="{StaticResource BgTertiary}"
+                                          Margin="8,4,8,0"
+                                          Height="32"/>
+                            </StackPanel>
+                        </Border>
+                    </StackPanel>
                 </DockPanel>
 
                 <!-- Bottom section - New Chat button -->
