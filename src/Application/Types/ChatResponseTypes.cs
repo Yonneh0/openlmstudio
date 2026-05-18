@@ -70,6 +70,12 @@ public class ChatCompletionRequest
     /// Number of values to consider for each token (n-gram sampling).
     /// </summary>
     public int N { get; set; } = 1;
+
+    /// <summary>
+    /// Model type for multi-engine routing. Defaults to null (text generation).
+    /// Accepts: "image" for image generation, "embedding" for embedding models.
+    /// </summary>
+    public string? Type { get; set; }
 }
 
 /// <summary>

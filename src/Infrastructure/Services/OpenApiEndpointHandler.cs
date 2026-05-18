@@ -260,6 +260,11 @@ internal record OpenApiRequest
     public int? MaxTokens { get; init; }
     public float? TopP { get; init; }
     public bool? Stream { get; init; }
+
+    /// <summary>
+    /// Model type for multi-engine routing (e.g., "text", "image"). Defaults to null.
+    /// </summary>
+    public string? Type { get; init; }
 }
 
 /// <summary>
