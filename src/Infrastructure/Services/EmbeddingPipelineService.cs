@@ -20,7 +20,7 @@ public class EmbeddingPipelineService : IEmbeddingPipelineService, IDisposable
     /// <summary>ONNX Runtime sessions keyed by model ID.</summary>
     private readonly ConcurrentDictionary<string, InferenceSession?> _loadedSessions = new();
 
-    // Default embedding dimension — will be determined from actual safetensors models when implemented
+    // Default embedding dimension — will be determined from actual safetensors models when implemented.
     private const int DefaultEmbeddingDimension = 768;
 
     public EmbeddingPipelineService(ILogger<EmbeddingPipelineService>? logger)
@@ -40,7 +40,7 @@ public class EmbeddingPipelineService : IEmbeddingPipelineService, IDisposable
             if (_resolvedRepo != null) return _resolvedRepo;
             lock (_repoLock)
             {
-                // Double-check after acquiring the lock (another thread may have resolved it)
+                // Double-check after acquiring the lock (another thread may have resolved it).
                 if (_resolvedRepo == null)
                 {
                     try
@@ -53,7 +53,7 @@ public class EmbeddingPipelineService : IEmbeddingPipelineService, IDisposable
                     }
                     catch
                     {
-                        // Ignore resolution errors — GetAvailableModelsAsync handles null gracefully
+                        // Ignore resolution errors — GetAvailableModelsAsync handles null gracefully.
                     }
                 }
             }
@@ -63,7 +63,7 @@ public class EmbeddingPipelineService : IEmbeddingPipelineService, IDisposable
 
     public async Task<float[]> GenerateAsync(string modelId, string inputText, CancellationToken ct = default)
     {
-        // Ensure model is loaded
+        // Ensure model is loaded (ONNX session for future real inference).
         if (!_loadedSessions.ContainsKey(modelId))
         {
             var wasLoaded = await LoadModelAsync(modelId);
@@ -73,13 +73,14 @@ public class EmbeddingPipelineService : IEmbeddingPipelineService, IDisposable
 
         _logger?.LogDebug("Generating embedding for model '{ModelId}' with input text: {InputText}", modelId, inputText);
 
-        // Stub: generate random normalized vector of default dimensionality
+        // TODO: Real ONNX inference requires safetensors tensor manipulation and actual embedding models.
+        // Placeholder: generate random normalized vector of default dimensionality.
         var rng = new Random();
         var vector = new float[DefaultEmbeddingDimension];
         for (int i = 0; i < DefaultEmbeddingDimension; i++)
             vector[i] = (float)rng.NextDouble() * 2f - 1f;
 
-        // Normalize the vector to unit length
+        // Normalize the vector to unit length.
         var magnitude = Math.Sqrt(vector.Sum(v => v * v));
         if (magnitude > 0)
             for (int i = 0; i < DefaultEmbeddingDimension; i++)
@@ -90,7 +91,7 @@ public class EmbeddingPipelineService : IEmbeddingPipelineService, IDisposable
 
     public async Task<float[][]> GenerateBatchAsync(string modelId, IReadOnlyList<string> inputs, CancellationToken ct = default)
     {
-        // Ensure model is loaded
+        // Ensure model is loaded.
         if (!_loadedSessions.ContainsKey(modelId))
         {
             var wasLoaded = await LoadModelAsync(modelId);
@@ -100,6 +101,7 @@ public class EmbeddingPipelineService : IEmbeddingPipelineService, IDisposable
 
         _logger?.LogDebug("Generating batch embeddings for model '{ModelId}' with {Count} inputs", modelId, inputs.Count);
 
+        // TODO: Real ONNX inference requires safetensors tensor manipulation and actual embedding models.
         var rng = new Random();
         var results = new float[inputs.Count][];
 
@@ -109,7 +111,7 @@ public class EmbeddingPipelineService : IEmbeddingPipelineService, IDisposable
             for (int j = 0; j < DefaultEmbeddingDimension; j++)
                 results[i][j] = (float)rng.NextDouble() * 2f - 1f;
 
-            // Normalize the vector to unit length
+            // Normalize the vector to unit length.
             var magnitude = Math.Sqrt(results[i].Sum(v => v * v));
             if (magnitude > 0)
                 for (int j = 0; j < DefaultEmbeddingDimension; j++)
@@ -139,7 +141,7 @@ public class EmbeddingPipelineService : IEmbeddingPipelineService, IDisposable
         if (metadata.FilePath != null && File.Exists(metadata.FilePath))
             return metadata.FilePath;
 
-        // Try sharded index for multi-file models
+        // Try sharded index for multi-file models.
         var indexPath = $"{metadata.FilePath}.index.json";
         if (!string.IsNullOrEmpty(metadata.FilePath) && File.Exists(indexPath))
         {
@@ -149,7 +151,7 @@ public class EmbeddingPipelineService : IEmbeddingPipelineService, IDisposable
                 var indexDoc = System.Text.Json.JsonDocument.Parse(indexJson);
                 var weightMap = indexDoc.RootElement.GetProperty("weight_map");
 
-                // Embedding models typically have a single file — find first non-null entry
+                // Embedding models typically have a single file — find first non-null entry.
                 foreach (var kvp in weightMap.EnumerateObject())
                 {
                     var value = kvp.Value.GetString();
@@ -163,7 +165,7 @@ public class EmbeddingPipelineService : IEmbeddingPipelineService, IDisposable
             }
         }
 
-        // Try finding any .safetensors file in the model directory
+        // Try finding any .safetensors file in the model directory.
         var dir = metadata.FilePath;
         if (dir != null && Directory.Exists(dir))
         {
@@ -178,13 +180,13 @@ public class EmbeddingPipelineService : IEmbeddingPipelineService, IDisposable
     public async Task<bool> LoadModelAsync(string modelId)
     {
         if (_loadedSessions.ContainsKey(modelId))
-            return true; // Already loaded
+            return true; // Already loaded.
 
         _logger?.LogInformation("Loading embedding model: {ModelId}", modelId);
 
         try
         {
-            // Look up the model in the repository to find its weight file path
+            // Look up the model in the repository to find its weight file path.
             var metadata = await GetAvailableModelsAsync();
             var match = metadata.FirstOrDefault(m => m.Id == modelId);
             if (match == null)
@@ -200,7 +202,7 @@ public class EmbeddingPipelineService : IEmbeddingPipelineService, IDisposable
                 return false;
             }
 
-            // Validate safetensors header before loading
+            // Validate safetensors header before loading.
             var headerValid = await _safetensorParser.ValidateHeaderAsync(weightFilePath);
             if (!headerValid)
             {
@@ -208,10 +210,10 @@ public class EmbeddingPipelineService : IEmbeddingPipelineService, IDisposable
                 return false;
             }
 
-            // For large models (>8GB), use memory-mapped I/O to reduce peak RAM usage
+            // For large models (>8GB), use memory-mapped I/O to reduce peak RAM usage.
             var fileSize = new FileInfo(weightFilePath).Length;
             SessionOptions sessionOptions = new();
-            if (fileSize > 8L * 1024 * 1024 * 1024) // >8GB — use memory mapping
+            if (fileSize > 8L * 1024 * 1024 * 1024) // >8GB — use memory mapping.
             {
                 _logger?.LogInformation("Large embedding model detected ({Size} bytes) for '{ModelId}' — using memory-mapped weight loading", fileSize, modelId);
                 sessionOptions = new SessionOptions();
@@ -219,7 +221,7 @@ public class EmbeddingPipelineService : IEmbeddingPipelineService, IDisposable
 
             var inferenceSession = new InferenceSession(weightFilePath, sessionOptions);
 
-            // Validate the ONNX Runtime session has valid input/output metadata
+            // Validate the ONNX Runtime session has valid input/output metadata.
             if (!inferenceSession.InputMetadata.Any() || !inferenceSession.OutputMetadata.Any())
             {
                 _logger?.LogError("ONNX Runtime session for embedding model '{ModelId}' has no valid I/O tensors", modelId);
@@ -227,7 +229,7 @@ public class EmbeddingPipelineService : IEmbeddingPipelineService, IDisposable
                 return false;
             }
 
-            // Extract the expected embedding dimension from the output tensor shape (KeyValuePair<string, NodeMetadata>.Value.Dimensions)
+            // Extract the expected embedding dimension from the output tensor shape.
             var outputNode = inferenceSession.OutputMetadata.First();
             var outputDims = outputNode.Value.Dimensions;
             _logger?.LogInformation("Embedding model '{ModelId}' loaded successfully — {Size} bytes, input: {InputCount} tensors, output dims: [{OutputShape}]",
@@ -241,7 +243,7 @@ public class EmbeddingPipelineService : IEmbeddingPipelineService, IDisposable
         {
             _logger?.LogError(ex, "Failed to load embedding model: {ModelId}", modelId);
 
-            // Clean up partial loading state
+            // Clean up partial loading state.
             if (_loadedSessions.ContainsKey(modelId))
                 _loadedSessions[modelId]?.Dispose();
             _loadedSessions.TryRemove(modelId, out _);
