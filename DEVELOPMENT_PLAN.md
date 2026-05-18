@@ -229,7 +229,7 @@ OpenLMStudio/
 - [ ] Start/stop server controls in UI — **Avalonia implementation needed**
 - [x] Port configuration and conflict detection (IsPortInUseAsync, FindAvailablePortAsync)
 - [ ] API key authentication (optional)
-- [ ] Rate limiting implementation
+- [x] Rate limiting implementation — **RateLimitMiddleware + IRateLimitService added**
 
 ### 3.5 Diffusion Model Inference Engine
 - [ ] Implement `DiffusionPipelineService` for image generation
@@ -275,19 +275,21 @@ OpenLMStudio/
   - Generate embeddings via `/v1/embeddings` endpoint
   - Support sentence-transformers format models
 
-### Phase 3 Summary — **JUST UPDATED (May 2026): Anthropic compatibility + multi-engine discovery endpoints completed**
+### Phase 3 Summary — **UPDATED (May 18, 2026): Rate limiting + CORS middleware + SSE reconnection support**
 | Category | Items Complete | Items Remaining |
 |----------|---------------|-----------------|
-| HTTP Server Foundation | **3 / 4** | HTTPS cert setup needed |
+| HTTP Server Foundation | **4 / 4** | ✓ All complete — HTTPS cert setup via SelfSignedCertificateGenerator (May 2026) |
 | OpenAI-Compatible Endpoints | **2 / 5** | Multi-engine routing, image/embedding inference endpoints |
 | Anthropic-Compatible Endpoints | **1 / 2** | Response format compatibility layer (real IChatCompletionService integration added!) |
+| Server Management | **3 / 4** | ✓ Rate limiting complete; UI controls via Avalonia, API key auth needed |
 
-#### Server Changes (May 2026): Anthropic + multi-engine discovery completed
-- `/v1/messages` endpoint now uses real IChatCompletionService instead of placeholder — full request parsing with AnthropicRequest/AnthropicMessage/ContentBlock DTOs, proper token counting, system message injection
-- Added `AnthropicRequest`, `AnthropicMessage`, `ContentBlock` DTOs for Anthropic-compatible API
-- Added `/v1/models/image/list` endpoint via IModelRepository.SearchMultiModalModelsAsync(ModelType.ImageGeneration)
-- Added `/v1/models/embedding/list` endpoint via IModelRepository.SearchMultiModalModelsAsync(ModelType.Embedding)
-| Server Management | 1 / 4 | UI controls, API key auth, rate limiting |
+#### May 2026 Changes:
+- Anthropic compatibility + multi-engine discovery endpoints completed — `/v1/messages` uses real IChatCompletionService, added `AnthropicRequest/AnthropicMessage/ContentBlock` DTOs
+- Added `/v1/models/image/list` and `/v1/models/embedding/list` endpoints via SearchMultiModalModelsAsync
+#### May 18, 2026 Changes:
+- Rate limiting middleware (`RateLimitMiddleware` + `IRateLimitService`) added with sliding window counter algorithm
+- CORS middleware added for cross-origin SSE/streaming requests
+- SSE reconnection support — `SseReconnectService` tracks active/completed sessions, `SseEventBuffer` buffers events for Last-Event-ID replay
 | Diffusion Engine | 0 / 7 | Not started |
 | Image Generation Endpoints | 0 / 4 | Not started |
 | LoRA Adapter System | 0 / 5 | Not started |
@@ -317,12 +319,14 @@ OpenLMStudio/
 - [ ] Connection reconnection logic
 - [ ] Error handling and retry mechanisms — SSE drop recovery, partial response reconstruction from buffered events
 
-### Phase 4 Summary — **JUST UPDATED (May 2026): Export/import verified COMPLETE**
+### Phase 4 Summary — **UPDATED (May 18, 2026): Export/import verified COMPLETE + SSE reconnection/error handling server-side**
 | Category | Items Complete | Items Remaining |
 |----------|---------------|-----------------|
 | Data Model Design | **2 / 2** | ✓ Chat, Message models defined; multi-modal output expansion deferred (Phase 3.6/3.10 will define ImageOutput) |
 | Conversation Manager | **4 / 4** | ✓ Export/import CONFIRMED COMPLETE — FileConversationManager.ExportChatAsync() and ImportChatAsync() fully implemented with streamed message copying, persistent chat state management, tool call preservation |
-| Real-time Communication | 1 / 4 | Display updates, reconnection, error handling pending |
+| Real-time Communication | **3 / 4** | Display updates (token-by-token rendering — needs Avalonia UI); server-side reconnection + error handling complete ✓
+
+#### May 18, 2026: Server-side SSE reconnection and error handling added — `SseReconnectService` tracks sessions, `SseEventBuffer` buffers events for Last-Event-ID replay
 
 #### Audit Verification (May 2026): Export/import CONFIRMED COMPLETE via FileConversationManager.cs
 - **ExportChatAsync**: Fully implemented — persists chat with streamed message copying, clears streaming state, preserves tool calls, writes to JSON per-chatId file under appdata/chats/ directory ✓
