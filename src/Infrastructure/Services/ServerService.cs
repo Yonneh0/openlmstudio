@@ -653,7 +653,7 @@ public class ServerService : IServerService, IDisposable
 
         // === Image Generation Endpoints (Phase 3.6) ===
 
-        // /v1/images/generations - Create image via diffusion models
+        // /v1/images/generations - Create image via diffusion models (supports streaming progress)
         app.MapPost("/v1/images/generations", async (IDiffusionPipelineService pipeline, HttpContext context) =>
         {
             if (!context.Request.HasJsonContentType())
@@ -674,6 +674,20 @@ public class ServerService : IServerService, IDisposable
                 {
                     context.Response.StatusCode = 400;
                     await context.Response.WriteAsJsonAsync(new { error = "Model identifier and prompt are required" });
+                    return;
+                }
+
+                // Check for streaming request — SSE endpoint if client wants progress updates
+                var streamProgress = false;
+                if (context.Request.Headers.TryGetValue("X-Stream", out var streamHeader))
+                {
+                    streamProgress = string.Equals(streamHeader, "true", StringComparison.OrdinalIgnoreCase);
+                }
+
+                if (streamProgress)
+                {
+                    // Stream progress via SSE — emit per-step progress updates during denoising
+                    await HandleImageGenerationStreaming(context, pipeline, request);
                     return;
                 }
 
@@ -1746,6 +1760,107 @@ public class ServerService : IServerService, IDisposable
     {
         object errorData = new { error };
         await WriteSseEvent(context, "", "error", errorData);
+    }
+
+    /// <summary>
+    /// Handles streaming image generation via SSE — emits per-step progress updates during denoising.
+    /// </summary>
+    private async Task HandleImageGenerationStreaming(HttpContext context, IDiffusionPipelineService pipeline, ImageGenerationRequest request)
+    {
+        var requestId = Guid.NewGuid().ToString("N");
+        var connectionId = Guid.NewGuid().ToString("N")[..16];
+
+        // Set up SSE headers for streaming
+        context.Response.ContentType = "text/event-stream";
+        context.Response.Headers.Append("Cache-Control", "no-cache");
+        context.Response.Headers.Append("Connection", "keep-alive");
+        context.Response.Headers.Append("X-Event-ID", connectionId);
+
+        var cts = new CancellationTokenSource();
+        _activeSseConnections[requestId] = cts;
+
+        try
+        {
+            await WriteSseEvent(context, requestId, "generation_start", new
+            {
+                id = $"img_{requestId}",
+                @object = "image.generation.chunk",
+                created = DateTimeOffset.UtcNow.ToUnixTimeSeconds(),
+                model = request.ModelId,
+                prompt = request.Prompt
+            });
+
+            // Emit progress updates during generation via StreamProgressAsync
+            var progressTask = Task.Run(async () =>
+            {
+                await foreach (var progress in pipeline.StreamProgressAsync(request).WithCancellation(cts.Token))
+                {
+                    try
+                    {
+                        await WriteSseEvent(context, requestId, "progress", new
+                        {
+                            step = progress.Step,
+                            total_steps = progress.TotalSteps,
+                            percentage = Math.Round(progress.ProgressPercent, 1)
+                        });
+                        await context.Response.Body.FlushAsync(cts.Token);
+                    }
+                    catch
+                    {
+                        // Ignore cancellation during streaming
+                    }
+                }
+            }, cts.Token);
+
+            // Generate the image in background and stream final result when complete
+            var imageTask = pipeline.GenerateImageAsync(request, cts.Token);
+
+            await Task.WhenAll(progressTask, imageTask);
+
+            if (imageTask.IsCompletedSuccessfully && imageTask.Result != null)
+            {
+                try
+                {
+                    // Cancel progress streaming now that we have the result
+                    cts.Cancel();
+
+                    var result = imageTask.Result;
+
+                    // Send final event with image data
+                    await WriteSseEvent(context, requestId, "generation_complete", new
+                    {
+                        id = $"img_{requestId}",
+                        @object = "image.generation.chunk",
+                        created = DateTimeOffset.UtcNow.ToUnixTimeSeconds(),
+                        model = request.ModelId,
+                        data = new[]
+                        {
+                            new
+                            {
+                                b64_json = Convert.ToBase64String(result.ImageBytes),
+                                width = result.Width,
+                                height = result.Height,
+                                seed = result.Seed
+                            }
+                        }
+                    });
+                }
+                catch
+                {
+                    // Ignore errors during final event streaming
+                }
+            }
+            else if (imageTask.IsFaulted)
+            {
+                var ex = imageTask.Exception?.InnerException ?? new Exception("Image generation failed");
+                await WriteSseError(context, $"Image generation failed: {ex.Message}");
+            }
+        }
+        finally
+        {
+            _activeSseConnections.TryRemove(requestId, out _);
+            cts.Dispose();
+        }
     }
 
     private IModelRepository CreateStubModelRepository() => new StubModelRepository();
