@@ -262,7 +262,7 @@ public class ServerService : IServerService, IDisposable
 
         // === Anthropic-Compatible Endpoints ===
 
-        app.MapPost("/v1/messages", async (HttpContext context) =>
+        app.MapPost("/v1/messages", async (IChatCompletionService chatService, IModelRepository modelRepo, HttpContext context) =>
         {
             if (!context.Request.HasJsonContentType())
             {
@@ -286,25 +286,205 @@ public class ServerService : IServerService, IDisposable
                     return; // Streaming handled internally by this method
                 }
 
-                var response = new
+                // Parse the Anthropic request body
+                var anthropicRequest = JsonSerializer.Deserialize<AnthropicRequest>(requestBodyStr);
+                
+                if (anthropicRequest == null)
                 {
-                    id = $"msg_{Guid.NewGuid():N}",
-                    type = "message",
-                    role = "assistant",
-                    content = new[] { new { type = "text", text = "[Placeholder] Connect IChatCompletionService for real responses" } },
-                    model = Configuration.Port.ToString(),
-                    stop_reason = "end_turn",
-                    usage = new { input_tokens = 0, output_tokens = 0 }
-                };
+                    context.Response.StatusCode = 400;
+                    await context.Response.WriteAsJsonAsync(new { error = "Failed to parse Anthropic request" });
+                    return;
+                }
 
-                context.Response.ContentType = "application/json";
-                await context.Response.WriteAsJsonAsync(response);
+                // Get the model from IChatCompletionService for text generation models
+                if (chatService != null)
+                {
+                    // Build messages list from Anthropic format using the already-parsed JSON body
+                    var messages = new List<Message>();
+                    
+                    // Try to get the system message
+                    string? systemMessage = null;
+                    try
+                    {
+                        var jsonBody = JsonSerializer.Deserialize<AnthropicRequest>(requestBodyStr);
+                        systemMessage = jsonBody?.System;
+                    }
+                    catch { /* Ignore parse errors */ }
+
+                    foreach (var message in anthropicRequest.Messages ?? Array.Empty<AnthropicMessage>())
+                    {
+                        var textContent = message.Content; // Convenience accessor: joins all 'text' content blocks
+                        
+                        if (!string.IsNullOrEmpty(textContent))
+                        {
+                            messages.Add(new Message
+                            {
+                                Role = message.Role == "user" ? MessageRole.User : MessageRole.Assistant,
+                                Content = textContent,
+                                TokenCount = Math.Max(1, EstimateTokenCount(textContent))
+                            });
+                        }
+                    }
+
+                    // Also include system message if present in Anthropic format
+                    if (!string.IsNullOrEmpty(systemMessage))
+                    {
+                        messages.Insert(0, new Message
+                        {
+                            Role = MessageRole.System,
+                            Content = systemMessage,
+                            TokenCount = Math.Max(1, EstimateTokenCount(systemMessage))
+                        });
+                    }
+
+                    var chatReq = new ChatRequest(
+                        anthropicRequest.Model ?? "local-model",
+                        messages,
+                        (double?)(anthropicRequest.Temperature ?? 0.7),
+                        anthropicRequest.MaxTokens > 0 ? (int?)anthropicRequest.MaxTokens : null,
+                        (double?)(anthropicRequest.TopP ?? 1.0));
+
+                    var responseChoice = await chatService.GetCompletionAsync(chatReq);
+
+                    var inputTokenCount = messages.Sum(m => m.TokenCount > 0 ? m.TokenCount : EstimateTokenCount(m.Content));
+                    int outputTokenCount;
+                    if (!string.IsNullOrEmpty(responseChoice.Message.Content))
+                        outputTokenCount = responseChoice.Message.TokenCount > 0 ? responseChoice.Message.TokenCount : EstimateTokenCount(responseChoice.Message.Content);
+                    else
+                        outputTokenCount = 0;
+
+                    var response = new
+                    {
+                        id = $"msg_{Guid.NewGuid():N}",
+                        type = "message",
+                        role = "assistant",
+                        content = new[] { new { 
+                            type = "text",
+                            text = responseChoice.Message.Content ?? "[No response]"
+                        } },
+                        model = anthropicRequest.Model,
+                        stop_reason = string.IsNullOrEmpty(responseChoice.FinishReason) ? "end_turn" : responseChoice.FinishReason.ToLowerInvariant(),
+                        usage = new 
+                        {
+                            input_tokens = inputTokenCount,
+                            output_tokens = outputTokenCount,
+                            total_tokens = inputTokenCount + outputTokenCount
+                        }
+                    };
+
+                    context.Response.ContentType = "application/json";
+                    await context.Response.WriteAsJsonAsync(response);
+                }
+                else
+                {
+                    // Fallback: use default model repo for model listing
+                    var modelIds = new List<string>();
+                    if (modelRepo != null && modelRepo is not StubModelRepository)
+                    {
+                        try
+                        {
+                            var models = await modelRepo.DiscoverModelsAsync();
+                            modelIds = models.Select(m => m.Id.ToString()).ToList();
+                        }
+                        catch { /* Ignore errors */ }
+                    }
+
+                    var response = new
+                    {
+                        id = $"msg_{Guid.NewGuid():N}",
+                        type = "message",
+                        role = "assistant",
+                        content = new[] { new { 
+                            type = "text",
+                            text = "[Placeholder] Connect IChatCompletionService for real responses"
+                        } },
+                        model = anthropicRequest.Model,
+                        stop_reason = "end_turn",
+                        usage = new { input_tokens = 0, output_tokens = 0 },
+                        models_available = modelIds
+                    };
+
+                    context.Response.ContentType = "application/json";
+                    await context.Response.WriteAsJsonAsync(response);
+                }
             }
             catch (Exception ex)
             {
                 _logger?.LogError(ex, "Error processing Anthropic message request");
                 context.Response.StatusCode = 500;
                 await context.Response.WriteAsJsonAsync(new { error = "Internal server error" });
+            }
+        });
+
+        // Model listing endpoint for image generation models (Anthropic-compatible)
+        app.MapGet("/v1/models/image/list", async (IModelRepository repo, HttpContext context) =>
+        {
+            try
+            {
+                var models = await repo.SearchMultiModalModelsAsync(modelTypeFilter: Domain.Models.ModelType.ImageGeneration);
+                
+                var modelInfos = new List<object>();
+                foreach (var model in models)
+                {
+                    modelInfos.Add(new 
+                    {
+                        id = model.Id,
+                        obj = "model",
+                        owned_by = "local",
+                        display_name = model.Name,
+                        model_type = "image_generation",
+                        format = model.Format ?? "N/A"
+                    });
+                }
+
+                context.Response.StatusCode = 200;
+                await context.Response.WriteAsJsonAsync(new 
+                { 
+                    obj = "list",
+                    data = modelInfos
+                });
+            }
+            catch (Exception ex)
+            {
+                _logger?.LogError(ex, "Error listing image generation models");
+                context.Response.StatusCode = 500;
+                await context.Response.WriteAsJsonAsync(new { error = "Failed to list image models" });
+            }
+        });
+
+        // Model listing endpoint for embedding models (Anthropic-compatible)
+        app.MapGet("/v1/models/embedding/list", async (IModelRepository repo, HttpContext context) =>
+        {
+            try
+            {
+                var models = await repo.SearchMultiModalModelsAsync(modelTypeFilter: Domain.Models.ModelType.Embedding);
+                
+                var modelInfos = new List<object>();
+                foreach (var model in models)
+                {
+                    modelInfos.Add(new 
+                    {
+                        id = model.Id,
+                        obj = "model",
+                        owned_by = "local",
+                        display_name = model.Name,
+                        model_type = "embedding",
+                        format = model.Format ?? "N/A"
+                    });
+                }
+
+                context.Response.StatusCode = 200;
+                await context.Response.WriteAsJsonAsync(new 
+                { 
+                    obj = "list",
+                    data = modelInfos
+                });
+            }
+            catch (Exception ex)
+            {
+                _logger?.LogError(ex, "Error listing embedding models");
+                context.Response.StatusCode = 500;
+                await context.Response.WriteAsJsonAsync(new { error = "Failed to list embedding models" });
             }
         });
 
@@ -923,8 +1103,12 @@ public class ServerService : IServerService, IDisposable
     /// <summary>
     /// Standardized token counting method using consistent estimation: ~1 token per 4 characters for English.
     /// </summary>
+    /// <summary>
+    /// Standardized token counting method using consistent estimation: ~1 token per 4 characters for English.
+    /// </summary>
     private static int EstimateTokenCount(string? text) => 
         string.IsNullOrEmpty(text) ? 0 : (text.Length + 3) / 4;
+
 
     private string ExtractTokenFromSseChunk(string chunk)
     {
@@ -1029,3 +1213,34 @@ public class ServerService : IServerService, IDisposable
         public Task<MultiModalModelMetadata?> GetMultiModalModelByIdAsync(string modelId) => Task.FromResult((MultiModalModelMetadata?)null);
     }
 }
+
+// ---- Anthropic API DTOs ----
+
+/// <summary>
+/// Internal DTO for parsing Anthropic-compatible message requests (for /v1/messages endpoint).
+/// </summary>
+internal record AnthropicRequest(
+    string? Model = null,
+    double? Temperature = 0.7,
+    int MaxTokens = 4096,
+    float? TopP = 1.0,
+    List<AnthropicMessage>? Messages = null,
+    string? System = null);
+
+/// <summary>
+/// Internal DTO for parsing Anthropic-compatible message blocks (for /v1/messages endpoint).
+/// </summary>
+internal record AnthropicMessage(
+    string Role = "user",
+    List<ContentBlock>? ContentBlocks = null)
+{
+    /// <summary>Convenience accessor: returns the text content from all 'text' type content blocks.</summary>
+    public string? Content => string.Join("\n", ContentBlocks?.Where(cb => cb.Type == "text").Select(cb => cb.Text).ToArray());
+}
+
+/// <summary>
+/// Internal DTO for parsing Anthropic-compatible content blocks (for /v1/messages endpoint).
+/// </summary>
+internal record ContentBlock(
+    string Type = "text",
+    string? Text = null);
