@@ -237,8 +237,8 @@ public static class OpenApiEndpointHandler
             }
         });
 
-        // OpenAI-compatible: /v1/embeddings - Embedding generation
-        app.MapPost("/v1/embeddings", async (IModelRepository repo, HttpContext context) =>
+        // OpenAI-compatible: /v1/embeddings - Embedding generation via embedding models
+        app.MapPost("/v1/embeddings", async (IEmbeddingPipelineService pipeline, HttpContext context) =>
         {
             try
             {
@@ -255,14 +255,67 @@ public static class OpenApiEndpointHandler
                     return;
                 }
 
-                // For now, return a 501 Not Implemented since embedding generation is not yet implemented
-                context.Response.StatusCode = 405;
-                await context.Response.WriteAsJsonAsync(new ErrorResponse
+                // Parse the request body - support both OpenAI format (input string or array) and Anthropic format
+                var embeddingsRequest = System.Text.Json.JsonSerializer.Deserialize<EmbeddingsRequest>(requestBodyStr);
+
+                if (embeddingsRequest == null || string.IsNullOrEmpty(embeddingsRequest.Model))
                 {
-                    message = "Embedding generation endpoint not yet available. Use /v1/chat/completions for text completion.",
-                    code = "not_implemented",
-                    type = "endpoint_not_available"
-                });
+                    context.Response.StatusCode = 400;
+                    await context.Response.WriteAsJsonAsync(new ErrorResponse
+                    {
+                        message = "Model identifier and input are required.",
+                        code = "missing_model",
+                        type = "invalid_request_error"
+                    });
+                    return;
+                }
+
+                // Extract inputs - support both string (single) and array (batch) formats
+                var inputs = embeddingsRequest.Input switch
+                {
+                    string s => new[] { s },
+                    System.Text.Json.JsonElement[] arr => arr.Select(e => e.GetString() ?? "").ToArray(),
+                    _ => throw new InvalidOperationException("Input must be a string or array of strings")
+                };
+
+                float[][] embeddingVectors;
+
+                if (inputs.Length == 1)
+                {
+                    var vector = await pipeline.GenerateAsync(embeddingsRequest.Model, inputs[0]);
+                    embeddingVectors = new[] { vector };
+                }
+                else
+                {
+                    embeddingVectors = await pipeline.GenerateBatchAsync(embeddingsRequest.Model, inputs.ToList());
+                }
+
+                // Return response in OpenAI-compatible format
+                var data = new List<object>();
+                for (var i = 0; i < embeddingVectors.Length; i++)
+                {
+                    data.Add(new
+                    {
+                        @object = "embedding",
+                        index = i,
+                        embedding = embeddingVectors[i]
+                    });
+                }
+
+                var response = new
+                {
+                    @object = "list",
+                    model = embeddingsRequest.Model,
+                    usage = new
+                    {
+                        prompt_tokens = inputs.Sum(s => s?.Length / 4 + 3 / 4), // Approximate token count
+                        total_tokens = embeddingVectors.Length
+                    },
+                    data
+                };
+
+                context.Response.ContentType = "application/json";
+                await context.Response.WriteAsJsonAsync(response);
             }
             catch (Exception ex)
             {
