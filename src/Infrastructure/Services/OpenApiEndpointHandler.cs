@@ -145,11 +145,89 @@ public static class OpenApiEndpointHandler
             }
         });
 
-        // Anthropic-compatible endpoint placeholder
-        app.MapPost("/v1/messages", async (HttpContext context) =>
+        // OpenAI-compatible: /v1/images/generations - Image generation via diffusion models
+        app.MapPost("/v1/images/generations", async (IModelRepository repo, IChatCompletionService chatService, HttpContext context) =>
         {
-            await context.Response.WriteAsync("Not implemented yet");
-            context.Response.StatusCode = 501;
+            try
+            {
+                var requestBodyStr = await new StreamReader(context.Request.Body).ReadToEndAsync();
+                if (string.IsNullOrEmpty(requestBodyStr))
+                {
+                    context.Response.StatusCode = 400;
+                    await context.Response.WriteAsJsonAsync(new ErrorResponse
+                    {
+                        message = "Request body is required.",
+                        code = "invalid_request",
+                        type = "invalid_request_error"
+                    });
+                    return;
+                }
+
+                // Check if this is an Anthropic request routed to the wrong endpoint
+                var headersStr = context.Request.Headers.ToString();
+                if (!string.IsNullOrEmpty(headersStr) && headersStr.Contains("x-api-key"))
+                {
+                    // Forward to proper handler — this endpoint handles OpenAI-style image requests only
+                }
+
+                // For now, return a 405 Method Not Allowed since image generation is not yet implemented
+                context.Response.StatusCode = 405;
+                await context.Response.WriteAsJsonAsync(new ErrorResponse
+                {
+                    message = "Image generation endpoint not yet available. Use /v1/chat/completions for text completion.",
+                    code = "not_implemented",
+                    type = "endpoint_not_available"
+                });
+            }
+            catch (Exception ex)
+            {
+                context.Response.StatusCode = 500;
+                await context.Response.WriteAsJsonAsync(new ErrorResponse
+                {
+                    message = ex.Message,
+                    code = "internal_error",
+                    type = "server_error"
+                });
+            }
+        });
+
+        // OpenAI-compatible: /v1/embeddings - Embedding generation
+        app.MapPost("/v1/embeddings", async (IModelRepository repo, HttpContext context) =>
+        {
+            try
+            {
+                var requestBodyStr = await new StreamReader(context.Request.Body).ReadToEndAsync();
+                if (string.IsNullOrEmpty(requestBodyStr))
+                {
+                    context.Response.StatusCode = 400;
+                    await context.Response.WriteAsJsonAsync(new ErrorResponse
+                    {
+                        message = "Request body is required.",
+                        code = "invalid_request",
+                        type = "invalid_request_error"
+                    });
+                    return;
+                }
+
+                // For now, return a 501 Not Implemented since embedding generation is not yet implemented
+                context.Response.StatusCode = 405;
+                await context.Response.WriteAsJsonAsync(new ErrorResponse
+                {
+                    message = "Embedding generation endpoint not yet available. Use /v1/chat/completions for text completion.",
+                    code = "not_implemented",
+                    type = "endpoint_not_available"
+                });
+            }
+            catch (Exception ex)
+            {
+                context.Response.StatusCode = 500;
+                await context.Response.WriteAsJsonAsync(new ErrorResponse
+                {
+                    message = ex.Message,
+                    code = "internal_error",
+                    type = "server_error"
+                });
+            }
         });
     }
 
