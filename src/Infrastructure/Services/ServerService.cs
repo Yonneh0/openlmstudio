@@ -651,7 +651,46 @@ public class ServerService : IServerService, IDisposable
             }
         });
 
-        // === Image Generation Endpoints (Phase 3.6) ===
+        // /v1/models/image/upscaling/list - List available upscaling/ESRGAN models (Phase 3.9)
+        app.MapGet("/v1/models/image/upscaling/list", async (IModelRepository repo, HttpContext context) =>
+        {
+            try
+            {
+                var models = await repo.SearchMultiModalModelsAsync(modelTypeFilter: Domain.Models.ModelType.ImageGeneration);
+
+                // Filter for upscaling-specific models by checking name patterns or pipeline type
+                var upscaleModels = models.Where(m =>
+                    m.Name != null && (m.Name.Contains("upscaler", StringComparison.OrdinalIgnoreCase) ||
+                                       m.PipelineType?.Equals("esrgan", StringComparison.OrdinalIgnoreCase) == true));
+
+                var modelInfos = new List<object>();
+                foreach (var model in upscaleModels)
+                {
+                    modelInfos.Add(new
+                    {
+                        id = model.Id,
+                        obj = "model",
+                        owned_by = "local",
+                        display_name = model.Name,
+                        model_type = "upscaling",
+                        format = model.Format.ToString()
+                    });
+                }
+
+                context.Response.StatusCode = 200;
+                await context.Response.WriteAsJsonAsync(new
+                {
+                    obj = "list",
+                    data = modelInfos
+                });
+            }
+            catch (Exception ex)
+            {
+                _logger?.LogError(ex, "Error listing upscaling models");
+                context.Response.StatusCode = 500;
+                await context.Response.WriteAsJsonAsync(new { error = "Failed to list upscaling models" });
+            }
+        });
 
         // /v1/images/generations - Create image via diffusion models (supports streaming progress)
         app.MapPost("/v1/images/generations", async (IDiffusionPipelineService pipeline, HttpContext context) =>
