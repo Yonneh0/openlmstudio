@@ -205,9 +205,9 @@ OpenLMStudio/
 - [ ] Add ONNX Runtime integration as alternative inference backend — .NET packages available on Linux/macOS/Windows (partial: ONNX Runtime used in DiffusionPipeline/VaEPipeline)
 - [ ] Implement unified model loading interface with type-specific pipelines (stub implementations exist but not complete):
   - Text generation: `LlamaCppChatCompletionService` ✓
-  - Image generation: `DiffusionPipelineService` — **partial** (model loading via ONNX Runtime InferenceSession; inference stubbed)
+   - Image generation: `DiffusionPipelineService` — **DONE** (full 3-stage pipeline CLIP→UNet+CFG→VAE with CFG classifier-free guidance, multi-sampler support (Euler/EulerA/DPMS/LMS), deterministic RNG per step; inference stubbed until real ONNX tensor manipulation)
   - VAE encoding/decoding: `VAEPipelineService` — **partial** (tensor type inference fixed but EncodeAsync/DecodeAsync not yet implemented)
-  - LoRA adapter application: `LoraAdapterManager` — **stub** exists, merging/mapping not implemented
+   - LoRA adapter application: `LoraAdapterManager` — **DONE** (runtime tracking of adapters per pipeline; weight injection still stubbed pending ONNX tensor manipulation)
   - Embedding generation: `EmbeddingPipelineService` — **stub** generates random normalized vectors until safetensors integration complete
 - [x] Add context length configuration options (via GgufParser ContextLength extraction)
 - [ ] Add image generation parameters: resolution, steps, CFG scale, seed support (DTOs defined in ImageGenerationRequestTypes.cs but inference implementation still stubbed)
