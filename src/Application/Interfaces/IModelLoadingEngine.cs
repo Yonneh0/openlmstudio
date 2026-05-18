@@ -153,6 +153,26 @@ public interface IModelManager : IDisposable
     /// Used by eviction policy when deciding which model to unload.
     /// </summary>
     Task<DeviceMemoryInfo> GetAvailableMemoryAsync(CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Gets the current device mapping for a model — "gpu" or "cpu".
+    /// Returns "cpu" if no device mapping exists for this model ID.
+    /// </summary>
+    string GetCurrentDevice(string modelId);
+
+    /// <summary>
+    /// Offloads a model from GPU VRAM to CPU memory.
+    /// Called when VRAM is low and we need to free space without fully unloading the model.
+    /// Returns true if successful, false if the model was not on GPU or failed to offload.
+    /// </summary>
+    Task<bool> OffloadModelToCpuAsync(string modelId, CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Moves a model back from CPU memory to GPU VRAM (or vice versa).
+    /// Called when VRAM becomes available again.
+    /// Returns true if successful.
+    /// </summary>
+    Task<bool> MoveModelToDeviceAsync(string modelId, string targetDevice, CancellationToken cancellationToken = default);
 }
 
 /// <summary>

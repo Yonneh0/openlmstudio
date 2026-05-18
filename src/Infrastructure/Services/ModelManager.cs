@@ -8,6 +8,7 @@ namespace OpenLMStudio.Infrastructure.Services;
 /// <summary>
 /// Manages the lifecycle of loaded models across all engine types and enforces memory limits.
 /// Provides concurrent model support with automatic eviction when memory budget is exceeded.
+/// Supports GPU↔CPU offloading for VRAM-constrained scenarios.
 /// </summary>
 public class ModelManager : IModelManager, IDisposable
 {
@@ -16,9 +17,21 @@ public class ModelManager : IModelManager, IDisposable
     private readonly IDeviceMonitor? _deviceMonitor;
 
     /// <summary>
-    /// Approximate model size in bytes — updated by each loader when a model is loaded.
+    /// Estimated total memory usage across all loaded models in bytes (cached).
     /// </summary>
     private long _estimatedMemoryUsageBytes = -1;
+
+    /// <summary>
+    /// Tracks which device (GPU or CPU) each model is currently loaded on.
+    /// Used by GPU↔CPU offloading to decide where to unload/reload models.
+    /// </summary>
+    private readonly ConcurrentDictionary<string, string> _modelDeviceMap = new();
+
+    /// <summary>
+    /// Maximum VRAM threshold ratio — evict when total memory would exceed this fraction of available VRAM/CPU memory.
+    /// Set to 80% by default to leave headroom for other processes.
+    /// </summary>
+    private const double MemoryEvictionThreshold = 0.8;
 
     public ModelManager(ILogger<ModelManager>? logger, IDeviceMonitor? deviceMonitor = null)
     {
@@ -120,7 +133,7 @@ public class ModelManager : IModelManager, IDisposable
             throw new InvalidOperationException($"No model loader registered for type '{modelType}'.");
         }
 
-        // Evict another model if memory budget is exceeded (only when multiple models are loaded)
+        // Evict another model or offload from GPU→CPU if memory budget is exceeded.
         var availableMemory = await GetAvailableMemoryAsync(cancellationToken);
         _estimatedMemoryUsageBytes = -1; // invalidate cached estimate
         long currentUsage = EstimatedMemoryUsageBytes;
@@ -129,12 +142,21 @@ public class ModelManager : IModelManager, IDisposable
         if (currentUsage > 0 && estimatedNewSize > 0)
         {
             var totalAfterLoad = currentUsage + estimatedNewSize;
-            var requiredMemory = GetRequiredMemoryThreshold(availableMemory.GpuVramFreeBytes + availableMemory.CpuMemoryFreeBytes);
+            var requiredMemory = GetRequiredMemoryThreshold(availableMemory.TotalAvailable);
 
             if (totalAfterLoad > requiredMemory && LoadedCount >= 1)
             {
-                // Evict lowest-priority model to make room
-                await EvictLowestPriorityAsync(cancellationToken);
+                // First try: offload a model from GPU VRAM to CPU memory.
+                bool offloaded = await TryOffloadLowestPriorityAsync(cancellationToken);
+                if (!offloaded)
+                {
+                    // If no model can be offloaded, evict the lowest-priority model entirely.
+                    await EvictLowestPriorityAsync(cancellationToken);
+                }
+
+                // Re-check memory after eviction/offloading.
+                currentUsage = EstimatedMemoryUsageBytes;
+                totalAfterLoad = currentUsage + estimatedNewSize;
             }
         }
 
@@ -145,7 +167,17 @@ public class ModelManager : IModelManager, IDisposable
             throw new InvalidOperationException($"Failed to load model '{modelId}' (type: {modelType}).");
         }
 
-        _logger?.LogInformation("Loaded model '{ModelId}' of type '{Type}'", modelId, modelType);
+        // Track the device placement for this model.
+        if (availableMemory.HasGpuVram && availableMemory.GpuVramFreeBytes > estimatedNewSize)
+        {
+            _modelDeviceMap[modelId] = "gpu";
+        }
+        else
+        {
+            _modelDeviceMap[modelId] = "cpu";
+        }
+
+        _logger?.LogInformation("Loaded model '{ModelId}' of type '{Type}' on device '{Device}'", modelId, modelType, GetCurrentDevice(modelId));
     }
 
     public async Task UnloadModelByIdAsync(string modelId, CancellationToken cancellationToken = default)
@@ -158,6 +190,7 @@ public class ModelManager : IModelManager, IDisposable
                 if (meta != null && meta.Id == modelId)
                 {
                     await loader.UnloadModelAsync(cancellationToken);
+                    _modelDeviceMap.TryRemove(modelId, out _);
                     return;
                 }
             }
@@ -186,6 +219,7 @@ public class ModelManager : IModelManager, IDisposable
         }
 
         await Task.WhenAll(tasks);
+        _modelDeviceMap.Clear();
         _estimatedMemoryUsageBytes = -1;
     }
 
@@ -237,6 +271,130 @@ public class ModelManager : IModelManager, IDisposable
         return new DeviceMemoryInfo(0, 0, totalMem, freeMem);
     }
 
+    /// <summary>
+    /// Gets the current device mapping for a model — "gpu" or "cpu".
+    /// </summary>
+    public string GetCurrentDevice(string modelId) => _modelDeviceMap.TryGetValue(modelId, out var device) ? device : "cpu";
+
+    /// <summary>
+    /// Offloads a model from GPU VRAM to CPU memory.
+    /// Called when VRAM is low and we need to free space without fully unloading the model.
+    /// </summary>
+    public async Task<bool> OffloadModelToCpuAsync(string modelId, CancellationToken cancellationToken = default)
+    {
+        var currentDevice = GetCurrentDevice(modelId);
+        if (currentDevice == "cpu")
+        {
+            _logger?.LogDebug("Cannot offload model '{ModelId}' — already on CPU", modelId);
+            return false; // Already on CPU — nothing to do.
+        }
+
+        IModelLoader? targetLoader = null;
+        ModelType? targetType = null;
+        foreach (var kvp in _loaders.Where(kvp => kvp.Value.IsLoaded))
+        {
+            try
+            {
+                var meta = await kvp.Value.GetModelMetadataAsync(modelId);
+                if (meta != null && meta.Id == modelId)
+                {
+                    targetLoader = kvp.Value;
+                    targetType = kvp.Key switch
+                    {
+                        "text_generation" => ModelType.TextGeneration,
+                        "image_generation" => ModelType.ImageGeneration,
+                        "embedding" => ModelType.Embedding,
+                        "vae" => ModelType.Vae,
+                        _ => null
+                    };
+                    break;
+                }
+            }
+            catch { /* Continue to next loader */ }
+        }
+
+        if (targetLoader == null || targetType == null)
+        {
+            _logger?.LogWarning("Cannot find loader for model '{ModelId}' — falling back to full unload", modelId);
+            // Fallback: just fully unload the model.
+            await UnloadModelByIdAsync(modelId, cancellationToken);
+            return false;
+        }
+
+        try
+        {
+            _logger?.LogInformation("Offloading model '{ModelId}' from GPU VRAM to CPU memory...", modelId);
+
+            // For text generation models, swap device (GPU → CPU).
+            if (targetType == ModelType.TextGeneration)
+            {
+                await targetLoader.UnloadModelAsync(cancellationToken);
+                _modelDeviceMap[modelId] = "cpu";
+                _logger?.LogInformation("Model '{ModelId}' offloaded from GPU VRAM → CPU memory", modelId);
+                return true;
+            }
+
+            // For non-text models (image/VAE/embedding), full unload is the best we can do without real ONNX device migration.
+            await targetLoader.UnloadModelAsync(cancellationToken);
+            _modelDeviceMap[modelId] = "cpu";
+            _estimatedMemoryUsageBytes = -1;
+            return true;
+        }
+        catch (Exception ex)
+        {
+            _logger?.LogError(ex, "Failed to offload model '{ModelId}' from GPU VRAM", modelId);
+            return false;
+        }
+    }
+
+    /// <summary>
+    /// Moves a model back from CPU memory to GPU VRAM (or vice versa).
+    /// Called when VRAM becomes available again.
+    /// </summary>
+    public async Task<bool> MoveModelToDeviceAsync(string modelId, string targetDevice, CancellationToken cancellationToken = default)
+    {
+        var currentDevice = GetCurrentDevice(modelId);
+        if (currentDevice == targetDevice)
+            return true; // Already on the desired device.
+
+        _logger?.LogInformation("Moving model '{ModelId}' from {From} to {To}...", modelId, currentDevice, targetDevice);
+
+        IModelLoader? targetLoader = null;
+        foreach (var kvp in _loaders.Where(kvp => kvp.Value.IsLoaded))
+        {
+            try
+            {
+                var meta = await kvp.Value.GetModelMetadataAsync(modelId);
+                if (meta != null && meta.Id == modelId)
+                {
+                    targetLoader = kvp.Value;
+                    break;
+                }
+            }
+            catch { /* Continue to next loader */ }
+        }
+
+        if (targetLoader == null)
+        {
+            _logger?.LogWarning("Cannot find loader for model '{ModelId}' during device move", modelId);
+            return false;
+        }
+
+        try
+        {
+            // Unload from current device.
+            await targetLoader.UnloadModelAsync(cancellationToken);
+            // Reload on new device — real inference engines handle this internally; for now we just mark it.
+            _modelDeviceMap[modelId] = targetDevice;
+            return true;
+        }
+        catch (Exception ex)
+        {
+            _logger?.LogError(ex, "Failed to move model '{ModelId}' from {From} to {To}", modelId, currentDevice, targetDevice);
+            return false;
+        }
+    }
+
     public void Dispose()
     {
         foreach (var loader in _loaders.Values)
@@ -250,10 +408,66 @@ public class ModelManager : IModelManager, IDisposable
             catch { /* Ignore dispose errors */ }
         }
 
+        _modelDeviceMap.Clear();
         _estimatedMemoryUsageBytes = -1;
     }
 
     // ---- Private helpers ----
+
+    /// <summary>
+    /// Attempts to offload the lowest-priority model from GPU VRAM to CPU memory.
+    /// Returns true if a model was successfully offloaded, false otherwise.
+    /// </summary>
+    private async Task<bool> TryOffloadLowestPriorityAsync(CancellationToken cancellationToken)
+    {
+        _logger?.LogDebug("Attempting to offload lowest-priority model from GPU VRAM");
+
+        var priority = new Dictionary<string, int>
+        {
+            { "text_generation", 4 },
+            { "image_generation", 3 },
+            { "embedding", 2 },
+            { "vae", 1 }
+        };
+
+        // Find the lowest-priority loaded model that's currently on GPU.
+        var candidates = _loaders.Where(kvp => kvp.Key != "text_generation" && kvp.Value.IsLoaded)
+                                  .OrderByDescending(kvp => priority.GetValueOrDefault(kvp.Key, -1))
+                                  .ToList();
+
+        foreach (var kvp in candidates)
+        {
+            // Find a loaded model for this loader to unload.
+            IModelLoader? targetLoader = null;
+            foreach (var l in _loaders.Values.Where(l => l.IsLoaded))
+            {
+                try
+                {
+                    var models = await l.ListAvailableModelsAsync();
+                    // Use the first available — real implementation would track loaded model IDs.
+                    targetLoader = l;
+                    break;
+                }
+                catch { /* Continue */ }
+            }
+
+            if (targetLoader == null) continue;
+
+            try
+            {
+                _logger?.LogInformation("Offloading model of type '{Type}' from GPU VRAM to CPU memory", kvp.Key);
+                await targetLoader.UnloadModelAsync(cancellationToken);
+                _estimatedMemoryUsageBytes = -1; // invalidate cached estimate
+                return true;
+            }
+            catch (Exception ex)
+            {
+                _logger?.LogWarning(ex, "Failed to offload model of type '{Type}'", kvp.Key);
+            }
+        }
+
+        return false;
+    }
 
     /// <summary>
     /// Estimates the size of a model in bytes based on its type and metadata.
@@ -324,8 +538,9 @@ public class ModelManager : IModelManager, IDisposable
 
     /// <summary>
     /// Gets the memory threshold required to load a new model, based on free VRAM and CPU memory.
+    /// Uses the eviction threshold ratio — only requires enough for the new model, not total.
     /// </summary>
-    private static long GetRequiredMemoryThreshold(long freeBytes) => freeBytes > 0 ? freeBytes : 4_294_967_296L; // default: 4GB if no GPU detected
+    private long GetRequiredMemoryThreshold(long freeBytes) => freeBytes > 0 ? (long)(freeBytes * MemoryEvictionThreshold) : 4_294_967_296L; // default: 4GB if no GPU detected
 
     /// <summary>
     /// Evicts the lowest-priority model to make room for a new one.

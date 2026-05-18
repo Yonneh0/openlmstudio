@@ -230,7 +230,7 @@ public class EmbeddingPipelineService : IEmbeddingPipelineService, IDisposable
             // Extract the expected embedding dimension from the output tensor shape (KeyValuePair<string, NodeMetadata>.Value.Dimensions)
             var outputNode = inferenceSession.OutputMetadata.First();
             var outputDims = outputNode.Value.Dimensions;
-            _logger?.LogInformation("Embedding model '{ModelId}' loaded successfully — {Size} bytes, input: {InputCount} tensors, output dims: [{OutputShape}]", 
+            _logger?.LogInformation("Embedding model '{ModelId}' loaded successfully — {Size} bytes, input: {InputCount} tensors, output dims: [{OutputShape}]",
                 modelId, fileSize, inferenceSession.InputMetadata.Count(), string.Join(", ", outputDims));
 
             _loadedSessions[modelId] = inferenceSession;
