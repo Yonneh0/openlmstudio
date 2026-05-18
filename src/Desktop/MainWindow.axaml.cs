@@ -16,6 +16,7 @@ using Avalonia.Threading;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using OpenLMStudio.Application.Interfaces;
+using OpenLMStudio.Application.Types;
 using OpenLMStudio.Domain.Models;
 
 namespace OpenLMStudio.Desktop;
@@ -26,10 +27,20 @@ namespace OpenLMStudio.Desktop;
 /// </summary>
 public partial class MainWindow : Window
 {
-    private readonly ILogger<MainWindow>? _logger;
-    private readonly IConversationManager? _conversationManager;
-    private readonly IServerService? _serverService;
-    private readonly IModelRepository? _modelRepository;
+     private readonly ILogger<MainWindow>? _logger;
+     private readonly IConversationManager? _conversationManager;
+     private readonly IServerService? _serverService;
+     private readonly IModelRepository? _modelRepository;
+     private readonly IChatCompletionService? _chatCompletionService;
+
+     /// <summary>Flag indicating whether a streaming response is in progress.</summary>
+     private bool _isStreaming = false;
+
+     /// <summary>The current assistant message border being streamed into during an active SSE session.</summary>
+     private Border? _currentAssistantBorder;
+
+     /// <summary>The text block within the assistant message that receives streamed tokens.</summary>
+     private TextBlock? _assistantTextBlock;
 
     // Tab tracking
     private string _activeTab = "Chat";
@@ -51,12 +62,13 @@ public partial class MainWindow : Window
 
         _logger = logger;
 
-        // Use pre-resolved dependencies from App.OnStartup — if none are provided (for testing), fall back to DI resolution attempt.
-        _conversationManager = conversationManager ?? ResolveConversationManagerFromAppServices();
-        _serverService = serverService ?? ResolveServerServiceFromAppServices();
-        _modelRepository = modelRepository ?? ResolveModelRepositoryFromAppServices();
+         // Use pre-resolved dependencies from App.OnStartup — if none are provided (for testing), fall back to DI resolution attempt.
+         _conversationManager = conversationManager ?? ResolveConversationManagerFromAppServices();
+         _serverService = serverService ?? ResolveServerServiceFromAppServices();
+         _modelRepository = modelRepository ?? ResolveModelRepositoryFromAppServices();
+         _chatCompletionService = chatCompletionService ?? ResolveChatCompletionServiceFromAppServices();
 
-        // Subscribe to server state changes
+         // Subscribe to server state changes
         if (_serverService is OpenLMStudio.Infrastructure.Services.ServerService realSvc)
             realSvc.StateChanged += OnServerStateChanged;
 
@@ -663,7 +675,7 @@ public partial class MainWindow : Window
         }
     }
 
-    // ---- Assistant Response Handling ----
+    // ---- Assistant Response Handling (with streaming token-by-token support) ----
 
     private async Task GetAssistantResponseAsync(Guid chatId, string userMessage)
     {
@@ -671,44 +683,215 @@ public partial class MainWindow : Window
 
         try
         {
-            var assistantMessage = new Message
+            // Show a "generating" placeholder while we set up the streaming connection
+            var assistantBorder = new Border
             {
-                Role = MessageRole.Assistant,
-                Content = "[Generating response...]",
-                TokenCount = 0,
-                CreatedAt = DateTime.UtcNow
+                Margin = new Thickness(0, 0, 4, 8),
+                Padding = new Thickness(16, 12, 16, 12),
+                CornerRadius = new CornerRadius(0, 8, 8, 8),
+                Background = new SolidColorBrush(Color.FromRgb(45, 45, 48)),
             };
 
-            // Display placeholder response
-            Border? assistantBorder = CreateMessageBorder(assistantMessage);
-            if (assistantBorder != null)
-                MessageDisplayPanel?.Children.Add(assistantBorder);
+            var placeholderText = new TextBlock
+            {
+                Text = "⏳ Generating response...",
+                Foreground = new SolidColorBrush(Color.FromRgb(170, 170, 170)),
+                FontSize = 14,
+                Margin = new Thickness(0)
+            };
+
+            var stackPanel = new StackPanel();
+            // Role label for assistant messages
+            var roleLabel = new TextBlock
+            {
+                Text = "AI",
+                Foreground = new SolidColorBrush(Color.FromRgb(79, 195, 247)),
+                FontWeight = FontWeight.SemiBold,
+                Margin = new Thickness(0, 0, 8, 4)
+            };
+            stackPanel.Children.Add(roleLabel);
+            stackPanel.Children.Add(placeholderText);
+            assistantBorder.Child = stackPanel;
+
+            MessageDisplayPanel?.Children.Add(assistantBorder);
+            _currentAssistantBorder = assistantBorder;
+            _assistantTextBlock = placeholderText;
 
             await ScrollToBottomAsync();
 
-            _logger?.LogInformation("Getting assistant response for: {ChatId}", chatId);
+            // Show streaming indicator
+            StreamingIndicator.IsVisible = true;
+            _isStreaming = true;
 
-            // TODO: Wire up to actual IChatCompletionService when available via DI
-            // For now, show a placeholder response
-            if (assistantBorder != null)
-                assistantBorder.Child = new TextBlock
+            // Use the server service if running (real model loaded on local server)
+            // or use IChatCompletionService directly as a fallback for when no server is available.
+            bool usedServerEndpoint = false;
+            try
+            {
+                if (_serverService != null && _serverService.State == ServerState.Running)
                 {
-                    Text = "Assistant response requires IChatCompletionService integration.\n\nTo enable real responses:\n1. Install llama.cpp native bindings (libllama.dll)\n2. Configure in appsettings.json: \"Inference\": { \"Backend\": \"llama-cpp\" }",
-                    Foreground = new SolidColorBrush(Color.FromRgb(170, 170, 170)),
-                    FontSize = 14,
-                    Margin = new Thickness(0)
-                };
+                    await StreamResponseViaServerAsync(chatId, userMessage);
+                    usedServerEndpoint = true;
+                }
+            }
+            catch (Exception serverEx) when (serverEx is IOException or TaskCanceledException)
+            {
+                // Server not available — fall back to local chat completion service
+                _logger?.LogDebug("Server streaming failed, falling back to local IChatCompletionService: {Message}", serverEx.Message);
+            }
 
-            // Update token count display
-            var totalTokens = await _conversationManager.CalculateTotalTokenCountAsync(chatId);
-            TokenCountText.Text = $"Tokens: {totalTokens}";
+            if (!usedServerEndpoint && _chatCompletionService != null)
+            {
+                await StreamResponseViaLocalServiceAsync(chatId, userMessage);
+                usedServerEndpoint = true;
+            }
 
-            await _conversationManager.AddMessageAsync(chatId, assistantMessage);
+            // Stop streaming indicator regardless of how the response was generated
+            StreamingIndicator.IsVisible = false;
+            _isStreaming = false;
         }
         catch (Exception ex)
         {
             _logger?.LogError(ex, "Error getting assistant response");
+
+            // Show error message in the UI
+            if (_currentAssistantBorder != null && _assistantTextBlock != null)
+            {
+                await Dispatcher.UIThread.InvokeAsync(() =>
+                {
+                    StreamingIndicator.IsVisible = false;
+                    _isStreaming = false;
+                    _assistantTextBlock.Text = "Error generating response. Check logs for details.";
+                    _assistantTextBlock.Foreground = new SolidColorBrush(Color.FromRgb(255, 107, 107));
+                });
+            }
         }
+    }
+
+    /// <summary>
+    /// Streams a chat completion response via the local server's SSE endpoint (/v1/chat/completions with stream=true).
+    /// </summary>
+    private async Task StreamResponseViaServerAsync(Guid chatId, string userMessage)
+    {
+        if (_serverService == null || _serverService.State != ServerState.Running)
+            throw new InvalidOperationException("Server is not running — cannot use server streaming endpoint.");
+
+        // Build the HTTP request to the local server's streaming endpoint
+        var uri = $"http://localhost:{_serverService.Configuration.Port}/v1/chat/completions";
+        using var httpClient = new HttpClient();
+        httpClient.Timeout = TimeSpan.FromMinutes(5); // Allow long-running completions for large models
+
+        var chatMessages = await _conversationManager.GetMessagesAsync(chatId) ?? [];
+        var userMsg = new Message { Role = MessageRole.User, Content = userMessage };
+        chatMessages.Add(userMsg);
+
+        var requestBody = new ChatCompletionRequest("default", chatMessages.ToList()) { Stream = true };
+
+        var response = await httpClient.PostAsync(uri, new StringContent(
+            System.Text.Json.JsonSerializer.Serialize(requestBody), Encoding.UTF8, "application/json"));
+
+        if (!response.IsSuccessStatusCode)
+            throw new HttpRequestException($"Server returned: {response.StatusCode}");
+
+        // Read SSE stream token-by-token and update UI on each event
+        using var stream = await response.Content.ReadAsStreamAsync();
+        using var reader = new StreamReader(stream);
+        string? lineBuffer = null;
+        StringBuilder currentData = new();
+        bool inDataEvent = false;
+        while (!reader.EndOfStream && _isStreaming)
+        {
+            var line = await reader.ReadLineAsync();
+            if (line == null) break;
+
+            // Parse SSE event format: "data: {\"token\": \"...\", ...}" or "data: [DONE]"
+            if (line.StartsWith("data:", StringComparison.OrdinalIgnoreCase))
+            {
+                inDataEvent = true;
+                currentData.Append(line.Substring(5).Trim());
+            }
+
+            // SSE events are separated by blank lines
+            if (!inDataEvent || line.Length > 0) continue;
+
+            try
+            {
+                var dataStr = currentData.ToString();
+                if (dataStr == "[DONE]") break; // Stream complete
+
+                var jsonDoc = System.Text.Json.JsonDocument.Parse(dataStr);
+                var tokenElement = jsonDoc.RootElement.GetProperty("token");
+                var tokenValue = tokenElement.GetString();
+
+                await Dispatcher.UIThread.InvokeAsync(() =>
+                {
+                    if (_assistantTextBlock != null)
+                    {
+                        _assistantTextBlock.Text += (tokenValue ?? "");
+                        ScrollToBottomAsync().ConfigureAwait(false).GetAwaiter().GetResult();
+                    }
+                });
+            }
+            catch (Exception ex)
+            {
+                // Ignore parsing errors for non-textual JSON events (e.g., usage stats)
+                _logger?.LogDebug("SSE parsing error: {Message}", ex.Message);
+            }
+
+            inDataEvent = false;
+            currentData.Clear();
+        }
+
+        await _conversationManager.AddMessageAsync(chatId, userMsg);
+
+        // Update token count after stream completes
+        var totalTokens = await _conversationManager.CalculateTotalTokenCountAsync(chatId);
+        TokenCountText.Text = $"Tokens: {totalTokens}";
+    }
+
+    /// <summary>
+    /// Streams a chat completion response via the local IChatCompletionService.
+    /// </summary>
+    private async Task StreamResponseViaLocalServiceAsync(Guid chatId, string userMessage)
+    {
+        var chatMessages = await _conversationManager.GetMessagesAsync(chatId);
+        if (chatMessages == null || !chatMessages.Any()) throw new InvalidOperationException("No messages to send.");
+
+        // Use the last assistant message as the model ID fallback — in practice this would be selected by user.
+        var modelId = "default"; // TODO: Get from a model selector UI element
+
+        await foreach (var chunk in _chatCompletionService.GetStreamingCompletionAsync(
+            new ChatRequest(modelId, chatMessages.ToList()) { Stream = true }))
+        {
+            if (_isStreaming == false || string.IsNullOrEmpty(chunk)) continue;
+
+            try
+            {
+                // Parse the SSE-style JSON: {"token": "...", "finish_reason": null/stop}
+                var jsonDoc = System.Text.Json.JsonDocument.Parse(chunk);
+                var tokenElement = jsonDoc.RootElement.GetProperty("token");
+                var tokenValue = tokenElement.GetString();
+
+                await Dispatcher.UIThread.InvokeAsync(() =>
+                {
+                    if (_assistantTextBlock != null)
+                    {
+                        _assistantTextBlock.Text += (tokenValue ?? "");
+                        ScrollToBottomAsync().ConfigureAwait(false).GetAwaiter().GetResult();
+                    }
+                });
+            }
+            catch
+            {
+                // Ignore non-text events like usage stats, errors, etc.
+            }
+        }
+
+        await _conversationManager.AddMessageAsync(chatId, new Message { Role = MessageRole.User, Content = userMessage });
+
+        // Update token count after stream completes
+        var totalTokens = await _conversationManager.CalculateTotalTokenCountAsync(chatId);
+        TokenCountText.Text = $"Tokens: {totalTokens}";
     }
 
     // ---- Utility Methods ----
@@ -855,6 +1038,15 @@ public partial class MainWindow : Window
     {
         var sp = GetAppServiceProvider();
         return sp?.GetRequiredService<IModelRepository>();
+    }
+
+    /// <summary>
+    /// Attempts to resolve the chat completion service from App.ApplicationServices (DI fallback).
+    /// </summary>
+    private static IChatCompletionService? ResolveChatCompletionServiceFromAppServices()
+    {
+        var sp = GetAppServiceProvider();
+        return sp?.GetRequiredService<IChatCompletionService>();
     }
 
     private T? FindChild<T>(Panel parent, int maxDepth = 10) where T : Control
