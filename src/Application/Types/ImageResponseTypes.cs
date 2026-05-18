@@ -1,9 +1,9 @@
 namespace OpenLMStudio.Application.Types;
 
 /// <summary>
-/// Request to the image generation endpoint via OpenAI-compatible API.
+/// Request to the image generation endpoint via OpenAI-compatible API format.
 /// </summary>
-public class ImageGenerationRequest
+public class OpenAIImageGenerationRequest
 {
     /// <summary>
     /// The model identifier for image generation (diffusion model).
@@ -21,12 +21,12 @@ public class ImageGenerationRequest
     public string? NegativePrompt { get; set; }
 
     /// <summary>
-    /// Image resolution (e.g., 512, 768, 1024).
+    /// Image resolution width (e.g., 512, 768, 1024).
     /// </summary>
     public int Width { get; set; } = 1024;
 
     /// <summary>
-    /// Image height (e.g., 512, 768, 1024).
+    /// Image resolution height (e.g., 512, 768, 1024).
     /// </summary>
     public int Height { get; set; } = 1024;
 
@@ -46,9 +46,34 @@ public class ImageGenerationRequest
     public long? Seed { get; set; }
 
     /// <summary>
+    /// Array of messages forming the conversation context (for chat-based image generation).
+    /// </summary>
+    public List<ChatMessage>? Messages { get; set; }
+
+    /// <summary>
     /// Number of images to generate in parallel.
     /// </summary>
     public int NumImages { get; set; } = 1;
+
+    /// <summary>
+    /// Response format for the generated image (e.g., "base64png", "url").
+    /// </summary>
+    public string? ResponseFormat { get; set; }
+
+    /// <summary>
+    /// Model version for this generation.
+    /// </summary>
+    public string? Version { get; set; }
+
+    /// <summary>
+    /// Quality parameter for the image (e.g., "standard", "hd").
+    /// </summary>
+    public string? Quality { get; set; }
+
+    /// <summary>
+    /// Style of the generated image.
+    /// </summary>
+    public string? Style { get; set; }
 }
 
 /// <summary>

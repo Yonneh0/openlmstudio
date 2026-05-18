@@ -146,7 +146,7 @@ public static class OpenApiEndpointHandler
         });
 
         // OpenAI-compatible: /v1/images/generations - Image generation via diffusion models
-        app.MapPost("/v1/images/generations", async (IModelRepository repo, IChatCompletionService chatService, HttpContext context) =>
+        app.MapPost("/v1/images/generations", async (IModelRepository repo, IDiffusionPipelineService pipeline, IChatCompletionService chatService, HttpContext context) =>
         {
             try
             {
@@ -163,20 +163,66 @@ public static class OpenApiEndpointHandler
                     return;
                 }
 
-                // Check if this is an Anthropic request routed to the wrong endpoint
-                var headersStr = context.Request.Headers.ToString();
-                if (!string.IsNullOrEmpty(headersStr) && headersStr.Contains("x-api-key"))
+                // Parse image generation request using OpenAI-compatible format (OpenAI returns base64 + data URI)
+                var openaiImageReq = System.Text.Json.JsonSerializer.Deserialize<OpenLMStudio.Application.Types.OpenAIImageGenerationRequest>(requestBodyStr);
+
+                if (openaiImageReq == null || string.IsNullOrEmpty(openaiImageReq.ModelId))
                 {
-                    // Forward to proper handler — this endpoint handles OpenAI-style image requests only
+                    context.Response.StatusCode = 400;
+                    await context.Response.WriteAsJsonAsync(new ErrorResponse
+                    {
+                        message = "Model ID is required.",
+                        code = "missing_model",
+                        type = "invalid_request_error"
+                    });
+                    return;
                 }
 
-                // For now, return a 405 Method Not Allowed since image generation is not yet implemented
-                context.Response.StatusCode = 405;
-                await context.Response.WriteAsJsonAsync(new ErrorResponse
+                // If this looks like a text generation request, route to chat completion instead
+                if (openaiImageReq.Prompt == null || openaiImageReq.Messages != null && openaiImageReq.Messages.Any())
                 {
-                    message = "Image generation endpoint not yet available. Use /v1/chat/completions for text completion.",
-                    code = "not_implemented",
-                    type = "endpoint_not_available"
+                    context.Response.StatusCode = 405;
+                    await context.Response.WriteAsJsonAsync(new ErrorResponse
+                    {
+                        message = "Chat completions endpoint does not handle image generation. Use /v1/images/generations for images.",
+                        code = "wrong_endpoint",
+                        type = "endpoint_not_available"
+                    });
+                    return;
+                }
+
+                // Convert to internal image generation request format from OpenAI-compatible DTO
+                var genRequest = new ImageGenerationRequest(
+                    openaiImageReq.ModelId,
+                    openaiImageReq.Prompt,
+                    (string?)openaiImageReq.NegativePrompt,
+                    openaiImageReq.Width,
+                    openaiImageReq.Height,
+                    (double)openaiImageReq.CfgScale,
+                    openaiImageReq.Steps,
+                    (long)(openaiImageReq.Seed ?? -1),
+                    null,
+                    false);
+
+                var result = await pipeline.GenerateImageAsync(genRequest);
+
+                context.Response.StatusCode = 200;
+                await context.Response.WriteAsJsonAsync(new ImageGenerationResponse
+                {
+                    Id = Guid.NewGuid().ToString(),
+                    ModelId = openaiImageReq.ModelId,
+                    CreatedAt = DateTime.UtcNow,
+                    Data = new List<ImageData>
+                    {
+                        new ImageData
+                        {
+                            B64Json = Convert.ToBase64String(result.ImageBytes),
+                            Width = result.Width,
+                            Height = result.Height,
+                            Seed = result.Seed,
+                            ModelId = result.ModelId
+                        }
+                    }
                 });
             }
             catch (Exception ex)
