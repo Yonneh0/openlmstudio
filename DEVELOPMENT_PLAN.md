@@ -407,7 +407,7 @@ OpenLMStudio/
 | Context Manipulation Service | **2 / 2** | None ✓ |
 | Context Window Budgeting | 0 / 4 | Not started |
 | TaskContextSnapshot Model | 1 / 2 | Needs AiAnalysisHistory field addition |
-| TaskContextStore Service | **1 / 4** | SQLite-backed implementation via SqliteTaskContextStore ✓ — CRUD, upsert, archive/discard done; ListArchived needs completion |
+| TaskContextStore Service | **2 / 4** | SQLite-backed implementation via SqliteTaskContextStore ✓ — CRUD, upsert, archive/discard done; ListArchived completed (May 17 audit) |
 | Context Inheritance System | 0 / 3 | Not started |
 | Fast Re-Injection Pipeline | 0 / 3 | Not started |
 | Context Pruning on Completion | 0 / 3 | Not started |
@@ -813,5 +813,9 @@ OpenLMStudio/
 #### Audit Findings Summary (May 2026)
 | Category | Items Found | Status |
 |----------|-------------|--------|
-| Critical Bugs Fixed | 4 | ChatContextManager missing table, OpenApiEndpointHandler wrong HTTP method, DeviceMonitor memory calculation, TaskContextStore archived Description field |
+| Critical Bugs Fixed | **6** | ChatContextManager missing table, OpenApiEndpointHandler wrong HTTP method, DeviceMonitor memory calculation, TaskContextStore archived Description field, **ChatContextManager SQL column mismatch (Ordinal("Id") vs Ordinal("SegmentId"))**, **TaskContextStore ListArchivedAsync reading from hardcoded path instead of scanning per-task-id .db files** |
 | Non-Critical Improvements | 3 | AppDataDirectoryResolver subdirectory init, GetLogFilePath helper, ConversationManager error handling consistency |
+
+#### Audit Bug Fixes Applied (May 2026 — this audit)
+- **ChatContextManager**: Fixed `GetAllContextSegmentsInternalAsync` column name mismatch — was using `Ordinal("Id")` but SQL selects `SegmentId`, causing SqliteException at runtime. Now uses `Ordinal("SegmentId")`.
+- **TaskContextStore ListArchivedAsync**: Was reading from a single hardcoded database path (`_resolver.GetTaskContextDatabasePath("archived")`) which would never find any actual archived data since snapshots are stored per-task-id in separate `.db` files. Now scans all `.db` files across the `tasks/` subdirectory for `TaskContextSnapshots_Archived` tables, and also checks `metadata/` directory as a secondary location.
