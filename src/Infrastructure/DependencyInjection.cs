@@ -106,8 +106,34 @@ public static class DependencyInjection
 
         // ---- Phase 7: Agent Harness ----
 
+        // FileOperationsService handles file read/write operations within the agent sandbox
+        services.AddSingleton<IFileOperationsService, Services.FileOperationsService>();
+
+        // CommandExecutionService executes shell commands in a sandboxed environment (cross-platform)
+        services.AddSingleton<ICommandExecutionService, Services.CommandExecutionService>();
+
         // AgentTaskProgressTracker tracks agentic task progress through stages (NotStarted → InProgress → Reviewing → Completed/Failed)
         services.AddSingleton<ITaskProgressTracker, Services.AgentTaskProgressTracker>();
+
+        // ---- Phase 7: Built-in Tool Registration ----
+
+        // FileRead tool for reading file contents within the agent sandbox
+        services.AddSingleton<ITool, Services.FileReadTool>();
+
+        // FileWrite tool for writing/creating files within the agent sandbox
+        services.AddSingleton<ITool, Services.FileWriteTool>();
+
+        // FilePatch tool for safely patching files within the agent sandbox
+        services.AddSingleton<ITool, Services.FilePatchTool>();
+
+        // CommandExecute tool for running shell commands in a sandboxed environment
+        services.AddSingleton<ITool, Services.CommandExecuteTool>();
+
+        // SearchFiles tool for regex search across project files
+        services.AddSingleton<ITool, Services.SearchFilesTool>();
+
+        // ProjectExplorer tool for listing directory contents recursively
+        services.AddSingleton<ITool, Services.ProjectExplorerTool>();
 
         // ---- Phase 8: Plugin & MCP System ----
 
