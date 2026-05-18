@@ -147,18 +147,6 @@ When implementing features:
 2. Update completion tracking immediately after successful implementation
 3. Move to the next task without asking for confirmation
 
-## Example Response Pattern
-
-```
-> "What should we work on next?"
-
-"I see Phase 5 (UI Implementation) has Main Window Layout in progress but not complete, so I'll continue with that."
-
-[Updates relevant completion tracking sections]
-
-[Proceeds to implement without asking permission]
-```
-
 ---
 
 ## Tool Usage
