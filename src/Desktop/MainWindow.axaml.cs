@@ -180,7 +180,7 @@ public partial class MainWindow : Window
                 break;
             case "Context":
                 SetTabVisibility(ContextTabContent, true);
-                RefreshContextBudgetAsync();
+                _ = RefreshContextBudgetAsync();
                 break;
             case "ImageGen":
                 SetTabVisibility(ImageGenTabContent, true);
@@ -260,7 +260,7 @@ public partial class MainWindow : Window
 
         // Update context budget when switching to context tab
         if (activeTab == "Context")
-            RefreshContextBudgetAsync();
+            _ = RefreshContextBudgetAsync();
     }
 
     private void SetPanelVisibility(StackPanel? panel, bool visible)

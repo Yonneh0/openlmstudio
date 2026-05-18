@@ -22,7 +22,9 @@ public class PluginRegistry : Domain.Interfaces.IPluginRegistry
     /// <summary>
     /// The URL of the public plugin registry. Null means no remote registry configured.
     /// </summary>
-    private Uri? _registryUrl;
+#pragma warning disable CS0649 // Field is never assigned to — set via property setter or method
+    private Uri? _registryUrl = null;
+#pragma warning restore CS0649
 
     public PluginRegistry(ILogger<PluginRegistry>? logger, string pluginDirectory)
     {
@@ -60,8 +62,8 @@ public class PluginRegistry : Domain.Interfaces.IPluginRegistry
                     {
                         var manifest = await LoadPluginManifestAsync(manifestPath);
                         result.Add(new Domain.Interfaces.PluginDefinition(
-                            manifest.Id!,  // Null-forgiving: Id is required even if never explicitly set — convention
-                            manifest.Name,
+                            manifest.Id ?? pluginName,  // Use directory name as fallback when Id not in manifest
+                            manifest.Name ?? pluginName,  // Use directory name as fallback when Name not in manifest
                             manifest.Description ?? string.Empty,
                             manifest.Version ?? new Version("0.1"),
                             manifest.Version ?? new Version("0.1"),  // No registry version for local plugins
@@ -166,8 +168,8 @@ public class PluginRegistry : Domain.Interfaces.IPluginRegistry
         {
             if (string.IsNullOrEmpty(entry.Name)) continue;
             
-            var targetPath = Path.Combine(installPath, entry.FullName);
-            Directory.CreateDirectory(Path.GetDirectoryName(targetPath));
+        var targetPath = Path.Combine(installPath, entry.FullName);
+        Directory.CreateDirectory(Path.GetDirectoryName(targetPath) ?? string.Empty);
             
             await using var streamWriter = new FileStream(targetPath, FileMode.CreateNew, FileAccess.Write, FileShare.None);
             await using var readerStream = entry.Open();

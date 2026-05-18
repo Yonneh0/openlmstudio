@@ -179,7 +179,7 @@ public class CommandExecutionService : ICommandExecutionService, IDisposable
             {
                 try
                 {
-                    CancelAsync(procId);
+                    _ = CancelAsync(procId);
                 }
                 catch { /* Ignore cleanup errors */ }
             }
