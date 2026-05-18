@@ -218,12 +218,12 @@ OpenLMStudio/
 - [x] Implement `SafetensorParser` service: read header, extract tensor shapes/dtypes, validate integrity before loading, support single-file and multi-file sharded models
 - [x] Implement `SafetensorModelLoader` concept in DiffusionPipelineService: weight loading via ONNX Runtime InferenceSession with memory-mapped I/O for large files
 
-#### Phase 2 Summary — **6 of 10 items complete**
+#### Phase 2 Summary — **7 of 10 items complete**
 | Category | Items Complete | Items Remaining |
 |----------|---------------|-----------------|
 | Model Repository | 6 / 6 | ✓ All items complete |
 | Download Manager | 7 / 7 | ✓ All items complete |
-| Model Loading Engine | 5 of 10 partial | IModelManager (multi-model concurrency+eviction), DiffusionInferenceEngine (CLIP→UNet+CFG→VAE pipeline), LoraWeightMerger added; inference stubbed for image/VAE/Lora weight merging; ONNX Runtime loaded but not connected to actual diffusion pipelines yet |
+| Model Loading Engine | 6 of 10 partial | IModelManager (multi-model concurrency+eviction) implemented; GPU↔CPU offloading added in bdcae23; DiffusionInferenceEngine (CLIP→UNet+CFG→VAE pipeline), LoraWeightMerger added; inference stubbed for image/VAE/Lora weight merging; ONNX Runtime loaded but not connected to actual diffusion pipelines yet |
 
 ---
 
