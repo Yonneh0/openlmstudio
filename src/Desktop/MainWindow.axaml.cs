@@ -35,6 +35,8 @@ public partial class MainWindow : Window
     private readonly IServerService? _serverService;
     private readonly IModelRepository? _modelRepository;
     private readonly IChatCompletionService? _chatCompletionService;
+    private readonly IChatContextManager? _contextManager;
+    private readonly IContextWindowBudgeter? _budgeter;
 
     /// <summary>Flag indicating whether a streaming response is in progress.</summary>
     private bool _isStreaming = false;
@@ -56,7 +58,10 @@ public partial class MainWindow : Window
         ILogger<MainWindow>? logger,
         IConversationManager? conversationManager = null,
         IServerService? serverService = null,
-        IModelRepository? modelRepository = null)
+        IModelRepository? modelRepository = null,
+        IChatCompletionService? chatCompletionService = null,
+        IChatContextManager? contextManager = null,
+        IContextWindowBudgeter? budgeter = null)
     {
         InitializeComponent();
 
@@ -69,7 +74,9 @@ public partial class MainWindow : Window
         _conversationManager = conversationManager ?? ResolveConversationManagerFromAppServices();
         _serverService = serverService ?? ResolveServerServiceFromAppServices();
         _modelRepository = modelRepository ?? ResolveModelRepositoryFromAppServices();
-        _chatCompletionService = _chatCompletionService ?? ResolveChatCompletionServiceFromAppServices();
+        _chatCompletionService = chatCompletionService ?? ResolveChatCompletionServiceFromAppServices();
+        _contextManager = contextManager ?? ResolveContextManagerFromAppServices();
+        _budgeter = budgeter ?? ResolveBudgeterFromAppServices();
 
         // Subscribe to server state changes
         if (_serverService is OpenLMStudio.Infrastructure.Services.ServerService realSvc)
@@ -111,6 +118,32 @@ public partial class MainWindow : Window
         // Handle Enter key in input box for sending messages
         if (MessageInputBox != null)
             MessageInputBox.KeyDown += OnMessageInputKeyDown;
+
+        // Context tab custom context injection button
+        if (InjectCustomContextBtn != null)
+            InjectCustomContextBtn.Click += OnInjectCustomContextClicked;
+
+        if (RightAddCustomContextBtn != null)
+            RightAddCustomContextBtn.Click += OnRightAddCustomContextClicked;
+
+        if (RightCustomContextInjectBtn != null)
+            RightCustomContextInjectBtn.Click += OnRightCustomContextInjectClicked;
+
+        // Context compression selector (left sidebar)
+        if (ContextCompressionSelector != null)
+            ContextCompressionSelector.SelectionChanged += OnContextCompressionSelectionChanged;
+
+        // Context compression selector (right sidebar)
+        if (RightCompressionSelector != null)
+            RightCompressionSelector.SelectionChanged += OnRightCompressionSelectionChanged;
+
+        // Random seed button
+        if (RandomSeedButton != null)
+            RandomSeedButton.Click += OnRandomSeedClicked;
+
+        // Settings button
+        if (SettingsButton != null)
+            SettingsButton.Click += OnSettingsClicked;
     }
 
     // ---- Tab Navigation ----
@@ -124,6 +157,7 @@ public partial class MainWindow : Window
         SetTabVisibility(ServerTabContent, false);
         SetTabVisibility(ModelsTabContent, false);
         SetTabVisibility(DevicesTabContent, false);
+        SetTabVisibility(ContextTabContent, false);
         SetTabVisibility(ImageGenTabContent, false);
 
         // Show the selected tab content
@@ -143,6 +177,10 @@ public partial class MainWindow : Window
             case "Devices":
                 SetTabVisibility(DevicesTabContent, true);
                 UpdateDeviceStatus();
+                break;
+            case "Context":
+                SetTabVisibility(ContextTabContent, true);
+                RefreshContextBudgetAsync();
                 break;
             case "ImageGen":
                 SetTabVisibility(ImageGenTabContent, true);
@@ -176,6 +214,9 @@ public partial class MainWindow : Window
         if (DevicesTabContent != null)
             tabs.Add(DevicesTabContent.Children.OfType<TextBlock>().FirstOrDefault());
 
+        if (ContextTabContent != null)
+            tabs.Add(ContextTabContent.Children.OfType<TextBlock>().FirstOrDefault());
+
         foreach (var tb in tabs)
         {
             if (tb == null) continue;
@@ -183,10 +224,11 @@ public partial class MainWindow : Window
             // Only update the first TextBlock of each tab section (the tab title)
             var parent = tb.Parent as Panel;
             if (parent?.Name != null &&
-                new[] { "ChatTabContent", "ServerTabContent", "ModelsTabContent", "DevicesTabContent" }
+                new[] { "ChatTabContent", "ServerTabContent", "ModelsTabContent", "DevicesTabContent", "ContextTabContent" }
                     .Contains(parent.Name))
             {
-                if (activeTabName.Equals(tb.Text, StringComparison.OrdinalIgnoreCase))
+                if (activeTabName.Equals(tb.Text, StringComparison.OrdinalIgnoreCase) ||
+                    (activeTabName == "ImageGen" && tb.Text?.Equals("Image Generation") == true))
                 {
                     tb.Foreground = new SolidColorBrush(Color.FromRgb(79, 195, 247)); // AccentBlue
                     tb.FontWeight = FontWeight.SemiBold;
@@ -198,6 +240,33 @@ public partial class MainWindow : Window
                 }
             }
         }
+    }
+
+    private void UpdateRightSidebarTab(string activeTab)
+    {
+        // Show/hide right sidebar tab content panels
+        SetPanelVisibility(RightContextContent, false);
+        SetPanelVisibility(RightServerContent, false);
+        SetPanelVisibility(RightDevicesContent, false);
+
+        SetPanelVisibility(RightContextContent, activeTab == "Context");
+        SetPanelVisibility(RightServerContent, activeTab == "Server");
+        SetPanelVisibility(RightDevicesContent, activeTab == "Devices");
+
+        // Update tab button states
+        if (RightContextTabButton != null) RightContextTabButton.IsChecked = activeTab == "Context";
+        if (RightServerTabButton != null) RightServerTabButton.IsChecked = activeTab == "Server";
+        if (RightDevicesTabButton != null) RightDevicesTabButton.IsChecked = activeTab == "Devices";
+
+        // Update context budget when switching to context tab
+        if (activeTab == "Context")
+            RefreshContextBudgetAsync();
+    }
+
+    private void SetPanelVisibility(StackPanel? panel, bool visible)
+    {
+        if (panel != null)
+            panel.IsVisible = visible;
     }
 
     // ---- Chat List Management ----
@@ -301,8 +370,8 @@ public partial class MainWindow : Window
             }
         }
 
-        // Load the selected conversation's messages (fire-and-forget since OnChatItemClicked is async void)
-        _ = LoadConversationMessagesAsync(chatIdObj.Value);
+        // Load the selected conversation's messages — fire-and-forget since this is called from an async void event handler
+        _ = LoadConversationMessagesAsync(chatIdObj.Value).ConfigureAwait(false);
     }
 
     private async void OnNewChatClicked(object? sender, RoutedEventArgs e)
@@ -312,8 +381,8 @@ public partial class MainWindow : Window
         var newChat = await _conversationManager.CreateChatAsync("New Chat");
         RefreshChatListAsync();
 
-        // Automatically select the new chat (fire-and-forget since this is async void)
-        _ = LoadConversationMessagesAsync(newChat.Id);
+        // Automatically select the new chat — fire-and-forget since this is called from an async void event handler
+        _ = LoadConversationMessagesAsync(newChat.Id).ConfigureAwait(false);
     }
 
     // ---- Conversation Message Loading and Display ----
@@ -349,7 +418,7 @@ public partial class MainWindow : Window
                 });
             }
 
-            // Display each message with alternating styling
+            // Display each message with alternating styling and context controls
             foreach (var msg in messages)
             {
                 var messageBorder = CreateMessageBorder(msg);
@@ -359,6 +428,9 @@ public partial class MainWindow : Window
 
             // Update chat title display
             ChatTitleText.Text = "Chat Session";
+
+            // Refresh context budget after loading messages
+            await RefreshContextBudgetAsync();
 
             // Scroll to bottom of messages
             await ScrollToBottomAsync();
@@ -435,27 +507,122 @@ public partial class MainWindow : Window
         }
         else
         {
-            // Add role label for user/system messages
-            var stackPanel = new StackPanel();
+            // Add role label for user/system messages and context controls
+            var outerStackPanel = new StackPanel();
 
-            var roleLabel = new TextBlock
+            // Top row: Role label + per-message context controls
+            if (_contextManager != null && _selectedChatId.HasValue)
             {
-                Text = message.Role.ToString().ToUpper(),
-                Foreground = new SolidColorBrush(Color.FromRgb(79, 195, 247)),
-                FontWeight = FontWeight.SemiBold,
-                Margin = new Thickness(0, 0, 8, 4)
-            };
+                var topRow = new Grid();
+                topRow.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Star });
+                topRow.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
 
-            if (message.Role == MessageRole.User)
-                roleLabel.Foreground = new SolidColorBrush(Color.FromRgb(76, 175, 80)); // Green for user
+                // Role label on the left
+                var roleLabel = new TextBlock
+                {
+                    Text = message.Role.ToString().ToUpper(),
+                    Foreground = new SolidColorBrush(Color.FromRgb(79, 195, 247)),
+                    FontWeight = FontWeight.SemiBold,
+                    Margin = new Thickness(0, 0, 8, 4)
+                };
 
-            stackPanel.Children.Add(roleLabel);
-            stackPanel.Children.Add(textBlock);
+                if (message.Role == MessageRole.User)
+                    roleLabel.Foreground = new SolidColorBrush(Color.FromRgb(76, 175, 80)); // Green for user
 
-            border.Child = stackPanel;
+                Grid.SetColumn(roleLabel, 0);
+                topRow.Children.Add(roleLabel);
+
+                // Per-message context controls on the right
+                var controlPanel = new StackPanel { Orientation = Avalonia.Layout.Orientation.Horizontal };
+
+                // Pin button — lock from compression/reordering
+                var pinBtn = new Button
+                {
+                    Content = "📌",
+                    Classes = { "msgPinBtn" },
+                    Padding = new Thickness(6, 2),
+                    FontSize = 10,
+                    BorderThickness = new Thickness(0)
+                };
+                // Track pin state in Tag (true=pinned, false=unpinned)
+                pinBtn.Tag = true;
+                pinBtn.Click += OnMessagePinClicked;
+                controlPanel.Children.Add(pinBtn);
+
+                // Suppress button — toggle visibility to AI
+                var suppressBtn = new Button
+                {
+                    Content = "👁️",
+                    Classes = { "msgSuppressBtn" },
+                    Padding = new Thickness(6, 2),
+                    FontSize = 10,
+                    BorderThickness = new Thickness(0)
+                };
+                // Track suppress state in Tag (true=suppressed, false=revealed)
+                suppressBtn.Tag = false;
+                suppressBtn.Click += OnMessageSuppressClicked;
+                controlPanel.Children.Add(suppressBtn);
+
+                Grid.SetColumn(controlPanel, 1);
+                topRow.Children.Add(controlPanel);
+
+                outerStackPanel.Children.Add(topRow);
+            }
+
+            // Content text block below the role label + controls
+            outerStackPanel.Children.Add(textBlock);
+
+            border.Child = outerStackPanel;
         }
 
         return border;
+    }
+
+    // Dictionary to track custom context segments → Border for removal (avoids visual tree traversal in Avalonia)
+    private readonly Dictionary<Guid, Border> _customContextBorders = new();
+
+    // ---- Per-Message Context Control Event Handlers ----
+
+    private async void OnMessagePinClicked(object? sender, RoutedEventArgs e)
+    {
+        if (_contextManager == null || _selectedChatId == null) return;
+
+        var button = (Button)sender!;
+        var isPinned = (bool)(button.Tag ?? false);
+        var newPinnedState = !isPinned;
+
+        // NOTE: Avalonia Border doesn't expose the same Tag property semantics as WPF.
+        // Per-message pin/suppress requires a persistent message ID lookup mechanism — 
+        // this is deferred to Phase 7 when we implement proper context segment tracking.
+        _logger?.LogDebug("Pin/unpin not yet implemented (requires Border.Tag workaround)");
+
+        // Update button state and styling regardless
+        button.Tag = newPinnedState;
+        if (newPinnedState)
+            button.Classes.Add("pinned");
+        else
+            button.Classes.Remove("pinned");
+    }
+
+    private async void OnMessageSuppressClicked(object? sender, RoutedEventArgs e)
+    {
+        if (_contextManager == null || _selectedChatId == null) return;
+
+        var button = (Button)sender!;
+        var isSuppressed = (bool)(button.Tag ?? false);
+        var newSuppressState = !isSuppressed;
+
+        // NOTE: Avalonia Border doesn't expose the same Tag property semantics as WPF.
+        // Per-message suppress/reveal requires a persistent message ID lookup mechanism — 
+        // this is deferred to Phase 7 when we implement proper context segment tracking.
+        _logger?.LogDebug("Suppress/reveal not yet implemented (requires Border.Tag workaround)");
+
+        // Update button state and styling regardless
+        button.Tag = newSuppressState;
+        if (newSuppressState)
+            button.Classes.Add("suppressed");
+        else
+            button.Classes.Remove("suppressed");
     }
 
     // ---- Server Start/Stop Controls ----
@@ -752,6 +919,10 @@ public partial class MainWindow : Window
             // Stop streaming indicator regardless of how the response was generated
             StreamingIndicator.IsVisible = false;
             _isStreaming = false;
+
+            // Refresh context budget after adding assistant message
+            if (_selectedChatId.HasValue)
+                await RefreshContextBudgetAsync();
         }
         catch (Exception ex)
         {
@@ -926,6 +1097,235 @@ public partial class MainWindow : Window
         TokenCountText.Text = $"Tokens: {totalTokens}";
     }
 
+    // ---- Context Budget Management ----
+
+    private async Task RefreshContextBudgetAsync()
+    {
+        if (_selectedChatId == null || _budgeter == null) return;
+
+        try
+        {
+            var indicator = await _budgeter.GetBudgetIndicatorAsync(_selectedChatId.Value);
+            
+            // Update left sidebar budget display
+            if (ContextBudgetText != null)
+            {
+                ContextBudgetText.Text = $"Budget: {indicator.UsedTokens} / {indicator.MaximumTokens} tokens used";
+                
+                // Set color zone based on remaining percentage
+                var remainingPct = indicator.RemainingTokens > 0 ? (float)indicator.RemainingTokens / indicator.MaximumTokens : 1f;
+                if (remainingPct < 0.05f)
+                    ContextBudgetText.Foreground = new SolidColorBrush(Color.FromRgb(255, 107, 107)); // Red - critical
+                else if (remainingPct < 0.20f)
+                    ContextBudgetText.Foreground = new SolidColorBrush(Color.FromRgb(255, 152, 0)); // Yellow - warning
+                else
+                    ContextBudgetText.Foreground = new SolidColorBrush(Color.FromRgb(136, 136, 136)); // Normal text color
+            }
+
+            // Update right sidebar budget display
+            if (RightBudgetText != null)
+            {
+                RightBudgetText.Text = $"Used: {indicator.UsedTokens} / {indicator.MaximumTokens} tokens ({(int)(indicator.PercentageUsed)}%)";
+                
+                // Set remaining color zone on the bar — use a SolidColorBrush based on zone instead of LinearGradientBrush which doesn't have Stops in Avalonia
+                switch (indicator.ColorZone)
+                {
+                    case ContextBudgetColorZone.Green:
+                        RightBudgetBar.Background = new SolidColorBrush(Color.FromRgb(76, 175, 80)); // Green
+                        break;
+                    case ContextBudgetColorZone.Yellow:
+                        RightBudgetBar.Background = new SolidColorBrush(Color.FromRgb(255, 152, 0)); // Orange
+                        break;
+                    case ContextBudgetColorZone.Red:
+                        RightBudgetBar.Background = new SolidColorBrush(Color.FromRgb(244, 67, 54)); // Red
+                        break;
+                }
+            }
+
+            // Note: HeaderBudgetPercentText was not defined in XAML — budget display is handled by left/right sidebar text blocks only
+        }
+        catch (Exception ex)
+        {
+            _logger?.LogDebug("Error refreshing context budget: {Message}", ex.Message);
+            
+            // Set fallback text on errors
+            if (RightBudgetText != null) RightBudgetText.Text = "Budget unavailable";
+            if (ContextBudgetText != null) ContextBudgetText.Text = "Budget unavailable";
+        }
+    }
+
+    private void OnContextCompressionSelectionChanged(object? sender, SelectionChangedEventArgs e)
+    {
+        // Map ComboBox selection to CompressionLevel enum
+        if (_selectedChatId == null || _budgeter == null) return;
+
+        var comboBox = (ComboBox)sender!;
+        var selectedIndex = comboBox.SelectedIndex;
+        
+        var strategy = selectedIndex switch
+        {
+            0 => Domain.Models.CompressionLevel.None,
+            1 => Domain.Models.CompressionLevel.Light,
+            2 => Domain.Models.CompressionLevel.Medium,
+            3 => Domain.Models.CompressionLevel.Aggressive,
+            _ => Domain.Models.CompressionLevel.Medium
+        };
+
+        _ = _budgeter.SetCompressionStrategyForChatAsync(_selectedChatId.Value, strategy);
+    }
+
+    private void OnRightCompressionSelectionChanged(object? sender, SelectionChangedEventArgs e)
+    {
+        // Same as left sidebar but for right sidebar selector
+        if (_selectedChatId == null || _budgeter == null) return;
+
+        var comboBox = (ComboBox)sender!;
+        var selectedIndex = comboBox.SelectedIndex;
+        
+        var strategy = selectedIndex switch
+        {
+            0 => Domain.Models.CompressionLevel.None,
+            1 => Domain.Models.CompressionLevel.Light,
+            2 => Domain.Models.CompressionLevel.Medium,
+            3 => Domain.Models.CompressionLevel.Aggressive,
+            _ => Domain.Models.CompressionLevel.Medium
+        };
+
+        _ = _budgeter.SetCompressionStrategyForChatAsync(_selectedChatId.Value, strategy);
+    }
+
+    // ---- Custom Context Injection ----
+
+    private void OnInjectCustomContextClicked(object? sender, RoutedEventArgs e)
+    {
+        // Toggle custom context injection panel visibility (left sidebar version)
+        if (CustomContextInjectionPanel != null)
+            CustomContextInjectionPanel.IsVisible = !CustomContextInjectionPanel.IsVisible;
+        
+        // Also toggle right sidebar panel
+        if (RightCustomContextInjectionPanel != null)
+            RightCustomContextInjectionPanel.IsVisible = CustomContextInjectionPanel?.IsVisible == true;
+    }
+
+    private void OnRightAddCustomContextClicked(object? sender, RoutedEventArgs e)
+    {
+        // Toggle custom context injection panel visibility from right sidebar button
+        if (RightCustomContextInjectionPanel != null)
+            RightCustomContextInjectionPanel.IsVisible = !RightCustomContextInjectionPanel.IsVisible;
+        
+        // Also toggle left sidebar panel
+        if (CustomContextInjectionPanel != null)
+            CustomContextInjectionPanel.IsVisible = RightCustomContextInjectionPanel?.IsVisible == true;
+    }
+
+    private async void OnRightCustomContextInjectClicked(object? sender, RoutedEventArgs e)
+    {
+        if (_contextManager == null || _selectedChatId == null) return;
+
+        // Get the injection type from the ComboBox selection (0 = System Prompt custom, 1 = File Contents, 2 = Raw Context)
+        var selectedTypeIndex = RightInjectionTypeSelector?.SelectedIndex ?? 0;
+        
+        var injectionType = selectedTypeIndex switch
+        {
+            0 => Domain.Models.ContextInjectionType.CustomInjection,
+            1 => Domain.Models.ContextInjectionType.ProjectState,
+            _ => Domain.Models.ContextInjectionType.CustomInjection // Fallback: user-defined custom context
+        };
+
+        try
+        {
+            // Inject the custom context and add it to the UI segments list
+            var segment = await _contextManager.InjectCustomContextAsync(
+                _selectedChatId.Value,
+                RightCustomContextContentInput?.Text ?? "",
+                injectionType);
+
+            // Add visual representation to the right sidebar segments container
+            if (segment != null && RightSegmentsContainer != null)
+            {
+                var segmentBorder = new Border
+                {
+                    Background = new SolidColorBrush(Color.FromRgb(45, 45, 48)),
+                    CornerRadius = new CornerRadius(4),
+                    Padding = new Thickness(10, 8),
+                    Margin = new Thickness(0, 0, 0, 6)
+                };
+
+                var segmentGrid = new Grid();
+                segmentGrid.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Star });
+                segmentGrid.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
+
+                // Segment label
+                var segmentLabel = new TextBlock
+                {
+                    Text = $"Custom: {injectionType}",
+                    FontWeight = FontWeight.SemiBold,
+                    Foreground = new SolidColorBrush(Color.FromRgb(79, 195, 247)),
+                    FontSize = 11
+                };
+
+                // Remove button — store the segment ID on its Tag property (Avalonia Button DOES support Tag)
+                var removeBtn = new Button
+                {
+                    Content = "✕",
+                    Classes = { "msgRemoveCtxBtn" },
+                    Padding = new Thickness(6, 2),
+                    FontSize = 10,
+                    BorderThickness = new Thickness(0),
+                    Tag = segment.Id  // ContextSegment.Id is the segment ID — there's no SegmentId property
+                };
+                removeBtn.Click += OnRemoveCustomContextClicked;
+
+                Grid.SetColumn(segmentLabel, 0);
+                Grid.SetColumn(removeBtn, 1);
+                segmentGrid.Children.Add(segmentLabel);
+                segmentGrid.Children.Add(removeBtn);
+
+                segmentBorder.Child = segmentGrid;
+                // Track the Border for later removal (avoids visual tree traversal in Avalonia)
+                _customContextBorders[segment.Id] = segmentBorder;
+                RightSegmentsContainer.Children.Add(segmentBorder);
+            }
+
+            // Collapse the panel after injection
+            if (RightCustomContextInjectionPanel != null)
+                RightCustomContextInjectionPanel.IsVisible = false;
+        }
+        catch (Exception ex)
+        {
+            _logger?.LogError(ex, "Failed to inject custom context");
+            ShowError($"Failed to inject custom context: {ex.Message}");
+        }
+    }
+
+    private async void OnRemoveCustomContextClicked(object? sender, RoutedEventArgs e)
+    {
+        if (_contextManager == null || _selectedChatId == null) return;
+
+        var button = (Button)sender!;
+        
+        // Get segment ID from the button's Tag property — Avalonia Button DOES support Tag properly
+        var segmentIdObj = button.Tag as Guid?;
+        if (segmentIdObj != null && _selectedChatId.HasValue)
+        {
+            try
+            {
+                await _contextManager.RemoveCustomContextAsync(_selectedChatId.Value, segmentIdObj.Value);
+                
+                // Remove the visual representation from the UI — custom context borders are direct children of RightSegmentsContainer
+                if (_customContextBorders.TryGetValue(segmentIdObj.Value, out var borderToRemove))
+                {
+                    RightSegmentsContainer.Children.Remove(borderToRemove);
+                    _customContextBorders.Remove(segmentIdObj.Value);
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger?.LogError(ex, "Failed to remove custom context");
+            }
+        }
+    }
+
     // ---- Utility Methods ----
 
     private int EstimateTokenCount(string text) =>
@@ -998,123 +1398,7 @@ public partial class MainWindow : Window
         }
     }
 
-    /// <summary>
-    /// Attaches Click event handlers to the Tab TextBlocks so users can switch tabs by clicking.
-    /// </summary>
-    private void AttachTabClickHandlers()
-    {
-        // Each tab's title TextBlock is inside a StackPanel — attach click to that panel instead for better hit target
-        var tabPanels = new[] { ChatTabContent, ServerTabContent, ModelsTabContent, DevicesTabContent };
-        foreach (var tab in tabPanels)
-        {
-            if (tab == null) continue;
-
-            // Make the entire StackPanel clickable by attaching a Click handler to its first element
-            var child = tab.Children.OfType<Control>().FirstOrDefault();
-            if (child != null && !string.IsNullOrEmpty(tab.Name))
-            {
-                try
-                {
-                    switch (tab.Name)
-                    {
-                        case "ChatTabContent":
-                            child.PointerPressed += (_, _) => ShowTab("Chat"); break;
-                        case "ServerTabContent":
-                            child.PointerPressed += (_, _) => ShowTab("Server"); break;
-                        case "ModelsTabContent":
-                            child.PointerPressed += (_, _) => ShowTab("Models"); break;
-                        case "DevicesTabContent":
-                            child.PointerPressed += (_, _) => ShowTab("Devices"); break;
-                    }
-                }
-                catch { /* Ignore errors on individual tab attaches */ }
-            }
-        }
-
-        // Also attach click handlers directly to the TabControl buttons in XAML for reliability — use lambda instead of RoutedEventHandler
-        if (ChatTabContent?.Children.OfType<Control>().FirstOrDefault() is Control chatClickTarget)
-            chatClickTarget.PointerPressed += (_, _) => ShowTab("Chat");
-
-        var serverChild = ServerTabContent?.Children.OfType<Control>().FirstOrDefault();
-        serverChild?.AddHandler(Control.PointerPressedEvent, (_, _) => ShowTab("Server"));
-
-        var modelsChild = ModelsTabContent?.Children.OfType<Control>().FirstOrDefault();
-        modelsChild?.AddHandler(Control.PointerPressedEvent, (_, _) => ShowTab("Models"));
-
-        var devicesChild = DevicesTabContent?.Children.OfType<Control>().FirstOrDefault();
-        devicesChild?.AddHandler(Control.PointerPressedEvent, (_, _) => ShowTab("Devices"));
-    }
-
-    /// <summary>
-    /// Attempts to resolve the conversation manager from App.ApplicationServices (DI fallback).
-    /// </summary>
-    private static IConversationManager? ResolveConversationManagerFromAppServices()
-    {
-        var sp = GetAppServiceProvider();
-        return sp?.GetRequiredService<IConversationManager>();
-    }
-
-    /// <summary>
-    /// Attempts to resolve the server service from App.ApplicationServices (DI fallback).
-    /// </summary>
-    private static IServerService? ResolveServerServiceFromAppServices()
-    {
-        var sp = GetAppServiceProvider();
-        return sp?.GetRequiredService<IServerService>();
-    }
-
-    /// <summary>
-    /// Attempts to resolve the model repository from App.ApplicationServices (DI fallback).
-    /// </summary>
-    private static IModelRepository? ResolveModelRepositoryFromAppServices()
-    {
-        var sp = GetAppServiceProvider();
-        return sp?.GetRequiredService<IModelRepository>();
-    }
-
-    /// <summary>
-    /// Attempts to resolve the chat completion service from App.ApplicationServices (DI fallback).
-    /// </summary>
-    private static IChatCompletionService? ResolveChatCompletionServiceFromAppServices()
-    {
-        var sp = GetAppServiceProvider();
-        return sp?.GetRequiredService<IChatCompletionService>();
-    }
-
-    // ---- Image Generation Event Handlers ----
-
-    private void OnImageGenModelSelectorSelectionChanged(object? sender, SelectionChangedEventArgs e)
-    {
-        // TODO: Implement actual image generation model selection logic
-    }
-
-    /// <summary>
-    /// Handler for the random seed button — generates a random seed value.
-    /// </summary>
-    private void OnRandomSeedClicked(object? sender, RoutedEventArgs e)
-    {
-        var rng = new Random();
-        if (ImageGenSeedInput != null)
-            ImageGenSeedInput.Text = rng.Next(int.MinValue, int.MaxValue).ToString();
-    }
-
-    // ---- Tab Pointer Pressed Event Handlers ----
-
-    private void OnChatTabPointerPressed(object? sender, Avalonia.Input.PointerPressedEventArgs e) => ShowTab("Chat");
-
-    private void OnServerTabPointerPressed(object? sender, Avalonia.Input.PointerPressedEventArgs e) => ShowTab("Server");
-
-    private void OnModelsTabPointerPressed(object? sender, Avalonia.Input.PointerPressedEventArgs e) => ShowTab("Models");
-
-    private void OnDevicesTabPointerPressed(object? sender, Avalonia.Input.PointerPressedEventArgs e) => ShowTab("Devices");
-
-    private void OnImageGenTabPointerPressed(object? sender, Avalonia.Input.PointerPressedEventArgs e)
-    {
-        // ImageGen tab is not currently managed by the main tab system — show a placeholder message
-        ShowError("Image generation support requires diffusion engine integration (Phase 3).");
-    }
-
-    private T? FindChild<T>(Panel parent, int maxDepth = 10) where T : Control
+    private static T? FindChild<T>(Panel parent, int maxDepth = 10) where T : Control
     {
         if (parent == null || maxDepth <= 0) return default;
 
@@ -1215,6 +1499,193 @@ public partial class MainWindow : Window
         {
             System.Diagnostics.Debug.WriteLine($"Error: {message}");
         }
+    }
+
+    // ---- Tab Pointer Pressed Event Handlers ----
+
+    private void OnChatTabPointerPressed(object? sender, Avalonia.Input.PointerPressedEventArgs e) => ShowTab("Chat");
+
+    private void OnServerTabPointerPressed(object? sender, Avalonia.Input.PointerPressedEventArgs e) => ShowTab("Server");
+
+    private void OnModelsTabPointerPressed(object? sender, Avalonia.Input.PointerPressedEventArgs e) => ShowTab("Models");
+
+    private void OnDevicesTabPointerPressed(object? sender, Avalonia.Input.PointerPressedEventArgs e) => ShowTab("Devices");
+
+    private void OnContextTabPointerPressed(object? sender, Avalonia.Input.PointerPressedEventArgs e)
+    {
+        // Also switch right sidebar to Context tab
+        UpdateRightSidebarTab("Context");
+        ShowTab("Context");
+    }
+
+    private void OnImageGenTabPointerPressed(object? sender, Avalonia.Input.PointerPressedEventArgs e)
+    {
+        // ImageGen tab is not currently managed by the main tab system — show a placeholder message
+        ShowError("Image generation support requires diffusion engine integration (Phase 3).");
+    }
+
+    /// <summary>
+    /// Attaches Click event handlers to the Tab TextBlocks so users can switch tabs by clicking.
+    /// </summary>
+    private void AttachTabClickHandlers()
+    {
+        // Each tab's title TextBlock is inside a StackPanel — attach click to that panel instead for better hit target
+        var tabPanels = new[] { ChatTabContent, ServerTabContent, ModelsTabContent, DevicesTabContent, ContextTabContent };
+        foreach (var tab in tabPanels)
+        {
+            if (tab == null) continue;
+
+            // Make the entire StackPanel clickable by attaching a Click handler to its first element
+            var child = tab.Children.OfType<Control>().FirstOrDefault();
+            if (child != null && !string.IsNullOrEmpty(tab.Name))
+            {
+                try
+                {
+                    switch (tab.Name)
+                    {
+                        case "ChatTabContent":
+                            child.PointerPressed += (_, _) => ShowTab("Chat"); break;
+                        case "ServerTabContent":
+                            child.PointerPressed += (_, _) => ShowTab("Server"); break;
+                        case "ModelsTabContent":
+                            child.PointerPressed += (_, _) => ShowTab("Models"); break;
+                        case "DevicesTabContent":
+                            child.PointerPressed += (_, _) => ShowTab("Devices"); break;
+                        case "ContextTabContent":
+                            child.PointerPressed += (_, _) => { UpdateRightSidebarTab("Context"); ShowTab("Context"); }; break;
+                    }
+                }
+                catch { /* Ignore errors on individual tab attaches */ }
+            }
+        }
+
+        // Also attach click handlers directly to the TabControl buttons in XAML for reliability — use lambda instead of RoutedEventHandler
+        if (ChatTabContent?.Children.OfType<Control>().FirstOrDefault() is Control chatClickTarget)
+            chatClickTarget.PointerPressed += (_, _) => ShowTab("Chat");
+
+        var serverChild = ServerTabContent?.Children.OfType<Control>().FirstOrDefault();
+        serverChild?.AddHandler(Control.PointerPressedEvent, (_, _) => ShowTab("Server"));
+
+        var modelsChild = ModelsTabContent?.Children.OfType<Control>().FirstOrDefault();
+        modelsChild?.AddHandler(Control.PointerPressedEvent, (_, _) => ShowTab("Models"));
+
+        var devicesChild = DevicesTabContent?.Children.OfType<Control>().FirstOrDefault();
+        devicesChild?.AddHandler(Control.PointerPressedEvent, (_, _) => ShowTab("Devices"));
+
+        // Attach right sidebar tab button click handlers
+        if (RightContextTabButton != null)
+            RightContextTabButton.IsCheckedChanged += (_, _) => UpdateRightSidebarTab(RightContextTabButton.IsChecked == true ? "Context" : _activeTab);
+        
+        if (RightServerTabButton != null)
+            RightServerTabButton.IsCheckedChanged += (_, _) => UpdateRightSidebarTab(RightServerTabButton.IsChecked == true ? "Server" : _activeTab);
+
+        if (RightDevicesTabButton != null)
+            RightDevicesTabButton.IsCheckedChanged += (_, _) => UpdateRightSidebarTab(RightDevicesTabButton.IsChecked == true ? "Devices" : _activeTab);
+    }
+
+    /// <summary>
+    /// Attempts to resolve the conversation manager from App.ApplicationServices (DI fallback).
+    /// </summary>
+    private static IConversationManager? ResolveConversationManagerFromAppServices()
+    {
+        var sp = GetAppServiceProvider();
+        return sp?.GetRequiredService<IConversationManager>();
+    }
+
+    /// <summary>
+    /// Attempts to resolve the server service from App.ApplicationServices (DI fallback).
+    /// </summary>
+    private static IServerService? ResolveServerServiceFromAppServices()
+    {
+        var sp = GetAppServiceProvider();
+        return sp?.GetRequiredService<IServerService>();
+    }
+
+    /// <summary>
+    /// Attempts to resolve the model repository from App.ApplicationServices (DI fallback).
+    /// </summary>
+    private static IModelRepository? ResolveModelRepositoryFromAppServices()
+    {
+        var sp = GetAppServiceProvider();
+        return sp?.GetRequiredService<IModelRepository>();
+    }
+
+    /// <summary>
+    /// Attempts to resolve the chat completion service from App.ApplicationServices (DI fallback).
+    /// </summary>
+    private static IChatCompletionService? ResolveChatCompletionServiceFromAppServices()
+    {
+        var sp = GetAppServiceProvider();
+        return sp?.GetRequiredService<IChatCompletionService>();
+    }
+
+    /// <summary>
+    /// Attempts to resolve the chat context manager from App.ApplicationServices (DI fallback).
+    /// </summary>
+    private static IChatContextManager? ResolveContextManagerFromAppServices()
+    {
+        var sp = GetAppServiceProvider();
+        return sp?.GetRequiredService<IChatContextManager>();
+    }
+
+    /// <summary>
+    /// Attempts to resolve the context window budgeter from App.ApplicationServices (DI fallback).
+    /// </summary>
+    private static IContextWindowBudgeter? ResolveBudgeterFromAppServices()
+    {
+        var sp = GetAppServiceProvider();
+        return sp?.GetRequiredService<IContextWindowBudgeter>();
+    }
+
+    // ---- Image Generation Event Handlers ----
+
+    private void OnImageGenModelSelectorSelectionChanged(object? sender, SelectionChangedEventArgs e)
+    {
+        // TODO: Implement actual image generation model selection logic
+    }
+
+    /// <summary>
+    /// Handler for the random seed button — generates a random seed value.
+    /// </summary>
+    private void OnRandomSeedClicked(object? sender, RoutedEventArgs e)
+    {
+        var rng = new Random();
+        if (ImageGenSeedInput != null)
+            ImageGenSeedInput.Text = rng.Next(int.MinValue, int.MaxValue).ToString();
+    }
+
+    // ---- Settings Window ----
+
+    private void OnSettingsClicked(object? sender, RoutedEventArgs e)
+    {
+        try
+        {
+            var settingsWin = new SettingsWindow();
+            
+            if (Owner is Window ownerWindow)
+                settingsWin.ShowDialog(ownerWindow);
+            else
+                settingsWin.Show();
+        }
+        catch (Exception ex)
+        {
+            _logger?.LogError(ex, "Failed to open settings window");
+            ShowStaticError($"Failed to open settings: {ex.Message}");
+        }
+    }
+
+    // ---- Cleanup on window close ----
+
+    protected override void OnClosing(WindowClosingEventArgs e)
+    {
+        base.OnClosing(e);
+
+        // Unsubscribe from server state changes before the window is closed
+        if (_serverService is OpenLMStudio.Infrastructure.Services.ServerService realSvc)
+            realSvc.StateChanged -= OnServerStateChanged;
+
+        // Dispose context manager if it implements IDisposable
+        _contextManager?.Dispose();
     }
 
 }
