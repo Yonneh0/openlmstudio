@@ -47,11 +47,14 @@ public class ContextSegment : IDisposable
     public void Dispose() { /* No unmanaged resources */ }
 }
 
-/// <summary>Represents an agentic task state (Planning, Acting, etc.).</summary>
+/// <summary>Represents an agentic task state (Idle, Planning, Acting, etc.).</summary>
 public enum AgentState
 {
+    /// <summary>Agent is idle and ready to start a new task.</summary>
+    Idle = 0,
+
     /// <summary>Agent has not yet begun working on this task.</summary>
-    NotStarted,
+    NotStarted = 1,
     /// <summary>Agent is planning the approach for this task.</summary>
     Planning,
     /// <summary>Agent is actively executing actions.</summary>
