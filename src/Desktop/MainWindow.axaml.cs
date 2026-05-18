@@ -1394,10 +1394,9 @@ public partial class MainWindow : Window
                 await _contextManager.RemoveCustomContextAsync(_selectedChatId.Value, segmentIdObj.Value);
 
                 // Remove the visual representation from the UI — custom context borders are direct children of RightSegmentsContainer
-                if (_customContextBorders.TryGetValue(segmentIdObj.Value, out var borderToRemove))
+                if (_customContextBorders.TryRemove(segmentIdObj.Value, out var borderToRemove))
                 {
                     RightSegmentsContainer.Children.Remove(borderToRemove);
-                    _customContextBorders.Remove(segmentIdObj.Value);
                 }
             }
             catch (Exception ex)
