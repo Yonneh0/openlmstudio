@@ -109,7 +109,7 @@ public class DownloadManager : IDownloadManager, IDisposable
         try
         {
             // Try HUGGINGFACE_TOKEN / HF_TOKEN environment variable first
-            _huggingfaceToken = Environment.GetEnvironmentVariable("HF_TOKEN") 
+            _huggingfaceToken = Environment.GetEnvironmentVariable("HF_TOKEN")
                 ?? Environment.GetEnvironmentVariable("HUGGINGFACE_TOKEN");
 
             if (!string.IsNullOrEmpty(_huggingfaceToken))
@@ -181,7 +181,7 @@ public class DownloadManager : IDownloadManager, IDisposable
             var fileLength = await GetRemoteContentLengthAsync(url);
             if (fileLength.HasValue && fileLength.Value > availableSpace.Value * 2) // Need at least 2x free space for safety margin
             {
-                _logger?.LogError("Insufficient disk space for safetensors download: need ~{Needed} MB, have ~{Available} MB", 
+                _logger?.LogError("Insufficient disk space for safetensors download: need ~{Needed} MB, have ~{Available} MB",
                     fileLength.Value / 1048576, availableSpace.Value / 1048576);
 
                 OnDiskSpaceWarning(availableSpace.Value, (long)(-fileLength.Value * 0.5), -2);
@@ -200,7 +200,7 @@ public class DownloadManager : IDownloadManager, IDisposable
             var computedHash = await SafetensorParser.ComputeSha256HashAsync(result);
             if (computedHash == null || !string.Equals(computedHash, expectedSha256.Trim().ToLowerInvariant(), StringComparison.OrdinalIgnoreCase))
             {
-                _logger?.LogError("SHA256 hash verification failed for safetensors file: expected {Expected}, got {Computed}", 
+                _logger?.LogError("SHA256 hash verification failed for safetensors file: expected {Expected}, got {Computed}",
                     expectedSha256, computedHash);
 
                 // Clean up the invalid file
@@ -392,7 +392,7 @@ public class DownloadManager : IDownloadManager, IDisposable
 
             if (!headResponse.IsSuccessStatusCode)
             {
-                _logger.LogError("Failed to access download URL: {Url} (Status: {StatusCode})", 
+                _logger?.LogError("Failed to access download URL: {Url} (Status: {StatusCode})",
                     url, headResponse.StatusCode);
 
                 OnDownloadCompleted(outputPath, false, $"HTTP error: {(int)headResponse.StatusCode}");
@@ -416,7 +416,7 @@ public class DownloadManager : IDownloadManager, IDisposable
 
             if (!response.IsSuccessStatusCode)
             {
-                _logger.LogError("Download failed: Status {StatusCode}", response.StatusCode);
+                _logger?.LogError("Download failed: Status {StatusCode}", response.StatusCode);
                 OnDownloadCompleted(outputPath, false, $"HTTP error: {(int)response.StatusCode}");
                 return null;
             }
@@ -470,12 +470,12 @@ public class DownloadManager : IDownloadManager, IDisposable
                                 diskSpaceWarning = true;
                                 (_warnedDiskSpaceThresholds ??= new HashSet<int>()).Add(i);
 
-                                OnDiskSpaceWarning(availableSpace.Value, 
-                                    availableSpace.Value - totalDownloaded,
-                                    remainingCapacityPercent);
+                            OnDiskSpaceWarning(availableSpace.Value,
+                                availableSpace.Value - totalDownloaded,
+                                remainingCapacityPercent);
 
-                                _logger.LogWarning("Disk space warning: {Capacity}% remaining ({Megabytes} MB free)", 
-                                    remainingCapacityPercent, (availableSpace.Value - totalDownloaded) / 1048576.0);
+                            _logger?.LogWarning("Disk space warning: {Capacity}% remaining ({Megabytes} MB free)",
+                                remainingCapacityPercent, (availableSpace.Value - totalDownloaded) / 1048576.0);
                             }
                         }
                     }
@@ -485,7 +485,7 @@ public class DownloadManager : IDownloadManager, IDisposable
                 }
             }
 
-            _logger.LogInformation("Download completed: {OutputPath} ({Size} bytes)", 
+            _logger?.LogInformation("Download completed: {OutputPath} ({Size} bytes)",
                 outputPath, totalDownloaded);
 
             OnDownloadCompleted(outputPath, true, null);
@@ -522,10 +522,10 @@ public class DownloadManager : IDownloadManager, IDisposable
         try
         {
             var response = await _hfApiClient.GetAsync(url);
-            
+
             if (!response.IsSuccessStatusCode)
             {
-                _logger?.LogError("Failed to list repo files: {RepoId} (Status: {StatusCode})", 
+                _logger?.LogError("Failed to list repo files: {RepoId} (Status: {StatusCode})",
                     repoId, response.StatusCode);
                 return null;
             }
@@ -544,7 +544,7 @@ public class DownloadManager : IDownloadManager, IDisposable
 
                     var fileName = entry.GetProperty("path").GetString();
                     var fileSize = entry.TryGetProperty("size", out var sizeProp) ? sizeProp.GetInt64() : 0;
-                    
+
                     // The download URL is constructed from the blob path (LFS files) or direct resolve (non-LFS)
                     string? blobPath = null;
                     if (entry.TryGetProperty("lfs", out var lfsProp))
@@ -554,7 +554,7 @@ public class DownloadManager : IDownloadManager, IDisposable
 
                     files.Add(new HfRepoFileInfo
                     {
-                        Path = fileName,
+                        Path = fileName ?? "unknown",
                         Size = fileSize,
                         BlobUrl = blobPath != null ? $"{HuggingFaceBaseUrl}/{repoId}/resolve/main/{blobPath}" : null,
                         IsLfsFile = blobPath != null
@@ -582,7 +582,7 @@ public class DownloadManager : IDownloadManager, IDisposable
     public async Task<string?> GetFileSha256HashAsync(string repoId, string filename)
     {
         var files = await ListRepositoryFilesAsync(repoId);
-        
+
         if (files == null)
             return null;
 
@@ -614,7 +614,7 @@ public class DownloadManager : IDownloadManager, IDisposable
             // Try downloading the manifest JSON and extracting from there
             var indexFile = filename.Replace(".safetensors", ".index.json");
             var files2 = await ListRepositoryFilesAsync(repoId);
-            
+
             if (files2 != null)
             {
                 foreach (var f in files2.Where(f => f.Path == indexFile))
@@ -651,7 +651,7 @@ public class DownloadManager : IDownloadManager, IDisposable
             try
             {
                 using var client = CreateAuthenticatedHttpClient();
-                var response = await client.SendAsync(new HttpRequestMessage(HttpMethod.Head, 
+                var response = await client.SendAsync(new HttpRequestMessage(HttpMethod.Head,
                     $"{HuggingFaceBaseUrl}/{repoId}/resolve/main/{filename}"));
 
                 if (response.Headers.TryGetValues("ETag", out var etags))
@@ -788,7 +788,7 @@ public class DownloadManager : IDownloadManager, IDisposable
 
         // Parse base model header to get tensor shapes for merge
         var baseHeader = await new SafetensorParser(null!).ParseHeaderAsync(baseModelPath);
-        
+
         if (baseHeader == null)
         {
             _logger?.LogError("Invalid base model file: {FilePath}", baseModelPath);
@@ -798,7 +798,7 @@ public class DownloadManager : IDownloadManager, IDisposable
         // Track merge progress
         var totalTensors = adapterHeader.TotalTensorCount;
         var completedSteps = 0;
-        
+
         foreach (var kvp in adapterHeader.TensorsMetadata)
         {
             var tensorName = kvp.Key;
@@ -820,7 +820,7 @@ public class DownloadManager : IDownloadManager, IDisposable
 
                 // Simulate the merge computation (actual merge requires ONNX Runtime integration)
                 completedSteps++;
-                
+
                 var percentage = (completedSteps * 100.0) / totalTensors;
                 LoraMergeProgress?.Invoke(this, new LoraMergeEventArgs
                 {
@@ -829,7 +829,7 @@ public class DownloadManager : IDownloadManager, IDisposable
                     Percentage = percentage
                 });
 
-                _logger?.LogDebug("LoRA tensor merged: {TensorName} (rank={Rank}, scaling={Scaling})", 
+                _logger?.LogDebug("LoRA tensor merged: {TensorName} (rank={Rank}, scaling={Scaling})",
                     tensorName, kvp.Value.Shape[1], scalingFactor);
             }
             catch (Exception ex) when (ex is IndexOutOfRangeException or InvalidOperationException)
@@ -845,7 +845,7 @@ public class DownloadManager : IDownloadManager, IDisposable
             return true;
         }
 
-        _logger?.LogError("LoRA merge failed: only {Completed}/{Total} tensors merged", 
+        _logger?.LogError("LoRA merge failed: only {Completed}/{Total} tensors merged",
             completedSteps, totalTensors);
         return false;
     }
@@ -856,7 +856,7 @@ public class DownloadManager : IDownloadManager, IDisposable
         try
         {
             var driveInfo = DriveInfo.GetDrives().FirstOrDefault(d => targetPath.StartsWith(d.Name));
-            
+
             if (driveInfo is null || !driveInfo.IsReady)
                 return null;
 
@@ -911,10 +911,10 @@ public class DownloadManager : IDownloadManager, IDisposable
         _hfApiClient?.Dispose();
 
         var handler = new HttpClientHandler();
-        
+
         // For proxy support, respect system proxy settings (same as huggingface_hub CLI)
         handler.UseProxy = true;
-        
+
         _hfApiClient = new HttpClient(handler)
         {
             Timeout = TimeSpan.FromHours(3),
@@ -946,7 +946,7 @@ public class DownloadManager : IDownloadManager, IDisposable
         try
         {
             var response = await httpClient.SendAsync(new HttpRequestMessage(HttpMethod.Head, url));
-            
+
             if (!response.IsSuccessStatusCode)
                 return null;
 

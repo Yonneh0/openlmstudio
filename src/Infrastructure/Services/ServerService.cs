@@ -25,7 +25,7 @@ public class ServerService : IServerService, IDisposable
     private readonly ILogger<ServerService>? _logger;
     private IChatCompletionService? _chatCompletionService;
     private IModelRepository? _modelRepository;
-    
+
     /// <summary>
     /// Tracks active SSE streaming connections by request ID for cancellation.
     /// </summary>
@@ -40,7 +40,7 @@ public class ServerService : IServerService, IDisposable
     public ServerService(ILogger<ServerService>? logger = null)
     {
         _logger = logger;
-        
+
         // Note: _chatCompletionService and _modelRepository are resolved lazily during endpoint handling,
         // not eagerly in the constructor. This avoids creating isolated DI containers with no registrations.
         // They will be resolved from the request's service provider when needed via ResolveChatService() and
@@ -74,7 +74,7 @@ public class ServerService : IServerService, IDisposable
             var services = new ServiceCollection()
                 .AddLogging()
                 .BuildServiceProvider();
-            
+
             return services.GetRequiredService<IChatCompletionService>();
         }
         catch
@@ -103,7 +103,7 @@ public class ServerService : IServerService, IDisposable
             var services = new ServiceCollection()
                 .AddLogging()
                 .BuildServiceProvider();
-            
+
             return services.GetService<IModelRepository>() ?? CreateStubModelRepository();
         }
         catch
@@ -117,7 +117,7 @@ public class ServerService : IServerService, IDisposable
     private WebApplication? _application;
     private Task? _hostingTask;
     private CancellationTokenSource? _stoppingCts;
-    
+
     public bool IsRunning => _application != null && _hostingTask?.IsCompleted == false;
 
     /// <inheritdoc />
@@ -140,7 +140,7 @@ public class ServerService : IServerService, IDisposable
         OnStateChanged(ServerState.Stopped, ServerState.Starting);
 
         var builder = WebApplication.CreateBuilder();
-        
+
         // Configure Kestrel to listen on the specified host and port
         builder.WebHost.ConfigureKestrel(serverOptions =>
         {
@@ -151,7 +151,7 @@ public class ServerService : IServerService, IDisposable
                 {
                     var httpsCertPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "dev-cert.pfx");
                     var keyPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "dev-key.pem");
-                    
+
                     if (File.Exists(httpsCertPath))
                     {
                         serverOptions.ListenAnyIP(443, opts => opts.UseHttps(httpsCertPath));
@@ -167,13 +167,13 @@ public class ServerService : IServerService, IDisposable
 
         // Register services needed by endpoints (include pre-resolved dependencies)
         builder.Services.AddSingleton(Configuration);
-        
+
         if (_chatCompletionService != null && _modelRepository != null)
         {
             builder.Services.AddSingleton(_chatCompletionService);
             builder.Services.AddSingleton(_modelRepository);
         }
-        
+
         var app = builder.Build();
 
         // === OpenAI-Compatible Endpoints ===
@@ -195,7 +195,7 @@ public class ServerService : IServerService, IDisposable
             try
             {
                 // Check if streaming is requested via content-type header extension
-                var streamParam = context.Request.Headers.ContainsKey("X-Stream") 
+                var streamParam = context.Request.Headers.ContainsKey("X-Stream")
                     ? context.Request.Headers["X-Stream"].ToString().Equals("true", StringComparison.OrdinalIgnoreCase)
                     : false;
 
@@ -228,16 +228,16 @@ public class ServerService : IServerService, IDisposable
             try
             {
                 IEnumerable<dynamic> models;
-                
+
                 var modelRepo = _modelRepository ?? ResolveModelRepo();
                 if (modelRepo != null && modelRepo is not StubModelRepository)
                 {
                     var allModels = await modelRepo.DiscoverModelsAsync();
-                    models = allModels.Select(m => new 
-                    { 
-                        id = m.Id, 
-                        @object = "model", 
-                        created = DateTimeOffset.UtcNow.ToUnixTimeSeconds(), 
+                    models = allModels.Select(m => new
+                    {
+                        id = m.Id,
+                        @object = "model",
+                        created = DateTimeOffset.UtcNow.ToUnixTimeSeconds(),
                         owned_by = "openlmstudio"
                     });
                 }
@@ -275,7 +275,7 @@ public class ServerService : IServerService, IDisposable
             var requestBodyStr = await reader.ReadToEndAsync();
 
             // Check for streaming (Anthropic uses stream parameter)
-            bool isStreaming = requestBodyStr.Contains("\"stream\": true") || 
+            bool isStreaming = requestBodyStr.Contains("\"stream\": true") ||
                               context.Request.Headers.ContainsKey("X-Stream");
 
             try
@@ -287,8 +287,8 @@ public class ServerService : IServerService, IDisposable
                 }
 
                 // Parse the Anthropic request body
-                var anthropicRequest = JsonSerializer.Deserialize<AnthropicRequest>(requestBodyStr);
-                
+                var anthropicRequest = System.Text.Json.JsonSerializer.Deserialize<AnthropicRequest>(requestBodyStr);
+
                 if (anthropicRequest == null)
                 {
                     context.Response.StatusCode = 400;
@@ -301,20 +301,20 @@ public class ServerService : IServerService, IDisposable
                 {
                     // Build messages list from Anthropic format using the already-parsed JSON body
                     var messages = new List<Message>();
-                    
+
                     // Try to get the system message
                     string? systemMessage = null;
                     try
                     {
-                        var jsonBody = JsonSerializer.Deserialize<AnthropicRequest>(requestBodyStr);
+                        var jsonBody = System.Text.Json.JsonSerializer.Deserialize<AnthropicRequest>(requestBodyStr);
                         systemMessage = jsonBody?.System;
                     }
                     catch { /* Ignore parse errors */ }
 
-                    foreach (var message in anthropicRequest.Messages ?? Array.Empty<AnthropicMessage>())
+                    foreach (var message in (anthropicRequest.Messages ?? []).ToArray())
                     {
                         var textContent = message.Content; // Convenience accessor: joins all 'text' content blocks
-                        
+
                         if (!string.IsNullOrEmpty(textContent))
                         {
                             messages.Add(new Message
@@ -358,13 +358,13 @@ public class ServerService : IServerService, IDisposable
                         id = $"msg_{Guid.NewGuid():N}",
                         type = "message",
                         role = "assistant",
-                        content = new[] { new { 
+                        content = new[] { new {
                             type = "text",
                             text = responseChoice.Message.Content ?? "[No response]"
                         } },
                         model = anthropicRequest.Model,
                         stop_reason = string.IsNullOrEmpty(responseChoice.FinishReason) ? "end_turn" : responseChoice.FinishReason.ToLowerInvariant(),
-                        usage = new 
+                        usage = new
                         {
                             input_tokens = inputTokenCount,
                             output_tokens = outputTokenCount,
@@ -394,7 +394,7 @@ public class ServerService : IServerService, IDisposable
                         id = $"msg_{Guid.NewGuid():N}",
                         type = "message",
                         role = "assistant",
-                        content = new[] { new { 
+                        content = new[] { new {
                             type = "text",
                             text = "[Placeholder] Connect IChatCompletionService for real responses"
                         } },
@@ -422,24 +422,24 @@ public class ServerService : IServerService, IDisposable
             try
             {
                 var models = await repo.SearchMultiModalModelsAsync(modelTypeFilter: Domain.Models.ModelType.ImageGeneration);
-                
+
                 var modelInfos = new List<object>();
                 foreach (var model in models)
                 {
-                    modelInfos.Add(new 
+                    modelInfos.Add(new
                     {
                         id = model.Id,
                         obj = "model",
                         owned_by = "local",
                         display_name = model.Name,
                         model_type = "image_generation",
-                        format = model.Format ?? "N/A"
+                        format = model.Format.ToString()
                     });
                 }
 
                 context.Response.StatusCode = 200;
-                await context.Response.WriteAsJsonAsync(new 
-                { 
+                await context.Response.WriteAsJsonAsync(new
+                {
                     obj = "list",
                     data = modelInfos
                 });
@@ -469,7 +469,7 @@ public class ServerService : IServerService, IDisposable
             {
                 // Parse the request body - support both OpenAI format (input string or array) and Anthropic format
                 var embeddingsRequest = System.Text.Json.JsonSerializer.Deserialize<EmbeddingsRequest>(requestBodyStr);
-                
+
                 if (embeddingsRequest == null || string.IsNullOrEmpty(embeddingsRequest.Model))
                 {
                     context.Response.StatusCode = 400;
@@ -485,7 +485,7 @@ public class ServerService : IServerService, IDisposable
                 };
 
                 float[][] embeddingVectors;
-                
+
                 if (inputs.Length == 1)
                 {
                     var vector = await pipeline.GenerateAsync(embeddingsRequest.Model, inputs[0]);
@@ -502,7 +502,7 @@ public class ServerService : IServerService, IDisposable
                 {
                     data.Add(new
                     {
-                        object = "embedding",
+                        @object = "embedding",
                         index = i,
                         embedding = embeddingVectors[i]
                     });
@@ -537,24 +537,24 @@ public class ServerService : IServerService, IDisposable
             try
             {
                 var models = await repo.SearchMultiModalModelsAsync(modelTypeFilter: Domain.Models.ModelType.Embedding);
-                
+
                 var modelInfos = new List<object>();
                 foreach (var model in models)
                 {
-                    modelInfos.Add(new 
+                    modelInfos.Add(new
                     {
                         id = model.Id,
                         obj = "model",
                         owned_by = "local",
                         display_name = model.Name,
                         model_type = "embedding",
-                        format = model.Format ?? "N/A"
+                        format = model.Format.ToString()
                     });
                 }
 
                 context.Response.StatusCode = 200;
-                await context.Response.WriteAsJsonAsync(new 
-                { 
+                await context.Response.WriteAsJsonAsync(new
+                {
                     obj = "list",
                     data = modelInfos
                 });
@@ -585,7 +585,7 @@ public class ServerService : IServerService, IDisposable
             try
             {
                 var request = System.Text.Json.JsonSerializer.Deserialize<ImageGenerationRequest>(requestBodyStr);
-                
+
                 if (request == null || string.IsNullOrEmpty(request.ModelId))
                 {
                     context.Response.StatusCode = 400;
@@ -594,7 +594,7 @@ public class ServerService : IServerService, IDisposable
                 }
 
                 var result = await pipeline.GenerateImageAsync(request);
-                
+
                 // Return response in OpenAI-compatible format
                 var response = new
                 {
@@ -627,11 +627,11 @@ public class ServerService : IServerService, IDisposable
             try
             {
                 var models = await vaePipeline.GetAvailableModelsAsync();
-                
+
                 var modelInfos = new List<object>();
                 foreach (var model in models)
                 {
-                    modelInfos.Add(new 
+                    modelInfos.Add(new
                     {
                         id = model.Id,
                         obj = "model",
@@ -658,18 +658,18 @@ public class ServerService : IServerService, IDisposable
             try
             {
                 var models = await loraManager.GetAvailableAdaptersAsync();
-                
+
                 var modelInfos = new List<object>();
                 foreach (var model in models)
                 {
-                    modelInfos.Add(new 
+                    modelInfos.Add(new
                     {
                         id = model.Id,
                         obj = "model",
                         owned_by = "local",
                         display_name = model.Name,
                         model_type = "lora_adapter",
-                        format_variant = (model as OpenLMStudio.Domain.Models.MultiModalModelMetadata)?.Format?.ToString() ?? "LoRA"
+                        format_variant = model.Format.ToString()
                     });
                 }
 
@@ -687,15 +687,15 @@ public class ServerService : IServerService, IDisposable
         // === Health Check Endpoints ===
 
         app.MapGet("/health", () => Results.Ok(new { status = "healthy" }));
-        
-        app.MapGet("/v1/health", () => Results.Ok(new 
-        { 
+
+        app.MapGet("/v1/health", () => Results.Ok(new
+        {
             status = IsRunning ? "healthy" : "stopped",
             server_port = Configuration.Port
         }));
 
         // === SSE Streaming Endpoint ===
-        
+
         app.MapPost("/v1/chat/completions/stream", async (HttpContext context) =>
         {
             await HandleStreamingResponse(context);
@@ -822,7 +822,7 @@ public class ServerService : IServerService, IDisposable
     {
         // Self-signed certificate generation for HTTPS development using the new cert service
         _logger?.LogInformation("Generating self-signed certificate: {CertPath}", certificatePath);
-        
+
         var certService = ResolveCertificateService();
         if (certService == null)
         {
@@ -838,11 +838,11 @@ public class ServerService : IServerService, IDisposable
         }
 
         var success = await certService.GenerateCertificateAsync(certificatePath, keyPath, ct);
-        
+
         if (success)
         {
             _logger?.LogInformation("Self-signed certificate generated successfully: {CertPath}", certificatePath);
-            
+
             // Try to trust the certificate on Windows
             try
             {
@@ -884,7 +884,7 @@ public class ServerService : IServerService, IDisposable
                 .AddLogging()
                 .AddSingleton<ISelfSignedCertificateService, SelfSignedCertificateGenerator>()
                 .BuildServiceProvider();
-            
+
             return services.GetRequiredService<ISelfSignedCertificateService>();
         }
         catch
@@ -904,7 +904,7 @@ public class ServerService : IServerService, IDisposable
             _stoppingCts.Dispose();
             _stoppingCts = null;
         }
-        
+
         // Cancel all active SSE connections on disposal
         foreach (var cts in _activeSseConnections.Values)
         {
@@ -925,10 +925,10 @@ public class ServerService : IServerService, IDisposable
     /// </summary>
     private void OnStateChanged(ServerState oldState, ServerState newState)
     {
-        StateChanged?.Invoke(this, new ServerStateChangedEventArgs 
-        { 
-            OldState = oldState, 
-            NewState = newState 
+        StateChanged?.Invoke(this, new ServerStateChangedEventArgs
+        {
+            OldState = oldState,
+            NewState = newState
         });
     }
 
@@ -937,9 +937,9 @@ public class ServerService : IServerService, IDisposable
     /// </summary>
     private void OnStateChanged(ServerState oldState, ServerState newState, string message)
     {
-        StateChanged?.Invoke(this, new ServerStateChangedEventArgs 
-        { 
-            OldState = oldState, 
+        StateChanged?.Invoke(this, new ServerStateChangedEventArgs
+        {
+            OldState = oldState,
             NewState = newState,
             Message = message
         });
@@ -955,7 +955,7 @@ public class ServerService : IServerService, IDisposable
         try
         {
             var requestId = Guid.NewGuid().ToString("N");
-            
+
             // Set up SSE headers
             context.Response.ContentType = "text/event-stream";
             context.Response.Headers.Append("Cache-Control", "no-cache");
@@ -968,7 +968,7 @@ public class ServerService : IServerService, IDisposable
             {
                 // Get chat completion service
                 IChatCompletionService? chatService = null;
-                
+
                 if (_chatCompletionService != null)
                 {
                     chatService = _chatCompletionService;
@@ -985,14 +985,14 @@ public class ServerService : IServerService, IDisposable
 
                 // Parse the request body to extract model ID and messages
                 var request = ParseStreamingRequest(requestBodyStr, requestId);
-                
+
                 if (request == null)
                 {
                     await WriteSseError(context, "Failed to parse request");
                     return;
                 }
 
-                _logger?.LogInformation("SSE streaming started for model: {ModelId}, request: {RequestId}", 
+                _logger?.LogInformation("SSE streaming started for model: {ModelId}, request: {RequestId}",
                     request.ModelId, requestId);
 
                 var totalPromptTokens = 0L;
@@ -1005,11 +1005,11 @@ public class ServerService : IServerService, IDisposable
 
                     // Parse the chunk to extract token and finish reason
                     var token = ExtractTokenFromSseChunk(chunk);
-                    
+
                     if (firstChunk)
                     {
                         // Send initial event with model info
-                        await WriteSseEvent(context, requestId, "message_start", new 
+                        await WriteSseEvent(context, requestId, "message_start", new
                         {
                             id = $"chatcmpl-{requestId}",
                             @object = "chat.completion.chunk",
@@ -1022,7 +1022,7 @@ public class ServerService : IServerService, IDisposable
                     if (token == "<eos>")
                     {
                         // Send final event with usage stats
-                        await WriteSseEvent(context, requestId, "message_stop", new 
+                        await WriteSseEvent(context, requestId, "message_stop", new
                         {
                             id = $"chatcmpl-{requestId}",
                             @object = "chat.completion.chunk",
@@ -1037,7 +1037,7 @@ public class ServerService : IServerService, IDisposable
                                     finish_reason = "stop"
                                 }
                             },
-                            usage = new 
+                            usage = new
                             {
                                 prompt_tokens = totalPromptTokens,
                                 completion_tokens = totalCompletionTokens,
@@ -1048,7 +1048,7 @@ public class ServerService : IServerService, IDisposable
                     else if (!string.IsNullOrEmpty(token))
                     {
                         // Send token chunk event
-                        await WriteSseEvent(context, requestId, "message_chunk", new 
+                        await WriteSseEvent(context, requestId, "message_chunk", new
                         {
                             id = $"chatcmpl-{requestId}",
                             @object = "chat.completion.chunk",
@@ -1077,7 +1077,7 @@ public class ServerService : IServerService, IDisposable
                 cts.Dispose();
             }
         }
-        catch (OperationCanceledException) when (context.RequestAborted.IsCancellationRequested || 
+        catch (OperationCanceledException) when (context.RequestAborted.IsCancellationRequested ||
                                                   (_stoppingCts?.IsCancellationRequested == true))
         {
             // Client disconnected - normal case during server shutdown or client-side cancellation
@@ -1096,7 +1096,7 @@ public class ServerService : IServerService, IDisposable
         {
             // Get chat completion service
             IChatCompletionService? chatService = null;
-            
+
             if (_chatCompletionService != null)
             {
                 chatService = _chatCompletionService;
@@ -1111,7 +1111,7 @@ public class ServerService : IServerService, IDisposable
             }
 
             var request = ParseChatRequest(requestBodyStr);
-            
+
             if (request == null)
             {
                 context.Response.StatusCode = 400;
@@ -1120,16 +1120,16 @@ public class ServerService : IServerService, IDisposable
 
             // Create message list from parsed body
             List<Message> messages;
-            
+
             // Try parsing the messages array from the JSON body
             try
             {
                 var jsonBody = System.Text.Json.JsonSerializer.Deserialize<JsonChatRequest>(requestBodyStr);
-                
+
                 if (jsonBody?.Messages != null && jsonBody.Messages.Any())
                 {
                     messages = new List<Message>();
-                    
+
                     foreach (var msg in jsonBody.Messages)
                     {
                         var roleMap = new Dictionary<string, MessageRole>
@@ -1151,8 +1151,8 @@ public class ServerService : IServerService, IDisposable
                 else if (jsonBody?.Message != null)
                 {
                     // Anthropic format: single message with content array
-                        var contentText = jsonBody.Message.ContentText;
-                        messages = new List<Message>
+                    var contentText = jsonBody.Message.ContentText;
+                    messages = new List<Message>
                     {
                         new Message
                         {
@@ -1205,9 +1205,9 @@ public class ServerService : IServerService, IDisposable
                 return null;
             }
 
-                var responseChoice = await chatService.GetCompletionAsync(completionRequest);
+            var responseChoice = await chatService.GetCompletionAsync(completionRequest);
 
-            return new 
+            return new
             {
                 id = $"chatcmpl-{Guid.NewGuid():N}",
                 @object = "chat.completion",
@@ -1218,7 +1218,7 @@ public class ServerService : IServerService, IDisposable
                     new
                     {
                         index = 0,
-                        message = new 
+                        message = new
                         {
                             role = responseChoice.Message.Role.ToString().ToLowerInvariant(),
                             content = responseChoice.Message.Content
@@ -1226,7 +1226,7 @@ public class ServerService : IServerService, IDisposable
                         finish_reason = responseChoice.FinishReason ?? "stop"
                     }
                 },
-                usage = new 
+                usage = new
                 {
                     prompt_tokens = 0,
                     completion_tokens = (int)(responseChoice.Message.TokenCount > 0 ? responseChoice.Message.TokenCount : Math.Max(1, EstimateTokenCount(responseChoice.Message.Content))),
@@ -1247,12 +1247,12 @@ public class ServerService : IServerService, IDisposable
         try
         {
             var parsedBody = System.Text.Json.JsonSerializer.Deserialize<JsonChatRequest>(requestBodyStr);
-            
+
             if (parsedBody == null) return null;
 
             // Build message list from JSON body
             List<Message> messages = new();
-            
+
             if (parsedBody.Messages != null && parsedBody.Messages.Any())
             {
                 foreach (var msg in parsedBody.Messages)
@@ -1298,12 +1298,12 @@ public class ServerService : IServerService, IDisposable
         try
         {
             var parsedBody = System.Text.Json.JsonSerializer.Deserialize<JsonChatRequest>(requestBodyStr);
-            
+
             if (parsedBody == null) return null;
 
             // Build message list from JSON body
             List<Message> messages = new();
-            
+
             if (parsedBody.Messages != null && parsedBody.Messages.Any())
             {
                 foreach (var msg in parsedBody.Messages)
@@ -1354,7 +1354,7 @@ public class ServerService : IServerService, IDisposable
     /// <summary>
     /// Standardized token counting method using consistent estimation: ~1 token per 4 characters for English.
     /// </summary>
-    private static int EstimateTokenCount(string? text) => 
+    private static int EstimateTokenCount(string? text) =>
         string.IsNullOrEmpty(text) ? 0 : (text.Length + 3) / 4;
 
 
@@ -1364,7 +1364,7 @@ public class ServerService : IServerService, IDisposable
         {
             // SSE chunks come in format like: {"token": "h", "finish_reason": null}
             var json = System.Text.Json.JsonSerializer.Deserialize<JsonSseChunk>(chunk);
-            
+
             if (json == null || string.IsNullOrEmpty(json.Token))
                 return string.Empty;
 
@@ -1471,10 +1471,26 @@ internal record AnthropicRequest(
     string? Model = null,
     double? Temperature = 0.7,
     int MaxTokens = 4096,
-    float? TopP = 1.0,
+    float? TopP = 1.0f,
     List<AnthropicMessage>? Messages = null,
     string? System = null);
 
+/// <summary>
+/// Internal DTO for parsing Anthropic-compatible message blocks (for /v1/messages endpoint).
+/// </summary>
+internal record AnthropicMessage(
+    string Role = "user",
+    List<ContentBlock>? ContentBlocks = null)
+{
+    /// <summary>Convenience accessor: returns the text content from all 'text' type content blocks.</summary>
+    public string? Content => ContentBlocks != null && ContentBlocks.Any(cb => cb.Type == "text") 
+        ? string.Join("\n", ContentBlocks.Where(cb => cb.Type == "text").Select(cb => cb.Text!).Where(s => s != null)!)
+        : null;
+}
+
+/// <summary>
+/// Internal DTO for parsing Anthropic-compatible content blocks (for /v1/messages endpoint).
+/// </summary>
 internal record EmbeddingsRequest(
     string? Model = null,
     object Input = null!,
@@ -1482,7 +1498,7 @@ internal record EmbeddingsRequest(
     int? Dimensions = null);
 
 /// <summary>
-/// Internal DTO for parsing Anthropic-compatible message blocks (for /v1/messages endpoint).
+/// Internal DTO for parsing Anthropic-compatible content blocks (for /v1/messages endpoint).
 /// </summary>
 internal record ContentBlock(
     string Type = "text",

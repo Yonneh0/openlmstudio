@@ -1,4 +1,5 @@
 using System.Buffers.Binary;
+using System.Runtime.CompilerServices;
 using Microsoft.Extensions.Logging;
 using Microsoft.ML.OnnxRuntime;
 using Microsoft.ML.OnnxRuntime.Tensors;
@@ -16,7 +17,7 @@ public class DiffusionPipelineService : IDiffusionPipelineService, IDisposable
     private readonly ILogger<DiffusionPipelineService>? _logger;
     private readonly IModelRepository _modelRepo;
     private readonly SafetensorParser _safetensorParser;
-    
+
     /// <summary>OnnxRunTime sessions keyed by model ID.</summary>
     private readonly Dictionary<string, InferenceSession> _loadedSessions = new(StringComparer.OrdinalIgnoreCase);
 
@@ -27,11 +28,11 @@ public class DiffusionPipelineService : IDiffusionPipelineService, IDisposable
         // Note: SafetensorParser expects ILogger<SafetensorParser?> specifically, not a generic logger.
         // Pass null to avoid type mismatch; it will handle null loggers safely via ?. pattern.
         _safetensorParser = new SafetensorParser(null!);
-        
+
         // Note: ONNX Runtime 1.20.0 does not expose ExecutionProviderFactory.GetAvailableExecutionProviders()
         // or CudaExecutionProvider in the managed API. GPU acceleration requires native bindings via
         // ExecutionProviderFactory.AppendExecutionProvider_CUDA(). We default to CPU-only mode and log it.
-        
+
         _logger?.LogWarning("ONNX Runtime 1.20.0 — GPU CUDA execution provider not available in managed API. Models will run on CPU only.");
 
         _logger?.LogInformation("DiffusionPipelineService initialized (ONNX Runtime-based, CPU-only)");
@@ -59,7 +60,7 @@ public class DiffusionPipelineService : IDiffusionPipelineService, IDisposable
         _logger?.LogInformation("Image generation stub — model loaded but inference not yet implemented for {ModelId}", request.ModelId);
 
         var placeholder = new byte[100]; // minimal valid PNG-like buffer (not a real image)
-        
+
         return new ImageGenerationResult(
             placeholder,
             request.Width,
@@ -73,7 +74,7 @@ public class DiffusionPipelineService : IDiffusionPipelineService, IDisposable
         };
     }
 
-    public async IAsyncEnumerable<ImageGenerationProgress> StreamProgressAsync(ImageGenerationRequest request, CancellationToken ct = default)
+    public async IAsyncEnumerable<ImageGenerationProgress> StreamProgressAsync(ImageGenerationRequest request, [EnumeratorCancellation] CancellationToken ct = default)
     {
         // Ensure model is loaded if not already present
         var wasAlreadyLoaded = _loadedSessions.ContainsKey(request.ModelId);
@@ -125,7 +126,7 @@ public class DiffusionPipelineService : IDiffusionPipelineService, IDisposable
             var weightFilePath = GetPrimaryWeightFile(metadata);
             if (string.IsNullOrEmpty(weightFilePath) || !File.Exists(weightFilePath))
             {
-                _logger?.LogError("Weight file not found for model '{ModelId}': expected '{Path}'", 
+                _logger?.LogError("Weight file not found for model '{ModelId}': expected '{Path}'",
                     modelId, weightFilePath ?? "null");
                 return false;
             }
@@ -134,22 +135,22 @@ public class DiffusionPipelineService : IDiffusionPipelineService, IDisposable
             var headerValid = await _safetensorParser.ValidateHeaderAsync(weightFilePath);
             if (!headerValid)
             {
-                _logger?.LogError("Safetensors header validation failed for model '{ModelId}': {Path}", 
+                _logger?.LogError("Safetensors header validation failed for model '{ModelId}': {Path}",
                     modelId, weightFilePath);
                 return false;
             }
 
             // Note: ONNX Runtime 1.20.0 does not expose CudaExecutionProvider in the managed API.
             // Default to CPU execution for now. GPU support requires native bindings.
-            
+
             _logger?.LogInformation("Loading model '{ModelId}' with CPU provider (GPU CUDA not available in ONNX Runtime 1.20.0)", modelId);
-            
+
             // For large models (>8GB), use memory-mapped I/O to reduce peak RAM usage
             var fileSize = new FileInfo(weightFilePath).Length;
             SessionOptions sessionOptions;
             if (fileSize > 8L * 1024 * 1024 * 1024) // >8GB — use memory mapping
             {
-                _logger?.LogInformation("Large model detected ({Size} bytes) for '{ModelId}' on CPU — using memory-mapped weight loading", 
+                _logger?.LogInformation("Large model detected ({Size} bytes) for '{ModelId}' on CPU — using memory-mapped weight loading",
                     fileSize, modelId);
 
                 sessionOptions = new SessionOptions();
@@ -164,16 +165,16 @@ public class DiffusionPipelineService : IDiffusionPipelineService, IDisposable
             var inferenceSession = new InferenceSession(weightFilePath, sessionOptions);
             _loadedSessions[modelId] = inferenceSession;
 
-            _logger?.LogInformation("Model '{ModelId}' loaded successfully with CPU provider — {Size} bytes", 
+            _logger?.LogInformation("Model '{ModelId}' loaded successfully with CPU provider — {Size} bytes",
                 modelId, fileSize);
-            
+
             return true;
 
         }
         catch (Exception ex) when (ex is IOException or InvalidOperationException)
         {
             _logger?.LogError(ex, "Failed to load image generation model: {ModelId}", modelId);
-            
+
             // Clean up partial loading state
             if (_loadedSessions.ContainsKey(modelId))
                 _loadedSessions[modelId].Dispose();
@@ -183,7 +184,7 @@ public class DiffusionPipelineService : IDiffusionPipelineService, IDisposable
         catch (Exception ex)
         {
             _logger?.LogError(ex, "Failed to load image generation model: {ModelId}", modelId);
-            
+
             // Clean up partial loading state
             if (_loadedSessions.ContainsKey(modelId))
                 _loadedSessions[modelId].Dispose();
@@ -200,10 +201,10 @@ public class DiffusionPipelineService : IDiffusionPipelineService, IDisposable
             {
                 _loadedSessions[modelId].Dispose();
                 _loadedSessions.Remove(modelId);
-                
+
                 _logger?.LogInformation("Model '{ModelId}' unloaded", modelId);
             }
-            
+
             return true;
         }
         catch (Exception ex)
@@ -215,11 +216,11 @@ public class DiffusionPipelineService : IDiffusionPipelineService, IDisposable
 
     public async Task<IEnumerable<string>> GetLoadedModelsAsync()
     {
-            var loaded = _loadedSessions.Keys.ToList();
-        
+        var loaded = _loadedSessions.Keys.ToList();
+
         foreach (var model in loaded)
             _logger?.LogDebug("GetLoadedModelsAsync — found {Count} loaded sessions", loaded.Count);
-        
+
         return loaded;
     }
 
@@ -236,10 +237,10 @@ public class DiffusionPipelineService : IDiffusionPipelineService, IDisposable
             }
             catch { /* Ignore dispose errors */ }
         }
-        
+
         if (unloaded > 0)
             _logger?.LogInformation("Disposed {Count} ONNX Runtime sessions on shutdown", unloaded);
-        
+
         _loadedSessions.Clear();
     }
 
@@ -251,12 +252,12 @@ public class DiffusionPipelineService : IDiffusionPipelineService, IDisposable
     private string? GetPrimaryWeightFile(MultiModalModelMetadata metadata)
     {
         // Sharded model — use index as primary (ONNX Runtime will handle multi-file loading)
-        if (!string.IsNullOrEmpty(metadata.FilePath) && 
+        if (!string.IsNullOrEmpty(metadata.FilePath) &&
             metadata.FilePath.EndsWith(".safetensors.index.json", StringComparison.OrdinalIgnoreCase))
             return metadata.FilePath;
 
         // Single file safetensors model
-        if (!string.IsNullOrEmpty(metadata.FilePath) && 
+        if (!string.IsNullOrEmpty(metadata.FilePath) &&
             metadata.FilePath.EndsWith(".safetensors", StringComparison.OrdinalIgnoreCase))
             return metadata.FilePath;
 
@@ -264,7 +265,7 @@ public class DiffusionPipelineService : IDiffusionPipelineService, IDisposable
         if (metadata.ShardedFiles != null && metadata.ShardedFiles.Any())
             return metadata.ShardedFiles.First();
 
-        _logger?.LogWarning("Cannot determine weight file for model '{ModelId}' — no FilePath set and no sharded files", 
+        _logger?.LogWarning("Cannot determine weight file for model '{ModelId}' — no FilePath set and no sharded files",
             metadata.Id);
         return null;
     }
@@ -282,7 +283,7 @@ public class VAEPipelineService : IVAEPipelineService, IDisposable
     {
         _logger = logger;
         _modelRepo = modelRepo;
-        
+
         _logger?.LogInformation("VAEPipelineService initialized (ONNX Runtime-based)");
     }
 
@@ -323,7 +324,7 @@ public class LoraAdapterManager : ILoraAdapterManager, IDisposable
     {
         _logger = logger;
         _modelRepo = modelRepo;
-        
+
         _logger?.LogInformation("LoraAdapterManager initialized");
     }
 
@@ -344,11 +345,13 @@ public class LoraAdapterManager : ILoraAdapterManager, IDisposable
 
     public async Task<IEnumerable<MultiModalModelMetadata>> GetAvailableAdaptersAsync(string? compatibleBaseModel = null)
     {
-        var models = await _modelRepo.SearchMultiModalModelsAsync(modelTypeFilter: ModelType.Lora);
-        
+        IEnumerable<MultiModalModelMetadata> models = [];
+        if (_modelRepo != null)
+            models = await _modelRepo.SearchMultiModalModelsAsync(modelTypeFilter: ModelType.Lora);
+
         // Optionally filter by compatibility with the specified base model type
         if (!string.IsNullOrEmpty(compatibleBaseModel))
-            models = models.Where(m => m.CompatibleBaseModel == compatibleBaseModel);
+            models = models.Where(m => m.CompatibleBaseModel != null && m.CompatibleBaseModel == compatibleBaseModel);
 
         return models;
     }
@@ -379,7 +382,7 @@ public class EmbeddingPipelineService : IEmbeddingPipelineService, IDisposable
     {
         _logger = logger;
         _modelRepo = modelRepo;
-        
+
         _logger?.LogInformation("EmbeddingPipelineService initialized (ONNX Runtime-based)");
     }
 
@@ -387,14 +390,14 @@ public class EmbeddingPipelineService : IEmbeddingPipelineService, IDisposable
     {
         // TODO: Real implementation loads safetensors embedding model and runs inference on ONNX Runtime session
         _logger?.LogWarning("Embedding generation not yet implemented — stub response");
-        
+
         return new float[768]; // Dimensionality depends on the model (e.g., CLIPTextModel output)
     }
 
     public async Task<float[][]> GenerateBatchAsync(string modelId, IReadOnlyList<string> inputs, CancellationToken ct = default)
     {
         var results = new float[inputs.Count][];
-        
+
         for (var i = 0; i < inputs.Count && !ct.IsCancellationRequested; i++)
             results[i] = await GenerateAsync(modelId, inputs[i], ct);
 
@@ -403,7 +406,9 @@ public class EmbeddingPipelineService : IEmbeddingPipelineService, IDisposable
 
     public async Task<IEnumerable<MultiModalModelMetadata>> GetAvailableModelsAsync()
     {
-        var models = await _modelRepo.SearchMultiModalModelsAsync(modelTypeFilter: ModelType.Embedding);
+        IEnumerable<MultiModalModelMetadata> models = [];
+        if (_modelRepo != null)
+            models = await _modelRepo.SearchMultiModalModelsAsync(modelTypeFilter: ModelType.Embedding);
         return models;
     }
 
