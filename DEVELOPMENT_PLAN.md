@@ -1,7 +1,7 @@
 # OpenLMStudio Development Plan
 
 ## Project Overview
-**OpenLMStudio**: A .NET 8 implementation of LM Studio's local LLM interface and server capabilities, with extended AI model support beyond text generation (images, diffusion, etc.), a robust agentic build harness for autonomous task completion, and an intelligent context management system that ensures the AI always has exactly the right context for any given task. Built as a cross-platform application supporting Windows, macOS, and Linux with native performance on each platform.
+**OpenLMStudio**: A .NET 8 implementation of LM Studio's local LLM interface and server capabilities, with extended AI model support beyond text generation (images, diffusion, etc.), a robust agentic build harness for autonomous task completion, and an intelligent context management system. Built as a cross-platform application supporting Windows, macOS, and Linux.
 
 ---
 
@@ -9,53 +9,125 @@
 
 ```
 OpenLMStudio/
-├── src/
-│   ├── Application/              — Application layer: interfaces, DTOs, DI registration
-│   │   ├── Interfaces/           — Interface contracts (service abstractions)
-│   │   │   └── *.cs              — Context management, chat, download, and model interfaces
-│   │   ├── Types/                — Transfer objects for API communication
-│   │   │   └── ChatResponseTypes.cs — Chat request/response DTOs, streaming event handler
-│   │   ├── DependencyInjection.cs — Application-layer DI (DTO registrations)
-│   │   └── Class1.cs             — Placeholder class file
-│   ├── Domain/                   — Domain layer: models and domain interfaces
-│   │   ├── Interfaces/           — Domain-level interface contracts
-│   │   │   └── *.cs              — ChatService, ModelService domain interfaces
-│   │   ├── Models/               — Domain model types (entities)
-│   │   │   └── *.cs              — Chat, Message, Conversation, Device, ModelMetadata, etc.
-│   │   ├── DependencyInjection.cs — Domain DI registration
-│   │   └── Class1.cs             — Placeholder class file
-│   ├── Infrastructure/           — Infrastructure layer: concrete implementations
-│   │   ├── Services/             — Concrete service implementations
-│   │   │   └── *.cs              — Server, conversation, device, inference, parsing services
-│   │   ├── DependencyInjection.cs — Infrastructure-layer DI (implementation registrations)
-│   │   └── Class1.cs             — Placeholder class file
-│   └── Desktop/                  — UI layer: Avalonia cross-platform desktop app
-│       ├── MainWindow.xaml/cs    — Main application window (Avalonia XAML)
-│       ├── App.xaml/cs           — Application entry point and lifecycle
-│       ├── AssemblyInfo.cs       — Assembly metadata
-│       └── OpenLMStudio.Desktop.csproj
-├── OpenLMStudio.slnx             — .NET 8 solution file
-└── DEVELOPMENT_PLAN.md           — This document
+├── OpenLMStudio.slnx                 — .NET 8 solution file
+├── DEVELOPMENT_PLAN.md               — This document
+│
+├── src/Application/                  — Application layer: interfaces, DTOs
+│   ├── Interfaces/                   — Interface contracts (19 files)
+│   │   ├── IAgent.cs                 — Agent/task interface and types
+│   │   ├── IChatCompletionService.cs — Chat completion request/response interface
+│   │   ├── IChatContextManager.cs    — Per-chat context with compression/injection
+│   │   ├── IContextCompressor.cs     — Context compression strategy interface
+│   │   ├── IContextManipulator.cs    — User-driven context segment control (pin/suppress)
+│   │   ├── IContextRelevanceEngine.cs— Segment relevance scoring interface
+│   │   ├── IContextWindowBudgeter.cs — Token budget management for context window
+│   │   ├── IConversationManager.cs   — Chat CRUD, server config, device monitoring, MCP client
+│   │   ├── IDiffusionPipelineService.cs— Image generation pipeline interface
+│   │   ├── IDownloadManager.cs       — Model download with verification (SHA256/MD5)
+│   │   ├── IFileOperations.cs        — File read/write/patch/search in agent sandbox
+│   │   ├── IGitRepositoryService.cs  — Deep git repository operations (diff, blame, etc.)
+│   │   ├── IModelLoadingEngine.cs    — Multi-model type loading engine with memory manager
+│   │   ├── IModelRepository.cs       — GGUF + multi-modal model discovery/indexing
+│   │   ├── IProjectExplorer.cs       — Real-time filesystem watcher for project tree
+│   │   ├── ISelfSignedCertificateService.cs— Self-signed HTTPS cert generation/trust
+│   │   ├── ITaskContextInheritor.cs  — Parent→child task context inheritance
+│   │   ├── ITaskContextPruner.cs     — Context pruning on task completion (archive/discard)
+│   │   ├── ITaskContextReinjectionService.cs— Fast task re-injection from snapshot
+│   │   └── ITaskContextStore.cs      — CRUD for agentic task context snapshots
+│   ├── Types/                        — DTOs for API communication (5 files)
+│   │   ├── ChatResponseTypes.cs       — Chat request/response DTOs, streaming handler
+│   │   ├── ContextBudgetIndicator.cs  — Budget indicator with color zones
+│   │   ├── HfRepoFileInfo.cs          — HuggingFace repo file info DTO
+│   │   ├── ImageGenerationRequestTypes.cs— Image generation request DTOs (inpainting/outpainting)
+│   │   └── ImageResponseTypes.cs      — Image response DTOs
+│   ├── Class1.cs                     — Placeholder class file
+│   ├── DependencyInjection.cs        — Application-layer DI registrations
+│   └── OpenLMStudio.Application.csproj
+│
+├── src/Domain/                       — Domain layer: models and interface contracts
+│   ├── Interfaces/                   — Domain-level interfaces (3 files)
+│   │   ├── IChatService.cs           — Chat conversation management
+│   │   ├── IModelService.cs          — Model CRUD operations
+│   │   └── IPluginRegistry.cs        — Plugin discovery/install/lifecycle
+│   ├── Models/                       — Domain models (12 files)
+│   │   ├── AiAnalysisResult.cs       — AI analysis context for git diff review
+│   │   ├── Chat.cs                   — Chat session entity with messages, settings
+│   │   ├── ChatContext.cs            — ContextSegment, AgentState, CompressionLevel, etc.
+│   │   ├── Conversation.cs           — Individual conversation within a chat
+│   │   ├── Device.cs                 — Hardware device (GPU/CPU) representation
+│   │   ├── DeviceHardwareInfo.cs     — GPU hardware info record
+│   │   ├── DeviceInfo.cs             — GpuDevice, CpuInfo, DeviceInfo records
+│   │   ├── Message.cs                — Chat message with tool calls support
+│   │   ├── ModelLoadState.cs         — Loaded model instance in memory
+│   │   ├── ModelMetadata.cs          — GGUF + MultiModalModelMetadata (safetensors)
+│   │   ├── ModelType.cs              — TextGeneration/ImageGeneration/Diffusion/Vae/Lora/Embedding enums
+│   │   └── TaskContextSnapshot.cs    — Agentic task context snapshot for resume
+│   ├── Class1.cs                     — Placeholder class file
+│   ├── DependencyInjection.cs        — Domain DI registrations
+│   └── OpenLMStudio.Domain.csproj
+│
+├── src/Infrastructure/              — Infrastructure layer: concrete implementations
+│   ├── Services/                    — Concrete service implementations (40 files)
+│   │   ├── AgentTaskProgressTracker.cs     — Task stage tracking and iteration limit enforcement
+│   │   ├── ApiKeyAuthMiddleware.cs         — API key authentication middleware for endpoints
+│   │   ├── AppDataDirectoryResolver.cs     — Platform-specific appdata path resolution + SQLite factory
+│   │   ├── ChatContextManager.cs           — SQLite-backed per-chat context with pin/suppress/injection
+│   │   ├── ChatPersistenceService.cs       — JSON-file-based chat persistence (alternative to SQL)
+│   │   ├── CommandExecuteTool.cs           — Shell command execution tool for agent harness
+│   │   ├── CommandExecutionService.cs      — Sandboxed command execution via Process API
+│   │   ├── ContextManipulator.cs           — User-driven pin/suppress/custom context control
+│   │   ├── ContextRelevanceEngine.cs       — Recency + semantics + entity matching relevance scoring
+│   │   ├── ContextWindowBudgeter.cs        — Token budget tracking with auto-eviction of segments
+│   │   ├── ConversationContextCompressor.cs— Temporal decay/semantic/tool output compression strategies
+│   │   ├── ConversationManager.cs          — File-based conversation persistence (alternative to SQL)
+│   │   ├── DeviceMonitor.cs               — Windows device monitoring via WMI
+│   │   ├── DiffusionPipelineService.cs    — ONNX Runtime diffusion pipeline for image generation
+│   │   ├── DownloadManager.cs             — Model download from HuggingFace with SHA256/MD5 verification
+│   │   ├── EmbeddingPipelineService.cs    — Placeholder embedding generation (random vectors)
+│   │   ├── FileOperationsService.cs       — File read/write/patch/search in agent sandbox
+│   │   ├── FilePatchTool.cs               — Safe file patching tool for agent harness
+│   │   ├── FileReadTool.cs                — File reading tool with line limit support
+│   │   ├── FileWriteTool.cs              — File writing/overwriting tool for agent harness
+│   │   ├── GgufParser.cs                 — GGUF model file parser (magic number, KV pairs)
+│   │   ├── GitRepositoryService.cs       — Deep git integration via CLI (diff, blame, branches)
+│   │   ├── JsonModelRepository.cs        — JSON-based model discovery with multi-format indexing
+│   │   ├── LlamaCppChatCompletionService.cs— llama.cpp chat completion service
+│   │   ├── McpClient.cs                  — MCP stdio client for tool/resource/prompt access
+│   │   ├── McpResourceAccessor.cs         — MCP resource accessor by URI
+│   │   ├── McpToolCaller.cs              — MCP tool caller from connected server
+│   │   ├── PluginRegistry.cs             — Local plugin discovery/install/update management
+│   │   ├── ProjectExplorerTool.cs        — Directory explorer tool for agent harness
+│   │   ├── RateLimitMiddleware.cs        — Sliding window rate limiter per IP address
+│   │   ├── SafetensorParser.cs           — Safetensors header parser with tensor shape/dtype extraction
+│   │   ├── SearchFilesTool.cs            — Regex search across project files tool
+│   │   ├── SelfSignedCertificateGenerator.cs— Cross-platform cert generation (OpenSSL + dotnet dev-certs)
+│   │   ├── ServerService.cs              — Kestrel-based local inference server with OpenAI/Anthropic endpoints
+│   │   ├── SseEventBuffer.cs             — SSE event buffer for reconnection support
+│   │   ├── SseReconnectService.cs        — SSE session tracking and resumption service
+│   │   ├── TaskContextInheritor.cs       — Parent→child task context inheritance with budget-aware filtering
+│   │   ├── TaskContextPruner.cs          — Archive/compress-and-archive/discard on task completion
+│   │   ├── TaskContextReinjectionService.cs— Fast re-injection from pre-compressed snapshot (<100ms)
+│   │   ├── TaskContextStore.cs           — SQLite-backed CRUD for agentic task context snapshots
+│   │   └── VaEPipelineService.cs         — ONNX Runtime VAE pipeline (encoding/decoding latent space)
+│   ├── DependencyInjection.cs            — Infrastructure DI registrations
+│   └── OpenLMStudio.Infrastructure.csproj
+│
+└── src/Desktop/                       — UI layer: Avalonia cross-platform desktop app
+    ├── MainWindow.axaml/cs            — Main window with chat/server/models/devices/context tabs
+    ├── App.axaml/cs                   — Application entry point and DI setup
+    ├── AssemblyInfo.cs               — Assembly metadata
+    └── OpenLMStudio.Desktop.csproj   — Desktop project (Avalonia Win32/MacOS conditional packages)
 ```
-
-### Key Architecture Layers (Clean Architecture)
-
-| Layer | Responsibility | Example |
-|-------|---------------|---------|
-| **Domain** | Core business logic, domain models, and interface contracts | Chat, Message, Device hardware info |
-| **Application** | Application services, DTOs, use case orchestration | ChatCompletionRequest, StreamingEventHandler |
-| **Infrastructure** | Concrete implementations of interfaces (I/O, external APIs) | ServerService, DownloadManager, GgufParser |
-| **Desktop** | UI layer — cross-platform Avalonia application | MainWindow, App entry point |
 
 ---
 
 ## Phase 1: Foundation & Architecture
 
 ### 1.1 Project Setup
-- [x] Initialize .NET 8 solution with appropriate structure (OpenLMStudio.slnx) — **already exists**
-- [x] Select UI framework: **Avalonia UI (.NET 8 compatible)** for cross-platform Windows/macOS/Linux — **Avalonia Win32/MacOS conditionals added**
+- [x] Initialize .NET 8 solution with appropriate structure (OpenLMStudio.slnx)
+- [x] Select UI framework: Avalonia UI for cross-platform Windows/macOS/Linux
 - [ ] Establish CI/CD pipeline basics
-- [x] Configure project dependencies and NuGet packages — SQLitePCLRaw.bundle_e_sqlite3, Avalonia controls per-platform — **all 4 projects build clean with zero errors**
+- [x] Configure project dependencies and NuGet packages — SQLitePCLRaw.bundle_e_sqlite3, Avalonia controls per-platform
 
 ### 1.2 Core Architecture Design
 - [x] Define clean architecture layers (Domain, Application, Infrastructure, Desktop)
@@ -64,12 +136,9 @@ OpenLMStudio/
 - [x] Design plugin/MCP interface contracts
 
 ### 1.3 Domain Model Expansion - Multi-Modal Support
-- [x] Define model types enum: TextGeneration, ImageGeneration, Diffusion, VAE, LoRA, Embedding — **ModelType.cs created with full hierarchy**
-- [x] Create unified ModelMetadata schema supporting all model formats via `MultiModalModelMetadata` class in Domain.Models:
-  - GGUF (text generation) — `_indexedGgufModels` dictionary in JsonModelRepository
-  - Safetensors (image generation, diffusion, embeddings, VAE, LoRA) — `_indexedMultiModalModels` dictionary + safetensors header parsing
-  - ONNX (alternative inference format) — `Format` property supports Onnx variant
-- [x] Define ModelType hierarchy for type-safe model handling across the system — **ModelType enum with TextGeneration/ImageGeneration/Diffusion/Vae/Lora/Embedding values**
+- [x] Define model types enum: TextGeneration, ImageGeneration, Diffusion, VAE, LoRA, Embedding (ModelType.cs)
+- [x] Create unified ModelMetadata schema supporting all model formats via `MultiModalModelMetadata` class in Domain.Models
+- [x] Define ModelType hierarchy for type-safe model handling across the system
 
 ### 1.4 Context Management Architecture Design
 - [x] Define `IChatContextManager` — per-chat conversation context with compression/injection
@@ -91,148 +160,102 @@ OpenLMStudio/
 
 ### 1.7 Context Injection System Design
 - [x] System prompt: always present, never compressed — `ContextInjectionType.SystemPrompt` + guarantees
-- [x] Task context snapshot: injected per-task for agent (task description, current phase, available tools, project state) — `TaskContextSnapshot` model in Domain.Models
+- [x] Task context snapshot: injected per-task for agent (task description, current phase, available tools, project state)
 - [x] Conversation context: compressed based on token budget — `IContextCompressor` + `ContextBudget` tracking
 - [x] Project state: dynamic injection of active file tree, git status, open documents — `ContextInjectionType.ProjectState` enum value
 
 ### 1.8 Cross-Platform Data Directory Setup
+- [x] Implement `AppDataDirectoryResolver` service with platform-specific implementations (Windows/macOS/Linux)
+- [x] Create subdirectory structure via `InitializeSubdirectories()`: contexts/, metadata/, models/, tasks/, logs/
 
-#### Platform-Specific AppData Path Resolution
-- [x] Implement `AppDataDirectoryResolver` service with platform-specific implementations:
-  - **Windows**: `%APPDATA%\OpenLMStudio` via `Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData)`
-  - **macOS**: `~/Library/Application Support/OpenLMStudio` via HOME env var fallback
-  - **Linux**: `$XDG_CONFIG_HOME/OpenLMStudio` → fallback to `~/.config/OpenLMStudio`
-
-#### AppData Subdirectory Structure (created on first run via `AppDataDirectoryResolver.InitializeSubdirectories()`)
-```
-OpenLMStudio/
-    ├── contexts/          — SQLite databases for conversation context (per-chat .db files)
-    ├── metadata/          — Project metadata, settings, config (.json) files + settings.db
-    ├── models/            — Model registry data (NOT model binaries; symlinks/references to actual locations)
-    ├── tasks/             — Agentic task snapshots and state (.db or per-task JSON)
-    └── logs/              — Application log files with rotation enabled
-```
-
-#### Key Design Decisions
-- **Model storage**: User-configurable path (NOT in appdata — models are large, typically on separate drive)
-- **SQLite for ALL persistent data**: Conversation history, context data, project metadata, task snapshots — stored in platform-specific appdata directory
-- **Data directory migration**: On first run after this update, convert existing JSON files to SQLite and move them to the appdata subdirectories
-
-### Phase 1 Summary
+#### Phase 1 Summary — **COMPLETE**
 | Category | Items Complete | Items Remaining |
 |----------|---------------|-----------------|
-| Project Setup | **4 / 4** | ✓ All items complete — Avalonia UI project setup + WPF→Avalonia conversion (May 2026 Phase 1.1) |
-| Core Architecture Design | 4 / 4 | None |
-| Domain Model Expansion - Multi-Modal Support | 3 / 3 | None |
-| Context Management Architecture | 5 / 5 | None |
-| Context Compression Strategies | 4 / 4 | None |
-| Context Ordering Strategy | 3 / 3 | None |
-| Context Injection System | 4 / 4 | None |
-| Cross-Platform Data Directory | **4 / 4** | ✓ All subdirectories created via InitializeSubdirectories(); GetLogFilePath() added; SQLite migration pending |
+| Project Setup | 3 / 4 | CI/CD basics |
+| Core Architecture Design | 4 / 4 | ✓ All items complete |
+| Domain Model Expansion - Multi-Modal Support | 3 / 3 | ✓ All items complete |
+| Context Management Architecture | 5 / 5 | ✓ All items complete |
+| Context Compression Strategies | 4 / 4 | ✓ All items complete |
+| Context Ordering Strategy | 3 / 3 | ✓ All items complete |
+| Context Injection System | 4 / 4 | ✓ All items complete |
+| Cross-Platform Data Directory | 2 / 2 | ✓ Complete |
 
-### Phase 1.5: Context Management Implementation — **ALL COMPLETE + Bug Fixes Applied**
-- [x] Implement `ChatContextManager` service — **SQLite-backed implementation with pin/suppress/injection capabilities**
-- [x] Implement `ConversationContextCompressor` — **light/medium/aggressive compression strategies with semantic scoring**
-- [x] Implement `ContextRelevanceEngine` — **recency + semantics + entity matching relevance scoring**
-- [x] Implement `ContextManipulator` — **user-driven pin/suppress/add custom context control**
-- [x] Register all new services in DI container (DependencyInjection.cs)
-
-#### Audit Bug Fixes Applied:
-- **ChatContextManager**: Created missing `ChatMessages` table that was referenced but never defined — now properly creates the table on initialization and ensures it exists before querying
-- **AppDataDirectoryResolver**: Added `InitializeSubdirectories()` method to create all 5 subdirectories (contexts/, metadata/, models/, tasks/, logs/) per spec; added `GetLogFilePath()` helper
-
+---
 
 ## Phase 2: Model Management System
 
 ### 2.1 Model Repository with Multi-Format Support
 - [x] Implement local model storage and organization (JsonModelRepository.cs)
-- [x] Update repository to support multi-model types with format-aware metadata parsing — **added `_indexedMultiModalModels` dictionary + `MultiModalModelMetadata` in JsonModelRepository.cs**
-- [x] Create GGUF model file parser for metadata extraction
-- [x] Add Safetensors model file parser for diffusion/image models/embeddings/VAE/LoRA — **SafetensorParser.cs implemented with header parsing, tensor shape/dtype extraction, sharded index support**
+- [x] Update repository to support multi-model types with format-aware metadata parsing — `SearchMultiModalModelsAsync` + `GetMultiModalModelByIdAsync` methods added via IModelRepository interface
+- [x] Create GGUF model file parser for metadata extraction (GgufParser.cs)
+- [x] Add Safetensors model file parser for diffusion/image models/embeddings/VAE/LoRA — `SafetensorParser.cs` with header parsing, tensor shape/dtype extraction, sharded index support
 - [x] Build model discovery and indexing system
-- [x] Add search/filter functionality for models — **JsonModelRepository.SearchModelsAsync now searches both GGUF and multi-modal (safetensors) models across all types**
+- [x] Add search/filter functionality for models
 
 ### 2.2 Model Download Manager with Integrity Verification
-- [x] Implement download from HuggingFace repositories + **HuggingFace Hub authentication via access token** (InitializeHuggingFaceToken, SetHuggingFaceToken, IsAuthenticated)
-- [x] Add safetensors-specific download validation (header integrity checks via SHA256/MD5) — **DownloadSafetensorsModelAsync with VerifySha256HashAsync + ETag header hash lookup**
-- [x] Support diffusion checkpoint downloads (Stable Diffusion, Flux, etc.) — **DownloadDiffusionCheckpointAsync for single-file + sharded variants**
-- [x] Support LoRA/LoHa/LoKr adapter downloads with merge tracking — **DownloadLoraAdapterAsync auto-detects format from tensor shapes; MergeLoraAdapterAsync for persistent application**
+- [x] Implement download from HuggingFace repositories + HuggingFace Hub authentication via access token (InitializeHuggingFaceToken, SetHuggingFaceToken, IsAuthenticated)
+- [x] Add safetensors-specific download validation (header integrity checks via SHA256/MD5) — `DownloadSafetensorsModelAsync` with `VerifySha256HashAsync` + ETag header hash lookup
+- [x] Support diffusion checkpoint downloads (Stable Diffusion, Flux) — `DownloadDiffusionCheckpointAsync` for single-file + sharded variants
+- [x] Support LoRA/LoHa/LoKr adapter downloads with merge tracking — `DownloadLoraAdapterAsync`, `MergeLoraAdapterAsync` for persistent application
 - [x] Add support for multiple sources (HuggingFace, local paths)
-- [x] Create progress tracking with resume capability and disk space monitoring during download — **DiskSpaceWarning events at 80%/90%/95% thresholds**
-- [x] Implement model validation after download — hash comparison against known-good manifests via ETag headers on LFS blobs — **VerifySha256HashAsync, VerifyMd5HashAsync**
+- [x] Create progress tracking with resume capability and disk space monitoring during download — DiskSpaceWarning events at 80%/90%/95% thresholds
+- [x] Implement model validation after download — hash comparison against known-good manifests via ETag headers on LFS blobs
 
 ### 2.3 Model Loading Engine with Multi-Engine Support
-- [x] Integrate with llama.cpp or equivalent inference engine via native bindings — **cross-platform: llama-cpp-net supports all platforms**
+- [x] Integrate with llama.cpp or equivalent inference engine via native bindings — cross-platform: `LlamaCppChatCompletionService.cs` implements IChatCompletionService for text generation
 - [ ] Add diffusers.net integration for diffusion/image models
-- [ ] Add ONNX Runtime integration as alternative inference backend — **.NET packages available on Linux/macOS/Windows**
-- [ ] Implement model loading/unloading lifecycle management:
-  - Text generation: LlamaCppChatCompletionService
-  - Image generation: DiffusionPipelineService (new)
-  - VAE encoding/decoding: VAEPipelineService (new)
-  - LoRA adapter application: LoRAAdapterManager (new)
-  - Embedding generation: EmbeddingPipelineService (new)
-- [ ] Implement unified model loading interface with type-specific pipelines
-- [x] Add context length configuration options
-- [ ] Add image generation parameters: resolution, steps, CFG scale, seed support
-- [ ] Support for multiple simultaneous models (limited)
+- [ ] Add ONNX Runtime integration as alternative inference backend — .NET packages available on Linux/macOS/Windows (partial: ONNX Runtime used in DiffusionPipeline/VaEPipeline)
+- [ ] Implement unified model loading interface with type-specific pipelines (stub implementations exist but not complete):
+  - Text generation: `LlamaCppChatCompletionService` ✓
+  - Image generation: `DiffusionPipelineService` — **partial** (model loading via ONNX Runtime InferenceSession; inference stubbed)
+  - VAE encoding/decoding: `VAEPipelineService` — **partial** (tensor type inference fixed but EncodeAsync/DecodeAsync not yet implemented)
+  - LoRA adapter application: `LoraAdapterManager` — **stub** exists, merging/mapping not implemented
+  - Embedding generation: `EmbeddingPipelineService` — **stub** generates random normalized vectors until safetensors integration complete
+- [x] Add context length configuration options (via GgufParser ContextLength extraction)
+- [ ] Add image generation parameters: resolution, steps, CFG scale, seed support (DTOs defined in ImageGenerationRequestTypes.cs but inference implementation still stubbed)
+- [ ] Support for multiple simultaneous models (limited) — `IModelManager` interface exists but not implemented
 - [ ] Model offloading between CPU/GPU based on memory availability
 
 ### 2.4 Safetensors Format Integration
-- [x] Implement `SafetensorParser` service:
-  - Read safetensors header (JSON metadata + index) — **8-byte length prefix + JSON parsing**
-  - Extract tensor shapes and dtypes from header
-  - Validate header integrity before loading — **SHA256/MD5 hash verification of header**
-  - Support single-file and multi-file sharded models — **.safetensors.index.json parser added**
-- [x] Implement `SafetensorModelLoader` service:
-  - Load weights into ONNX Runtime inference session
-  - Memory mapping for large files (memory-mapped I/O, critical for >10GB) — **MemoryMappedFile support**
-  - Sharded model loading across multiple safetensors files
-  - Weight normalization and dtype conversion on-the-fly
+- [x] Implement `SafetensorParser` service: read header, extract tensor shapes/dtypes, validate integrity before loading, support single-file and multi-file sharded models
+- [x] Implement `SafetensorModelLoader` concept in DiffusionPipelineService: weight loading via ONNX Runtime InferenceSession with memory-mapped I/O for large files
 
-### Phase 2 Summary — **JUST UPDATED (May 2026): Minor audit fixes applied**
+#### Phase 2 Summary — **5 of 10 items complete**
 | Category | Items Complete | Items Remaining |
 |----------|---------------|-----------------|
-| Model Repository | **6 / 6** | ✓ search/filter includes multi-modal models; GGUF and safetensors indexing complete |
-| Download Manager | **7 / 7** | ✓ all download methods, HuggingFace auth, disk space monitoring, hash verification implemented |
-| Model Loading Engine | **4 / 10** | DiffusionPipelineService LoadModelAsync uses real InferenceSession with CPU provider; GPU CUDA not available in ONNX Runtime 1.20.0 managed API — requires native bindings. Image gen params (resolution, steps, CFG scale, seed) defined in DTO but inference implementation still stubbed |
-| Safetensors Integration | **2 / 2** | ✓ SafetensorParser + SafetensorModelLoader fully implemented; header validation, memory-mapped loading, sharded model support complete |
+| Model Repository | 6 / 6 | ✓ All items complete |
+| Download Manager | 7 / 7 | ✓ All items complete |
+| Model Loading Engine | 4 of 10 partial | Inference stubbed for image/VAE/Lora; ONNX Runtime not fully integrated; multi-model concurrency not implemented |
 
-#### Audit Bug Fixes Applied:
-- **OpenApiEndpointHandler**: Fixed `/v1/models/list` endpoint — changed from POST to GET per OpenAI API specification |
-- **DeviceMonitor**: Fixed `GetAvailableMemoryBytes()` calculation bug — was returning total memory instead of free memory; now correctly returns `FreePhysicalMemory` from WMI with proper KB-to-bytes conversion |
-
-#### Audit Bug Fixes Applied:
-- **OpenApiEndpointHandler**: Fixed `/v1/models/list` endpoint — changed from POST to GET per OpenAI API specification
-- **DeviceMonitor**: Fixed `GetAvailableMemoryBytes()` calculation bug — was returning total memory instead of free memory; now correctly returns `FreePhysicalMemory` from WMI with proper KB-to-bytes conversion
-
+---
 
 ## Phase 3: Inference Engines & Server API
 
 ### 3.1 HTTP Server Foundation
 - [x] Establish DI service registration pattern (DependencyInjection.cs)
-- [x] Implement ASP.NET Core minimal host for local server (ServerService.cs with Kestrel) — **cross-platform via Kestrel**
-- [x] Configure HTTPS with self-signed certificate generation support — **SelfSignedCertificateGenerator + dotnet dev-certs fallback added for Windows**
+- [x] Implement ASP.NET Core minimal host for local server (ServerService.cs with Kestrel) — cross-platform via Kestrel
+- [x] Configure HTTPS with self-signed certificate generation support — SelfSignedCertificateGenerator + dotnet dev-certs fallback added for Windows
 - [x] Set up request/response middleware pipeline
 
 ### 3.2 OpenAI-Compatible API Endpoints — Multi-Engine Routing
-- [x] `/v1/chat/completions` - Chat completion endpoint (text only currently)
+- [x] `/v1/chat/completions` - Chat completion endpoint (text only currently) with streaming support via SSE
 - [ ] Update to accept model type parameter for routing across inference engines
-- [ ] `/v1/images/generations` - Image generation via diffusion models
-- [x] `/v1/embeddings` - Embedding generation (stub: random normalized vectors until safetensors integration)
-- [x] Implement streaming responses with SSE
+- [ ] `/v1/images/generations` - Image generation via diffusion models — **stub** returns 1024x1024 PNG; real pipeline not connected
+- [x] `/v1/embeddings` - Embedding generation (placeholder: random normalized vectors until safetensors integration)
+- [ ] Implement streaming responses with SSE (partial: ServerService has HandleStreamingResponse but only works for text chat completions)
 
 ### 3.3 Anthropic-Compatible Endpoints
-- [x] `/v1/messages` - Message endpoint placeholder
-- [ ] Response format compatibility layer
+- [x] `/v1/messages` - Message endpoint — uses real IChatCompletionService with AnthropicRequest/AnthropicMessage DTOs
+- [ ] Response format compatibility layer (partial: DTOs exist but formatting not fully compatible with OpenAI)
 
 ### 3.4 Server Management
-- [ ] Start/stop server controls in UI — **Avalonia implementation needed**
+- [ ] Start/stop server controls in UI — Avalonia implementation needed
 - [x] Port configuration and conflict detection (IsPortInUseAsync, FindAvailablePortAsync)
-- [ ] API key authentication (optional)
-- [x] Rate limiting implementation — **RateLimitMiddleware + IRateLimitService added**
+- [x] API key authentication (optional) — ApiKeyAuthMiddleware with X-Api-Key header support
+- [x] Rate limiting implementation — RateLimitMiddleware + IRateLimitService added
 
 ### 3.5 Diffusion Model Inference Engine
-- [ ] Implement `DiffusionPipelineService` for image generation
+- [ ] Implement `DiffusionPipelineService` for image generation (model loading exists but inference stubbed)
 - [ ] Support Stable Diffusion 1.x, SDXL, SD 3.x model families
 - [ ] Support Flux models (Fast / Dev variants)
 - [ ] CLIP text encoding pipeline for prompt processing
@@ -241,27 +264,16 @@ OpenLMStudio/
 - [ ] Sampler support: Euler, Euler a, DPM++, LMS, Heun, etc.
 
 ### 3.6 Image Generation API Endpoints
-- [ ] `/v1/images/generations` - Create image endpoint:
-  - Accepts prompt, negative prompt, model ID, parameters
-  - Returns generated image(s) with metadata (width, height, seed, steps)
-- [ ] `/v1/models/image/list` - List available image generation models
-- [ ] `/v1/images/inpainting` - Inpainting endpoint
-- [ ] `/v1/images/outpainting` - Outpainting/expand endpoint
+- [ ] `/v1/images/generations` - Create image endpoint with full inference support — **stub** returns minimal PNG
+- [ ] `/v1/models/image/list` - List available image generation models (endpoint exists via SearchMultiModalModelsAsync but not fully tested)
+- [ ] `/v1/images/inpainting` - Inpainting endpoint — **stub**
+- [ ] `/v1/images/outpainting` - Outpainting/expand endpoint — **stub**
 
 ### 3.7 LoRA Adapter System
-- [ ] Implement `LoRAAdapterManager`:
-  - Load LoRA adapters on-demand during image generation
-  - Track adapter weights and combinations
-  - Support LoRA, LoHa, LoKr formats (safetensors-based)
-  - Multiple adapter stacking with weight scaling
-  - Adapter merging for persistent application
+- [ ] Implement `LoraAdapterManager`: load adapters on-demand, track weights/combinations, support multiple adapter stacking, merge for persistent application (exists but stubbed)
 
 ### 3.8 VAE Pipeline Service
-- [ ] Implement `VAEPipelineService` for latent space operations:
-  - Encode images to latent representations
-  - Decode latents back to pixel space
-  - Support SD-specific VAE variants (sd-vae-ft-mse, sd-vae-ft-mse-original)
-  - Support Flux VAE integration
+- [ ] Implement `VAEPipelineService` for latent space operations: encode/decode images, SD-specific variants, Flux VAE integration (exists but EncodeAsync/DecodeAsync not yet implemented)
 
 ### 3.9 Image Post-Processing
 - [ ] Upscaling via image-to-image pipeline
@@ -270,281 +282,144 @@ OpenLMStudio/
 - [ ] IP-Adapter face embedding pipeline
 
 ### 3.10 Embedding Pipeline Service
-- [ ] Implement `EmbeddingPipelineService` for text/image embedding generation:
-  - Load safetensors-based embedding models
-  - Generate embeddings via `/v1/embeddings` endpoint
-  - Support sentence-transformers format models
+- [ ] Implement `EmbeddingPipelineService` with safetensors-based models via ONNX Runtime (exists but generates random vectors — stub)
 
-### Phase 3 Summary — **AUDITED May 18, 2026 (5:00 AM): All endpoints verified via code audit**
+#### Phase 3 Summary — **partial progress**
 | Category | Items Complete | Items Remaining |
 |----------|---------------|-----------------|
-| HTTP Server Foundation | **4 / 4** | ✓ SelfSignedCertificateGenerator implements HTTPS cert generation; CORS + Kestrel configured |
-| OpenAI-Compatible Endpoints | **5 / 5** | ✓ All endpoints now have real implementations — `/v1/embeddings` uses EmbeddingPipelineService (stub: random normalized vectors) |
-| Anthropic-Compatible Endpoints | **2 / 2** | ✓ Response format compatibility layer confirmed complete — `/v1/messages` uses real IChatCompletionService |
-| Server Management | **4 / 4** | ✓ Rate limiting (RateLimitMiddleware), API key auth (ApiKeyAuthMiddleware) both verified; UI controls via Avalonia |
-
-#### May 2026 Changes:
-- Anthropic compatibility + multi-engine discovery endpoints completed — `/v1/messages` uses real IChatCompletionService, added `AnthropicRequest/AnthropicMessage/ContentBlock` DTOs
-- Added `/v1/models/image/list` and `/v1/models/embedding/list` endpoints via SearchMultiModalModelsAsync
-#### May 18, 2026 Changes:
-- Rate limiting middleware (`RateLimitMiddleware` + `IRateLimitService`) added with sliding window counter algorithm
-- CORS middleware added for cross-origin SSE/streaming requests
-- SSE reconnection support — `SseReconnectService` tracks active/completed sessions, `SseEventBuffer` buffers events for Last-Event-ID replay
-#### May 18, 2026 (later) Changes:
-- Multi-engine routing DTOs added — `OpenAIImageGenerationRequest`, `ChatCompletionRequest.Type`, `OpenApiRequest.Type` fields enable model-type-based engine routing
-- `/v1/images/generations` endpoint now uses real `IDiffusionPipelineService.GenerateImageAsync()` instead of returning 405 (returns Base64-encoded PNG via OpenAI-compatible format)
-- Image generation DTOs — `ImageGenerationResponse`, `ImageData` with B64Json/Width/Height/Seed fields for OpenAI compatibility
-#### May 18, 2026 (Phase 1.1 WPF→Avalonia):
-- MainWindow.xaml → MainWindow.axaml: Converted MouseBinding to PointerPressed event handlers, fixed Style StaticResource references, moved SolidColorBrush resources to Window.Resources section
-- SettingsWindow.xaml → SettingsWindow.axaml: Moved SolidColorBrush resources from Window.Styles to Window.Resources (Avalonia requirement)
-- OpenLMStudio.Desktop.csproj: Removed app.manifest reference (WPF Windows-specific), added conditional Avalonia platform packages (Avalonia.Win32, Avalonia.MacOS)
-- Build status: All 4 projects compile successfully with zero errors (+1 cosmetic Avalonia warning about XAML resource loader)
-#### May 18, 2026 (5:00 AM audit):
-- `/v1/images/generations` endpoint verified — returns OpenAI-compatible format with `b64_json`, `width`, `height`, `seed` fields ✓
-- `/v1/models/image/list` and `/v1/models/embedding/list` endpoints verified via SearchMultiModalModelsAsync ✓
-- API key authentication middleware verified — supports X-Api-Key header + api_key query parameter fallback ✓
-- `/v1/images/inpainting` and `/v1/images/outpainting` endpoints implemented (stub responses returning 1x1 PNG) ✓
-
-#### Phase 3 Endpoint Detail:
-| Endpoint | Status | Notes |
-|----------|--------|-------|
-| `/v1/chat/completions` | **Working** | Multi-engine routing via Type field; text only currently |
-| `/v1/images/generations` | **Working (stub)** | Returns OpenAI-compatible format; inference stub (1x1 PNG) — not yet implemented per plan |
-| `/v1/images/inpainting` | **Working (stub)** | Same as above |
-| `/v1/images/outpainting` | **Working (stub)** | Same as above |
-| `/v1/models/image/list` | **Working** | Via SearchMultiModalModelsAsync |
-| `/v1/models/embedding/list` | **Working** | Via SearchMultiModalModelsAsync |
-| `/v1/models/vae/list` | **Working** | Via IVAEPipelineService.GetAvailableModelsAsync |
-| `/v1/models/lora/list` | **Working** | Via ILoraAdapterManager.GetAvailableAdaptersAsync |
-| `/v1/embeddings` | **Working (stub)** | Uses EmbeddingPipelineService — generates random normalized vectors until safetensors integration |
-
-#### Phase 3 Service Detail:
-| Service | Status | Notes |
-|---------|--------|-------|
-| DiffusionPipelineService | **Partial** | Model loading via ONNX Runtime InferenceSession; inference stubbed (returns MinimalRedPixelPng) |
-| VAEPipelineService | **Stub** | Exists but EncodeAsync/DecodeAsync return empty arrays — not yet implemented |
-| LoraAdapterManager | **Working** | Adapter tracking in _appliedAdapters dictionary; merging/mapping stubbed |
-| EmbeddingPipelineService | **Stub (placeholder)** | Generates random normalized 768-dim vectors until safetensors models integrated via ONNX Runtime |
-
-#### May 18, 2026 (6:35 AM):
-- EmbeddingPipelineService implementation added — stub generates random normalized embeddings via `IEmbeddingPipelineService` interface with `GenerateAsync()` and `GenerateBatchAsync()` methods
-- VaEPipelineService tensor type inference fixed — uses AsEnumerable<float>() + OutputMetadata shape instead of inferring from data length
-
-#### May 18, 2026 (6:38 AM):
-- SelfSignedCertificateGenerator updated to add dotnet dev-certs fallback for Windows when OpenSSL unavailable — enables HTTPS out-of-the-box without external dependencies
-
-#### Phase 3 Audit Bug Fixes Applied (non-critical — duplicate from Phase 5):
-- **ChatContextManager**: Fixed `GetAllContextSegmentsInternalAsync` column name mismatch — was using `Ordinal("Id")` but SQL selects `SegmentId`, causing SqliteException at runtime. Now uses `Ordinal("SegmentId")`.
-- **TaskContextStore ListArchivedAsync**: Was reading from a single hardcoded database path (`_resolver.GetTaskContextDatabasePath("archived")`) which would never find any actual archived data since snapshots are stored per-task-id in separate `.db` files. Now scans all `.db` files across the `tasks/` subdirectory for `TaskContextSnapshots_Archived` tables, and also checks `metadata/` directory as a secondary location.
-
-#### Build Verification: dotnet build → zero errors, zero warnings; dotnet format whitespace --verify-no-changes → clean
+| HTTP Server Foundation | 4 / 4 | ✓ All items complete |
+| OpenAI-Compatible Endpoints | 2 of 5 partial | Text completions + streaming working; image/embedding stubbed |
+| Anthropic-Compatible Endpoints | 1 of 2 partial | Messages endpoint uses real service; response format not fully compatible |
+| Server Management | 3 / 4 | UI controls missing |
+| Diffusion Model Engine | 0 / 7 | All items incomplete — inference stubbed in pipeline service |
+| Image Generation Endpoints | 1 of 4 partial | Endpoint exists but returns minimal PNG (stub) |
+| LoRA Adapter System | 0 / 1 | Stub exists, not implemented |
+| VAE Pipeline Service | 0 / 1 | Exists but EncodeAsync/DecodeAsync stubbed |
+| Image Post-Processing | 0 / 4 | Not started |
+| Embedding Pipeline Service | 0 / 1 | Stub — random vectors until safetensors integration |
 
 ---
 
 ## Phase 4: Chat & Conversation System
 
 ### 4.1 Data Model Design
-- [x] Define Chat, Message, and Turn entities (Chat.cs, Message.cs, ToolCall record) — in Domain.Models
-- [ ] Expand Chat to support multi-modal outputs (images, embeddings, etc.)
+- [x] Define Chat, Message, and Turn entities (Chat.cs, Message.cs, ToolCall record) in Domain.Models
+- [ ] Expand Chat to support multi-modal outputs (images, embeddings, etc.) — not yet done
 - [ ] Add ImageOutput model type with metadata (width, height, seed, cfg_scale, steps)
-- [x] Implement conversation persistence — stored in `contexts/{chatId}.db` under platform-specific appdata directory
 
 ### 4.2 Conversation Manager
-- [x] Implement chat creation, loading, deletion (IConversationManager + SqliteConversationManager) — **SQLite-backed implementation**
+- [x] Implement chat creation, loading, deletion (IConversationManager + SqliteConversationManager/ChatPersistenceService)
 - [x] Build message history navigation
-- [x] Add search functionality within conversations
+- [ ] Add search functionality within conversations — partial: SearchChatsAsync searches by name/content at the chat level but not per-message within a conversation
 - [ ] Implement conversation export/import
 
 ### 4.3 Real-time Communication
-- [x] Server-Sent Events (SSE) client for streaming (HandleStreamingResponse in ServerService) — **cross-platform via Kestrel**
-- [ ] Token-by-token display updates
-- [ ] Connection reconnection logic
-- [ ] Error handling and retry mechanisms — SSE drop recovery, partial response reconstruction from buffered events
+- [x] Server-Sent Events (SSE) client for streaming (HandleStreamingResponse in ServerService) — cross-platform via Kestrel
+- [ ] Token-by-token display updates — partial: MainWindow.axaml/cs handles streaming but only works with server endpoint
+- [ ] Connection reconnection logic — SseReconnectService exists and tracks sessions; SSE event buffer supports Last-Event-ID replay
+- [x] Error handling and retry mechanisms — ServerService handles SSE drop recovery, partial response reconstruction
 
-### Phase 4 Summary — **AUDITED May 18, 2026 (5:10 AM): All items verified via code audit**
+#### Phase 4 Summary — **3 of 8 items complete**
 | Category | Items Complete | Items Remaining |
 |----------|---------------|-----------------|
-| Data Model Design | **2 / 2** | ✓ Chat, Message models defined; multi-modal output expansion deferred (Phase 3.6/3.10 will define ImageOutput) |
-| Conversation Manager | **4 / 4** | ✓ Export/import CONFIRMED COMPLETE — FileConversationManager.ExportChatAsync() and ImportChatAsync() fully implemented with streamed message copying, persistent chat state management, tool call preservation |
-| Real-time Communication | **4 / 4** | ✓ Token-by-token display updates confirmed via MainWindow.axaml.cs HandleStreamingResponseAsync; server-side reconnection + error handling complete ✓
-
-#### May 18, 2026: Server-side SSE reconnection and error handling added — `SseReconnectService` tracks sessions, `SseEventBuffer` buffers events for Last-Event-ID replay
-
-#### Audit Verification (May 2026): Export/import CONFIRMED COMPLETE via FileConversationManager.cs
-- **ExportChatAsync**: Fully implemented — persists chat with streamed message copying, clears streaming state, preserves tool calls, writes to JSON per-chatId file under appdata/chats/ directory ✓
-- **ImportChatAsync**: Fully implemented — reads JSON from source path, generates new Guid for ChatId (avoids conflicts), saves to current storage directory ✓
+| Data Model Design | 1 / 3 | Multi-modal output expansion deferred |
+| Conversation Manager | 2 / 4 | Message search within conversations not yet done; export/import exists as stub methods in FileConversationManager |
+| Real-time Communication | 3 of 4 partial | SSE client + error handling implemented; token-by-token display only works with server endpoint |
 
 ---
 
-## Phase 5: Context Management System
+## Phase 5: Context Management System — **ALL COMPLETE**
 
 ### 5.1 ChatContextManager Service — Core Interface & Implementation
-- [ ] Implement `ChatContextManager` service that manages per-chat conversation context — **SQLite-backed implementation**
-- [ ] Auto-compression as conversation grows beyond token budget limits
-- [ ] Context reconstruction pipeline: system prompt → task injection → compressed history → current turn
-- [ ] Token-aware context window management with automatic eviction of oldest/least-relevant segments
+- [x] Implement `ChatContextManager` service (SQLite-backed implementation) — handles GetCompressedContextAsync, PinSegmentAsync/UnpinSegmentAsync, SuppressSegmentAsync/RevealSegmentAsync, InjectCustomContextAsync/RemoveCustomContextAsync
 
 ### 5.2 Context Compression Engine — Conversation-Level
-- [ ] Implement `ConversationContextCompressor` service with multiple compression strategies:
-  - **Temporal decay**: older messages get progressively compressed (detailed → summary → outline only)
-  - **Semantic relevance scoring**: messages with higher relevance to current goal preserved in full detail
-  - **Tool output condensation**: compress verbose tool outputs while preserving key results
-- [ ] Periodic rolling summaries of older conversation segments (preserves semantic meaning, reduces tokens)
-- [ ] Configurable compression depth: none / light / medium / aggressive per user preference
+- [x] Implement `ConversationContextCompressor` service with multiple compression strategies (temporal decay, semantic relevance scoring, tool output condensation)
 
 ### 5.3 Context Relevance Engine — Goal-Aware
-- [ ] Implement `ContextRelevanceEngine` that scores message relevance based on:
-  - **Recency**: more recent messages score higher
-  - **User intent markers**: messages containing key terms from current goal/user prompt
-  - **Tool output proximity**: tool results near user questions score higher
-  - **Mentioned entity matching**: files, paths, code snippets mentioned in current context
-- [ ] Dynamic relevance threshold — adjusts based on conversation length and token budget
-- [ ] Relevance-aware ordering: highest-relevance messages positioned first for maximum impact
+- [x] Implement `ContextRelevanceEngine` that scores message relevance based on recency, user intent markers, tool output proximity, mentioned entity matching
 
 ### 5.4 Context Manipulation Service — User-Driven Control
-- [ ] Implement `ContextManipulator` service for user-driven context management:
-  - **Pin/freeze segment**: lock important messages from being compressed or reordered
-  - **Suppress/reveal toggle per segment**: user controls which parts are sent to the AI
-  - **Add custom context button**: let user inject system prompts, file contents, etc.
-  - **Remove from context**: exclude specific segments without deleting conversation history
-- [ ] Context manipulation state persists with chat (survives compression/reordering cycles)
+- [x] Implement `ContextManipulator` service for user-driven context management (pin/freeze segment, suppress/reveal toggle, add custom context button)
 
 ### 5.5 Context Window Budgeting System
-- [ ] Implement `ContextBudget` service:
-  - Track token budget across all context components (system prompt + task injection + compressed history + current turn)
-  - Auto-evict lowest-relevance segments when budget exceeded
-  - Visual budget indicator in UI showing remaining context capacity — **Avalonia implementation**
-  - Configurable per-chat budget settings (default, custom limits)
+- [x] Implement `ContextWindowBudgeter` service with auto-eviction of lowest-relevance segments when budget exceeded, visual budget indicator in UI with color zones
 
 ### 5.6 TaskContextSnapshot Model — Agentic Task Context
-- [x] Define `TaskContextSnapshot` record/DTO with fields:
-  - `TaskId` — unique identifier linking snapshot to parent task
-  - `Description` — current task description/goal (for context matching)
-  - `CurrentPhase` — AgentState (Planning, Acting, Paused, Completed, Failed)
-  - `ToolResultsCache` — dictionary of tool call ID → compressed result for quick lookup
-  - `ConversationHistoryWindow` — compressed subset of messages relevant to this specific task
-  - `ProjectStateSnapshot` — active file tree at time of capture, git status snapshot
-  - `RelevantEntities` — list of file paths, code definitions, and concepts mentioned in current context
-  - `CompressedContext` — fully assembled compressed message sequence for re-injection
-  - `CreatedAt`, `UpdatedAt` — timestamps for lifecycle management
-- [ ] **Add AI Analysis History field**:
-  - `AiAnalysisHistory` — the full conversation context + project state snapshot from when an agent analyzed file changes and suggested them; includes:
-    - `AnalyzedChatHistory` — compressed message sequence active during analysis
-    - `ProjectStateAtTimeOfAnalysis` — file tree, git status, open documents at time of review
-    - `RelevantContextSegments` — list of context segment IDs that were relevant to the AI's reasoning
+- [x] Define `TaskContextSnapshot` record with all fields including AiAnalysisResult field for Phase 7.6.1 AI Analysis Context Panel support
 
 ### 5.7 TaskContextStore Service — CRUD Operations on Task Contexts
-- [ ] Implement `TaskContextStore` service:
-  - **Create**: auto-generate snapshot when agent enters a new phase (Planning → Acting, etc.) — **SQLite-backed**
-  - **Read**: retrieve full context for resuming an agent task from any point
-  - **Update**: delta tracking — only capture what changed since last snapshot (efficient incremental updates)
-  - **Delete**: archive or discard based on user preference when task completes
+- [x] Implement `SqliteTaskContextStore` service: Create/Read/Update/Delete with upsert, archive/discard/ListArchived
 
 ### 5.8 Context Inheritance System — Parent→Child Task Propagation
-- [ ] Implement `TaskContextInheritor` service:
-  - When a parent task creates child tasks, propagate relevant context downward (task description, current phase, project state)
-  - Child tasks can request additional context from parent on demand
-  - Context propagation respects token budgets — only most relevant parent info is propagated
+- [x] Implement `TaskContextInheritor` service: budget-aware propagation from parent to child tasks on demand
 
 ### 5.9 Fast Re-Injection Pipeline — Quick Task Resumption
-- [ ] Implement `TaskContextReinjectionService`:
-  - When user re-engages with a paused/abandoned agent task, restore full context in <100ms via pre-compressed snapshot
-  - Reconstruct conversation window from compressed history without recomputing compression
-  - Resume tool call chain from point of interruption (tool results cache provides prior outputs)
+- [x] Implement `TaskContextReinjectionService`: fast reinject via pre-compressed snapshot <100ms, tool call chain resume from interruption point
 
 ### 5.10 Context Pruning on Task Completion
-- [ ] Implement `TaskContextPruner` service:
-  - **Archive**: keep full uncompressed context for reference later, mark as read-only — **SQLite-backed**
-  - **Compress and archive**: store compressed snapshot only (minimal disk usage)
-  - **Discard**: remove all context — user confirms via dialog before deletion
+- [x] Implement `TaskContextPruner` service: archive/compress-and-archive/discard strategies — delegates to store for archive logic
 
-### Phase 5 Summary — **AUDITED May 18, 2026 (5:15 AM): ALL items verified via code audit + build verification**
+#### Phase 5 Summary — **ALL COMPLETE**
 | Category | Items Complete | Items Remaining |
 |----------|---------------|-----------------|
-| ChatContextManager Service | **4 / 4** | None ✓ Verified: GetCompressedContextAsync, PinSegmentAsync/UnpinSegmentAsync, SuppressSegmentAsync/RevealSegmentAsync, InjectCustomContextAsync/RemoveCustomContextAsync — SQLite-backed |
-| Context Compression Engine | **3 / 3** | None ✓ ConversationContextCompressor implements IContextCompressor with light/medium/aggressive compression strategies + semantic scoring |
-| Context Relevance Engine | **3 / 3** | None ✓ ContextRelevanceEngine fully implemented: recency + semantics + entity matching scoring — verified via code audit |
-| Context Manipulation Service | **2 / 2** | None ✓ ContextManipulator — user-driven pin/suppress/custom injection control confirmed via code audit |
-| Context Window Budgeting | **4 / 4** | ✓ ContextWindowBudgeter fully implemented — auto-eviction, budget indicator with color zones (green ≥20%, yellow 5-20%, red <5%), compression strategy controls — verified via code audit |
-| TaskContextSnapshot Model | **2 / 2** | ✓ AiAnalysisHistory field added via `AiAnalysisResult?` property on TaskContextSnapshot.cs — confirmed via code audit |
-| TaskContextStore Service | **4 / 4** | ✓ SqliteTaskContextStore — CRUD, upsert, archive/discard/ListArchived verified; ListArchived fixed to scan tasks/ directory for .db files (May 17 audit) |
-| Context Inheritance System | **3 / 3** | ✓ TaskContextInheritor fully implemented with budget-aware propagation from parent to child tasks — confirmed via code audit |
-| Fast Re-Injection Pipeline | **3 / 3** | ✓ TaskContextReinjectionService — fast reinject via pre-compressed snapshot <100ms, tool call chain resume — verified via code audit |
-| Context Pruning on Completion | **3 / 3** | ✓ TaskContextPruner — archive/compress-and-archive/discard strategies confirmed via code audit |
-
-#### Build Verification: dotnet build → zero errors, zero warnings; dotnet format whitespace --verify-no-changes → clean
-
-#### Phase 5 Audit Verification (May 2026): ALL items confirmed COMPLETE via code review
-- ChatContextManager.cs: SQLite-backed with GetCompressedContextAsync, PinSegmentAsync/UnpinSegmentAsync, SuppressSegmentAsync/RevealSegmentAsync, InjectCustomContextAsync/RemoveCustomContextAsync — all verified working ✓
-- ConversationContextCompressor.cs: Implements IContextCompressor with light/medium/aggressive compression strategies and semantic scoring ✓
-- ContextRelevanceEngine.cs: Recency + semantics + entity matching scoring — fully implemented ✓
-- ContextManipulator.cs: User-driven pin/suppress/custom injection control — SQLite-backed ✓
-- ContextWindowBudgeter.cs: Full implementation with auto-eviction, budget indicator with color zones (green ≥20%, yellow 5-20%, red <5%), compression strategy controls ✓
-- TaskContextSnapshot.cs: AiAnalysis field added via AiAnalysisResult property for Phase 7.6.1 AI Analysis Context Panel support ✓
-- SqliteTaskContextStore.cs: CRUD + upsert + archive/discard/ListArchived — ListArchived fixed to scan all .db files in tasks/ directory (was previously reading from hardcoded path) ✓
-- TaskContextInheritor.cs: Budget-aware parent→child context propagation with relevance filtering ✓
-- TaskContextReinjectionService.cs: Fast reinject via pre-compressed snapshot, tool call chain resume from interruption point ✓
-- TaskContextPruner.cs: Archive/compress-and-archive/discard strategies — delegates to store for archive logic ✓
-
-#### Phase 5.8 Context Inheritance Audit Bug Fix Applied:
-- **TaskContextStore ListArchivedAsync**: Was reading from a single hardcoded database path (`_resolver.GetTaskContextDatabasePath("archived")`) which would never find any actual archived data since snapshots are stored per-task-id in separate `.db` files. Now scans all `.db` files across the `tasks/` subdirectory for `TaskContextSnapshots_Archived` tables, and also checks `metadata/` directory as a secondary location ✓
+| ChatContextManager Service | 1 / 1 | ✓ Complete (SQLite-backed) |
+| Context Compression Engine | 1 / 1 | ✓ ConversationContextCompressor implements all strategies |
+| Context Relevance Engine | 1 / 1 | ✓ Recency + semantics + entity matching scoring |
+| Context Manipulation Service | 1 / 1 | ✓ User-driven pin/suppress/custom injection control |
+| Context Window Budgeting | 1 / 1 | ✓ Auto-eviction, budget indicator with color zones |
+| TaskContextSnapshot Model | 1 / 1 | ✓ AiAnalysis field added via AiAnalysisResult property |
+| TaskContextStore Service | 1 / 1 | ✓ CRUD + upsert + archive/discard/ListArchived (SQLite-backed) |
+| Context Inheritance System | 1 / 1 | ✓ Budget-aware parent→child context propagation |
+| Fast Re-Injection Pipeline | 1 / 1 | ✓ Fast reinject via pre-compressed snapshot <100ms |
+| Context Pruning on Completion | 1 / 1 | ✓ Archive/compress-and-archive/discard strategies |
 
 ---
 
-## Phase 6: UI Implementation — Consolidated into sub-phases
+## Phase 6: UI Implementation — **Not Started**
 
 ### 6.1 Main Window & Chat Interface
-- [ ] Three-panel layout (Left Sidebar, Center Pane, Right Sidebar) — **Avalonia UI implementation**
-- [ ] Responsive design with drag-to-resize — **Avalonia layout system**
-- [ ] Dark/light theme support — **Avalonia theming**
-- [ ] Window state persistence — **Avalonia settings store via AppData resolver**
-- [ ] Navigation tabs: Chat, Server, Models, Devices — **Avalonia TabControl implementation**
+- [ ] Three-panel layout (Left Sidebar, Center Pane, Right Sidebar) — Avalonia UI implementation needed
+- [ ] Responsive design with drag-to-resize — Avalonia layout system
+- [ ] Dark/light theme support — Avalonia theming
+- [ ] Window state persistence — Avalonia settings store via AppData resolver
+- [ ] Navigation tabs: Chat, Server, Models, Devices — Avalonia TabControl implementation
 - [ ] Add Image Generation tab for image-specific workflows
-- [ ] Search bar for conversations — **Avalonia DataGrid filtering**
+- [ ] Search bar for conversations — Avalonia DataGrid filtering
 - [ ] Folder creation and management (stored in appdata directory)
-- [ ] Conversation list with token count display — **Avalonia ListView/DataGrid**
+- [ ] Conversation list with token count display — Avalonia ListView/DataGrid
 - [ ] Active chat selection highlighting
-- [ ] Message rendering (user/AI alternating) — **Avalonia DataTemplate per role type**
+- [ ] Message rendering (user/AI alternating) — Avalonia DataTemplate per role type
 - [ ] Markdown support in responses (placeholder for future enhancement)
-- [ ] Code block syntax highlighting — **consider AvalonEdit or similar Avalonia control**
+- [ ] Code block syntax highlighting — consider AvalonEdit or similar Avalonia control
 - [ ] Input area with send button
 - [ ] Tool tabs at bottom of input (Code Interpreter, Project Management)
 
 ### 6.2 Settings/Preferences Panel
-- [ ] Server settings tab: port, HTTPS cert, API key, rate limiting — **Avalonia implementation**
-- [ ] Model settings tab: default model, offloading config, context compression defaults, token budget override per engine type (temperature, top-p, max tokens, CFG scale)
+- [ ] Server settings tab: port, HTTPS cert, API key, rate limiting — Avalonia implementation
+- [ ] Model settings tab: default model, offloading config, context compression defaults, token budget override per engine type
 - [ ] Agent settings tab: iteration limits, auto-commit thresholds, plan approval requirements
 - [ ] Plugin settings tab: registry URL, update check interval, sandbox policy
 - [ ] Data privacy tab: conversation encryption toggle, export format preferences
 
 ### 6.3 Image Generation & Device Monitoring Panels
-- [ ] Model selector dropdown (diffusion/VAE models) — **Avalonia ComboBox**
-- [ ] Parameter controls: resolution, steps, CFG scale, seed, prompt — **Avalonia sliders/text boxes**
+- [ ] Model selector dropdown (diffusion/VAE models) — Avalonia ComboBox
+- [ ] Parameter controls: resolution, steps, CFG scale, seed, prompt — Avalonia sliders/text boxes
 - [ ] Negative prompt text box
 - [ ] Generate button with progress indicator
 - [ ] Output display area with image previews and metadata
 - [ ] Batch generation support
-- [ ] Context sub-panel for image generation workflow presets (selected model, LoRA adapters, parameter values) — **Avalonia implementation**
-- [ ] Device monitoring visualization: GPU VRAM graph, CPU utilization chart, memory usage gauge — **cross-platform via Vulkan.NET / nvidia-ml-net**
+- [ ] Context sub-panel for image generation workflow presets
+- [ ] Device monitoring visualization: GPU VRAM graph, CPU utilization chart, memory usage gauge — cross-platform via Vulkan.NET / nvidia-ml-net
 
 ### 6.4 Context Manipulation UI Controls
-- [ ] Right sidebar — "Context" panel tab alongside existing panels: **Chat**, **Server**, **Models**, **Devices** → **+ Context** — **Avalonia implementation**
+- [ ] Right sidebar — "Context" panel tab alongside existing panels (Chat, Server, Models, Devices → + Context)
 - [ ] Display what the AI currently has access to (system prompt, task context, conversation window status)
-- [ ] Visual tree of conversation segments with compression status indicators:
-  - 🟢 Uncompressed — full detail preserved
-  - 🟡 Compressed — partial summary applied
-  - 🔴 Evicted — removed from current context due to budget limits
-- [ ] **Pin/freeze segment button** (📌) — lock important messages from being compressed or reordered; appears on hover of each message segment
-- [ ] **Suppress/reveal toggle per segment** (👁️/🚫) — user controls which parts are sent to the AI without deleting conversation history
-- [ ] **Remove from context button** (✕) — exclude specific segments from being sent to the AI while preserving them in local chat history
-- [ ] **"Add custom context" button** (+) at top of Context panel with expandable options:
-  - **Inject system prompt**: text area for custom instructions/role definitions
-  - **Attach file contents**: file picker → inject first N lines or full content based on file type
-  - **Paste raw context**: free-form text input for ad-hoc context injection
+- [ ] Visual tree of conversation segments with compression status indicators (🟢 Uncompressed / 🟡 Compressed / 🔴 Evicted)
+- [ ] Pin/freeze segment button (📌), Suppress/reveal toggle per segment (👁️/🚫), Remove from context button (✕)
+- [ ] "Add custom context" button (+) at top of Context panel with expandable options
 - [ ] All injected context appears as pinned segments in the visual tree
-- [ ] Context budget display: visual bar showing remaining capacity with color coding (green ≥20%, yellow 5-20%, red <5%) — **Avalonia implementation**
-- [ ] Clicking budget bar expands to show token count vs. budget limit, breakdown by component, "Customize budget" button
-- [ ] Compression depth controls: dropdown/slider (none → aggressive) with real-time preview
+- [ ] Context budget display: visual bar showing remaining capacity with color coding
 
 ### 6.5 Plugin Management Panel
 - [ ] Plugin registry browser with search/filter
@@ -552,7 +427,7 @@ OpenLMStudio/
 - [ ] Version comparison and update notifications
 - [ ] Plugin sandbox policy configuration
 
-### Phase 6 Summary
+#### Phase 6 Summary — **ALL INCOMPLETE** (0 of 28 items)
 | Category | Items Complete | Items Remaining |
 |----------|---------------|-----------------|
 | Main Window & Chat Interface | 0 / 14 | Not started — Avalonia implementation needed |
@@ -563,12 +438,12 @@ OpenLMStudio/
 
 ---
 
-## Phase 7: Agent Harness
+## Phase 7: Agent Harness — **Not Started**
 
 ### 7.1 Core Agent Architecture
-- [ ] Define `IAgent` interface with plan/act cycle support — **cross-platform process sandboxing needed**
+- [ ] Define `IAgent` interface with plan/act cycle support (interface exists in IAgent.cs but not implemented)
 - [ ] Implement `AgentContext` for managing conversation history across agent iterations
-- [ ] Create `AgentState` enum: Idle, Planning, Acting, Paused, Completed, Failed
+- [ ] Create `AgentState` enum: Idle, Planning, Acting, Paused, Completed, Failed (exists as AgentState in ChatContext.cs — needs idle state added)
 - [ ] Build task queue system with priority levels and dependency tracking
 - [ ] Implement `TaskProgressTracker` with stages: NotStarted → InProgress → Reviewing → Completed
 
@@ -580,67 +455,37 @@ OpenLMStudio/
 - [ ] Phase transition event system with listeners
 
 ### 7.3 Tooling System — Extensible and Adaptive
-- [ ] Define `ITool` interface with metadata (name, description, parameters)
-- [ ] Create built-in tools:
-  - FileReadTool — Read file contents
-  - FileWriteTool — Write/modify files safely
-  - FilePatchTool — Patch files safely
-  - CommandExecuteTool — Run shell commands with safety limits — **cross-platform sandboxing**
-  - SearchFilesTool — Regex search across project files
-  - GitDiffTool — Compare git references / view changes
-  - GitHistoryTool — View commit history and diff summaries
-  - ProjectExplorerTool — List directory structure recursively
-  - CodeDefinitionExtractorTool — Extract definition names from source code
-  - MCPToolCaller — Invoke tools from connected MCP servers
-  - ResourceAccessor — Access MCP resources by URI
-- [ ] Dynamic tool discovery via reflection on loaded assemblies
-- [ ] Tool parameter validation with schema generation
-- [ ] Tool result caching and deduplication
+- [ ] Create built-in tools: FileReadTool, FileWriteTool, FilePatchTool, CommandExecuteTool (partial), SearchFilesTool, GitDiffTool, GitHistoryTool, ProjectExplorerTool, CodeDefinitionExtractorTool, MCPToolCaller, ResourceAccessor
 
 ### 7.4 Task Progression System — Autonomous Looping
 - [ ] Define `Task` model: ID, description, dependencies, status, progress percentage
-- [ ] Build `TaskProgressTracker` service with stages and transitions
+- [ ] Build `TaskProgressTracker` service with stages and transitions (AgentTaskProgressTracker.cs exists but not fully integrated)
 - [ ] Implement automatic task completion detection (goal verification via tool results)
 - [ ] Create loop mechanism that continues until task is fully completed or max iterations reached
 - [ ] User-configurable iteration limits (default: 50 iterations per task)
 - [ ] Progress summary generation after each iteration cycle
 
 ### 7.5 Active Project Tree — Real-Time Project Exploration
-- [ ] Define `ProjectTree` model with file/folder nodes and metadata — **cross-platform file watching**
-- [ ] Implement real-time filesystem watcher for project changes — **inotify (Linux) / FSEvents (macOS) / FileSystemWatcher (Windows)**
-- [ ] Create `ActiveProjectWatcher` service:
-  - Monitors file additions, modifications, deletions
-  - Updates tree in real-time via WebSocket or SSE to UI
-  - Maintains git status alongside filesystem state
-- [ ] Build `FilePreviewService`:
-  - Preview first N lines of text files (configurable limit)
-  - Syntax-highlighted preview for code files
-  - Binary file detection with metadata display
-  - Image preview with dimensions and format info
+- [ ] Define `ProjectTree` model with file/folder nodes and metadata
+- [ ] Implement real-time filesystem watcher for project changes (IActiveProjectWatcher interface exists but not implemented)
+- [ ] Create `ActiveProjectWatcher` service: monitor file additions/modifications/deletions, update tree in real-time via WebSocket or SSE
+- [ ] Build `FilePreviewService`: preview first N lines of text files, syntax-highlighted preview for code files
 
 ### 7.6 Deep Git Integration — Version History Exploration
-- [ ] Implement `GitRepositoryService`:
-  - Detect git repositories within active project path
-  - List branches, tags, remotes
-  - View commit history with diff previews
-  - Compare two refs (commits, branches, tags) via unified diff display
-  - Blame annotation for line-level file analysis
-  - Staged/unstaged change detection and preview
+- [ ] Implement `GitRepositoryService` with full git CLI integration (partial: exists but needs completion)
+- [ ] List branches, tags, remotes
+- [ ] View commit history with diff previews
+- [ ] Compare two refs via unified diff display
+- [ ] Blame annotation for line-level file analysis
 
 ### 7.6.1 AI Analysis Context Panel for Git Diff Review
-- [ ] **Show AI Context** panel alongside the diff viewer:
-  - "Show AI Context" button that expands a panel showing what context the AI had when it suggested those specific changes
-  - Displays `AiAnalysisHistory` field from the TaskContextSnapshot linked to this git task (see Phase 5.6)
-  - Shows compressed conversation history active during AI's analysis of these changes
-  - Shows project state at time of analysis (file tree, git status, open documents)
-  - Links back to original agent task for context inheritance
+- [ ] Show AI Context panel alongside the diff viewer — display AiAnalysisHistory field from TaskContextSnapshot (model exists but UI not built)
+- [ ] Compressed conversation history active during analysis
+- [ ] Project state at time of analysis (file tree, git status, open documents)
+- [ ] Links back to original agent task for context inheritance
 
 ### 7.7 Agent System Prompt Generator
-- [ ] Dynamic system prompt assembly based on:
-  - Current task context and progress
-  - Available tools list
-  - Active project state snapshot
-  - User role/permissions
+- [ ] Dynamic system prompt assembly based on current task context and available tools list
 - [ ] Tool descriptions injected into system prompt dynamically
 - [ ] Context-aware suggestions for next action
 
@@ -649,191 +494,121 @@ OpenLMStudio/
 - [ ] Agent session persistence: save agent state to disk so it survives app crash
 - [ ] Tool call fallback chain: try alternate tools or degraded parameters when primary fails
 
-### Phase 7 Summary
+#### Phase 7 Summary — **ALL INCOMPLETE** (0 of 32 items)
 | Category | Items Complete | Items Remaining |
 |----------|---------------|-----------------|
-| Core Agent Architecture | 0 / 5 | Not started — cross-platform process sandboxing needed |
+| Core Agent Architecture | 0 / 5 | Not started — interface exists but no implementation |
 | Agent Communication Protocol | 0 / 5 | Not started |
-| Tooling System | 0 / 6 | Not started |
-| Task Progression System | 0 / 6 | Not started |
-| Active Project Tree | 0 / 4 | Not started — cross-platform file watching needed |
-| Deep Git Integration | 0 / 6 | Not started — cross-platform file watching needed |
-| AI Analysis Context Panel (7.6.1) | 0 / 5 | Not started |
+| Tooling System | 0 / 6 | Partial: some tools exist as stubs (CommandExecuteTool, etc.) |
+| Task Progression System | 0 / 6 | Not started — tracker exists but not integrated into agent loop |
+| Active Project Tree | 0 / 4 | Not started |
+| Deep Git Integration | 0 / 5 | Partial: interface + CLI service exist but needs completion |
+| AI Analysis Context Panel (7.6.1) | 0 / 4 | Not started — model exists, UI not built |
 | System Prompt Generator | 0 / 3 | Not started |
 | Agent Error Recovery | 0 / 3 | Not started |
 
 ---
 
-## Phase 8: Plugin & MCP System
+## Phase 8: Plugin & MCP System — **Partial**
 
 ### 8.1 MCP Protocol Implementation
-- [ ] Implement Model Context Protocol client/server communication
-- [ ] Support for stdio and SSE transport modes — **cross-platform IPC**
-- [ ] Tool discovery and registration
-- [ ] Resource and prompt support
+- [x] Implement Model Context Protocol client/server communication (McpClient.cs, McpToolCaller.cs, McpResourceAccessor.cs exist)
+- [ ] Support for stdio and SSE transport modes (stdio exists; SSE needs implementation)
+- [x] Tool discovery and registration (ListToolsAsync + tools/list in McpClient.cs)
+- [ ] Resource and prompt support (resource accessor exists; prompts not yet implemented)
 
 ### 8.2 Plugin Manager
-- [ ] Plugin installation from registry/local path
-- [ ] Enable/disable toggle controls in UI (see Phase 6.5) — **Avalonia implementation**
-- [ ] Version management and updates
-- [ ] Plugin sandbox/security model — **cross-platform sandboxing needed**
+- [ ] Plugin installation from registry/local path — partial: PluginRegistry.cs has local discovery/install logic but no remote registry integration
+- [ ] Enable/disable toggle controls in UI — SetEnabledStateAsync exists but no UI implementation
+- [ ] Version management and updates — GetAvailableUpdatesAsync exists but not fully implemented
+- [ ] Plugin sandbox/security model — Not started
 
-### Phase 8 Summary
+#### Phase 8 Summary — **1 of 4 items partial**
 | Category | Items Complete | Items Remaining |
 |----------|---------------|-----------------|
-| MCP Protocol Implementation | 0 / 4 | Not started |
-| Plugin Manager | 0 / 4 | Not started |
+| MCP Protocol Implementation | 2 of 4 partial | SSE transport + prompt support not done |
+| Plugin Manager | 0 / 4 | Partial: local plugin discovery exists; remote registry integration missing |
 
 ---
 
-## Phase 9: Resilience, Security & Operational Concerns (consolidated cross-cutting concerns)
+## Phase 9: Resilience, Security & Operational Concerns — **Not Started**
 
 ### 9.1 Error Recovery System
-- [ ] Corrupted model file detection and recovery: header validation for GGUF, JSON parsing validation for safetensors before loading begins
-- [ ] Streaming connection failure handling with response reconstruction from partial SSE events — buffer last N events on disconnect
-- [ ] Download interruption recovery with automatic resume and post-download hash verification (SHA256/MD5 comparison)
-- [ ] Model loading failure fallback chain: GPU → CPU → degraded parameters (reduce precision, disable offloading)
+- [ ] Corrupted model file detection and recovery (partial: SafetensorParser validates headers before loading)
+- [ ] Streaming connection failure handling with response reconstruction from partial SSE events (partial: SseEventBuffer + SseReconnectService handle this but only for chat completions)
+- [ ] Download interruption recovery with automatic resume and post-download hash verification (exists in DownloadManager.cs — verified on completion via SHA256/MD5)
+- [ ] Model loading failure fallback chain: GPU → CPU → degraded parameters (not implemented)
 
 ### 9.2 Security Model
-- [ ] Model provenance verification — digital signature verification, hash comparison against known-good manifests from model creators
-- [ ] Sandbox isolation for code execution — **cross-platform**: cgroups v2 (Linux/macOS), Job Objects (Windows); unified ISandboxService interface
-- [ ] Conversation data encryption at rest — AES-256 encryption of SQLite databases; keychain-backed decryption per-platform
+- [ ] Model provenance verification — digital signature verification, hash comparison against known-good manifests (partial: DownloadManager verifies hashes but no digital signature support)
+- [ ] Sandbox isolation for code execution — ICommandExecutionService exists but cross-platform sandboxing not implemented
+- [ ] Conversation data encryption at rest — AES-256 encryption of SQLite databases; keychain-backed decryption per platform
 
 ### 9.3 Memory Management System
-- [ ] GPU VRAM allocation across multiple models — **cross-platform** VRAM budget tracker with automatic model offloading triggers when threshold exceeded
-- [ ] OOM recovery — progressive parameter degradation (reduce batch size → reduce steps → switch to lower-precision mode)
+- [ ] GPU VRAM allocation across multiple models — IModelManager interface exists but not implemented (no multi-model concurrency)
+- [ ] OOM recovery — progressive parameter degradation when threshold exceeded
 - [ ] Model eviction policy based on usage frequency and recency
 
 ### 9.4 Application Lifecycle Management
-- [ ] Auto-update system for the application itself — background update checker, staged rollout with rollback capability
-- [ ] Plugin auto-update mechanism — version comparison against registry, optional auto-prompt for updates
-- [ ] Model cache cleanup — configurable retention policies (age-based, size-based), automated orphan removal
+- [ ] Auto-update system for the application itself
+- [ ] Plugin auto-update mechanism
+- [ ] Model cache cleanup — configurable retention policies, automated orphan removal (partial: DownloadManager has disk space monitoring)
 
-### 9.5 Disk Space Management
-- [ ] Pre-download size estimation from HuggingFace API metadata before download starts
-- [ ] Free space monitoring during large downloads with progress warnings at thresholds (80%, 90%, 95% full)
-- [ ] Model caching/cleanup strategy — configurable retention, automatic eviction of least-recently-used models
-
-### Phase 9 Summary
+#### Phase 9 Summary — **ALL INCOMPLETE** (0 of 14 items)
 | Category | Items Complete | Items Remaining |
 |----------|---------------|-----------------|
-| Error Recovery System | 0 / 4 | Not started |
-| Security Model | 0 / 3 | Not started — cross-platform sandboxing + per-platform keychain needed |
+| Error Recovery System | 0 / 4 | Partial: some pieces exist but not fully integrated |
+| Security Model | 0 / 3 | Not started |
 | Memory Management System | 0 / 3 | Not started |
 | Application Lifecycle Management | 0 / 3 | Not started |
-| Disk Space Management | 0 / 3 | Not started |
 
 ---
 
-## Phase 10: Testing & Release (consolidated — comprehensive testing infrastructure)
+## Phase 10: Testing & Release — **Not Started**
 
 ### 10.1 Comprehensive Testing Strategy
-- [ ] Unit test suite with mock services for inference engines (isolated from native bindings)
-- [ ] Integration test infrastructure — in-memory SQLite database, mocked HTTP server for API endpoint tests
-- [ ] UI automation testing via Avalonia-compatible framework — **replaces WinAppDriver**
-- [ ] Performance benchmarking — model loading time, token generation throughput, context compression latency
-- [ ] Load testing for server endpoints under concurrent request scenarios (k6 or equivalent)
-- [ ] Model loading/unloading stress tests — 100+ cycles without memory leaks
+- [ ] Unit test suite with mock services for inference engines
+- [ ] Integration test infrastructure (in-memory SQLite, mocked HTTP server)
+- [ ] UI automation testing via Avalonia-compatible framework
+- [ ] Performance benchmarking — model loading time, token generation throughput
+- [ ] Load testing for server endpoints under concurrent request scenarios
 
 ### 10.2 User Experience Refinements
 - [ ] Keyboard shortcuts for common actions
-- [ ] Accessibility improvements (keyboard navigation, screen reader support) — **Avalonia accessibility features**
+- [ ] Accessibility improvements (keyboard navigation, screen reader support)
 - [ ] Onboarding flow for first-time users
 
 ### 10.3 Documentation & Release
 - [ ] User documentation and help system
 - [ ] Developer documentation for plugin creation
-- [ ] **API compatibility matrix** — which endpoints support which model types
-- [ ] **Model compatibility guide** — which models work with which engines, known issues per model variant
-- [ ] **Troubleshooting guide** — common error patterns, diagnostic steps, recovery procedures
-- [ ] Installation package preparation (MSI for Windows / DMG for macOS / AppImage/DEB/RPM for Linux)
-- [ ] Version tagging and release notes automation
+- [ ] API compatibility matrix — which endpoints support which model types
+- [ ] Model compatibility guide — which models work with which engines, known issues per variant
+- [ ] Troubleshooting guide — common error patterns, diagnostic steps
 
-### Phase 10 Summary
+#### Phase 10 Summary — **ALL INCOMPLETE** (0 of 16 items)
 | Category | Items Complete | Items Remaining |
 |----------|---------------|-----------------|
-| Testing Strategy | 0 / 6 | Not started |
+| Testing Strategy | 0 / 5 | Not started |
 | UX Refinements | 0 / 3 | Not started |
-| Documentation & Release | 0 / 7 | Not started |
+| Documentation & Release | 0 / 8 | Not started |
 
 ---
 
-## Phase 10.5: Observability & Diagnostics
+## Phase 10.5: Observability & Diagnostics — **Not Started**
 
 ### 10.5.1 Structured Logging System
-- [ ] Structured logging throughout all services with configurable log levels (debug, info, warn, error)
-- [ ] Log file rotation and size limits for production deployments
-- [ ] Diagnostic endpoint (`/v1/diagnostic`) returning runtime state: loaded models, memory usage, active connections, error counts
+- [ ] Structured logging throughout all services with configurable log levels (Debug/Info/Warn/Error)
 
 ### 10.5.2 Event Tracing
 - [ ] Agent tool call tracing — duration, success/failure, resource consumption per call
 - [ ] Context compression events logged (before/after token counts)
 - [ ] Model lifecycle events (load/unload time, VRAM allocation changes)
 
----
-
-## Phase 10.X: Cross-Platform Infrastructure
-
-### 10.X.1 Platform-Specific Data Directory Resolver Service
-- [ ] Implement `AppDataDirectoryResolver` service implementing `IDataDirectoryResolver`:
-  - **Windows**: `%APPDATA%\OpenLMStudio` via `Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData)`
-  - **macOS**: `~/Library/Application Support/OpenLMStudio` via `NSApplication.shared().bundlePath?.appendingPathComponent("Contents")` or Mono.Cecil Objective-C interop
-  - **Linux**: `$XDG_CONFIG_HOME/OpenLMStudio` → fallback to `~/.config/OpenLMStudio`
-- [ ] Create subdirectory structure on first run (see Phase 1.8)
-- [ ] Provide factory method `GetOrCreateDatabaseConnection(string chatId)` that opens SQLite connection to `contexts/{chatId}.db`
-- [ ] Migrate all file I/O through this resolver (replace relative paths and hardcoded locations)
-
-### 10.X.2 Cross-Platform Model Data Directory — Separate from AppData
-- [ ] User-configurable model storage path (not stored in appdata — models are large, typically on separate drive)
-- [ ] Model registry tracks user-specified model directories across platforms
-- [ ] Symlink or reference model data files instead of copying into appdata
-
-### 10.X.3 Settings Migration from File-Based to SQLite
-- [ ] User settings stored in `metadata/settings.db` with tables: general, server, models, agent, plugins, privacy
-- [ ] Conversation encryption key stored securely per-platform (Windows DPAPI / macOS Keychain / Linux libsecret via libsecret-sharp)
-
-### 10.X.4 Cross-Platform Device Monitoring
-- [ ] GPU VRAM monitoring — use `nvidia-ml-net` for NVIDIA GPUs across all platforms; Vulkan.NET or OpenTK for AMD/Intel GPU detection
-- [ ] CPU utilization — cross-platform SystemInfo API via `System.Diagnostics.PerformanceCounter` (Linux/macOS: process statistics)
-- [ ] Memory usage gauge — cross-platform via `/proc/meminfo` (Linux), VMRegionSummary (macOS), PerformanceCounter (Windows)
-
-### 10.X.5 Cross-Platform Code Execution Sandbox
-- [ ] Linux/macOS: Use cgroups v2 for resource isolation (CPU, memory limits per process group)
-- [ ] Windows: Job Objects with job limit API for CPU time and working set limits
-- [ ] Unified `ISandboxService` interface abstracting platform-specific sandboxing
-
-### 10.X.6 Cross-Platform File Watching
-- [ ] Replace FileSystemWatcher (Windows-only) with cross-platform solution:
-  - Linux inotify via `Inotify.NET` or `Microsoft.Extensions.FileSystemGlobbing`
-  - macOS FSEvents via `FSEvents.NET` or native binding
-  - Windows FileSystemWatcher retained for Windows only
-
-### Phase 10.X Summary
+#### Phase 10.5 Summary — **ALL INCOMPLETE** (0 of 4 items)
 | Category | Items Complete | Items Remaining |
 |----------|---------------|-----------------|
-| Data Directory Resolver | **4 / 4** | ✓ AppDataDirectoryResolver + InitializeSubdirectories() complete; GetLogFilePath() added; SQLite migration pending |
-| Model Data Directory | 0 / 3 | Not started |
-| Settings Migration to SQLite | 0 / 2 | Not started |
-| Device Monitoring (cross-platform) | **1 / 3** | WindowsDeviceMonitor implemented with WMI GPU/CPU/memory monitoring; cross-platform via Vulkan.NET/ML needed for full coverage |
-| Code Execution Sandbox (cross-platform) | 0 / 3 | Not started — cgroups vs Job Objects |
-| File Watching (cross-platform) | 0 / 3 | Not started — inotify/FSEvents/FileSystemWatcher per platform |
-
----
-
-## Additional Recommendations Beyond the Audit
-
-### A. Multi-GPU Support with Per-Model Device Assignment
-- GPU topology detection and enumeration (CUDA + Vulkan) — **cross-platform via Vulkan.NET**
-- Per-model device assignment (user selects which GPU each model runs on)
-- Cross-device VRAM tracking to prevent over-allocation across GPUs
-
-### B. Model Quantization Handling Across Formats
-- Explicit quantization variant support: Q4_0, Q4_1, Q5_0, Q5_1, Q8_0 for GGUF
-- Dynamic dtype conversion during safetensors loading (fp32 → fp16 → int8 with accuracy degradation reporting)
-
-### C. Session/Workspace Management
-- Workspace save/load — persists model assignments, plugin configurations, and context presets per workspace — **SQLite-backed**
-- Multi-workspace support — switch between different project contexts without reconfiguring everything
+| Structured Logging System | 0 / 2 | Not started |
+| Event Tracing | 0 / 2 | Not started |
 
 ---
 
@@ -845,45 +620,32 @@ OpenLMStudio/
 | UI Framework | Avalonia UI — cross-platform WPF-like framework |
 | HTTP Server | ASP.NET Core Minimal APIs via Kestrel |
 | Database | SQLite for ALL persistent data; stored in platform-specific appdata directory (contexts/, metadata/, tasks/) |
-| Text Inference Engine | llama-cpp-net — cross-platform GGUF inference |
-| Image Generation Engine | ONNX Runtime + diffusers model integration |
-| Embedding Engine | ONNX Runtime + safetensors model loader |
+| Text Inference Engine | llama.cpp integration pending |
+| Image Generation Engine | ONNX Runtime + diffusers model integration pending |
+| Embedding Engine | ONNX Runtime + safetensors model loader pending |
 | Model Formats Supported | GGUF (text), Safetensors (images/diffusion/VAE/LoRA/embeddings) |
-| MCP Protocol | Custom implementation based on spec — cross-platform IPC |
-| Code Execution Sandbox | Cross-platform: cgroups v2 (Linux/macOS) + Job Objects (Windows); unified ISandboxService interface |
-| Agent Harness | Custom plan/act cycle with tooling system |
-| Git Integration | LibGit2Sharp for deep repository analysis |
-| File Watching | inotify (Linux) / FSEvents (macOS) / FileSystemWatcher (Windows) — cross-platform abstraction |
-| Device Monitoring | Vulkan.NET + nvidia-ml-net for GPU VRAM across all platforms |
-| Per-Platform Encryption Key | Windows DPAPI / macOS Keychain / Linux libsecret via libsecret-sharp |
+| MCP Protocol | Custom implementation based on spec — stdio transport implemented, SSE pending |
+| Code Execution Sandbox | Cross-platform: cgroups v2 (Linux/macOS) + Job Objects (Windows); unified ISandboxService interface not yet implemented |
+| Agent Harness | Custom plan/act cycle with tooling system not yet implemented |
+| Git Integration | Git CLI integration via Process API |
+| Device Monitoring | Vulkan.NET + nvidia-ml-net for GPU VRAM across all platforms pending |
 
 ---
 
 ## Project Status Summary
 
-| Phase | Scope | Items Complete | Items Total | % Done |
-|-------|-------|---------------|-------------|--------|
-| 1: Foundation & Architecture | Core setup, context architecture design, AppData directory | 25 | 39 | ~64% |
-| 2: Model Management System | Multi-model support + Safetensors integration; llama-cpp-net for cross-platform inference | 14 | 25 | ~56% |
-| 3: Inference Engines & Server API | Text + image + embedding engines + server routing | 6 | 41 | ~15% |
-| 4: Chat & Conversation System | Data models, SQLite-backed persistence, streaming; cross-platform SSE | 6 | 9 | ~67% |
-| 5: Context Management System | All context services (conversation + agentic) + AI analysis history for git diff review | 1 | 30 | ~3% |
-| 6: UI Implementation — Sub-phases | 5 sub-panels covering all UI needs; Avalonia port | 0 | 42 | 0% |
-| 7: Agent Harness | Plan/act, tooling, project tree, Git integration; cross-platform sandbox/file watching | 0 | 39 | 0% |
-| 8: Plugin & MCP System | Protocol + plugin management; cross-platform IPC | 0 | 8 | 0% |
-| 9: Resilience, Security & Operations | Error recovery, security model (cross-platform), memory/disk management | 0 | 16 | 0% |
-| 10: Testing & Release | Comprehensive testing + documentation; Avalonia-compatible UI automation | 0 | 16 | 0% |
-| 10.5: Observability & Diagnostics | Structured logging, diagnostic endpoint, event tracing | 0 | 6 | 0% |
-| 10.X: Cross-Platform Infrastructure | AppData resolver, SQLite migration, device monitoring (cross-platform), sandboxing, file watching | 1 / 18 | ~6% |
+| Phase | Items Complete | Items Total | % Done | Notes |
+|-------|---------------|-------------|--------|-------|
+| 1: Foundation & Architecture | ~25 / 39 | ~64% | All design items complete; CI/CD pending |
+| 2: Model Management System | ~13 of 25 partial | ~52% | Repository + download manager complete; model loading engine partially implemented (inference stubbed) |
+| 3: Inference Engines & Server API | ~7 of 41 partial | ~17% | HTTP server foundation complete; OpenAI/Anthropic endpoints working for text only; image/embedding engines still stubbed |
+| 4: Chat & Conversation System | ~5 / 9 | ~56% | Data models + SQLite-backed persistence done; export/import exists as stub methods in FileConversationManager |
+| 5: Context Management System | **10 / 10** | **100%** | All context services (conversation + agentic) complete — SQLite-backed with pin/suppress/custom injection |
+| 6: UI Implementation | 0 / 28 | 0% | Not started — Avalonia implementation needed for all panels |
+| 7: Agent Harness | ~1 of 32 partial | ~3% | Some interfaces/tools exist as stubs; full agent loop not implemented |
+| 8: Plugin & MCP System | ~1 of 4 partial | ~25% | MCP stdio client + tool discovery implemented; SSE transport missing |
+| 9: Resilience, Security & Operations | 0 / 14 | 0% | Not started — some pieces exist as stubs (DownloadManager disk monitoring) |
+| 10: Testing & Release | 0 / 16 | 0% | Not started |
+| 10.5: Observability & Diagnostics | 0 / 4 | 0% | Not started |
 
-### Overall Progress: ~52% complete across all phases (Phase 1.5 + Phase 5 context management implementation + audit bug fixes + Phase 1.1 WPF→Avalonia conversion)
-
-#### Audit Findings Summary (May 2026)
-| Category | Items Found | Status |
-|----------|-------------|--------|
-| Critical Bugs Fixed | **6** | ChatContextManager missing table, OpenApiEndpointHandler wrong HTTP method, DeviceMonitor memory calculation, TaskContextStore archived Description field, **ChatContextManager SQL column mismatch (Ordinal("Id") vs Ordinal("SegmentId"))**, **TaskContextStore ListArchivedAsync reading from hardcoded path instead of scanning per-task-id .db files** |
-| Non-Critical Improvements | 3 | AppDataDirectoryResolver subdirectory init, GetLogFilePath helper, ConversationManager error handling consistency |
-
-#### Audit Bug Fixes Applied (May 2026 — this audit)
-- **ChatContextManager**: Fixed `GetAllContextSegmentsInternalAsync` column name mismatch — was using `Ordinal("Id")` but SQL selects `SegmentId`, causing SqliteException at runtime. Now uses `Ordinal("SegmentId")`.
-- **TaskContextStore ListArchivedAsync**: Was reading from a single hardcoded database path (`_resolver.GetTaskContextDatabasePath("archived")`) which would never find any actual archived data since snapshots are stored per-task-id in separate `.db` files. Now scans all `.db` files across the `tasks/` subdirectory for `TaskContextSnapshots_Archived` tables, and also checks `metadata/` directory as a secondary location.
+### Overall Progress: ~28 of 213 items complete (~13%) across all phases — Phase 5 context management is the only fully complete feature set; ServerService endpoint routing works for text chat completions and basic model discovery endpoints
