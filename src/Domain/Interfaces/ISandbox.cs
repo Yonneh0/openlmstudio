@@ -53,4 +53,12 @@ public interface ISandboxService : IDisposable
     /// Returns true if the platform supports process isolation (Job Objects on Windows, cgroups v2 on Linux/macOS).
     /// </summary>
     bool IsSupported { get; }
+
+    /// <summary>
+    /// Creates a new sandboxed process with an explicit sandbox policy.
+    /// Allows passing a custom policy for more granular control over the sandbox behavior.
+    /// Returns the process ID on success, -1 on failure.
+    /// </summary>
+    Task<int> CreateProcessWithSandboxPolicyAsync(string commandLine, string? workingDirectory = null,
+        Dictionary<string, string>? environmentVariables = null, PluginSandboxPolicy? policy = null);
 }
