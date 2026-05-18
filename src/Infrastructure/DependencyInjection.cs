@@ -153,7 +153,7 @@ public static class DependencyInjection
             return new Services.GgufChatCompletionLoader(logger ?? NullLogger<Services.GgufChatCompletionLoader>.Instance, chatService);
         });
 
-        // Phase 8: Plugin & MCP System ----
+        // ---- Phase 8: Plugin & MCP System ----
 
         // PluginRegistry manages plugin discovery, installation, and lifecycle from local/appdata directory
         var pluginDir = Path.Combine(
@@ -162,6 +162,11 @@ public static class DependencyInjection
             "plugins");
         services.AddSingleton<Domain.Interfaces.IPluginRegistry>(resolver =>
             new Services.PluginRegistry(resolver.GetService<Microsoft.Extensions.Logging.ILogger<Services.PluginRegistry>>(), pluginDir));
+
+        // ---- Phase 9: Resilience & Security System ----
+
+        // SandboxService provides cross-platform process isolation (Job Objects on Windows, cgroups v2 on Linux/macOS)
+        services.AddSingleton<Domain.Interfaces.ISandboxService, Services.SandboxService>();
 
         return services;
     }

@@ -12,6 +12,8 @@ namespace OpenLMStudio.Infrastructure.Services;
 
 /// <summary>
 /// Concrete implementation of the plugin registry that handles local discovery, installation, and updates.
+/// Supports remote registry integration via SetRegistryUrl(), sandbox policy enforcement for plugins,
+/// and local manifest-based metadata management.
 /// </summary>
 public class PluginRegistry : Domain.Interfaces.IPluginRegistry
 {
@@ -26,6 +28,11 @@ public class PluginRegistry : Domain.Interfaces.IPluginRegistry
     private Uri? _registryUrl = null;
 #pragma warning restore CS0649
 
+    /// <summary>
+    /// In-memory cache of sandbox policies per plugin (persisted as JSON).
+    /// </summary>
+    private readonly Dictionary<string, Domain.Interfaces.PluginSandboxPolicy> _sandboxPolicies = new(StringComparer.OrdinalIgnoreCase);
+
     public PluginRegistry(ILogger<PluginRegistry>? logger, string pluginDirectory)
     {
         _logger = logger;
@@ -34,11 +41,88 @@ public class PluginRegistry : Domain.Interfaces.IPluginRegistry
         // Ensure the plugins directory exists on startup
         if (!Directory.Exists(_pluginDirectory))
             Directory.CreateDirectory(_pluginDirectory);
+
+        // Load sandbox policies from disk (persisted in plugin settings store)
+        LoadSandboxPolicies();
     }
 
     public void Dispose()
     {
         _httpClient?.Dispose();
+    }
+
+    /// <inheritdoc />
+    public void SetRegistryUrl(Uri? registryUrl)
+    {
+        _registryUrl = registryUrl;
+
+        // Create HttpClient when a new registry URL is set
+        if (_registryUrl != null && _httpClient == null)
+            _httpClient = CreateHttpClient();
+        else if (_registryUrl == null)
+        {
+            _httpClient?.Dispose();
+            _httpClient = null;
+        }
+
+        _logger?.LogInformation("Plugin registry URL changed to: {Url}", registryUrl?.ToString() ?? "(none)");
+    }
+
+    /// <inheritdoc />
+    public Uri? GetRegistryUrl() => _registryUrl;
+
+    /// <inheritdoc />
+    public async Task<Domain.Interfaces.PluginSandboxPolicy> GetSandboxPolicyAsync(string pluginId)
+    {
+        if (_sandboxPolicies.TryGetValue(pluginId, out var policy))
+            return policy;
+
+        // Return default policy for unconfigured plugins
+        _logger?.LogDebug("Using default sandbox policy for plugin '{PluginId}'", pluginId);
+        return Domain.Interfaces.PluginSandboxPolicyDefaults.Default;
+    }
+
+    /// <inheritdoc />
+    public async Task SetSandboxPolicyAsync(string pluginId, Domain.Interfaces.PluginSandboxPolicy policy)
+    {
+        _sandboxPolicies[pluginId] = policy;
+
+        // Persist the policy to disk (stored per-plugin in settings directory)
+        var policyPath = Path.Combine(_pluginDirectory, pluginId, "sandbox-policy.json");
+        Directory.CreateDirectory(Path.GetDirectoryName(policyPath) ?? string.Empty);
+        await File.WriteAllTextAsync(policyPath, System.Text.Json.JsonSerializer.Serialize(policy));
+
+        _logger?.LogInformation("Sandbox policy set for plugin '{PluginId}'", pluginId);
+    }
+
+    /// <summary>
+    /// Loads sandbox policies from the per-plugin settings directory on disk.
+    /// </summary>
+    private void LoadSandboxPolicies()
+    {
+        foreach (var pluginDir in Directory.GetDirectories(_pluginDirectory))
+        {
+            var pluginId = Path.GetFileName(pluginDir);
+            if (string.IsNullOrEmpty(pluginId)) continue;
+
+            var policyPath = Path.Combine(pluginDir, "sandbox-policy.json");
+            if (File.Exists(policyPath))
+            {
+                try
+                {
+                    var content = File.ReadAllText(policyPath);
+                    _sandboxPolicies[pluginId] = System.Text.Json.JsonSerializer.Deserialize<Domain.Interfaces.PluginSandboxPolicy>(content)
+                        ?? Domain.Interfaces.PluginSandboxPolicyDefaults.Default;
+                    _logger?.LogDebug("Loaded sandbox policy for plugin '{PluginId}'", pluginId);
+                }
+                catch (Exception ex)
+                {
+                    _logger?.LogError(ex, "Failed to load sandbox policy for plugin '{PluginId}'", pluginId);
+                }
+            }
+        }
+
+        _logger?.LogDebug("Loaded {Count} sandbox policies from disk", _sandboxPolicies.Count);
     }
 
     /// <inheritdoc />
@@ -227,47 +311,48 @@ public class PluginRegistry : Domain.Interfaces.IPluginRegistry
         }
     }
 
-    /// <inheritdoc />
-    public async Task<IEnumerable<Domain.Interfaces.PluginUpdateInfo>> GetAvailableUpdatesAsync()
-    {
-        if (_registryUrl == null || _httpClient == null)
-            throw new InvalidOperationException("No plugin registry configured.");
+     /// <inheritdoc />
+     public async Task<IEnumerable<Domain.Interfaces.PluginUpdateInfo>> GetAvailableUpdatesAsync()
+     {
+         if (_registryUrl == null || _httpClient == null)
+             throw new InvalidOperationException("No plugin registry configured.");
 
-        var result = new List<Domain.Interfaces.PluginUpdateInfo>();
+         var result = new List<Domain.Interfaces.PluginUpdateInfo>();
 
-        // Compare installed versions against registry for each local plugin
-        foreach (var installed in await ListInstalledPluginsAsync())
-        {
-            if (!installed.IsInstalled || installed.RegistryVersion == null) continue;
+         // Compare installed versions against registry for each local plugin
+         foreach (var installed in await ListInstalledPluginsAsync())
+         {
+             if (!installed.IsInstalled || installed.RegistryVersion == null) continue;
 
-            try
-            {
-                // Fetch the latest version from the registry
-                var url = $"{_registryUrl}/api/plugins/{Uri.EscapeDataString(installed.Id)}";
-                var response = await _httpClient.GetAsync(url);
-                if (!response.IsSuccessStatusCode) continue;
+             try
+             {
+                 // Fetch the latest version from the registry
+                 var url = $"{_registryUrl}/api/plugins/{Uri.EscapeDataString(installed.Id)}";
+                 var response = await _httpClient.GetAsync(url);
+                 if (!response.IsSuccessStatusCode) continue;
 
-                var jsonContent = await response.Content.ReadAsStringAsync();
-                var registryPlugin = System.Text.Json.JsonSerializer.Deserialize<Domain.Interfaces.PluginDefinition>(jsonContent);
+                 var jsonContent = await response.Content.ReadAsStringAsync();
+                 var registryPlugin = System.Text.Json.JsonSerializer.Deserialize<Domain.Interfaces.PluginDefinition>(jsonContent);
 
-                if (registryPlugin != null && registryPlugin.RegistryVersion > installed.Version)
-                {
-                    result.Add(new Domain.Interfaces.PluginUpdateInfo(
-                        installed.Id,
-                        installed.Version,
-                        registryPlugin.RegistryVersion ?? new Version(installed.Version.Major + 1, 0),
-                        false  // Could check changelog for security keywords in real implementation
-                    ));
-                }
-            }
-            catch (Exception ex)
-            {
-                _logger?.LogDebug("Error checking update for plugin '{PluginId}': {Message}", installed.Id, ex.Message);
-            }
-        }
+                 // FIX: Compare against RegistryVersion (not Version), since installed.Version is the local version
+                 if (registryPlugin != null && registryPlugin.RegistryVersion > installed.RegistryVersion)
+                 {
+                     result.Add(new Domain.Interfaces.PluginUpdateInfo(
+                         installed.Id,
+                         installed.Version,
+                         registryPlugin.RegistryVersion,
+                         false  // Could check changelog for security keywords in real implementation
+                     ));
+                 }
+             }
+             catch (Exception ex)
+             {
+                 _logger?.LogDebug("Error checking update for plugin '{PluginId}': {Message}", installed.Id, ex.Message);
+             }
+         }
 
-        return result;
-    }
+         return result;
+     }
 
     /// <summary>
     /// Loads the manifest.json file from a plugin directory.
@@ -279,48 +364,48 @@ public class PluginRegistry : Domain.Interfaces.IPluginRegistry
             ?? new PluginManifestData();
     }
 
-    /// <summary>
-    /// Creates an HttpClient for plugin registry communication.
-    /// </summary>
-    private static HttpClient CreateHttpClient()
-    {
-        var client = new HttpClient();
-        client.Timeout = TimeSpan.FromMinutes(5); // Allow long downloads for large plugins
-        return client;
-    }
+     /// <summary>
+     /// Creates an HttpClient for plugin registry communication.
+     /// </summary>
+     private static HttpClient CreateHttpClient()
+     {
+         var client = new HttpClient();
+         client.Timeout = TimeSpan.FromMinutes(5); // Allow long downloads for large plugins
+         return client;
+     }
 
-    /// <summary>
-    /// Temporary manifest data structure — replaced by SQLite-backed settings store.
-    /// </summary>
-    private class PluginManifestData
-    {
-        public string? Id { get; set; }
-        public string? Name { get; set; }
-        public string? Description { get; set; }
-        public Version? Version { get; set; }
-        public bool? IsEnabled { get; set; }
-        public List<string>? Tags { get; set; } = new();
-        public string? Author { get; set; }
-    }
+     /// <summary>
+     /// Temporary manifest data structure — replaced by SQLite-backed settings store.
+     /// </summary>
+     private class PluginManifestData
+     {
+         public string? Id { get; set; }
+         public string? Name { get; set; }
+         public string? Description { get; set; }
+         public Version? Version { get; set; }
+         public bool? IsEnabled { get; set; }
+         public List<string>? Tags { get; set; } = new();
+         public string? Author { get; set; }
+     }
 
-    /// <summary>
-    /// Custom attribute for marking assembly-level plugin manifests in DLL-based plugins.
-    /// </summary>
-    [AttributeUsage(AttributeTargets.Assembly)]
-    private class AssemblyPluginManifestAttribute : Attribute
-    {
-        public AssemblyPluginManifestAttribute(string id, string name)
-        {
-            Id = id;
-            Name = name;
-        }
+     /// <summary>
+     /// Custom attribute for marking assembly-level plugin manifests in DLL-based plugins.
+     /// </summary>
+     [AttributeUsage(AttributeTargets.Assembly)]
+     private class AssemblyPluginManifestAttribute : Attribute
+     {
+         public AssemblyPluginManifestAttribute(string id, string name)
+         {
+             Id = id;
+             Name = name;
+         }
 
-        public string Id { get; }
-        public string Name { get; }
-        public string? Description { get; set; }
-        public Version? Version { get; set; }
-        public bool? IsEnabled { get; set; }
-        public List<string>? Tags { get; set; } = new();
-        public string? Author { get; set; }
-    }
-}
+         public string Id { get; }
+         public string Name { get; }
+         public string? Description { get; set; }
+         public Version? Version { get; set; }
+         public bool? IsEnabled { get; set; }
+         public List<string>? Tags { get; set; } = new();
+         public string? Author { get; set; }
+     }
+ }
