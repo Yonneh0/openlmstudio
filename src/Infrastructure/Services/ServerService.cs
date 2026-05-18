@@ -1190,6 +1190,21 @@ public class ServerService : IServerService, IDisposable
                 };
             }
 
+            // Multi-engine routing: detect model type and route to correct engine
+            var modelId = request.ModelId ?? "local-model";
+            var modelRepo = _modelRepository ?? ResolveModelRepo();
+            if (modelRepo != null && !(modelRepo is StubModelRepository))
+            {
+                var modelType = await DetectModelTypeAsync(_logger, modelRepo, modelId);
+                // If it's a multi-modal non-text model, route to appropriate endpoint
+                if (modelType.HasValue && modelType.Value != ModelType.TextGeneration)
+                {
+                    context.Response.StatusCode = 400;
+                    await WriteChatCompletionNotSupportedError(context, modelId);
+                    return null;
+                }
+            }
+
             var completionRequest = new ChatRequest(
                 request.ModelId ?? "local-model",
                 messages,
@@ -1351,11 +1366,76 @@ public class ServerService : IServerService, IDisposable
     /// <summary>
     /// Standardized token counting method using consistent estimation: ~1 token per 4 characters for English.
     /// </summary>
-    /// <summary>
-    /// Standardized token counting method using consistent estimation: ~1 token per 4 characters for English.
-    /// </summary>
     private static int EstimateTokenCount(string? text) =>
         string.IsNullOrEmpty(text) ? 0 : (text.Length + 3) / 4;
+
+    /// <summary>
+    /// Detects the model type from a model ID by looking it up in the repository.
+    /// Returns null if the model cannot be found or is a GGUF text generation model.
+    /// </summary>
+    private static async Task<ModelType?> DetectModelTypeAsync(ILogger? logger, IModelRepository? repo, string modelId)
+    {
+        if (repo == null || repo is StubModelRepository)
+            return null;
+
+        // Check multi-modal models first (image/diffusion/VAE/LoRA/embedding)
+        var multimodal = await repo.GetMultiModalModelByIdAsync(modelId);
+        if (multimodal != null)
+            return multimodal.ModelType;
+
+        // GGUF text generation model — explicitly NOT a multi-modal type
+        logger?.LogDebug("Model '{ModelId}' resolved as GGUF text generation model", modelId);
+        return ModelType.TextGeneration;
+    }
+
+    /// <summary>
+    /// Writes an error response indicating that the requested model type is not supported for chat completion.
+    /// </summary>
+    private static async Task WriteChatCompletionNotSupportedError(HttpContext context, string modelId)
+    {
+        var suggestedEndpoint = "/v1/embeddings"; // Default suggestion
+
+        // Determine which endpoint to suggest based on common naming conventions
+        if (modelId.Contains("embedding", StringComparison.OrdinalIgnoreCase))
+            suggestedEndpoint = "/v1/embeddings";
+        else if (modelId.Contains("image", StringComparison.OrdinalIgnoreCase) ||
+                 modelId.Contains("diffusion", StringComparison.OrdinalIgnoreCase) ||
+                 modelId.Contains("stable-diffusion", StringComparison.OrdinalIgnoreCase) ||
+                 modelId.Contains("sdxl", StringComparison.OrdinalIgnoreCase) ||
+                 modelId.Contains("flux", StringComparison.OrdinalIgnoreCase))
+            suggestedEndpoint = "/v1/images/generations";
+
+        await context.Response.WriteAsJsonAsync(new
+        {
+            error = "model_type_not_supported_for_chat_completion",
+            message = $"Model '{modelId}' is not a text generation model and cannot be used with /v1/chat/completions.",
+            suggested_endpoint = suggestedEndpoint,
+            details = new[]
+            {
+                "Chat completion (text generation) models use GGUF format. Image generation, diffusion, VAE, LoRA, and embedding models require their respective endpoints."
+            }
+        });
+    }
+
+    /// <summary>
+    /// Writes a 400 error response for missing or invalid model identifier.
+    /// </summary>
+    private static async Task WriteModelRequiredError(HttpContext context)
+    {
+        await context.Response.WriteAsJsonAsync(new
+        {
+            error = "missing_model_id",
+            message = "A valid model identifier is required for this endpoint.",
+            supported_endpoints = new[]
+            {
+                "/v1/chat/completions — text generation (GGUF format)",
+                "/v1/images/generations — image generation (diffusion models)",
+                "/v1/embeddings — embedding generation",
+                "/v1/models/image/list — list available image generation models",
+                "/v1/models/embedding/list — list available embedding models"
+            }
+        });
+    }
 
 
     private string ExtractTokenFromSseChunk(string chunk)
