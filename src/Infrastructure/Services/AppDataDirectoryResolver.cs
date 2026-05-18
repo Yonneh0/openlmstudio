@@ -175,7 +175,7 @@ public class SqliteDatabaseFactory : IDisposable
         if (!string.IsNullOrEmpty(directory))
             Directory.CreateDirectory(directory);
 
-        return new Microsoft.Data.Sqlite.SqliteConnection($"Data Source={databasePath};Version=3;");
+        return new Microsoft.Data.Sqlite.SqliteConnection($"Data Source={databasePath}");
     }
 
     public void Dispose()
