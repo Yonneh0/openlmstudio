@@ -181,3 +181,31 @@ public class StreamingEventArgs : EventArgs
 /// Handler delegate for streaming token events.
 /// </summary>
 public delegate void StreamingEventHandler(object? sender, StreamingEventArgs e);
+
+/// <summary>
+/// Anthropic request DTO that supports model type routing via the optional "type" parameter.
+/// Used by /v1/messages endpoint to route requests across different inference engines.
+/// </summary>
+internal record ContentBlock(
+    string Type = "text",
+    string? Text = null);
+
+internal record AnthropicMessage(
+    string Role = "user",
+    List<ContentBlock>? ContentBlocks = null)
+{
+    /// <summary>Convenience accessor: returns the text content from all 'text' type content blocks.</summary>
+    public string? Content => ContentBlocks != null && ContentBlocks.Any(cb => cb.Type == "text")
+        ? string.Join("\n", ContentBlocks.Where(cb => cb.Type == "text").Select(cb => cb.Text!).Where(s => s != null)!)
+        : null;
+}
+
+internal record AnthropicRequestWithModelType(
+    string? Model = null,
+    double? Temperature = 0.7,
+    int MaxTokens = 4096,
+    float? TopP = 1.0f,
+    List<AnthropicMessage>? Messages = null,
+    string? System = null,
+    /// <summary>Model type for multi-engine routing: text (default), image, embedding.</summary>
+    string? ModelType = null);
