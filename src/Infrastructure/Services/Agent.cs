@@ -17,6 +17,11 @@ public class Agent : IAgent, IDisposable
 {
     private readonly ILogger<Agent>? _logger;
     private readonly ITaskProgressTracker _progressTracker;
+
+    /// <summary>
+    /// The task description being worked on — used for context-aware planning.
+    /// </summary>
+    private string? _taskDescription;
     private volatile AgentState _state = AgentState.Planning;
     private bool _disposed;
     private readonly List<AgentToolCallRecord> _toolCalls = new();
@@ -45,6 +50,8 @@ public class Agent : IAgent, IDisposable
         _state = AgentState.Planning;
         await _progressTracker.UpdateStageAsync(TaskProgressStage.InProgress).ConfigureAwait(false);
 
+        _taskDescription = request.Description;
+
         // Log initial planning message
         AddConversationMessage("agent", "planning", $"Planning approach for task: {request.Description}");
 
@@ -58,7 +65,7 @@ public class Agent : IAgent, IDisposable
                     return CreateFailedResult(request.TaskId,
                         $"Agent hit error condition: {_progressTracker.ErrorMessage ?? "iteration limit"}");
 
-                // Execute plan phase (determine what to do next)
+                // Execute plan phase (determine what to do next) — use context-aware planning with task description
                 var planMessage = GeneratePlanResponse();
                 AddConversationMessage("agent", "planning", planMessage);
 
@@ -177,7 +184,47 @@ public class Agent : IAgent, IDisposable
         }
     }
 
-    private string GeneratePlanResponse() => "Analyzing current state and determining next action";
+    /// <summary>
+    /// Generates a context-aware plan response using the available tool descriptions.
+    /// When an LLM is available, this would call it to generate a dynamic plan.
+    /// Without LLM integration, provides heuristic-based planning with tool suggestions.
+    /// </summary>
+    private string GeneratePlanResponse()
+    {
+        if (string.IsNullOrEmpty(_taskDescription))
+            return "Analyzing current state and determining next action";
+
+        // Heuristic-based planning: analyze the task description to determine likely needed tools/actions
+        var lower = _taskDescription.ToLowerInvariant();
+        var suggestedActions = new List<string>();
+
+        if (lower.Contains("file") || lower.Contains("read") || lower.Contains("write"))
+            suggestedActions.Add("Use FileRead/FileWrite tools for file operations");
+
+        if (lower.Contains("git") || lower.Contains("commit") || lower.Contains("branch"))
+            suggestedActions.Add("Use git-related tools (GitDiffTool, GitHistoryTool) for version control");
+
+        if (lower.Contains("command") || lower.Contains("run") || lower.Contains("execute"))
+            suggestedActions.Add("Use CommandExecute tool for running shell commands");
+
+        if (lower.Contains("search") || lower.Contains("find") || lower.Contains("grep"))
+            suggestedActions.Add("Use SearchFilesTool to find files or search across project");
+
+        if (lower.Contains("code") || lower.Contains("function") || lower.Contains("class"))
+            suggestedActions.Add("Use ProjectExplorer to examine code structure");
+
+        // If no specific tools were identified from the task description, suggest a general approach
+        if (suggestedActions.Count == 0)
+        {
+            return "Analyzing current state and determining next action. Task context: " + _taskDescription;
+        }
+
+        var response = new List<string> { "Planning analysis based on task context:" };
+        foreach (var suggestion in suggestedActions)
+            response.Add($"- {suggestion}");
+
+        return string.Join("\n", response);
+    }
 
     /// <summary>
     /// Selects the next tool to use based on available tools and least usage history.
