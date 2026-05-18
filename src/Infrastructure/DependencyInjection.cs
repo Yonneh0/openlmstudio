@@ -99,6 +99,11 @@ public static class DependencyInjection
         // TaskContextPruner manages archive/compress-and-archive/discard strategies for task completion
         services.AddSingleton<ITaskContextPruner, Services.TaskContextPruner>();
 
+        // ---- Phase 3.4: HTTPS Certificate Generation ----
+
+        // SelfSignedCertificateGenerator generates cross-platform self-signed certs for local HTTPS development
+        services.AddSingleton<ISelfSignedCertificateService, Services.SelfSignedCertificateGenerator>();
+
         return services;
     }
 

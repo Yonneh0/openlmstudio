@@ -452,6 +452,85 @@ public class ServerService : IServerService, IDisposable
             }
         });
 
+        // /v1/embeddings - Generate embeddings via embedding models
+        app.MapPost("/v1/embeddings", async (IEmbeddingPipelineService pipeline, HttpContext context) =>
+        {
+            if (!context.Request.HasJsonContentType())
+            {
+                context.Response.StatusCode = 400;
+                await context.Response.WriteAsJsonAsync(new { error = "Content-Type must be application/json" });
+                return;
+            }
+
+            using var reader = new StreamReader(context.Request.Body);
+            var requestBodyStr = await reader.ReadToEndAsync();
+
+            try
+            {
+                // Parse the request body - support both OpenAI format (input string or array) and Anthropic format
+                var embeddingsRequest = System.Text.Json.JsonSerializer.Deserialize<EmbeddingsRequest>(requestBodyStr);
+                
+                if (embeddingsRequest == null || string.IsNullOrEmpty(embeddingsRequest.Model))
+                {
+                    context.Response.StatusCode = 400;
+                    await context.Response.WriteAsJsonAsync(new { error = "Model identifier and input are required" });
+                    return;
+                }
+
+                var inputs = embeddingsRequest.Input switch
+                {
+                    string s => new[] { s },
+                    System.Text.Json.JsonElement[] arr => arr.Select(e => e.GetString() ?? "").ToArray(),
+                    _ => throw new InvalidOperationException("Input must be a string or array of strings")
+                };
+
+                float[][] embeddingVectors;
+                
+                if (inputs.Length == 1)
+                {
+                    var vector = await pipeline.GenerateAsync(embeddingsRequest.Model, inputs[0]);
+                    embeddingVectors = new[] { vector };
+                }
+                else
+                {
+                    embeddingVectors = await pipeline.GenerateBatchAsync(embeddingsRequest.Model, inputs.ToList());
+                }
+
+                // Return response in OpenAI-compatible format
+                var data = new List<object>();
+                for (var i = 0; i < embeddingVectors.Length; i++)
+                {
+                    data.Add(new
+                    {
+                        object = "embedding",
+                        index = i,
+                        embedding = embeddingVectors[i]
+                    });
+                }
+
+                var response = new
+                {
+                    @object = "list",
+                    model = embeddingsRequest.Model,
+                    usage = new
+                    {
+                        prompt_tokens = inputs.Sum(s => s?.Length / 4 + 3 / 4), // Approximate token count
+                        total_tokens = embeddingVectors.Length
+                    },
+                    data
+                };
+
+                context.Response.ContentType = "application/json";
+                await context.Response.WriteAsJsonAsync(response);
+            }
+            catch (Exception ex)
+            {
+                _logger?.LogError(ex, "Error processing embedding request");
+                context.Response.StatusCode = 500;
+                await context.Response.WriteAsJsonAsync(new { error = "Internal server error" });
+            }
+        });
+
         // Model listing endpoint for embedding models (Anthropic-compatible)
         app.MapGet("/v1/models/embedding/list", async (IModelRepository repo, HttpContext context) =>
         {
@@ -485,6 +564,123 @@ public class ServerService : IServerService, IDisposable
                 _logger?.LogError(ex, "Error listing embedding models");
                 context.Response.StatusCode = 500;
                 await context.Response.WriteAsJsonAsync(new { error = "Failed to list embedding models" });
+            }
+        });
+
+        // === Image Generation Endpoints (Phase 3.6) ===
+
+        // /v1/images/generations - Create image via diffusion models
+        app.MapPost("/v1/images/generations", async (IDiffusionPipelineService pipeline, IModelRepository repo, HttpContext context) =>
+        {
+            if (!context.Request.HasJsonContentType())
+            {
+                context.Response.StatusCode = 400;
+                await context.Response.WriteAsJsonAsync(new { error = "Content-Type must be application/json" });
+                return;
+            }
+
+            using var reader = new StreamReader(context.Request.Body);
+            var requestBodyStr = await reader.ReadToEndAsync();
+
+            try
+            {
+                var request = System.Text.Json.JsonSerializer.Deserialize<ImageGenerationRequest>(requestBodyStr);
+                
+                if (request == null || string.IsNullOrEmpty(request.ModelId))
+                {
+                    context.Response.StatusCode = 400;
+                    await context.Response.WriteAsJsonAsync(new { error = "Model identifier and prompt are required" });
+                    return;
+                }
+
+                var result = await pipeline.GenerateImageAsync(request);
+                
+                // Return response in OpenAI-compatible format
+                var response = new
+                {
+                    data = new[]
+                    {
+                        new
+                        {
+                            url = result.DataUri,
+                            revised_prompt = request.NegativePrompt ?? ""
+                        }
+                    },
+                    @object = "list",
+                    created = DateTimeOffset.UtcNow.ToUnixTimeSeconds()
+                };
+
+                context.Response.ContentType = "application/json";
+                await context.Response.WriteAsJsonAsync(response);
+            }
+            catch (Exception ex)
+            {
+                _logger?.LogError(ex, "Error processing image generation request");
+                context.Response.StatusCode = 500;
+                await context.Response.WriteAsJsonAsync(new { error = "Internal server error" });
+            }
+        });
+
+        // /v1/models/vae/list - List available VAE models
+        app.MapGet("/v1/models/vae/list", async (IVAEPipelineService vaePipeline, HttpContext context) =>
+        {
+            try
+            {
+                var models = await vaePipeline.GetAvailableModelsAsync();
+                
+                var modelInfos = new List<object>();
+                foreach (var model in models)
+                {
+                    modelInfos.Add(new 
+                    {
+                        id = model.Id,
+                        obj = "model",
+                        owned_by = "local",
+                        display_name = model.Name,
+                        model_type = "vae"
+                    });
+                }
+
+                context.Response.StatusCode = 200;
+                await context.Response.WriteAsJsonAsync(new { obj = "list", data = modelInfos });
+            }
+            catch (Exception ex)
+            {
+                _logger?.LogError(ex, "Error listing VAE models");
+                context.Response.StatusCode = 500;
+                await context.Response.WriteAsJsonAsync(new { error = "Failed to list VAE models" });
+            }
+        });
+
+        // /v1/models/lora/list - List available LoRA adapters
+        app.MapGet("/v1/models/lora/list", async (ILoraAdapterManager loraManager, HttpContext context) =>
+        {
+            try
+            {
+                var models = await loraManager.GetAvailableAdaptersAsync();
+                
+                var modelInfos = new List<object>();
+                foreach (var model in models)
+                {
+                    modelInfos.Add(new 
+                    {
+                        id = model.Id,
+                        obj = "model",
+                        owned_by = "local",
+                        display_name = model.Name,
+                        model_type = "lora_adapter",
+                        format_variant = (model as OpenLMStudio.Domain.Models.MultiModalModelMetadata)?.Format?.ToString() ?? "LoRA"
+                    });
+                }
+
+                context.Response.StatusCode = 200;
+                await context.Response.WriteAsJsonAsync(new { obj = "list", data = modelInfos });
+            }
+            catch (Exception ex)
+            {
+                _logger?.LogError(ex, "Error listing LoRA adapters");
+                context.Response.StatusCode = 500;
+                await context.Response.WriteAsJsonAsync(new { error = "Failed to list LoRA adapters" });
             }
         });
 
@@ -622,29 +818,81 @@ public class ServerService : IServerService, IDisposable
     }
 
     /// <inheritdoc />
-    public Task GenerateSelfSignedCertificateAsync(string certificatePath, string keyPath)
+    public async Task GenerateSelfSignedCertificateAsync(string certificatePath, string keyPath, CancellationToken ct = default)
     {
-        // Self-signed certificate generation for HTTPS development
+        // Self-signed certificate generation for HTTPS development using the new cert service
         _logger?.LogInformation("Generating self-signed certificate: {CertPath}", certificatePath);
         
-        // Use dotnet dev-certs to generate a local trust cert if available
+        var certService = ResolveCertificateService();
+        if (certService == null)
+        {
+            _logger?.LogError("Cannot generate certificate: ISelfSignedCertificateService not available");
+            throw new InvalidOperationException("ISelfSignedCertificateService is required for HTTPS setup but was not found in DI.");
+        }
+
+        // Ensure directory exists before generating the cert
+        var certDir = Path.GetDirectoryName(certificatePath);
+        if (!string.IsNullOrEmpty(certDir) && !Directory.Exists(certDir))
+        {
+            Directory.CreateDirectory(certDir);
+        }
+
+        var success = await certService.GenerateCertificateAsync(certificatePath, keyPath, ct);
+        
+        if (success)
+        {
+            _logger?.LogInformation("Self-signed certificate generated successfully: {CertPath}", certificatePath);
+            
+            // Try to trust the certificate on Windows
+            try
+            {
+                await certService.TrustCertificateAsync(certificatePath, ct);
+            }
+            catch (Exception ex)
+            {
+                _logger?.LogWarning(ex, "Failed to auto-trust the generated certificate. Manual trust required.");
+            }
+        }
+        else
+        {
+            throw new InvalidOperationException("Failed to generate self-signed certificate. Ensure OpenSSL is installed on this system.");
+        }
+    }
+
+    /// <summary>
+    /// Resolves the ISelfSignedCertificateService from DI container or returns null if not available.
+    /// </summary>
+    private ISelfSignedCertificateService? ResolveCertificateService()
+    {
+        // Try to resolve from any active application (if one exists)
+        if (_application != null)
+        {
+            try
+            {
+                return _application.Services.GetService<ISelfSignedCertificateService>();
+            }
+            catch
+            {
+                // Ignore resolution errors during endpoint handling
+            }
+        }
+
+        // Fallback: resolve from a fresh ServiceCollection with just logging and the cert service itself
         try
         {
-            var psi = new ProcessStartInfo
-            {
-                FileName = "dotnet",
-                Arguments = $"dev-certs https --export-path \"{certificatePath}\" --format Pfx -p \"\"",
-                UseShellExecute = true,
-                CreateNoWindow = true
-            };
+            var services = new ServiceCollection()
+                .AddLogging()
+                .AddSingleton<ISelfSignedCertificateService, SelfSignedCertificateGenerator>()
+                .BuildServiceProvider();
             
-            return Task.CompletedTask; // Stub implementation - real impl would use OpenSSL or dotnet dev-certs
+            return services.GetRequiredService<ISelfSignedCertificateService>();
         }
-        catch (Exception ex)
+        catch
         {
-            _logger?.LogError(ex, "Failed to generate self-signed certificate");
-            throw;
+            _logger?.LogDebug("ServerService: Certificate service not available in this context");
         }
+
+        return null;
     }
 
     /// <inheritdoc />
@@ -1227,19 +1475,14 @@ internal record AnthropicRequest(
     List<AnthropicMessage>? Messages = null,
     string? System = null);
 
-/// <summary>
-/// Internal DTO for parsing Anthropic-compatible message blocks (for /v1/messages endpoint).
-/// </summary>
-internal record AnthropicMessage(
-    string Role = "user",
-    List<ContentBlock>? ContentBlocks = null)
-{
-    /// <summary>Convenience accessor: returns the text content from all 'text' type content blocks.</summary>
-    public string? Content => string.Join("\n", ContentBlocks?.Where(cb => cb.Type == "text").Select(cb => cb.Text).ToArray());
-}
+internal record EmbeddingsRequest(
+    string? Model = null,
+    object Input = null!,
+    string? EncodingFormat = "float",
+    int? Dimensions = null);
 
 /// <summary>
-/// Internal DTO for parsing Anthropic-compatible content blocks (for /v1/messages endpoint).
+/// Internal DTO for parsing Anthropic-compatible message blocks (for /v1/messages endpoint).
 /// </summary>
 internal record ContentBlock(
     string Type = "text",
