@@ -22,7 +22,8 @@
     <PackageReference Include="System.IO.Pipelines" Version="8.0.0" />
     <PackageReference Include="Microsoft.Data.Sqlite.Core" Version="9.0.0" />
     <PackageReference Include="SQLitePCLRaw.bundle_e_sqlite3" Version="2.1.10" />
-    <PackageReference Include="System.Management" Version="8.0.0" />
-  </ItemGroup>
+     <PackageReference Include="System.Management" Version="8.0.0" />
+     <PackageReference Include="LibGit2Sharp" Version="0.31.0" />
+   </ItemGroup>
 
 </Project>
