@@ -1,4 +1,5 @@
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging.Abstractions;
 using OpenLMStudio.Application.Interfaces;
 using OpenLMStudio.Infrastructure.Services;
 
@@ -135,7 +136,24 @@ public static class DependencyInjection
         // ProjectExplorer tool for listing directory contents recursively
         services.AddSingleton<ITool, Services.ProjectExplorerTool>();
 
-        // ---- Phase 8: Plugin & MCP System ----
+        // ---- Phase 2: Model Management — IModelManager + Loader Registration ----
+
+        // ModelManager coordinates concurrent multi-model loading across all engine types with eviction policy.
+        services.AddSingleton<IModelManager, Services.ModelManager>();
+
+        // GgufChatCompletionLoader adapts LlamaCppChatCompletionService to IModelLoader for text generation models.
+        // Registered as a factory so it gets the existing chat service from DI rather than creating its own instance.
+        services.AddScoped<IModelLoader>(resolver =>
+        {
+            var logger = resolver.GetService<Microsoft.Extensions.Logging.ILogger<Services.GgufChatCompletionLoader>>();
+            var chatService = resolver.GetService<Services.LlamaCppChatCompletionService>();
+            if (chatService == null)
+                throw new InvalidOperationException("LlamaCppChatCompletionService not found in DI container — required for text generation model loading.");
+
+            return new Services.GgufChatCompletionLoader(logger ?? NullLogger<Services.GgufChatCompletionLoader>.Instance, chatService);
+        });
+
+        // Phase 8: Plugin & MCP System ----
 
         // PluginRegistry manages plugin discovery, installation, and lifecycle from local/appdata directory
         var pluginDir = Path.Combine(

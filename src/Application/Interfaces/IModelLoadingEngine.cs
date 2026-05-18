@@ -39,6 +39,12 @@ public interface IModelLoader : IDisposable
     /// Lists all available models that this loader can handle.
     /// </summary>
     Task<IEnumerable<ModelMetadata>> ListAvailableModelsAsync(CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Returns -1 if unknown, otherwise returns the estimated model size in bytes.
+    /// Used by IModelManager for memory budgeting and eviction decisions.
+    /// </summary>
+    long GetEstimatedModelSizeBytes();
 }
 
 /// <summary>

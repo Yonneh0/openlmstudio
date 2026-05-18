@@ -112,6 +112,13 @@ public class ModelMetadata : IDisposable
     /// </summary>
     public bool IsActive { get; set; }
 
+    /// <summary>
+    /// Estimated size of the model's weights in bytes (based on parameter count * dtype size).
+    /// Used by IModelManager for memory budgeting and eviction decisions.
+    /// Null if not yet calculated.
+    /// </summary>
+    public long? EstimatedSizeBytes { get; set; }
+
     public void Dispose() { /* No unmanaged resources */ }
 }
 
@@ -258,6 +265,13 @@ public class MultiModalModelMetadata : IDisposable
     /// Whether this model is currently loaded and available for inference.
     /// </summary>
     public bool IsActive { get; set; }
+
+    /// <summary>
+    /// Estimated size of the model's weights in bytes (based on parameter count * dtype size).
+    /// Used by IModelManager for memory budgeting and eviction decisions.
+    /// Null if not yet calculated.
+    /// </summary>
+    public long? EstimatedSizeBytes { get; set; }
 
     /// <summary>
     /// For LoRA adapters: the current weight multiplier (user can adjust at runtime).
