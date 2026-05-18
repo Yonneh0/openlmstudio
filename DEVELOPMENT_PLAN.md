@@ -516,7 +516,7 @@ OpenLMStudio/
 - [x] Implement Model Context Protocol client/server communication (McpClient.cs, McpToolCaller.cs, McpResourceAccessor.cs exist)
 - [x] Support for stdio and SSE transport modes (stdio via McpStdioClient; SSE via McpSseClient — connects to HTTP/SSE endpoint for bidirectional tool/resource/prompt access)
 - [x] Tool discovery and registration (ListToolsAsync + tools/list in McpClient.cs)
-- [ ] Resource and prompt support (resource accessor exists; prompts not yet implemented)
+- [x] Resource and prompt support (McpResourceAccessor for resource access by URI; McpPromptAccessor + McpPromptListTool for prompt retrieval and discovery via MCP servers)
 
 ### 8.2 Plugin Manager
 - [ ] Plugin installation from registry/local path — partial: PluginRegistry.cs has local discovery/install logic but no remote registry integration
@@ -527,7 +527,7 @@ OpenLMStudio/
 #### Phase 8 Summary — **2 of 4 items complete**
 | Category | Items Complete | Items Remaining |
 |----------|---------------|-----------------|
-| MCP Protocol Implementation | 3 of 4 partial | SSE transport now implemented via McpSseClient; prompt support not yet done |
+| MCP Protocol Implementation | 4 of 4 partial ✓ | SSE transport via McpSseClient; prompt support via McpPromptAccessor + McpPromptListTool; resource accessor exists — all MCP features implemented |
 | Plugin Manager | 0 / 4 | Partial: local plugin discovery exists; remote registry integration missing |
 
 ---
