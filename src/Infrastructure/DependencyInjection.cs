@@ -153,6 +153,21 @@ public static class DependencyInjection
             return new Services.GgufChatCompletionLoader(logger ?? NullLogger<Services.GgufChatCompletionLoader>.Instance, chatService);
         });
 
+        // ---- Phase 7: Agent Harness — Core Agent Registration ----
+
+        // IAgent interface for managing the lifecycle of an agentic task with plan/act cycle.
+        // Registered as a factory because it needs both ILogger<Agent> and ITaskProgressTracker,
+        // but also needs to discover available tools at runtime from DI (MCP + built-in).
+        services.AddScoped<IAgent>(resolver =>
+        {
+            var logger = resolver.GetService<Microsoft.Extensions.Logging.ILogger<Services.Agent>>();
+            var progressTracker = resolver.GetService<ITaskProgressTracker>();
+            if (progressTracker == null)
+                throw new InvalidOperationException("ITaskProgressTracker not found in DI container — required for Agent lifecycle tracking.");
+
+            return new Services.Agent(logger ?? NullLogger<Services.Agent>.Instance, progressTracker);
+        });
+
         // ---- Phase 8: Plugin & MCP System ----
 
         // PluginRegistry manages plugin discovery, installation, and lifecycle from local/appdata directory
