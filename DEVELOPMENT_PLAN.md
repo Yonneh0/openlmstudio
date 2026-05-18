@@ -124,7 +124,7 @@ OpenLMStudio/
 ### 1.1 Project Setup
 - [x] Initialize .NET 8 solution with appropriate structure (OpenLMStudio.slnx)
 - [x] Select UI framework: Avalonia UI for cross-platform Windows/macOS/Linux
-- [ ] Establish CI/CD pipeline basics
+- [x] Establish CI/CD pipeline basics — `.github/workflows/build.yml` with checkout, .NET 8 setup, restore, build, and test steps; triggers on push to main + PRs targeting main; verified working (0 warnings, 0 errors)
 - [x] Configure project dependencies and NuGet packages — SQLitePCLRaw.bundle_e_sqlite3, Avalonia controls per-platform
 
 ### 1.2 Core Architecture Design
@@ -169,7 +169,7 @@ OpenLMStudio/
 #### Phase 1 Summary — **COMPLETE**
 | Category | Items Complete | Items Remaining |
 |----------|---------------|-----------------|
-| Project Setup | 3 / 4 | CI/CD basics |
+| Project Setup | 4 / 4 | ✓ All items complete |
 | Core Architecture Design | 4 / 4 | ✓ All items complete |
 | Domain Model Expansion - Multi-Modal Support | 3 / 3 | ✓ All items complete |
 | Context Management Architecture | 5 / 5 | ✓ All items complete |
