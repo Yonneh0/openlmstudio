@@ -320,11 +320,11 @@ OpenLMStudio/
 - [ ] Connection reconnection logic — SseReconnectService exists and tracks sessions; SSE event buffer supports Last-Event-ID replay
 - [x] Error handling and retry mechanisms — ServerService handles SSE drop recovery, partial response reconstruction
 
-#### Phase 4 Summary — **3 of 8 items complete**
+#### Phase 4 Summary — **5 of 8 items complete**
 | Category | Items Complete | Items Remaining |
 |----------|---------------|-----------------|
 | Data Model Design | 1 / 3 | Multi-modal output expansion deferred |
-| Conversation Manager | 2 / 4 | Message search within conversations not yet done; export/import exists as stub methods in FileConversationManager |
+| Conversation Manager | 4 / 4 | ✓ All items complete (export/import fully implemented; per-message search via SearchMessagesInChatAsync in both FileConversationManager and ChatPersistenceService) |
 | Real-time Communication | 3 of 4 partial | SSE client + error handling implemented; token-by-token display only works with server endpoint |
 
 ---
