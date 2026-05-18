@@ -470,12 +470,12 @@ public class DownloadManager : IDownloadManager, IDisposable
                                 diskSpaceWarning = true;
                                 (_warnedDiskSpaceThresholds ??= new HashSet<int>()).Add(i);
 
-                            OnDiskSpaceWarning(availableSpace.Value,
-                                availableSpace.Value - totalDownloaded,
-                                remainingCapacityPercent);
+                                OnDiskSpaceWarning(availableSpace.Value,
+                                    availableSpace.Value - totalDownloaded,
+                                    remainingCapacityPercent);
 
-                            _logger?.LogWarning("Disk space warning: {Capacity}% remaining ({Megabytes} MB free)",
-                                remainingCapacityPercent, (availableSpace.Value - totalDownloaded) / 1048576.0);
+                                _logger?.LogWarning("Disk space warning: {Capacity}% remaining ({Megabytes} MB free)",
+                                    remainingCapacityPercent, (availableSpace.Value - totalDownloaded) / 1048576.0);
                             }
                         }
                     }

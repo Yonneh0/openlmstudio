@@ -1483,7 +1483,7 @@ internal record AnthropicMessage(
     List<ContentBlock>? ContentBlocks = null)
 {
     /// <summary>Convenience accessor: returns the text content from all 'text' type content blocks.</summary>
-    public string? Content => ContentBlocks != null && ContentBlocks.Any(cb => cb.Type == "text") 
+    public string? Content => ContentBlocks != null && ContentBlocks.Any(cb => cb.Type == "text")
         ? string.Join("\n", ContentBlocks.Where(cb => cb.Type == "text").Select(cb => cb.Text!).Where(s => s != null)!)
         : null;
 }
