@@ -103,7 +103,7 @@ public class McpPromptListTool : ITool, IDisposable
         try
         {
             _logger?.LogInformation("Listing MCP prompts");
-            
+
             var promptName = TryGetString(parameters, "PromptFilter") ?? string.Empty;
             // Filter prompts by name if specified
             _logger?.LogDebug("MCPPromptsList called with filter: {PromptFilter}", promptName);

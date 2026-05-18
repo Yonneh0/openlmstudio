@@ -46,31 +46,31 @@ public interface IPluginRegistry : IDisposable
     /// </summary>
     Task SetEnabledStateAsync(string pluginId, bool enabled, CancellationToken ct = default);
 
-     /// <summary>
-     /// Sets the URL of the public plugin registry. Null means no remote registry configured.
-     /// </summary>
-     void SetRegistryUrl(Uri? registryUrl);
+    /// <summary>
+    /// Sets the URL of the public plugin registry. Null means no remote registry configured.
+    /// </summary>
+    void SetRegistryUrl(Uri? registryUrl);
 
-     /// <summary>
-     /// Returns the currently configured plugin registry URL, or null if not set.
-     /// </summary>
-     Uri? GetRegistryUrl();
+    /// <summary>
+    /// Returns the currently configured plugin registry URL, or null if not set.
+    /// </summary>
+    Uri? GetRegistryUrl();
 
-     /// <summary>
-     /// Checks for available updates for installed plugins against the registry.
-     /// </summary>
-     Task<IEnumerable<PluginUpdateInfo>> GetAvailableUpdatesAsync();
+    /// <summary>
+    /// Checks for available updates for installed plugins against the registry.
+    /// </summary>
+    Task<IEnumerable<PluginUpdateInfo>> GetAvailableUpdatesAsync();
 
-     /// <summary>
-     /// Sets the sandbox policy for a plugin by ID.
-     /// </summary>
-     Task SetSandboxPolicyAsync(string pluginId, PluginSandboxPolicy policy);
+    /// <summary>
+    /// Sets the sandbox policy for a plugin by ID.
+    /// </summary>
+    Task SetSandboxPolicyAsync(string pluginId, PluginSandboxPolicy policy);
 
-     /// <summary>
-     /// Gets the sandbox policy for a plugin, returning the default if none set.
-     /// </summary>
-     Task<PluginSandboxPolicy> GetSandboxPolicyAsync(string pluginId);
- }
+    /// <summary>
+    /// Gets the sandbox policy for a plugin, returning the default if none set.
+    /// </summary>
+    Task<PluginSandboxPolicy> GetSandboxPolicyAsync(string pluginId);
+}
 
 /// <summary>
 /// Metadata definition of a plugin (from registry or installed).
@@ -88,29 +88,29 @@ public record PluginDefinition(
     Uri? DownloadUrl
 );
 
- /// <summary>
- /// Information about an available plugin update.
- /// </summary>
- public record PluginUpdateInfo(
-     string PluginId,
-     Version InstalledVersion,
-     Version AvailableVersion,
-     bool IsSecurityUpdate
- );
+/// <summary>
+/// Information about an available plugin update.
+/// </summary>
+public record PluginUpdateInfo(
+    string PluginId,
+    Version InstalledVersion,
+    Version AvailableVersion,
+    bool IsSecurityUpdate
+);
 
- /// <summary>
- /// Default sandbox policy applied to plugins that have no custom policy configured.
- /// </summary>
- public static class PluginSandboxPolicyDefaults
- {
-     public static readonly PluginSandboxPolicy Default = new(
-         AllowFileWrites: false,
-         AllowNetworkAccess: false,
-         AllowCommandExecution: false,
-         AllowedPaths: new HashSet<string>(StringComparer.OrdinalIgnoreCase) { "/tmp", "/var/tmp" },
-         BlockedCommands: new HashSet<string>(StringComparer.OrdinalIgnoreCase)
-             { "sudo", "su", "chmod", "chown", "rm -rf", "dd", "mkfs", "fdisk", "iptables" },
-         MaxExecutionTime: TimeSpan.FromMinutes(5),
-         MaxMemoryMb: 256
-     );
- }
+/// <summary>
+/// Default sandbox policy applied to plugins that have no custom policy configured.
+/// </summary>
+public static class PluginSandboxPolicyDefaults
+{
+    public static readonly PluginSandboxPolicy Default = new(
+        AllowFileWrites: false,
+        AllowNetworkAccess: false,
+        AllowCommandExecution: false,
+        AllowedPaths: new HashSet<string>(StringComparer.OrdinalIgnoreCase) { "/tmp", "/var/tmp" },
+        BlockedCommands: new HashSet<string>(StringComparer.OrdinalIgnoreCase)
+            { "sudo", "su", "chmod", "chown", "rm -rf", "dd", "mkfs", "fdisk", "iptables" },
+        MaxExecutionTime: TimeSpan.FromMinutes(5),
+        MaxMemoryMb: 256
+    );
+}

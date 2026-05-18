@@ -26,17 +26,17 @@ public class SandboxService : ISandboxService, IDisposable
     public SandboxService(ILogger<SandboxService>? logger)
     {
         _logger = logger;
-        
+
         // On non-Windows platforms, check for cgroups v2 support
         if (!OperatingSystem.IsWindows())
         {
-            _logger?.LogDebug("Sandbox service initialized — platform: {Platform}", 
+            _logger?.LogDebug("Sandbox service initialized — platform: {Platform}",
                 OperatingSystem.IsLinux() ? "Linux" : "macOS");
         }
     }
 
     /// <inheritdoc />
-    public async Task<int> CreateProcessAsync(string commandLine, string? workingDirectory = null, 
+    public async Task<int> CreateProcessAsync(string commandLine, string? workingDirectory = null,
         Dictionary<string, string>? environmentVariables = null)
     {
         if (string.IsNullOrEmpty(commandLine))
@@ -46,7 +46,7 @@ public class SandboxService : ISandboxService, IDisposable
         {
             // Determine the shell to use based on platform
             var shellPath = OperatingSystem.IsWindows() ? "cmd.exe" : "/bin/sh";
-            var arguments = OperatingSystem.IsWindows() 
+            var arguments = OperatingSystem.IsWindows()
                 ? $"/C {commandLine}"  // Use /C for cmd.exe (execute command and exit)
                 : $"-c \"{commandLine}\"";  // Use -c for shell
 
@@ -80,7 +80,7 @@ public class SandboxService : ISandboxService, IDisposable
             }
 
             var process = Process.Start(startInfo);
-            
+
             if (process == null)
             {
                 _logger?.LogError("Failed to create sandboxed process");
@@ -229,7 +229,7 @@ public class SandboxService : ISandboxService, IDisposable
         {
             // Create a new job object for this sandboxed process group
             var jobHandle = CreateJobObject(IntPtr.Zero, null);
-            
+
             if (jobHandle == IntPtr.Zero)
                 return;
 
@@ -296,7 +296,7 @@ public class SandboxService : ISandboxService, IDisposable
         {
             // Get the list of child process IDs using EnumProcesses via ToolHelp32
             var childPids = new HashSet<int> { parent.Id };
-            
+
             await foreach (var pid in EnumChildProcessIds(parent.Id))
             {
                 childPids.Add(pid);
@@ -308,7 +308,7 @@ public class SandboxService : ISandboxService, IDisposable
                 try
                 {
                     using var proc = Process.GetProcessById(pid);
-                    
+
                     if (!proc.HasExited)
                     {
                         proc.Kill(true);  // Forceful kill on Windows
@@ -351,7 +351,7 @@ public class SandboxService : ISandboxService, IDisposable
                     if (entry.th32ParentProcessID == parentId)
                     {
                         yield return entry.th32ProcessID;
-                        
+
                         // Recursively enumerate grandchildren
                         await foreach (var childPid in EnumChildProcessIds(entry.th32ProcessID))
                             yield return childPid;

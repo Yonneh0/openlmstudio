@@ -28,8 +28,8 @@ public class TaskProgressTracker : ITaskProgressTracker, IDisposable
         return null;
     }
 
-    public TaskProgressStage Stage => HasError || IsIterationLimitExceeded ? TaskProgressStage.Failed : 
-        ProgressPercentage == 100 ? TaskProgressStage.Completed : 
+    public TaskProgressStage Stage => HasError || IsIterationLimitExceeded ? TaskProgressStage.Failed :
+        ProgressPercentage == 100 ? TaskProgressStage.Completed :
         GetActive() is { Completed: true } ? TaskProgressStage.Reviewing : TaskProgressStage.InProgress;
 
     public async Task UpdateStageAsync(TaskProgressStage newStage)

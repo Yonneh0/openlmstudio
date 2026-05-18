@@ -11,7 +11,7 @@ public class ToolRegistry : IToolRegistry, IDisposable
 {
     private readonly ConcurrentDictionary<string, ITool> _tools = new();
 
-    public IReadOnlyDictionary<string, ITool> GetTools() => 
+    public IReadOnlyDictionary<string, ITool> GetTools() =>
         _tools.ToDictionary(kv => kv.Key, kv => kv.Value);
 
     public void Register(ITool tool)
@@ -22,10 +22,10 @@ public class ToolRegistry : IToolRegistry, IDisposable
         _tools[tool.Name] = tool;
     }
 
-    public bool Unregister(string name) => 
+    public bool Unregister(string name) =>
         _tools.TryRemove(name, out _);
 
-    public ITool? GetTool(string name) => 
+    public ITool? GetTool(string name) =>
         _tools.TryGetValue(name, out var tool) ? tool : null;
 
     public void Dispose()

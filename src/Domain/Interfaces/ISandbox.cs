@@ -31,7 +31,7 @@ public interface ISandboxService : IDisposable
     /// Creates a new sandboxed process with the given policy constraints.
     /// Returns the process ID on success, -1 on failure.
     /// </summary>
-    Task<int> CreateProcessAsync(string commandLine, string? workingDirectory = null, 
+    Task<int> CreateProcessAsync(string commandLine, string? workingDirectory = null,
         Dictionary<string, string>? environmentVariables = null);
 
     /// <summary>

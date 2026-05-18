@@ -29,7 +29,7 @@ public static class OpenLmStudioActivitySource
     public static Activity? StartToolCallActivity(string toolName)
     {
         var activity = _instance.StartActivity(toolName, ActivityKind.Server);
-        
+
         if (activity != null)
         {
             activity.SetTag("tool.name", toolName);
@@ -46,7 +46,7 @@ public static class OpenLmStudioActivitySource
     public static Activity? StartContextCompressionActivity(string strategy)
     {
         var activity = _instance.StartActivity($"Compress-{strategy}", ActivityKind.Server);
-        
+
         if (activity != null)
         {
             activity.SetTag("openlmstudio.component", "context");
@@ -63,7 +63,7 @@ public static class OpenLmStudioActivitySource
     public static Activity? StartModelLifecycleActivity(string operation, string modelId, string modelType)
     {
         var activity = _instance.StartActivity($"Model-{operation}", ActivityKind.Server);
-        
+
         if (activity != null)
         {
             activity.SetTag("openlmstudio.component", "model");
@@ -81,7 +81,7 @@ public static class OpenLmStudioActivitySource
     public static Activity? StartSandboxActivity(string commandLine)
     {
         var activity = _instance.StartActivity("Sandbox-CreateProcess", ActivityKind.Server);
-        
+
         if (activity != null)
         {
             activity.SetTag("openlmstudio.component", "sandbox");
@@ -98,7 +98,7 @@ public static class OpenLmStudioActivitySource
     public static Activity? StartPluginSandboxActivity(string pluginId)
     {
         var activity = _instance.StartActivity("Plugin-Sandbox", ActivityKind.Server);
-        
+
         if (activity != null)
         {
             activity.SetTag("openlmstudio.component", "plugin");

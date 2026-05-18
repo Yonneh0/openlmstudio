@@ -311,48 +311,48 @@ public class PluginRegistry : Domain.Interfaces.IPluginRegistry
         }
     }
 
-     /// <inheritdoc />
-     public async Task<IEnumerable<Domain.Interfaces.PluginUpdateInfo>> GetAvailableUpdatesAsync()
-     {
-         if (_registryUrl == null || _httpClient == null)
-             throw new InvalidOperationException("No plugin registry configured.");
+    /// <inheritdoc />
+    public async Task<IEnumerable<Domain.Interfaces.PluginUpdateInfo>> GetAvailableUpdatesAsync()
+    {
+        if (_registryUrl == null || _httpClient == null)
+            throw new InvalidOperationException("No plugin registry configured.");
 
-         var result = new List<Domain.Interfaces.PluginUpdateInfo>();
+        var result = new List<Domain.Interfaces.PluginUpdateInfo>();
 
-         // Compare installed versions against registry for each local plugin
-         foreach (var installed in await ListInstalledPluginsAsync())
-         {
-             if (!installed.IsInstalled || installed.RegistryVersion == null) continue;
+        // Compare installed versions against registry for each local plugin
+        foreach (var installed in await ListInstalledPluginsAsync())
+        {
+            if (!installed.IsInstalled || installed.RegistryVersion == null) continue;
 
-             try
-             {
-                 // Fetch the latest version from the registry
-                 var url = $"{_registryUrl}/api/plugins/{Uri.EscapeDataString(installed.Id)}";
-                 var response = await _httpClient.GetAsync(url);
-                 if (!response.IsSuccessStatusCode) continue;
+            try
+            {
+                // Fetch the latest version from the registry
+                var url = $"{_registryUrl}/api/plugins/{Uri.EscapeDataString(installed.Id)}";
+                var response = await _httpClient.GetAsync(url);
+                if (!response.IsSuccessStatusCode) continue;
 
-                 var jsonContent = await response.Content.ReadAsStringAsync();
-                 var registryPlugin = System.Text.Json.JsonSerializer.Deserialize<Domain.Interfaces.PluginDefinition>(jsonContent);
+                var jsonContent = await response.Content.ReadAsStringAsync();
+                var registryPlugin = System.Text.Json.JsonSerializer.Deserialize<Domain.Interfaces.PluginDefinition>(jsonContent);
 
-                 // FIX: Compare against RegistryVersion (not Version), since installed.Version is the local version
-                 if (registryPlugin != null && registryPlugin.RegistryVersion > installed.RegistryVersion)
-                 {
-                     result.Add(new Domain.Interfaces.PluginUpdateInfo(
-                         installed.Id,
-                         installed.Version,
-                         registryPlugin.RegistryVersion,
-                         false  // Could check changelog for security keywords in real implementation
-                     ));
-                 }
-             }
-             catch (Exception ex)
-             {
-                 _logger?.LogDebug("Error checking update for plugin '{PluginId}': {Message}", installed.Id, ex.Message);
-             }
-         }
+                // FIX: Compare against RegistryVersion (not Version), since installed.Version is the local version
+                if (registryPlugin != null && registryPlugin.RegistryVersion > installed.RegistryVersion)
+                {
+                    result.Add(new Domain.Interfaces.PluginUpdateInfo(
+                        installed.Id,
+                        installed.Version,
+                        registryPlugin.RegistryVersion,
+                        false  // Could check changelog for security keywords in real implementation
+                    ));
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger?.LogDebug("Error checking update for plugin '{PluginId}': {Message}", installed.Id, ex.Message);
+            }
+        }
 
-         return result;
-     }
+        return result;
+    }
 
     /// <summary>
     /// Loads the manifest.json file from a plugin directory.
@@ -364,48 +364,48 @@ public class PluginRegistry : Domain.Interfaces.IPluginRegistry
             ?? new PluginManifestData();
     }
 
-     /// <summary>
-     /// Creates an HttpClient for plugin registry communication.
-     /// </summary>
-     private static HttpClient CreateHttpClient()
-     {
-         var client = new HttpClient();
-         client.Timeout = TimeSpan.FromMinutes(5); // Allow long downloads for large plugins
-         return client;
-     }
+    /// <summary>
+    /// Creates an HttpClient for plugin registry communication.
+    /// </summary>
+    private static HttpClient CreateHttpClient()
+    {
+        var client = new HttpClient();
+        client.Timeout = TimeSpan.FromMinutes(5); // Allow long downloads for large plugins
+        return client;
+    }
 
-     /// <summary>
-     /// Temporary manifest data structure — replaced by SQLite-backed settings store.
-     /// </summary>
-     private class PluginManifestData
-     {
-         public string? Id { get; set; }
-         public string? Name { get; set; }
-         public string? Description { get; set; }
-         public Version? Version { get; set; }
-         public bool? IsEnabled { get; set; }
-         public List<string>? Tags { get; set; } = new();
-         public string? Author { get; set; }
-     }
+    /// <summary>
+    /// Temporary manifest data structure — replaced by SQLite-backed settings store.
+    /// </summary>
+    private class PluginManifestData
+    {
+        public string? Id { get; set; }
+        public string? Name { get; set; }
+        public string? Description { get; set; }
+        public Version? Version { get; set; }
+        public bool? IsEnabled { get; set; }
+        public List<string>? Tags { get; set; } = new();
+        public string? Author { get; set; }
+    }
 
-     /// <summary>
-     /// Custom attribute for marking assembly-level plugin manifests in DLL-based plugins.
-     /// </summary>
-     [AttributeUsage(AttributeTargets.Assembly)]
-     private class AssemblyPluginManifestAttribute : Attribute
-     {
-         public AssemblyPluginManifestAttribute(string id, string name)
-         {
-             Id = id;
-             Name = name;
-         }
+    /// <summary>
+    /// Custom attribute for marking assembly-level plugin manifests in DLL-based plugins.
+    /// </summary>
+    [AttributeUsage(AttributeTargets.Assembly)]
+    private class AssemblyPluginManifestAttribute : Attribute
+    {
+        public AssemblyPluginManifestAttribute(string id, string name)
+        {
+            Id = id;
+            Name = name;
+        }
 
-         public string Id { get; }
-         public string Name { get; }
-         public string? Description { get; set; }
-         public Version? Version { get; set; }
-         public bool? IsEnabled { get; set; }
-         public List<string>? Tags { get; set; } = new();
-         public string? Author { get; set; }
-     }
- }
+        public string Id { get; }
+        public string Name { get; }
+        public string? Description { get; set; }
+        public Version? Version { get; set; }
+        public bool? IsEnabled { get; set; }
+        public List<string>? Tags { get; set; } = new();
+        public string? Author { get; set; }
+    }
+}
