@@ -1,0 +1,62 @@
+# Build results
+[Dd]ebug/
+[Dd]ebugPublic/
+[Rr]elease/
+[Rr]eleases/
+x64/
+x86/
+build/
+bld/
+[Bb]in/
+[Oo]bj/
+
+# Visual Studio cache/options
+.vs/
+.vscode/
+*.suo
+*.user
+*.userosscache
+*.sln.docstates
+
+# NuGet Packages
+*.nupkg
+packages/
+*.nuget.props
+*.nuget.targets
+
+# .NET Core/5+ build results
+[Dd]ebug*/
+[Rr]elease*/
+x[64|32]/
+[Oo]utput/
+[Ll]ogs/
+
+# Visual Studio 2015 cache/options directory
+.vs/
+
+# MSTest test results
+[Tt]est[Rr]esult*/
+[Bb]uild[Ll]og*
+
+# Backup & report files from misbehaving .NET projects
+*.backup
+*.bak
+*.bkf
+*.orig
+*.tmp
+
+# User-specific files
+*.rsuser
+*.pidb
+*.booproj
+*.suo
+.user
+.userosscache
+
+# Rider IDE
+.idea/
+*.sln.iml
+
+# Mac OS files
+.DS_Store
+*.DS_Store*
