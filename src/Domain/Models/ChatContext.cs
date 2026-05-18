@@ -37,7 +37,7 @@ public class ContextSegment : IDisposable
         };
 
     /// <summary>Creates an empty segment with the given ID and relevance score (used by budget system).</summary>
-    internal static ContextSegment CreateEmptyWithRelevance(Guid id) =>
+    public static ContextSegment CreateEmptyWithRelevance(Guid id) =>
         new() { Id = id, RelevanceScore = 0f };
 
     /// <summary>Standardized token counting: ~1 token per 4 characters for English.</summary>

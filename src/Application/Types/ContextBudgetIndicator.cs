@@ -1,8 +1,19 @@
-// Phase 5.5: UI-facing budget indicator for context window capacity display
+// Phase 5.5: DTOs and types for context window budget management
 
 using OpenLMStudio.Domain.Models;
 
 namespace OpenLMStudio.Application.Types;
+
+/// <summary>
+/// DTO returned by GetOrCreateBudgetAsync — contains only public state needed by callers.</summary>
+public class ChatBudgetStateDto
+{
+    /// <summary>Total maximum tokens allowed for this chat's context window.</summary>
+    public long MaximumTokens { get; set; }
+
+    /// <summary>Tokens remaining before budget is exceeded.</summary>
+    public long RemainingTokens { get; set; }
+}
 
 /// <summary>
 /// Visual budget indicator sent to the UI showing how much of the context token budget is used.</summary>

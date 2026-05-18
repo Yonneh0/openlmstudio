@@ -27,10 +27,20 @@ public class ContextWindowBudgeter : IContextWindowBudgeter, IDisposable
     /// <inheritdoc />
     public async Task<ChatBudgetStateDto> GetOrCreateBudgetAsync(Guid chatId, int maxTokens = 8192)
     {
-        var budget = await _budgetStates.AddOrUpdateAsync(
-            chatId,
-            createValue: (id) => ChatBudgetState.CreateDefault((Guid)id, maxTokens),
-            updateValueFactory: (id, state) => CreateOrExpandBudget((Guid)id, maxTokens, state));
+        if (!_budgetStates.TryGetValue(chatId, out var budget))
+        {
+            lock (_budgetStates)
+            {
+                // Double-check after acquiring lock
+                _budgetStates.TryGetValue(chatId, out budget);
+            }
+
+            if (budget == null)
+            {
+                budget = ChatBudgetState.CreateDefault(chatId, maxTokens);
+                _budgetStates[chatId] = budget;
+            }
+        }
 
         return new ChatBudgetStateDto { MaximumTokens = budget.MaximumTokens, RemainingTokens = budget.RemainingTokens };
     }
@@ -102,17 +112,22 @@ public class ContextWindowBudgeter : IContextWindowBudgeter, IDisposable
     }
 
     /// <inheritdoc />
-    public async Task SetBudgetForChatAsync(Guid chatId, int maxTokens)
+    public Task SetBudgetForChatAsync(Guid chatId, int maxTokens)
     {
         if (maxTokens <= 0)
             throw new ArgumentException("Max tokens must be positive.", nameof(maxTokens));
 
-        await _budgetStates.AddOrUpdateAsync(
-            chatId,
-            createValue: (id) => ChatBudgetState.CreateDefault((Guid)id, maxTokens),
-            updateValueFactory: (id, state) => CreateOrExpandBudget((Guid)id, maxTokens, state));
+        var newBudget = ChatBudgetState.CreateDefault(chatId, maxTokens);
+        
+        // Try to update first; if it doesn't exist, add it with the default
+        if (!_budgetStates.TryGetValue(chatId, out _))
+            _budgetStates.TryAdd(chatId, newBudget);
+        else
+            _budgetStates[chatId] = CreateOrExpandBudget(chatId, maxTokens, _budgetStates[chatId]);
 
         _logger?.LogDebug("Set budget for chat {ChatId}: maxTokens={MaxTokens}", chatId, maxTokens);
+        
+        return Task.CompletedTask;
     }
 
     /// <inheritdoc />
@@ -198,10 +213,19 @@ public class ContextWindowBudgeter : IContextWindowBudgeter, IDisposable
 
     private async Task<ChatBudgetState> GetOrCreateBudgetInternalAsync(Guid chatId)
     {
-        var budget = await _budgetStates.AddOrUpdateAsync(
-            chatId,
-            createValue: (id) => ChatBudgetState.CreateDefault((Guid)id, 8192),
-            updateValueFactory: (id, state) => state); // Use existing if present
+        if (!_budgetStates.TryGetValue(chatId, out var budget))
+        {
+            lock (_budgetStates)
+            {
+                _budgetStates.TryGetValue(chatId, out budget);
+            }
+
+            if (budget == null)
+            {
+                budget = ChatBudgetState.CreateDefault(chatId, 8192);
+                _budgetStates[chatId] = budget;
+            }
+        }
 
         return budget;
     }
@@ -217,7 +241,7 @@ internal class ChatBudgetState : IDisposable
     public Dictionary<ContextInjectionType, long> BudgetAllocation { get; set; } = new();
     public CompressionLevel CompressionStrategy { get; set; } = CompressionLevel.None;
 
-    // Segment tracking for eviction
+    // Segment tracking for eviction (relevance score per segment ID)
     private readonly ConcurrentDictionary<Guid, float> _segmentRelevanceScores = new();
     private readonly ConcurrentBag<(Guid SegmentId, long TokenCount)> _evictionCandidates = new();
 
@@ -261,12 +285,7 @@ internal class ChatBudgetState : IDisposable
 
     internal async Task SetSegmentRelevanceAsync(Guid segmentId, float score)
     {
-        await _segmentRelevanceScores.AddOrUpdateAsync(
-            segmentId,
-            createValue: (id) => 0f,
-            updateValueFactory: (id, oldScore) => score);
-
-        // Note: Relevance score stored separately since ConcurrentDictionary doesn't support value mutation directly
+        _segmentRelevanceScores[segmentId] = score;
     }
 
     internal bool IsAllSegmentsPinned()
@@ -285,11 +304,4 @@ internal class ChatBudgetState : IDisposable
         _segmentRelevanceScores.Clear();
         _evictionCandidates.Clear();
     }
-}
-
-/// <summary>DTO for budget state returned to callers.</summary>
-internal class ChatBudgetStateDto
-{
-    public long MaximumTokens { get; set; }
-    public long RemainingTokens { get; set; }
 }
