@@ -1,6 +1,7 @@
 // Avalonia Window code-behind — converts WPF-specific types to Avalonia equivalents
 
 using System;
+using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
@@ -548,8 +549,9 @@ public partial class MainWindow : Window
                     FontSize = 10,
                     BorderThickness = new Thickness(0)
                 };
-                // Track pin state in Tag (true=pinned, false=unpinned)
-                pinBtn.Tag = true;
+                // Store message ID on button Tag so event handler can look it up — 
+                // unlike WPF where Button.Tag is directly accessible in Avalonia.
+                pinBtn.Tag = message.Id;
                 pinBtn.Click += OnMessagePinClicked;
                 controlPanel.Children.Add(pinBtn);
 
@@ -562,8 +564,9 @@ public partial class MainWindow : Window
                     FontSize = 10,
                     BorderThickness = new Thickness(0)
                 };
-                // Track suppress state in Tag (true=suppressed, false=revealed)
-                suppressBtn.Tag = false;
+                // Store message ID on button Tag so event handler can look it up — 
+                // unlike WPF where Button.Tag is directly accessible in Avalonia.
+                suppressBtn.Tag = message.Id;
                 suppressBtn.Click += OnMessageSuppressClicked;
                 controlPanel.Children.Add(suppressBtn);
 
@@ -583,50 +586,116 @@ public partial class MainWindow : Window
     }
 
     // Dictionary to track custom context segments → Border for removal (avoids visual tree traversal in Avalonia)
-    private readonly Dictionary<Guid, Border> _customContextBorders = new();
+    private readonly ConcurrentDictionary<Guid, Border> _customContextBorders = new();
+
+    /// <summary>Tracks per-message pin/suppress toggle state. Key = message Id, value = pinned state.</summary>
+    private readonly ConcurrentDictionary<Guid, bool> _messagePinStates = new();
+
+    /// <summary>Tracks per-message suppress/reveal toggle state. Key = message Id, value = suppressed state.</summary>
+    private readonly ConcurrentDictionary<Guid, bool> _messageSuppressStates = new();
 
     // ---- Per-Message Context Control Event Handlers ----
 
+    /// <summary>
+    /// Toggles pin for the specified message segment via IChatContextManager.
+    /// Button Tag holds the Message.Id so we can look it up from within the event handler.
+    /// </summary>
     private async void OnMessagePinClicked(object? sender, RoutedEventArgs e)
     {
         if (_contextManager == null || _selectedChatId == null) return;
 
         var button = (Button)sender!;
-        var isPinned = (bool)(button.Tag ?? false);
+
+        // Get message ID from Tag — set when the button is created in CreateMessageBorder()
+        var messageIdObj = button.Tag as Guid?;
+        if (!messageIdObj.HasValue)
+        {
+            _logger?.LogWarning("OnMessagePinClicked: Tag not set on pin button — cannot determine message Id.");
+            return;
+        }
+
+        var messageId = messageIdObj.Value;
+        var isPinned = _messagePinStates.GetOrAdd(messageId, static key => false);
         var newPinnedState = !isPinned;
 
-        // NOTE: Avalonia Border doesn't expose the same Tag property semantics as WPF.
-        // Per-message pin/suppress requires a persistent message ID lookup mechanism — 
-        // this is deferred to Phase 7 when we implement proper context segment tracking.
-        _logger?.LogDebug("Pin/unpin not yet implemented (requires Border.Tag workaround)");
-
-        // Update button state and styling regardless
+        // Update UI state regardless of whether the context manager call succeeds
         button.Tag = newPinnedState;
         if (newPinnedState)
             button.Classes.Add("pinned");
         else
             button.Classes.Remove("pinned");
+
+        // Persist the pin state to the context manager (may fail silently — UI already updated)
+        try
+        {
+            if (newPinnedState)
+                await _contextManager.PinSegmentAsync(_selectedChatId.Value, messageId);
+            else
+                await _contextManager.UnpinSegmentAsync(_selectedChatId.Value, messageId);
+
+            // Update our local tracking dictionary after successful persistence
+            _messagePinStates[messageId] = newPinnedState;
+        }
+        catch (Exception ex)
+        {
+            _logger?.LogError(ex, "Failed to pin/unpin segment for message {MessageId}", messageId);
+            // Revert UI on failure — revert the button state and remove pinned class
+            if (!newPinnedState)
+                button.Classes.Add("pinned");
+            else
+                button.Classes.Remove("pinned");
+        }
     }
 
+    /// <summary>
+    /// Toggles suppress/reveal for the specified message segment via IChatContextManager.
+    /// Button Tag holds the Message.Id so we can look it up from within the event handler.
+    /// </summary>
     private async void OnMessageSuppressClicked(object? sender, RoutedEventArgs e)
     {
         if (_contextManager == null || _selectedChatId == null) return;
 
         var button = (Button)sender!;
-        var isSuppressed = (bool)(button.Tag ?? false);
+
+        // Get message ID from Tag — set when the button is created in CreateMessageBorder()
+        var messageIdObj = button.Tag as Guid?;
+        if (!messageIdObj.HasValue)
+        {
+            _logger?.LogWarning("OnMessageSuppressClicked: Tag not set on suppress button — cannot determine message Id.");
+            return;
+        }
+
+        var messageId = messageIdObj.Value;
+        var isSuppressed = _messageSuppressStates.GetOrAdd(messageId, static key => false);
         var newSuppressState = !isSuppressed;
 
-        // NOTE: Avalonia Border doesn't expose the same Tag property semantics as WPF.
-        // Per-message suppress/reveal requires a persistent message ID lookup mechanism — 
-        // this is deferred to Phase 7 when we implement proper context segment tracking.
-        _logger?.LogDebug("Suppress/reveal not yet implemented (requires Border.Tag workaround)");
-
-        // Update button state and styling regardless
+        // Update UI state regardless of whether the context manager call succeeds
         button.Tag = newSuppressState;
         if (newSuppressState)
             button.Classes.Add("suppressed");
         else
             button.Classes.Remove("suppressed");
+
+        // Persist the suppress state to the context manager (may fail silently — UI already updated)
+        try
+        {
+            if (newSuppressState)
+                await _contextManager.SuppressSegmentAsync(_selectedChatId.Value, messageId);
+            else
+                await _contextManager.RevealSegmentAsync(_selectedChatId.Value, messageId);
+
+            // Update our local tracking dictionary after successful persistence
+            _messageSuppressStates[messageId] = newSuppressState;
+        }
+        catch (Exception ex)
+        {
+            _logger?.LogError(ex, "Failed to suppress/reveal segment for message {MessageId}", messageId);
+            // Revert UI on failure — revert the button state and remove suppressed class
+            if (!newSuppressState)
+                button.Classes.Add("suppressed");
+            else
+                button.Classes.Remove("suppressed");
+        }
     }
 
     // ---- Server Start/Stop Controls ----
