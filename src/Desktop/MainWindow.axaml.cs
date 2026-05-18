@@ -144,6 +144,10 @@ public partial class MainWindow : Window
         // Settings button
         if (SettingsButton != null)
             SettingsButton.Click += OnSettingsClicked;
+
+        // Refresh devices button
+        if (RightRefreshDevicesBtn != null)
+            RightRefreshDevicesBtn.Click += OnRefreshDevicesClicked;
     }
 
     // ---- Tab Navigation ----
@@ -717,6 +721,14 @@ public partial class MainWindow : Window
         {
             Dispatcher.UIThread.Invoke(() => ShowError($"Server error: {e.Message}"));
         }
+    }
+
+    /// <summary>
+    /// Async version of device status update for use from async event handlers.
+    /// </summary>
+    private async Task UpdateDeviceStatusAsync()
+    {
+        await Dispatcher.UIThread.InvokeAsync(() => UpdateDeviceStatus());
     }
 
     // ---- Device Status Update ----
@@ -1639,9 +1651,101 @@ public partial class MainWindow : Window
 
     // ---- Image Generation Event Handlers ----
 
-    private void OnImageGenModelSelectorSelectionChanged(object? sender, SelectionChangedEventArgs e)
+    /// <summary>
+    /// Handler for the Image Generation model selector — discovers available diffusion/VAE models from the repository.
+    /// </summary>
+    private async void OnImageGenModelSelectorSelectionChanged(object? sender, SelectionChangedEventArgs e)
     {
-        // TODO: Implement actual image generation model selection logic
+        if (_modelRepository == null || _selectedChatId == null) return;
+
+        try
+        {
+            // Use SearchMultiModalModelsAsync to get image generation / diffusion / VAE models
+            var relevantModels = await _modelRepository.SearchMultiModalModelsAsync(
+                modelTypeFilter: Domain.Models.ModelType.ImageGeneration);
+            
+            // Also include Diffusion and VAE types — we need both in the dropdown
+            var allMultiModalModels = (await _modelRepository.ListMultiModalModelsAsync()).ToList();
+            var imageGenModels = relevantModels.ToList().Concat(
+                allMultiModalModels.Where(m => 
+                    new[] { Domain.Models.ModelType.Diffusion, Domain.Models.ModelType.Vae }.Contains(m.ModelType))
+            ).DistinctBy(m => m.Id).ToList();
+
+            // Populate the dropdown with available models
+            if (ImageGenModelSelector != null)
+            {
+                ImageGenModelSelector.Items.Clear();
+                
+                foreach (var model in imageGenModels)
+                {
+                    var sizeStr = model.FileSizeBytes > 0 
+                        ? $"{model.FileSizeBytes / 1_048_576:F0} MB" 
+                        : "N/A";
+                    
+                    var item = new TextBlock 
+                    { 
+                        Text = $"{model.Name} ({sizeStr})",
+                        Foreground = new SolidColorBrush(Color.FromRgb(204, 204, 204)),
+                        Padding = new Thickness(8)
+                    };
+                    
+                    // Store the model metadata for later lookup on selection
+                    item.Tag = model;
+                    ImageGenModelSelector.Items.Add(item);
+                }
+
+                if (imageGenModels.Any())
+                {
+                    // Auto-select the first model and update resolution based on its default resolution
+                    var firstItem = ImageGenModelSelector.Items[0] as ContentControl;
+                    MultiModalModelMetadata? selectedModel = null;
+
+                    if (firstItem != null && firstItem.Content is TextBlock txt)
+                        selectedModel = txt.Tag as MultiModalModelMetadata;
+
+                    ImageGenModelSelector.SelectedIndex = 0;
+
+                    // Update resolution selector based on selected model's default resolution
+                    if (selectedModel?.DefaultResolution != null && selectedModel.DefaultResolution > 0)
+                    {
+                        UpdateDefaultResolution(selectedModel.DefaultResolution.Value);
+                    }
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger?.LogError(ex, "Failed to discover image generation models");
+        }
+    }
+
+    /// <summary>
+    /// Updates the resolution dropdown based on a model's default resolution.
+    /// </summary>
+    private void UpdateDefaultResolution(int defaultRes)
+    {
+        if (ImageGenResolutionSelector == null || defaultRes <= 0) return;
+
+        // Find existing item that matches and select it, or keep current selection
+        foreach (var item in ImageGenResolutionSelector.Items.OfType<ContentControl>())
+        {
+            if (item.Content is TextBlock tb && tb.Text?.Contains($"{defaultRes}") == true)
+            {
+                ImageGenResolutionSelector.SelectedItem = item;
+                return;
+            }
+        }
+
+        // If no matching item found, add the default resolution to the list
+        var newItem = new TextBlock 
+        { 
+            Text = $"{defaultRes}x{defaultRes}",
+            Foreground = new SolidColorBrush(Color.FromRgb(204, 204, 204)),
+            Padding = new Thickness(8)
+        };
+
+        ImageGenResolutionSelector.Items.Add(newItem);
+        ImageGenResolutionSelector.SelectedIndex = ImageGenResolutionSelector.Items.Count - 1;
     }
 
     /// <summary>
@@ -1655,6 +1759,14 @@ public partial class MainWindow : Window
     }
 
     // ---- Settings Window ----
+
+    /// <summary>
+    /// Handler for the refresh devices button — re-reads device state from hardware.
+    /// </summary>
+    private async void OnRefreshDevicesClicked(object? sender, RoutedEventArgs e)
+    {
+        _ = UpdateDeviceStatusAsync();
+    }
 
     private void OnSettingsClicked(object? sender, RoutedEventArgs e)
     {

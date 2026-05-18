@@ -967,38 +967,80 @@
 
                 <!-- Devices tab content (hidden by default) -->
                 <StackPanel x:Name="RightDevicesContent" DockPanel.Dock="Top" IsVisible="False">
-                    <Border Background="{StaticResource BgSecondary}" CornerRadius="4" Margin="0,0,0,0">
+                    <!-- GPU info section -->
+                    <Border Background="{StaticResource BgSecondary}" CornerRadius="4" Margin="0,0,0,12">
                         <StackPanel>
-                            <TextBlock Text="GPU: None Detected" 
-                                       Foreground="{StaticResource TextPrimary}" Padding="12,8"/>
-                            <TextBlock x:Name="CpuCoreRightText" Text="CPU Cores: 8" Padding="12,4"/>
-                            <TextBlock x:Name="RamInfoRightText" Text="RAM: 32 GB Available" Padding="12,4"/>
+                            <TextBlock Text="GPU Information:" FontWeight="SemiBold" Foreground="#4FC3F7" Padding="12,8"/>
+                            <!-- GPU device list (placeholder for future dynamic population) -->
+                            <Border x:Name="RightGpuDevicesList" Background="{StaticResource BgTertiary}" Margin="8,0,8,8" CornerRadius="4">
+                                <TextBlock Text="No GPUs detected" 
+                                           Foreground="{StaticResource TextMuted}"
+                                           Padding="12,8"
+                                           FontSize="12"/>
+                            </Border>
+                            
+                            <!-- CPU info -->
+                            <DockPanel Margin="8,4">
+                                <TextBlock Text="CPU Cores:" Width="70" Foreground="{StaticResource TextSecondary}"/>
+                                <TextBlock x:Name="CpuCoreRightText" Text="Detecting..." Foreground="{StaticResource TextPrimary}" DockPanel.Dock="Right"/>
+                            </DockPanel>
+                            
+                            <!-- Memory info -->
+                            <DockPanel Margin="8,4">
+                                <TextBlock Text="RAM:" Width="70" Foreground="{StaticResource TextSecondary}"/>
+                                <TextBlock x:Name="RamInfoRightText" Text="Detecting..." Foreground="{StaticResource TextPrimary}" DockPanel.Dock="Right"/>
+                            </DockPanel>
                         </StackPanel>
                     </Border>
 
                     <!-- Model info section -->
-                    <TextBlock Text="Model" 
-                               FontSize="14" FontWeight="SemiBold"
-                               Foreground="#4FC3F7"
-                               Margin="0,16,0,0"/>
-
-                    <Border Background="{StaticResource BgSecondary}" Margin="0,8,0,0">
+                    <Border Background="{StaticResource BgSecondary}" CornerRadius="4" Margin="0,0,0,12">
                         <StackPanel>
-                            <TextBlock x:Name="LoadedModelRightText2" Text="Loaded Model: None" 
-                                       Foreground="{StaticResource TextPrimary}" Padding="12,8"/>
-                            <TextBlock x:Name="ContextLengthRightText2" Text="Context: 4096 tokens" Padding="12,4"/>
+                            <TextBlock Text="Model" 
+                                       FontSize="14" FontWeight="SemiBold"
+                                       Foreground="#4FC3F7"
+                                       Padding="12,8"/>
+                            
+                            <!-- Loaded model info -->
+                            <DockPanel Margin="8,4">
+                                <TextBlock Text="Loaded Model:" Width="90" Foreground="{StaticResource TextSecondary}"/>
+                                <TextBlock x:Name="LoadedModelRightText2" Text="None" 
+                                           Foreground="{StaticResource TextPrimary}" DockPanel.Dock="Right"/>
+                            </DockPanel>
+                            
+                            <!-- Context length -->
+                            <DockPanel Margin="8,4">
+                                <TextBlock Text="Context:" Width="90" Foreground="{StaticResource TextSecondary}"/>
+                                <TextBlock x:Name="ContextLengthRightText2" Text="N/A" 
+                                           Foreground="{StaticResource TextPrimary}" DockPanel.Dock="Right"/>
+                            </DockPanel>
+                            
+                            <!-- Offloading info -->
+                            <DockPanel Margin="8,4">
+                                <TextBlock Text="Offload:" Width="90" Foreground="{StaticResource TextSecondary}"/>
+                                <TextBlock x:Name="OffloadRightText" Text="N/A" 
+                                           Foreground="{StaticResource TextPrimary}" DockPanel.Dock="Right"/>
+                            </DockPanel>
                         </StackPanel>
                     </Border>
 
-                    <!-- Load model button -->
-                    <Button x:Name="LoadModelButton"
+                    <!-- Load model button (right Devices tab) -->
+                    <Button x:Name="RightLoadModelButton"
                             Content="Load Model" 
                             Background="#0E639C"
                             Foreground="White"
                             Padding="8,4"
-                            Margin="0,8,0,0"
-                            HorizontalAlignment="Stretch"
-                            Height="36"/>
+                            Margin="0,0,0,12"
+                            HorizontalAlignment="Stretch"/>
+
+                    <!-- Refresh devices button -->
+                    <Button x:Name="RightRefreshDevicesBtn"
+                            Content="Refresh Devices" 
+                            Background="#37474F"
+                            Foreground="White"
+                            Padding="8,4"
+                            Margin="0,0,0,12"
+                            HorizontalAlignment="Stretch"/>
                 </StackPanel>
             </DockPanel>
         </Panel>
