@@ -6,6 +6,25 @@ using OpenLMStudio.Domain.Models;
 namespace OpenLMStudio.Application.Interfaces;
 
 /// <summary>
+/// Defines the sampling algorithm used for diffusion image generation.
+/// Each sampler has different noise scheduling and convergence properties.
+/// </summary>
+public enum ImageSamplerType
+{
+    /// <summary>Euler — standard first-order ODE solver with linear timestep schedule.</summary>
+    Euler,
+
+    /// <summary>Euler a (ancestral) — adds noise between steps for smoother results.</summary>
+    EulerA,
+
+    /// <summary>DPM++ (multi-step) — higher-accuracy multi-step denoising with improved convergence.</summary>
+    DPMS,
+
+    /// <summary>LMS (linear multistep) — fixed sigma schedule for stable denoising.</summary>
+    LMS,
+}
+
+/// <summary>
 /// Represents a request to generate an image using a diffusion model.
 /// </summary>
 public record ImageGenerationRequest(
@@ -18,7 +37,8 @@ public record ImageGenerationRequest(
     int Steps = 30,
     long Seed = -1,
     List<LoraAdapterReference>? LoraAdapters = null,
-    bool StreamProgress = false)
+    bool StreamProgress = false,
+    ImageSamplerType SamplerType = ImageSamplerType.Euler)
 {
     public long EffectiveSeed => Seed == -1 ? (long)(DateTimeOffset.UtcNow.ToUnixTimeMilliseconds() % int.MaxValue) : Seed;
 }

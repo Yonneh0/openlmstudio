@@ -246,17 +246,17 @@ public partial class App : Avalonia.Application
             System.Diagnostics.Debug.WriteLine($"Error showing error: {ex.Message}");
             Console.Error.WriteLine($"OpenLMStudio Error (double-fail): {message}\n\nOriginal error:\n{ex.Message}");
 
-                // Write to a file for later diagnosis
-                try
-                {
-                    var errorLogDir = Path.Combine(
-                        Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
-                        "OpenLMStudio",
-                        "logs");
-                    if (!string.IsNullOrEmpty(Path.GetDirectoryName(errorLogDir)))
-                        Directory.CreateDirectory(errorLogDir);
+            // Write to a file for later diagnosis
+            try
+            {
+                var errorLogDir = Path.Combine(
+                    Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
+                    "OpenLMStudio",
+                    "logs");
+                if (!string.IsNullOrEmpty(Path.GetDirectoryName(errorLogDir)))
+                    Directory.CreateDirectory(errorLogDir);
 
-                    var errorLogPath = Path.Combine(errorLogDir, $"startup-double-fail-{DateTime.Now:yyyyMMdd-HHmmss}.log");
+                var errorLogPath = Path.Combine(errorLogDir, $"startup-double-fail-{DateTime.Now:yyyyMMdd-HHmmss}.log");
                 File.WriteAllText(errorLogPath, $"Startup Error (double fail)\n{message}\n\nOriginal error:\n{ex.Message}");
             }
             catch { /* Ignore */ }
