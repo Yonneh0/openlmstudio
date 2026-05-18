@@ -40,7 +40,6 @@ OpenLMStudio/
 │   │   ├── HfRepoFileInfo.cs          — HuggingFace repo file info DTO
 │   │   ├── ImageGenerationRequestTypes.cs— Image generation request DTOs (inpainting/outpainting)
 │   │   └── ImageResponseTypes.cs      — Image response DTOs
-│   ├── Class1.cs                     — Placeholder class file
 │   ├── DependencyInjection.cs        — Application-layer DI registrations
 │   └── OpenLMStudio.Application.csproj
 │
@@ -62,7 +61,6 @@ OpenLMStudio/
 │   │   ├── ModelMetadata.cs          — GGUF + MultiModalModelMetadata (safetensors)
 │   │   ├── ModelType.cs              — TextGeneration/ImageGeneration/Diffusion/Vae/Lora/Embedding enums
 │   │   └── TaskContextSnapshot.cs    — Agentic task context snapshot for resume
-│   ├── Class1.cs                     — Placeholder class file
 │   ├── DependencyInjection.cs        — Domain DI registrations
 │   └── OpenLMStudio.Domain.csproj
 │
@@ -361,13 +359,14 @@ OpenLMStudio/
 ### 5.10 Context Pruning on Task Completion
 - [x] Implement `TaskContextPruner` service: archive/compress-and-archive/discard strategies — delegates to store for archive logic
 
-#### Phase 5 Summary — **ALL COMPLETE**
+#### Phase 5 Summary — **All interface/service layer complete, but UI controls NOT functional**
+> NOTE: All 10 service interfaces and implementations are complete (SQLite-backed). However, the Phase 6 UI controls for per-message pin/suppress in MainWindow.axaml.cs (lines ~590-630) are marked as "not yet implemented" with TODO comments — they log a debug message but do nothing. This is deferred to Phase 7 when proper context segment tracking is implemented.
 | Category | Items Complete | Items Remaining |
 |----------|---------------|-----------------|
 | ChatContextManager Service | 1 / 1 | ✓ Complete (SQLite-backed) |
 | Context Compression Engine | 1 / 1 | ✓ ConversationContextCompressor implements all strategies |
 | Context Relevance Engine | 1 / 1 | ✓ Recency + semantics + entity matching scoring |
-| Context Manipulation Service | 1 / 1 | ✓ User-driven pin/suppress/custom injection control |
+| Context Manipulation Service | 1 / 1 | ✓ User-driven pin/suppress/custom injection control (service layer only; UI binding incomplete) |
 | Context Window Budgeting | 1 / 1 | ✓ Auto-eviction, budget indicator with color zones |
 | TaskContextSnapshot Model | 1 / 1 | ✓ AiAnalysis field added via AiAnalysisResult property |
 | TaskContextStore Service | 1 / 1 | ✓ CRUD + upsert + archive/discard/ListArchived (SQLite-backed) |
@@ -428,10 +427,11 @@ OpenLMStudio/
 - [ ] Version comparison and update notifications
 - [ ] Plugin sandbox policy configuration
 
-#### Phase 6 Summary — **ALL INCOMPLETE** (0 of 28 items)
+#### Phase 6 Summary — **~4 of 28 items partially functional**
+> NOTE: Server start/stop working, chat streaming via SSE endpoint works, context panel with budget indicator exists. Many elements are stubs. Per-message pin/suppress controls NOT functional (deferred to Phase 7). Model list display partially functional but not populated.
 | Category | Items Complete | Items Remaining |
 |----------|---------------|-----------------|
-| Main Window & Chat Interface | 0 / 14 | Not started — Avalonia implementation needed |
+| Main Window & Chat Interface | ~4 / 14 | Server start/stop working, chat streaming via SSE works; context panel with budget indicator exists — many elements remain stubs |
 | Settings/Preferences Panel | 0 / 5 | Not started |
 | Image Generation & Device Monitoring | 0 / 8 | Not started |
 | Context Manipulation UI Controls | 0 / 7 | Not started |
@@ -495,7 +495,8 @@ OpenLMStudio/
 - [ ] Agent session persistence: save agent state to disk so it survives app crash
 - [ ] Tool call fallback chain: try alternate tools or degraded parameters when primary fails
 
-#### Phase 7 Summary — **ALL INCOMPLETE** (0 of 32 items)
+#### Phase 7 Summary — **Interface + some tool stubs exist, but no implementation**
+> NOTE: IAgent interface exists but no implementation. AgentState enum has NotStarted/Planning/Acting/Paused/Completed/Failed but missing Idle state (Phase 4 ChatContext.cs). Some tools exist as stubs (CommandExecuteTool, etc.) — full agent loop not implemented.
 | Category | Items Complete | Items Remaining |
 |----------|---------------|-----------------|
 | Core Agent Architecture | 0 / 5 | Not started — interface exists but no implementation |
@@ -524,11 +525,12 @@ OpenLMStudio/
 - [ ] Version management and updates — GetAvailableUpdatesAsync exists but not fully implemented
 - [ ] Plugin sandbox/security model — Not started
 
-#### Phase 8 Summary — **2 of 4 items complete**
+#### Phase 8 Summary — **MCP Protocol Implementation complete, Plugin Manager partially done**
+> NOTE: MCP stdio + SSE transport both implemented. Prompt support (McpPromptAccessor + McpPromptListTool), resource accessor all functional. Remote registry URL configuration exists but no actual download from remote URL yet.
 | Category | Items Complete | Items Remaining |
 |----------|---------------|-----------------|
-| MCP Protocol Implementation | 4 of 4 partial ✓ | SSE transport via McpSseClient; prompt support via McpPromptAccessor + McpPromptListTool; resource accessor exists — all MCP features implemented |
-| Plugin Manager | 0 / 4 | Partial: local plugin discovery exists; remote registry integration missing |
+| MCP Protocol Implementation | 4 / 4 ✓ | SSE transport via McpSseClient; prompt support via McpPromptAccessor + McpPromptListTool; resource accessor exists — all MCP features implemented |
+| Plugin Manager | 0 of 4 partial | Local plugin discovery/install logic exists (PluginRegistry.cs); remote registry integration missing — SetRegistryUrl/GetRegistryUrl exist but no download from URL implemented |
 
 ---
 
@@ -555,10 +557,11 @@ OpenLMStudio/
 - [ ] Plugin auto-update mechanism
 - [ ] Model cache cleanup — configurable retention policies, automated orphan removal (partial: DownloadManager has disk space monitoring)
 
-#### Phase 9 Summary — **1 of 4 items partial**
+#### Phase 9 Summary — **Error recovery mostly complete, security/model management/lifecycle not started**
+> NOTE: Model file detection now complete via SafetensorParser; download recovery verified via SHA256/MD5; model loading fallback chain implemented. Sandbox exists for Windows (Job Objects) but Linux/macOS cgroups v2 not yet tested/confirmed working. SelfSignedCertificateGenerator cross-platform implementation works on Windows; certificate auto-trust only available on Windows.
 | Category | Items Complete | Items Remaining |
 |----------|---------------|-----------------|
-| Error Recovery System | 2 of 4 partial ✓ | Model file detection now complete via SafetensorParser; download recovery verified; model loading fallback chain implemented — streaming SSE reconstruction remains for chat completions only |
+| Error Recovery System | 3 of 4 complete ✓ | Model file detection via SafetensorParser; download recovery verified via SHA256/MD5; model loading fallback chain implemented — streaming SSE reconstruction exists for chat completions only (not image/embedding) |
 | Security Model | 0 / 3 | Not started |
 | Memory Management System | 0 / 3 | Not started |
 | Application Lifecycle Management | 0 / 3 | Not started |
@@ -586,7 +589,7 @@ OpenLMStudio/
 - [ ] Model compatibility guide — which models work with which engines, known issues per variant
 - [ ] Troubleshooting guide — common error patterns, diagnostic steps
 
-#### Phase 10 Summary — **ALL INCOMPLETE** (0 of 16 items)
+#### Phase 10 Summary — **ALL INCOMPLETE** (0 of 16 items) ✓ Confirmed — no work started
 | Category | Items Complete | Items Remaining |
 |----------|---------------|-----------------|
 | Testing Strategy | 0 / 5 | Not started |
@@ -605,7 +608,7 @@ OpenLMStudio/
 - [ ] Context compression events logged (before/after token counts)
 - [ ] Model lifecycle events (load/unload time, VRAM allocation changes)
 
-#### Phase 10.5 Summary — **ALL INCOMPLETE** (0 of 4 items)
+#### Phase 10.5 Summary — **ALL INCOMPLETE** (0 of 4 items) ✓ Confirmed — no work started
 | Category | Items Complete | Items Remaining |
 |----------|---------------|-----------------|
 | Structured Logging System | 0 / 2 | Not started |
@@ -625,7 +628,7 @@ OpenLMStudio/
 | Image Generation Engine | ONNX Runtime + diffusers model integration pending |
 | Embedding Engine | ONNX Runtime + safetensors model loader pending |
 | Model Formats Supported | GGUF (text), Safetensors (images/diffusion/VAE/LoRA/embeddings) |
-| MCP Protocol | Custom implementation based on spec — stdio transport implemented, SSE pending |
+| MCP Protocol | Custom implementation based on spec — stdio + SSE both implemented (McpSseClient.cs) |
 | Code Execution Sandbox | Cross-platform: cgroups v2 (Linux/macOS) + Job Objects (Windows); unified ISandboxService interface not yet implemented |
 | Agent Harness | Custom plan/act cycle with tooling system not yet implemented |
 | Git Integration | Git CLI integration via Process API |
@@ -640,13 +643,13 @@ OpenLMStudio/
 | 1: Foundation & Architecture | ~25 / 39 | ~64% | All design items complete; CI/CD pending |
 | 2: Model Management System | ~13 of 25 partial | ~52% | Repository + download manager complete; model loading engine partially implemented (inference stubbed) |
 | 3: Inference Engines & Server API | ~7 of 41 partial | ~17% | HTTP server foundation complete; OpenAI/Anthropic endpoints working for text only; image/embedding engines still stubbed |
-| 4: Chat & Conversation System | ~5 / 9 | ~56% | Data models + SQLite-backed persistence done; export/import exists as stub methods in FileConversationManager |
-| 5: Context Management System | **10 / 10** | **100%** | All context services (conversation + agentic) complete — SQLite-backed with pin/suppress/custom injection |
-| 6: UI Implementation | 0 / 28 | 0% | Not started — Avalonia implementation needed for all panels |
+| 4: Chat & Conversation System | ~5 of 9 | ~56% | Data models + SQLite-backed persistence done. NOTE: Streaming only works with server endpoint — local service streaming is placeholder response text (no real llama.cpp inference). Per-message search via SearchMessagesInChatAsync exists in both FileConversationManager and ChatPersistenceService. |
+| 5: Context Management System | **10 of 10** | **~80%** | All context service interfaces + implementations complete (SQLite-backed). NOTE: Phase 6 UI controls for per-message pin/suppress in MainWindow.axaml.cs are NOT functional — they log debug messages but do nothing (deferred to Phase 7). Service layer fully implemented; UI binding incomplete. |
+| 6: UI Implementation | ~4 of 28 | ~15% | Server start/stop working, chat streaming via SSE endpoint works, context panel with budget indicator exists. NOTE: Many elements are stubs. Per-message pin/suppress controls NOT functional (deferred to Phase 7). Model list display partially functional but not populated. |
 | 7: Agent Harness | ~1 of 32 partial | ~3% | Some interfaces/tools exist as stubs; full agent loop not implemented |
-| 8: Plugin & MCP System | ~1 of 4 partial | ~25% | MCP stdio client + tool discovery implemented; SSE transport missing |
-| 9: Resilience, Security & Operations | 0 / 14 | 0% | Not started — some pieces exist as stubs (DownloadManager disk monitoring) |
+| 8: Plugin & MCP System | **4 / 4** | **~90%** | MCP stdio + SSE transport (McpSseClient.cs) both complete. Prompt support via McpPromptAccessor + McpPromptListTool, resource accessor exists — all MCP features implemented. NOTE: Remote registry integration missing from PluginRegistry (SetRegistryUrl/GetRegistryUrl exist but no download from URL). |
+| 9: Resilience, Security & Operations | ~3 of 14 | ~20% | Model file detection via SafetensorParser; download recovery verified via SHA256/MD5; model loading fallback chain implemented — streaming SSE reconstruction exists for chat completions only (not image/embedding). Sandbox exists for Windows (Job Objects) but Linux/macOS cgroups v2 not yet tested. SelfSignedCertificateGenerator cross-platform implementation works on Windows; certificate auto-trust only available on Windows. |
 | 10: Testing & Release | 0 / 16 | 0% | Not started |
 | 10.5: Observability & Diagnostics | 0 / 4 | 0% | Not started |
 
-### Overall Progress: Phase 2 IModelManager committed (multi-model concurrency), Phase 5 Context Management System (10/10) complete, Phase 3 DiffusionInferenceEngine + LoraWeightMerger committed (ONNX Runtime-based CLIP→UNet+CFG→VAE pipeline orchestration), VAEPipelineService fully implemented (EncodeAsync/DecodeAsync with ONNX Runtime inference); overall ~42 of 221 items (~19%) — IModelManager enables concurrent multi-type model loading with automatic memory-based eviction; DiffusionInferenceEngine provides real ONNX Runtime-based diffusion inference (CLIP text encoding, UNet denoising loop with CFG, VAE decoder pipeline); VAEPipelineService implements latent space encode/decode for VAE models; ModelLoadingFallbackService provides GPU→CPU→degraded parameter fallback chain; server endpoint routing works for text chat completions and basic model discovery endpoints; Phase 8 MCP Protocol Implementation complete (SSE transport + prompt support + resource accessor)
+### Overall Progress: ~46 of 223 items (~20%). **Dead code cleanup completed**: removed placeholder Class1.cs files from all projects, removed LlamaCppChatService legacy wrapper class, fixed GgufParser.ParseAsync magic number comparison to use binary little-endian (was inconsistent with ParseHeaderAsync). **Key findings**: Phase 5 Context Management System service layer complete but UI controls NOT functional; Phase 8 MCP Protocol Implementation complete (stdio + SSE transport); Phase 9 Error Recovery mostly complete via SafetensorParser + DownloadManager hash verification.

@@ -35,6 +35,15 @@ public partial class App : Avalonia.Application
     /// </summary>
     public static void Main(string[] args)
     {
+        // Ensure unhandled exceptions are logged to a file even in headless/non-UI scenarios.
+        AppDomain.CurrentDomain.UnhandledException += (s, e) =>
+        {
+            var ex = (Exception)e.ExceptionObject;
+            WriteFatalError($"Unhandled exception: {ex}");
+        };
+
+        System.Diagnostics.Debug.WriteLine("[App] Main called");
+
         BuildAvaloniaApp();
     }
 
@@ -45,16 +54,64 @@ public partial class App : Avalonia.Application
         .UsePlatformDetect()
         .LogToTrace();
 
+    /// <summary>
+    /// Writes a fatal error to the event log, console (if available), and a file for post-mortem diagnosis.
+    /// </summary>
+    private static void WriteFatalError(string message)
+    {
+        System.Diagnostics.Debug.WriteLine($"[App] FATAL ERROR: {message}");
+
+        // Try console output if stderr is not redirected to NUL (GUI-only process)
+        try
+        {
+            if (!Console.IsOutputRedirected && !Console.IsErrorRedirected)
+                Console.Error.WriteLine(message);
+        }
+        catch { /* Ignore */ }
+
+        // Write to a file for later diagnosis
+        try
+        {
+            var appData = Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData);
+            var logDir = Path.Combine(appData, "OpenLMStudio", "logs");
+            Directory.CreateDirectory(logDir);
+
+            var logPath = Path.Combine(logDir, $"fatal-{DateTime.Now:yyyyMMdd-HHmmss}.log");
+            File.WriteAllText(logPath, message);
+            System.Diagnostics.Debug.WriteLine($"[App] Fatal error written to: {logPath}");
+        }
+        catch (Exception fileEx)
+        {
+            System.Diagnostics.Debug.WriteLine($"[App] Failed to write fatal log: {fileEx.Message}");
+        }
+    }
+
     public override void Initialize()
     {
+        System.Diagnostics.Debug.WriteLine("[App] Initialize called");
+
         AvaloniaXamlLoader.Load(this);
 
         // Set up DI container for application-wide service resolution
         var serviceCollection = new ServiceCollection();
         serviceCollection.AddLogging(builder => builder.AddConsole().SetMinimumLevel(LogLevel.Information));
-        serviceCollection.AddApplicationTypes();
-        serviceCollection.AddInfrastructureServices();
-        ApplicationServices = serviceCollection.BuildServiceProvider();
+        try
+        {
+            System.Diagnostics.Debug.WriteLine("[App] Calling AddApplicationTypes");
+            serviceCollection.AddApplicationTypes();
+
+            System.Diagnostics.Debug.WriteLine("[App] Calling AddInfrastructureServices");
+            serviceCollection.AddInfrastructureServices();
+
+            ApplicationServices = serviceCollection.BuildServiceProvider();
+            System.Diagnostics.Debug.WriteLine("[App] DI container built successfully");
+        }
+        catch (Exception ex)
+        {
+            System.Diagnostics.Debug.WriteLine($"[App] DI setup failed: {ex}");
+            ShowError($"Failed to initialize dependency injection:\n{ex.Message}\n\nInner: {(ex.InnerException?.Message ?? "N/A")}");
+            return;
+        }
 
         // Create and show the main window — Avalonia doesn't auto-create a MainWindow like WPF does.
         // We must create it manually here after DI is set up.
@@ -62,13 +119,17 @@ public partial class App : Avalonia.Application
         {
             try
             {
+                System.Diagnostics.Debug.WriteLine("[App] Creating main window");
                 var mainWindow = CreateAndShowMainWindow(ApplicationServices!);
+                System.Diagnostics.Debug.WriteLine("[App] Showing main window");
                 mainWindow.Show();
+                System.Diagnostics.Debug.WriteLine("[App] Main window shown successfully");
                 desktop.ShutdownRequested += (_, _) => mainWindow?.Close();
             }
             catch (Exception ex)
             {
-                ShowError($"Failed to create main window:\n{ex.Message}");
+                System.Diagnostics.Debug.WriteLine($"[App] Failed to create/show main window: {ex}");
+                ShowError($"Failed to create main window:\n{ex.Message}\n\nInner: {(ex.InnerException?.Message ?? "N/A")}");
             }
         }
     }
@@ -107,39 +168,92 @@ public partial class App : Avalonia.Application
     {
         try
         {
-            // Avalonia doesn't have a global screen detection API for centering.
-            // Use the parent window if available, otherwise let the OS position it.
-            var owner = Avalonia.Application.Current?.ApplicationLifetime as IClassicDesktopStyleApplicationLifetime;
-            var parentWindow = owner?.Windows.FirstOrDefault();
+            System.Diagnostics.Debug.WriteLine($"[App] Showing error: {message}");
 
-            var errorWindow = new Window
+            // Try to show via Avalonia Application.Current
+            var app = Avalonia.Application.Current;
+            if (app != null && app.ApplicationLifetime is IClassicDesktopStyleApplicationLifetime desktop)
             {
-                Title = "OpenLMStudio - Error",
-                Width = 400,
-                Height = 250,
-                Content = new Border
-                {
-                    Background = new SolidColorBrush(Color.FromArgb(255, 37, 37, 41)),
-                    Child = new TextBlock
-                    {
-                        Text = message,
-                        Foreground = new SolidColorBrush(Color.FromArgb(255, 255, 255, 255)),
-                        Padding = new Thickness(20),
-                        FontSize = 14,
-                        TextWrapping = TextWrapping.Wrap
-                    }
-                }
-            };
+                var parentWindow = desktop.Windows.OfType<Window>().FirstOrDefault();
+                System.Diagnostics.Debug.WriteLine($"[App] Found parent window: {parentWindow != null}");
 
-            if (parentWindow != null)
-                errorWindow.ShowDialog(parentWindow);
+                var errorWindow = new Window
+                {
+                    Title = "OpenLMStudio - Error",
+                    Width = 500,
+                    Height = 300,
+                    Content = new Border
+                    {
+                        Background = new SolidColorBrush(Color.FromArgb(255, 37, 37, 41)),
+                        Child = new TextBlock
+                        {
+                            Text = message,
+                            Foreground = new SolidColorBrush(Color.FromArgb(255, 255, 255, 255)),
+                            Padding = new Thickness(20),
+                            FontSize = 14,
+                            TextWrapping = TextWrapping.Wrap
+                        }
+                    },
+                    WindowStartupLocation = parentWindow != null ? WindowStartupLocation.CenterOwner : WindowStartupLocation.CenterScreen
+                };
+
+                if (parentWindow != null)
+                {
+                    errorWindow.Show(parentWindow);
+                }
+                else
+                {
+                    // No parent window — show centered on screen (position will be determined by OS)
+                    System.Diagnostics.Debug.WriteLine("[App] No parent window, showing without owner");
+                    errorWindow.Show();
+                }
+            }
             else
-                errorWindow.Show();
+            {
+                // Cannot show UI — write to console and event log instead
+                System.Diagnostics.Debug.WriteLine("[App] Cannot show error dialog — no Avalonia application available");
+                Console.Error.WriteLine($"OpenLMStudio Error: {message}");
+
+                // Write to a file for later diagnosis
+                try
+                {
+                    var errorLogDir = Path.Combine(
+                        Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
+                        "OpenLMStudio",
+                        "logs");
+                    if (!string.IsNullOrEmpty(Path.GetDirectoryName(errorLogDir)))
+                        Directory.CreateDirectory(errorLogDir);
+
+                    var errorLogPath = Path.Combine(errorLogDir, $"startup-error-{DateTime.Now:yyyyMMdd-HHmmss}.log");
+                    File.WriteAllText(errorLogPath, $"Startup Error\n{message}\n\nStack:\n{message}");
+                    Console.Error.WriteLine($"Error log written to: {errorLogPath}");
+                }
+                catch (Exception fileEx)
+                {
+                    System.Diagnostics.Debug.WriteLine($"[App] Failed to write error log: {fileEx.Message}");
+                }
+            }
         }
-        catch
+        catch (Exception ex)
         {
             // If we can't show the dialog, just print to console — don't crash the app further
-            System.Diagnostics.Debug.WriteLine($"Error: {message}");
+            System.Diagnostics.Debug.WriteLine($"Error showing error: {ex.Message}");
+            Console.Error.WriteLine($"OpenLMStudio Error (double-fail): {message}\n\nOriginal error:\n{ex.Message}");
+
+                // Write to a file for later diagnosis
+                try
+                {
+                    var errorLogDir = Path.Combine(
+                        Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
+                        "OpenLMStudio",
+                        "logs");
+                    if (!string.IsNullOrEmpty(Path.GetDirectoryName(errorLogDir)))
+                        Directory.CreateDirectory(errorLogDir);
+
+                    var errorLogPath = Path.Combine(errorLogDir, $"startup-double-fail-{DateTime.Now:yyyyMMdd-HHmmss}.log");
+                File.WriteAllText(errorLogPath, $"Startup Error (double fail)\n{message}\n\nOriginal error:\n{ex.Message}");
+            }
+            catch { /* Ignore */ }
         }
     }
 }

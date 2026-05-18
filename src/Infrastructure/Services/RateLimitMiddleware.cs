@@ -90,10 +90,18 @@ public record RateLimitResult(
 /// <summary>
 /// Thread-safe in-memory rate limiter using the sliding window counter algorithm per IP address.
 /// </summary>
-public class InMemoryRateLimitService : IRateLimitService
+public class InMemoryRateLimitService : IRateLimitService, IDisposable
 {
     private readonly Dictionary<string, List<long>> _ipWindows = new();
     private readonly object _lockObj = new();
+    private readonly int _maxRequests;
+    private readonly TimeSpan _windowSize;
+
+    public InMemoryRateLimitService(int maxRequestsPerWindow = 60, TimeSpan? windowSize = null)
+    {
+        _maxRequests = maxRequestsPerWindow;
+        _windowSize = windowSize ?? TimeSpan.FromMinutes(1);
+    }
 
     public async Task<RateLimitResult> TryAcquireAsync(string clientId)
     {
@@ -105,8 +113,8 @@ public class InMemoryRateLimitService : IRateLimitService
             if (!_ipWindows.TryGetValue(clientId, out var window))
                 _ipWindows[clientId] = window = new List<long>();
 
-            // Remove expired entries outside the current 1-minute sliding window (milliseconds)
-            window.RemoveAll(ts => ts < now - 60_000);
+            // Remove expired entries outside the current sliding window (milliseconds)
+            window.RemoveAll(ts => ts < now - _windowSize.TotalMilliseconds);
             windowStart = window.Count > 0 ? window.Min() : now;
 
             // Re-filter to use actual start time of current window
@@ -116,20 +124,28 @@ public class InMemoryRateLimitService : IRateLimitService
         lock (_lockObj)
         {
             var elapsedMs = now - windowStart;
-            var remainingWindowMs = 60_000 - elapsedMs;
+            var remainingWindowMs = _windowSize.TotalMilliseconds - elapsedMs;
             var windowRemaining = TimeSpan.FromMilliseconds(remainingWindowMs);
 
             if (!_ipWindows.TryGetValue(clientId, out var window))
-                return new RateLimitResult(true, 60, TimeSpan.FromMilliseconds(60_000));
+                return new RateLimitResult(true, _maxRequests, _windowSize);
 
-            if (window.Count >= 60) // 60 requests per minute limit
+            if (window.Count >= _maxRequests) // Respect configured limit
             {
                 return new RateLimitResult(false, 0, windowRemaining);
             }
 
             window.Add(now);
 
-            return new RateLimitResult(true, Math.Max(0, 59 - window.Count), windowRemaining);
+            return new RateLimitResult(true, Math.Max(0, _maxRequests - window.Count), windowRemaining);
+        }
+    }
+
+    public void Dispose()
+    {
+        lock (_lockObj)
+        {
+            _ipWindows.Clear();
         }
     }
 }

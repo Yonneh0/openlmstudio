@@ -62,7 +62,8 @@ public class SelfSignedCertificateGenerator : ISelfSignedCertificateService, IDi
             if (cert == null)
                 return false;
 
-            return false; // NotAfter is DateTime (non-nullable), always check if expired
+            // Check if the certificate has expired
+            return !cert.NotAfter.ToLocalTime().Date.Equals(DateTime.Today) || DateTime.Now < cert.NotAfter;
         }
         catch
         {
@@ -261,19 +262,25 @@ public class SelfSignedCertificateGenerator : ISelfSignedCertificateService, IDi
                 return false;
             }
 
-            // Move PFX to the expected cert path, keep key as separate PEM file for Kestrel
+            // Move PFX to the expected cert path. The Kestrel server will use either:
+            // 1) A .pfx file with password, OR
+            // 2) Separate PEM cert + key pair — try both approaches
+            var pfxDestPath = Path.ChangeExtension(certPath, ".pfx");
+
             if (File.Exists(pfxPath))
             {
-                File.Move(pfxPath, pfxPath.Replace(".pfx", ".pfx"), true);
+                File.Move(pfxPath, pfxDestPath, true);
                 return true;
             }
 
-            return false;
+            // If PFX wasn't created, fall through to Kestrel trying PEM cert + key pair approach
         }
         catch
         {
             return false;
         }
+
+        return false; // No .pfx file was produced
     }
 
     private async Task<bool> GenerateWithDotNetDevCertsAsync(string certificatePath, CancellationToken ct)
