@@ -345,45 +345,6 @@ public class DiffusionPipelineService : IDiffusionPipelineService, IDisposable
 }
 
 /// <summary>
-/// ONNX Runtime-based VAE pipeline service for latent space encoding/decoding.
-/// </summary>
-public class VAEPipelineService : IVAEPipelineService, IDisposable
-{
-    private readonly ILogger<VAEPipelineService>? _logger;
-    private readonly IModelRepository _modelRepo;
-
-    public VAEPipelineService(ILogger<VAEPipelineService>? logger, IModelRepository modelRepo)
-    {
-        _logger = logger;
-        _modelRepo = modelRepo;
-
-        _logger?.LogInformation("VAEPipelineService initialized (ONNX Runtime-based)");
-    }
-
-    public async Task<byte[]> EncodeAsync(string vaeModelId, byte[] imageBytes, CancellationToken ct = default)
-    {
-        // TODO: Real implementation loads VAE safetensors model and runs encode pipeline
-        _logger?.LogWarning("VAE encoding not yet implemented — stub response");
-        return Array.Empty<byte>();
-    }
-
-    public async Task<byte[]> DecodeAsync(string vaeModelId, byte[] latents, CancellationToken ct = default)
-    {
-        // TODO: Real implementation loads VAE safetensors model and runs decode pipeline
-        _logger?.LogWarning("VAE decoding not yet implemented — stub response");
-        return Array.Empty<byte>();
-    }
-
-    public async Task<IEnumerable<MultiModalModelMetadata>> GetAvailableModelsAsync()
-    {
-        var models = await _modelRepo.SearchMultiModalModelsAsync(modelTypeFilter: ModelType.Vae);
-        return models;
-    }
-
-    public void Dispose() { /* No unmanaged resources */ }
-}
-
-/// <summary>
 /// Manages LoRA adapter application and merging for diffusion pipelines.
 /// </summary>
 public class LoraAdapterManager : ILoraAdapterManager, IDisposable
@@ -443,47 +404,3 @@ public class LoraAdapterManager : ILoraAdapterManager, IDisposable
     public void Dispose() { /* No unmanaged resources */ }
 }
 
-/// <summary>
-/// ONNX Runtime-based embedding pipeline service for text/image vector embeddings.
-/// </summary>
-public class EmbeddingPipelineService : IEmbeddingPipelineService, IDisposable
-{
-    private readonly ILogger<EmbeddingPipelineService>? _logger;
-    private readonly IModelRepository? _modelRepo;
-
-    public EmbeddingPipelineService(ILogger<EmbeddingPipelineService>? logger, IModelRepository? modelRepo)
-    {
-        _logger = logger;
-        _modelRepo = modelRepo;
-
-        _logger?.LogInformation("EmbeddingPipelineService initialized (ONNX Runtime-based)");
-    }
-
-    public async Task<float[]> GenerateAsync(string modelId, string inputText, CancellationToken ct = default)
-    {
-        // TODO: Real implementation loads safetensors embedding model and runs inference on ONNX Runtime session
-        _logger?.LogWarning("Embedding generation not yet implemented — stub response");
-
-        return new float[768]; // Dimensionality depends on the model (e.g., CLIPTextModel output)
-    }
-
-    public async Task<float[][]> GenerateBatchAsync(string modelId, IReadOnlyList<string> inputs, CancellationToken ct = default)
-    {
-        var results = new float[inputs.Count][];
-
-        for (var i = 0; i < inputs.Count && !ct.IsCancellationRequested; i++)
-            results[i] = await GenerateAsync(modelId, inputs[i], ct);
-
-        return results;
-    }
-
-    public async Task<IEnumerable<MultiModalModelMetadata>> GetAvailableModelsAsync()
-    {
-        IEnumerable<MultiModalModelMetadata> models = [];
-        if (_modelRepo != null)
-            models = await _modelRepo.SearchMultiModalModelsAsync(modelTypeFilter: ModelType.Embedding);
-        return models;
-    }
-
-    public void Dispose() { /* No unmanaged resources */ }
-}
