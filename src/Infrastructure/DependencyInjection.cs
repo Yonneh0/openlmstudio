@@ -79,6 +79,26 @@ public static class DependencyInjection
         // ContextManipulator handles user-driven context segment control (pin, suppress, custom injection)
         services.AddSingleton<IContextManipulator, Services.ContextManipulator>();
 
+        // ---- Phase 5.5: Context Window Budgeting ----
+
+        // ContextWindowBudgeter manages per-chat token budget and auto-evicts segments when exceeded
+        services.AddSingleton<IContextWindowBudgeter, Services.ContextWindowBudgeter>();
+
+        // ---- Phase 5.8: Context Inheritance System ----
+
+        // TaskContextInheritor propagates relevant context from parent to child tasks with budget-aware filtering
+        services.AddSingleton<ITaskContextInheritor, Services.TaskContextInheritor>();
+
+        // ---- Phase 5.9: Fast Re-Injection Pipeline ----
+
+        // TaskContextReinjectionService restores full context for paused/abandoned agent tasks in <100ms
+        services.AddSingleton<ITaskContextReinjectionService, Services.TaskContextReinjectionService>();
+
+        // ---- Phase 5.10: Context Pruning on Completion ----
+
+        // TaskContextPruner manages archive/compress-and-archive/discard strategies for task completion
+        services.AddSingleton<ITaskContextPruner, Services.TaskContextPruner>();
+
         return services;
     }
 
