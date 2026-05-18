@@ -1,3 +1,6 @@
+using System.Collections.Generic;
+using System.Runtime.CompilerServices;
+using OpenLMStudio.Application.Types;
 using OpenLMStudio.Domain.Models;
 
 namespace OpenLMStudio.Application.Interfaces;
@@ -92,6 +95,16 @@ public interface IDiffusionPipelineService : IDisposable
     /// Gets all currently loaded image generation models.
     /// </summary>
     Task<IEnumerable<string>> GetLoadedModelsAsync();
+
+    /// <summary>
+    /// Generates an inpainted image — replaces regions inside the init image with new content based on the mask.
+    /// </summary>
+    Task<ImageGenerationResult> GenerateInpaintingAsync(ImageInpaintingRequest request, CancellationToken ct = default);
+
+    /// <summary>
+    /// Generates an outpainted image — extends the init image beyond its original boundaries.
+    /// </summary>
+    Task<ImageGenerationResult> GenerateOutpaintingAsync(ImageOutpaintingRequest request, CancellationToken ct = default);
 }
 
 /// <summary>

@@ -4,6 +4,7 @@ using Microsoft.Extensions.Logging;
 using Microsoft.ML.OnnxRuntime;
 using Microsoft.ML.OnnxRuntime.Tensors;
 using OpenLMStudio.Application.Interfaces;
+using OpenLMStudio.Application.Types;
 using OpenLMStudio.Domain.Models;
 
 namespace OpenLMStudio.Infrastructure.Services;
@@ -222,6 +223,73 @@ public class DiffusionPipelineService : IDiffusionPipelineService, IDisposable
             _logger?.LogDebug("GetLoadedModelsAsync — found {Count} loaded sessions", loaded.Count);
 
         return loaded;
+    }
+
+    public async Task<ImageGenerationResult> GenerateInpaintingAsync(ImageInpaintingRequest request, CancellationToken ct = default)
+    {
+        // Ensure model is loaded; load it if not already present
+        var wasAlreadyLoaded = _loadedSessions.ContainsKey(request.ModelId);
+        if (!wasAlreadyLoaded)
+        {
+            var loaded = await LoadModelAsync(request.ModelId);
+            if (!loaded || !_loadedSessions.ContainsKey(request.ModelId))
+                throw new InvalidOperationException($"Failed to load model '{request.ModelId}' for inpainting.");
+        }
+
+        _logger?.LogInformation("Inpainting stub — model loaded but inference not yet implemented for {ModelId}", request.ModelId);
+
+        // TODO: Real implementation requires:
+        // 1. Encode the init image using VAE pipeline
+        // 2. Encode the mask image (or generate noise based on it)
+        // 3. Run denoising loop conditioned on the prompt + unconditioned by the masked region
+        // 4. Decode the result with VAE pipeline
+
+        var placeholder = new byte[100]; // minimal valid PNG-like buffer (not a real image)
+
+        return new ImageGenerationResult(
+            placeholder,
+            request.Width > 0 ? request.Width : 1024,
+            request.Height > 0 ? request.Height : 1024,
+            request.Seed ?? -1,
+            request.CfgScale,
+            request.Steps,
+            request.ModelId)
+        {
+            MimeType = "image/png"
+        };
+    }
+
+    public async Task<ImageGenerationResult> GenerateOutpaintingAsync(ImageOutpaintingRequest request, CancellationToken ct = default)
+    {
+        // Ensure model is loaded; load it if not already present
+        var wasAlreadyLoaded = _loadedSessions.ContainsKey(request.ModelId);
+        if (!wasAlreadyLoaded)
+        {
+            var loaded = await LoadModelAsync(request.ModelId);
+            if (!loaded || !_loadedSessions.ContainsKey(request.ModelId))
+                throw new InvalidOperationException($"Failed to load model '{request.ModelId}' for outpainting.");
+        }
+
+        _logger?.LogInformation("Outpainting stub — model loaded but inference not yet implemented for {ModelId}", request.ModelId);
+
+        // TODO: Real implementation requires:
+        // 1. Pad the init image with zeros (or noise) in the specified direction(s)
+        // 2. Run denoising loop conditioned on the prompt + masked region from original image
+        // 3. Decode the result with VAE pipeline
+
+        var placeholder = new byte[100]; // minimal valid PNG-like buffer (not a real image)
+
+        return new ImageGenerationResult(
+            placeholder,
+            request.Width > 0 ? request.Width : 1024,
+            request.Height > 0 ? request.Height : 1024,
+            request.Seed ?? -1,
+            request.CfgScale,
+            request.Steps,
+            request.ModelId)
+        {
+            MimeType = "image/png"
+        };
     }
 
     public void Dispose()

@@ -6,6 +6,7 @@ using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using OpenLMStudio.Application.Interfaces;
+using OpenLMStudio.Application.Types;
 using OpenLMStudio.Domain.Models;
 using System.Collections.Concurrent;
 using System.IO.Pipelines;
@@ -251,6 +252,12 @@ public class ServerService : IServerService, IDisposable
         if (Configuration.EnableRateLimiting)
         {
             app.UseMiddleware<RateLimitMiddleware>(Configuration.MaxRequestsPerMinute, TimeSpan.FromMinutes(1));
+        }
+
+        // Apply API key authentication middleware when configured (before endpoints, after rate limiting)
+        if (!string.IsNullOrEmpty(Configuration.ApiKey))
+        {
+            app.UseApiKeyAuthentication();
         }
 
         // === OpenAI-Compatible Endpoints ===
@@ -693,6 +700,114 @@ public class ServerService : IServerService, IDisposable
             catch (Exception ex)
             {
                 _logger?.LogError(ex, "Error processing image generation request");
+                context.Response.StatusCode = 500;
+                await context.Response.WriteAsJsonAsync(new { error = "Internal server error" });
+            }
+        });
+
+        // /v1/images/inpainting — Inpaint an image using a mask (Phase 3.7)
+        app.MapPost("/v1/images/inpainting", async (IDiffusionPipelineService pipeline, HttpContext context) =>
+        {
+            if (!context.Request.HasJsonContentType())
+            {
+                context.Response.StatusCode = 400;
+                await context.Response.WriteAsJsonAsync(new { error = "Content-Type must be application/json" });
+                return;
+            }
+
+            using var reader = new StreamReader(context.Request.Body);
+            var requestBodyStr = await reader.ReadToEndAsync();
+
+            try
+            {
+                var request = System.Text.Json.JsonSerializer.Deserialize<ImageInpaintingRequest>(requestBodyStr);
+
+                if (request == null || string.IsNullOrEmpty(request.ModelId) || string.IsNullOrEmpty(request.InitImage))
+                {
+                    context.Response.StatusCode = 400;
+                    await context.Response.WriteAsJsonAsync(new { error = "Model identifier and init image are required" });
+                    return;
+                }
+
+                var result = await pipeline.GenerateInpaintingAsync(request);
+
+                // Return response in OpenAI-compatible format
+                var response = new
+                {
+                    data = new[]
+                    {
+                        new
+                        {
+                            url = result.DataUri,
+                            width = request.Width > 0 ? (int?)request.Width : null,
+                            height = request.Height > 0 ? (int?)request.Height : null,
+                            seed = request.Seed
+                        }
+                    },
+                    @object = "list",
+                    created = DateTimeOffset.UtcNow.ToUnixTimeSeconds()
+                };
+
+                context.Response.ContentType = "application/json";
+                await context.Response.WriteAsJsonAsync(response);
+            }
+            catch (Exception ex)
+            {
+                _logger?.LogError(ex, "Error processing inpainting request");
+                context.Response.StatusCode = 500;
+                await context.Response.WriteAsJsonAsync(new { error = "Internal server error" });
+            }
+        });
+
+        // /v1/images/outpainting — Outpaint an image to extend its boundaries (Phase 3.8)
+        app.MapPost("/v1/images/outpainting", async (IDiffusionPipelineService pipeline, HttpContext context) =>
+        {
+            if (!context.Request.HasJsonContentType())
+            {
+                context.Response.StatusCode = 400;
+                await context.Response.WriteAsJsonAsync(new { error = "Content-Type must be application/json" });
+                return;
+            }
+
+            using var reader = new StreamReader(context.Request.Body);
+            var requestBodyStr = await reader.ReadToEndAsync();
+
+            try
+            {
+                var request = System.Text.Json.JsonSerializer.Deserialize<ImageOutpaintingRequest>(requestBodyStr);
+
+                if (request == null || string.IsNullOrEmpty(request.ModelId) || string.IsNullOrEmpty(request.InitImage))
+                {
+                    context.Response.StatusCode = 400;
+                    await context.Response.WriteAsJsonAsync(new { error = "Model identifier and init image are required" });
+                    return;
+                }
+
+                var result = await pipeline.GenerateOutpaintingAsync(request);
+
+                // Return response in OpenAI-compatible format
+                var response = new
+                {
+                    data = new[]
+                    {
+                        new
+                        {
+                            url = result.DataUri,
+                            width = request.Width > 0 ? (int?)request.Width : null,
+                            height = request.Height > 0 ? (int?)request.Height : null,
+                            seed = request.Seed
+                        }
+                    },
+                    @object = "list",
+                    created = DateTimeOffset.UtcNow.ToUnixTimeSeconds()
+                };
+
+                context.Response.ContentType = "application/json";
+                await context.Response.WriteAsJsonAsync(response);
+            }
+            catch (Exception ex)
+            {
+                _logger?.LogError(ex, "Error processing outpainting request");
                 context.Response.StatusCode = 500;
                 await context.Response.WriteAsJsonAsync(new { error = "Internal server error" });
             }
