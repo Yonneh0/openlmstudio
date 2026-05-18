@@ -647,7 +647,7 @@ public class ServerService : IServerService, IDisposable
         // === Image Generation Endpoints (Phase 3.6) ===
 
         // /v1/images/generations - Create image via diffusion models
-        app.MapPost("/v1/images/generations", async (IDiffusionPipelineService pipeline, IModelRepository repo, HttpContext context) =>
+        app.MapPost("/v1/images/generations", async (IDiffusionPipelineService pipeline, HttpContext context) =>
         {
             if (!context.Request.HasJsonContentType())
             {
@@ -729,7 +729,7 @@ public class ServerService : IServerService, IDisposable
             }
         });
 
-        // /v1/models/lora/list - List available LoRA adapters
+        // /v1/models/lora/list - List available LoRA adapters (legacy — kept for compatibility with old clients; prefer SearchMultiModalModelsAsync + model_type=lora_adapter on /v1/models)
         app.MapGet("/v1/models/lora/list", async (ILoraAdapterManager loraManager, HttpContext context) =>
         {
             try
@@ -763,20 +763,11 @@ public class ServerService : IServerService, IDisposable
 
         // === Health Check Endpoints ===
 
-        app.MapGet("/health", () => Results.Ok(new { status = "healthy" }));
-
         app.MapGet("/v1/health", () => Results.Ok(new
         {
             status = IsRunning ? "healthy" : "stopped",
             server_port = Configuration.Port
         }));
-
-        // === SSE Streaming Endpoint ===
-
-        app.MapPost("/v1/chat/completions/stream", async (HttpContext context) =>
-        {
-            await HandleStreamingResponse(context);
-        });
 
         _application = app;
         State = ServerState.Running;
@@ -1585,7 +1576,6 @@ public class ServerService : IServerService, IDisposable
             }
         });
     }
-
 
     private string ExtractTokenFromSseChunk(string chunk)
     {
