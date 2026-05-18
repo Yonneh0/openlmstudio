@@ -2,7 +2,10 @@
 
 using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Linq;
+using System.Net.Http;
+using System.Text;
 using System.Threading.Tasks;
 using Avalonia;
 using Avalonia.Controls;
@@ -27,20 +30,20 @@ namespace OpenLMStudio.Desktop;
 /// </summary>
 public partial class MainWindow : Window
 {
-     private readonly ILogger<MainWindow>? _logger;
-     private readonly IConversationManager? _conversationManager;
-     private readonly IServerService? _serverService;
-     private readonly IModelRepository? _modelRepository;
-     private readonly IChatCompletionService? _chatCompletionService;
+    private readonly ILogger<MainWindow>? _logger;
+    private readonly IConversationManager? _conversationManager;
+    private readonly IServerService? _serverService;
+    private readonly IModelRepository? _modelRepository;
+    private readonly IChatCompletionService? _chatCompletionService;
 
-     /// <summary>Flag indicating whether a streaming response is in progress.</summary>
-     private bool _isStreaming = false;
+    /// <summary>Flag indicating whether a streaming response is in progress.</summary>
+    private bool _isStreaming = false;
 
-     /// <summary>The current assistant message border being streamed into during an active SSE session.</summary>
-     private Border? _currentAssistantBorder;
+    /// <summary>The current assistant message border being streamed into during an active SSE session.</summary>
+    private Border? _currentAssistantBorder;
 
-     /// <summary>The text block within the assistant message that receives streamed tokens.</summary>
-     private TextBlock? _assistantTextBlock;
+    /// <summary>The text block within the assistant message that receives streamed tokens.</summary>
+    private TextBlock? _assistantTextBlock;
 
     // Tab tracking
     private string _activeTab = "Chat";
@@ -62,13 +65,13 @@ public partial class MainWindow : Window
 
         _logger = logger;
 
-         // Use pre-resolved dependencies from App.OnStartup — if none are provided (for testing), fall back to DI resolution attempt.
-         _conversationManager = conversationManager ?? ResolveConversationManagerFromAppServices();
-         _serverService = serverService ?? ResolveServerServiceFromAppServices();
-         _modelRepository = modelRepository ?? ResolveModelRepositoryFromAppServices();
-         _chatCompletionService = chatCompletionService ?? ResolveChatCompletionServiceFromAppServices();
+        // Use pre-resolved dependencies from App.OnStartup — if none are provided (for testing), fall back to DI resolution attempt.
+        _conversationManager = conversationManager ?? ResolveConversationManagerFromAppServices();
+        _serverService = serverService ?? ResolveServerServiceFromAppServices();
+        _modelRepository = modelRepository ?? ResolveModelRepositoryFromAppServices();
+        _chatCompletionService = _chatCompletionService ?? ResolveChatCompletionServiceFromAppServices();
 
-         // Subscribe to server state changes
+        // Subscribe to server state changes
         if (_serverService is OpenLMStudio.Infrastructure.Services.ServerService realSvc)
             realSvc.StateChanged += OnServerStateChanged;
 
@@ -781,14 +784,31 @@ public partial class MainWindow : Window
         using var httpClient = new HttpClient();
         httpClient.Timeout = TimeSpan.FromMinutes(5); // Allow long-running completions for large models
 
-        var chatMessages = await _conversationManager.GetMessagesAsync(chatId) ?? [];
-        var userMsg = new Message { Role = MessageRole.User, Content = userMessage };
-        chatMessages.Add(userMsg);
+        // GetMessagesAsync returns possibly-null — use null-forgiving operator with null-coalescing below
+        var chatMessagesForServer = await _conversationManager!.GetMessagesAsync(chatId)! ?? [];
+        var userMsgForServer = new Message { Role = MessageRole.User, Content = userMessage };
+        chatMessagesForServer.Add(userMsgForServer);
 
-        var requestBody = new ChatCompletionRequest("default", chatMessages.ToList()) { Stream = true };
+        // Serialize as OpenAI-compatible ChatCompletionRequest (from Application.Types) with all defaults
+        var requestBodyObj = new System.Text.Json.JsonSerializerOptions
+        {
+            PropertyNamingPolicy = null // Keep default PascalCase names — server expects camelCase via ASP.NET Core convention
+        };
+        var jsonBody = System.Text.Json.JsonSerializer.Serialize(new
+        {
+            model = "default",
+            messages = chatMessagesForServer.Select(m => new
+            {
+                role = m.Role.ToString().ToLower(),
+                content = m.Content
+            }).ToList(),
+            stream = true,
+            temperature = 0.7f,
+            max_tokens = 4096,
+            top_p = 1.0f
+        }, requestBodyObj);
 
-        var response = await httpClient.PostAsync(uri, new StringContent(
-            System.Text.Json.JsonSerializer.Serialize(requestBody), Encoding.UTF8, "application/json"));
+        var response = await httpClient.PostAsync(uri, new StringContent(jsonBody));
 
         if (!response.IsSuccessStatusCode)
             throw new HttpRequestException($"Server returned: {response.StatusCode}");
@@ -796,8 +816,7 @@ public partial class MainWindow : Window
         // Read SSE stream token-by-token and update UI on each event
         using var stream = await response.Content.ReadAsStreamAsync();
         using var reader = new StreamReader(stream);
-        string? lineBuffer = null;
-        StringBuilder currentData = new();
+        var currentData = new StringBuilder();
         bool inDataEvent = false;
         while (!reader.EndOfStream && _isStreaming)
         {
@@ -805,18 +824,21 @@ public partial class MainWindow : Window
             if (line == null) break;
 
             // Parse SSE event format: "data: {\"token\": \"...\", ...}" or "data: [DONE]"
-            if (line.StartsWith("data:", StringComparison.OrdinalIgnoreCase))
+            if (inDataEvent && line.Length > 0)
             {
-                inDataEvent = true;
-                currentData.Append(line.Substring(5).Trim());
+                // Accumulate multi-line data events
+                currentData.Append(line);
+                continue;
             }
 
-            // SSE events are separated by blank lines
-            if (!inDataEvent || line.Length > 0) continue;
+            inDataEvent = false;
 
+            // SSE events are separated by blank lines — process the accumulated event now
             try
             {
                 var dataStr = currentData.ToString();
+                if (string.IsNullOrEmpty(dataStr)) continue; // Skip empty events
+
                 if (dataStr == "[DONE]") break; // Stream complete
 
                 var jsonDoc = System.Text.Json.JsonDocument.Parse(dataStr);
@@ -838,11 +860,17 @@ public partial class MainWindow : Window
                 _logger?.LogDebug("SSE parsing error: {Message}", ex.Message);
             }
 
-            inDataEvent = false;
             currentData.Clear();
+
+            // Check if this line starts a new event
+            if (line.StartsWith("data:", StringComparison.OrdinalIgnoreCase))
+            {
+                inDataEvent = true;
+                currentData.Append(line.Substring(5).Trim());
+            }
         }
 
-        await _conversationManager.AddMessageAsync(chatId, userMsg);
+        await _conversationManager.AddMessageAsync(chatId, userMsgForServer);
 
         // Update token count after stream completes
         var totalTokens = await _conversationManager.CalculateTotalTokenCountAsync(chatId);
@@ -854,13 +882,17 @@ public partial class MainWindow : Window
     /// </summary>
     private async Task StreamResponseViaLocalServiceAsync(Guid chatId, string userMessage)
     {
-        var chatMessages = await _conversationManager.GetMessagesAsync(chatId);
+        // GetMessagesAsync returns possibly-null — use null-forgiving operator with null-coalescing below
+        var chatMessages = await _conversationManager!.GetMessagesAsync(chatId)!;
+
         if (chatMessages == null || !chatMessages.Any()) throw new InvalidOperationException("No messages to send.");
 
         // Use the last assistant message as the model ID fallback — in practice this would be selected by user.
         var modelId = "default"; // TODO: Get from a model selector UI element
 
-        await foreach (var chunk in _chatCompletionService.GetStreamingCompletionAsync(
+        if (_chatCompletionService == null) throw new InvalidOperationException("Chat completion service not available.");
+
+        await foreach (var chunk in _chatCompletionService!.GetStreamingCompletionAsync(
             new ChatRequest(modelId, chatMessages.ToList()) { Stream = true }))
         {
             if (_isStreaming == false || string.IsNullOrEmpty(chunk)) continue;
@@ -1049,6 +1081,39 @@ public partial class MainWindow : Window
         return sp?.GetRequiredService<IChatCompletionService>();
     }
 
+    // ---- Image Generation Event Handlers ----
+
+    private void OnImageGenModelSelectorSelectionChanged(object? sender, SelectionChangedEventArgs e)
+    {
+        // TODO: Implement actual image generation model selection logic
+    }
+
+    /// <summary>
+    /// Handler for the random seed button — generates a random seed value.
+    /// </summary>
+    private void OnRandomSeedClicked(object? sender, RoutedEventArgs e)
+    {
+        var rng = new Random();
+        if (ImageGenSeedInput != null)
+            ImageGenSeedInput.Text = rng.Next(int.MinValue, int.MaxValue).ToString();
+    }
+
+    // ---- Tab Pointer Pressed Event Handlers ----
+
+    private void OnChatTabPointerPressed(object? sender, Avalonia.Input.PointerPressedEventArgs e) => ShowTab("Chat");
+
+    private void OnServerTabPointerPressed(object? sender, Avalonia.Input.PointerPressedEventArgs e) => ShowTab("Server");
+
+    private void OnModelsTabPointerPressed(object? sender, Avalonia.Input.PointerPressedEventArgs e) => ShowTab("Models");
+
+    private void OnDevicesTabPointerPressed(object? sender, Avalonia.Input.PointerPressedEventArgs e) => ShowTab("Devices");
+
+    private void OnImageGenTabPointerPressed(object? sender, Avalonia.Input.PointerPressedEventArgs e)
+    {
+        // ImageGen tab is not currently managed by the main tab system — show a placeholder message
+        ShowError("Image generation support requires diffusion engine integration (Phase 3).");
+    }
+
     private T? FindChild<T>(Panel parent, int maxDepth = 10) where T : Control
     {
         if (parent == null || maxDepth <= 0) return default;
@@ -1150,31 +1215,6 @@ public partial class MainWindow : Window
         {
             System.Diagnostics.Debug.WriteLine($"Error: {message}");
         }
-    }
-
-    /// <summary>
-    /// Handler for ImageGenModelSelector SelectionChanged event.
-    /// Updates the selected image generation model based on user selection.
-    /// </summary>
-    private void OnImageGenModelSelectorSelectionChanged(object? sender, SelectionChangedEventArgs e)
-    {
-        // TODO: Implement actual image generation model selection logic
-    }
-
-    // ---- Tab Pointer Pressed Event Handlers ----
-
-    private void OnChatTabPointerPressed(object? sender, Avalonia.Input.PointerPressedEventArgs e) => ShowTab("Chat");
-
-    private void OnServerTabPointerPressed(object? sender, Avalonia.Input.PointerPressedEventArgs e) => ShowTab("Server");
-
-    private void OnModelsTabPointerPressed(object? sender, Avalonia.Input.PointerPressedEventArgs e) => ShowTab("Models");
-
-    private void OnDevicesTabPointerPressed(object? sender, Avalonia.Input.PointerPressedEventArgs e) => ShowTab("Devices");
-
-    private void OnImageGenTabPointerPressed(object? sender, Avalonia.Input.PointerPressedEventArgs e)
-    {
-        // ImageGen tab is not currently managed by the main tab system — show a placeholder message
-        ShowError("Image generation support requires diffusion engine integration (Phase 3).");
     }
 
 }
