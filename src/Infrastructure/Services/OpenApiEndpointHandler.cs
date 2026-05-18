@@ -176,7 +176,7 @@ public static class OpenApiEndpointHandler
         });
 
         // OpenAI-compatible: /v1/images/generations - Image generation via diffusion models
-        app.MapPost("/v1/images/generations", async (IModelRepository repo, IDiffusionPipelineService pipeline, IChatCompletionService chatService, HttpContext context) =>
+        app.MapPost("/v1/images/generations", async (IDiffusionPipelineService pipeline, HttpContext context) =>
         {
             try
             {
@@ -208,7 +208,7 @@ public static class OpenApiEndpointHandler
                     return;
                 }
 
-                // If this looks like a text generation request, route to chat completion instead
+                // If this looks like a text generation request, reject with helpful message
                 if (openaiImageReq.Prompt == null || openaiImageReq.Messages != null && openaiImageReq.Messages.Any())
                 {
                     context.Response.StatusCode = 405;
