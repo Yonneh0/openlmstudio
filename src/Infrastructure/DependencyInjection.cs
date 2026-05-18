@@ -109,6 +109,16 @@ public static class DependencyInjection
         // AgentTaskProgressTracker tracks agentic task progress through stages (NotStarted → InProgress → Reviewing → Completed/Failed)
         services.AddSingleton<ITaskProgressTracker, Services.AgentTaskProgressTracker>();
 
+        // ---- Phase 8: Plugin & MCP System ----
+
+        // PluginRegistry manages plugin discovery, installation, and lifecycle from local/appdata directory
+        var pluginDir = Path.Combine(
+            Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),  // Windows: %APPDATA%\OpenLMStudio\plugins\
+            "OpenLMStudio",
+            "plugins");
+        services.AddSingleton<Domain.Interfaces.IPluginRegistry>(resolver =>
+            new Services.PluginRegistry(resolver.GetService<Microsoft.Extensions.Logging.ILogger<Services.PluginRegistry>>(), pluginDir));
+
         return services;
     }
 

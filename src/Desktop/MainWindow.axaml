@@ -163,6 +163,83 @@
             <Setter Property="Foreground" Value="{StaticResource TextPrimary}"/>
             <Setter Property="FontSize" Value="14"/>
         </Style>
+
+        <!-- Context segment styles -->
+        <Style Selector="Border.contextSegment">
+            <Setter Property="Background" Value="{StaticResource BgTertiary}"/>
+            <Setter Property="CornerRadius" Value="4"/>
+            <Setter Property="Padding" Value="10,8"/>
+            <Setter Property="Margin" Value="0,0,0,6"/>
+        </Style>
+
+        <!-- Per-message control button styles -->
+        <Style Selector="Button.msgPinBtn">
+            <Setter Property="Background" Value="{StaticResource AccentGreen}"/>
+            <Setter Property="Foreground" Value="White"/>
+            <Setter Property="Padding" Value="6,2"/>
+            <Setter Property="FontSize" Value="10"/>
+            <Setter Property="BorderThickness" Value="0"/>
+        </Style>
+
+        <Style Selector="Button.msgPinBtn.pinned">
+            <Setter Property="Background" Value="#4CAF50"/>
+        </Style>
+
+        <Style Selector="Button.msgSuppressBtn">
+            <Setter Property="Background" Value="{StaticResource BgTertiary}"/>
+            <Setter Property="Foreground" Value="{StaticResource TextPrimary}"/>
+            <Setter Property="Padding" Value="6,2"/>
+            <Setter Property="FontSize" Value="10"/>
+            <Setter Property="BorderThickness" Value="0"/>
+        </Style>
+
+        <Style Selector="Button.msgSuppressBtn.suppressed">
+            <Setter Property="Background" Value="{StaticResource AccentRed}"/>
+            <Setter Property="Foreground" Value="White"/>
+        </Style>
+
+        <Style Selector="Button.msgRemoveCtxBtn">
+            <Setter Property="Background" Value="{StaticResource BgTertiary}"/>
+            <Setter Property="Foreground" Value="{StaticResource TextSecondary}"/>
+            <Setter Property="Padding" Value="6,2"/>
+            <Setter Property="FontSize" Value="10"/>
+            <Setter Property="BorderThickness" Value="0"/>
+        </Style>
+
+        <!-- Compression indicator styles -->
+        <Style Selector="TextBlock.compressionUncompressed">
+            <Setter Property="Foreground" Value="{StaticResource AccentGreen}"/>
+            <Setter Property="FontSize" Value="9"/>
+        </Style>
+
+        <Style Selector="TextBlock.compressionCompressed">
+            <Setter Property="Foreground" Value="{StaticResource AccentOrange}"/>
+            <Setter Property="FontSize" Value="9"/>
+        </Style>
+
+        <Style Selector="TextBlock.compressionEvicted">
+            <Setter Property="Foreground" Value="{StaticResource AccentRed}"/>
+            <Setter Property="FontSize" Value="9"/>
+        </Style>
+
+        <!-- Status badge styles -->
+        <Style Selector="Border.statusBadge.green">
+            <Setter Property="Background" Value="#4CAF50"/>
+            <Setter Property="CornerRadius" Value="2"/>
+            <Setter Property="Padding" Value="6,2"/>
+        </Style>
+
+        <Style Selector="Border.statusBadge.orange">
+            <Setter Property="Background" Value="#FF9800"/>
+            <Setter Property="CornerRadius" Value="2"/>
+            <Setter Property="Padding" Value="6,2"/>
+        </Style>
+
+        <Style Selector="Border.statusBadge.red">
+            <Setter Property="Background" Value="#FF6B6B"/>
+            <Setter Property="CornerRadius" Value="2"/>
+            <Setter Property="Padding" Value="6,2"/>
+        </Style>
     </Window.Styles>
 
     <!-- Three-panel layout: Left Sidebar | Center Chat | Right Sidebar -->
@@ -172,8 +249,8 @@
             <ColumnDefinition Width="280"/>
             <!-- Center pane: Flexible width for chat content -->
             <ColumnDefinition Width="4*"/>
-            <!-- Right sidebar: Smaller fixed width for settings/monitoring -->
-            <ColumnDefinition Width="200"/>
+            <!-- Right sidebar: Context / Server / Devices tabs -->
+            <ColumnDefinition Width="320"/>
         </Grid.ColumnDefinitions>
 
         <!-- ===== LEFT SIDEBAR ===== -->
@@ -295,6 +372,175 @@
                                 Margin="8,8,8,0"
                                 HorizontalAlignment="Stretch"
                                 Height="36"/>
+                    </StackPanel>
+
+                    <!-- Context tab content -->
+                    <StackPanel x:Name="ContextTabContent" DockPanel.Dock="Top">
+                        <TextBlock Text="Context" FontWeight="SemiBold" Foreground="#4FC3F7" Padding="8,6" PointerPressed="OnContextTabPointerPressed"/>
+                        
+                        <!-- Context budget indicator -->
+                        <Border Background="{StaticResource BgSecondary}" CornerRadius="4" Margin="0,8,0,0">
+                            <StackPanel>
+                                <TextBlock Text="Context Budget:" Foreground="{StaticResource TextPrimary}" Padding="12,4"/>
+                                
+                                <!-- Visual budget bar -->
+                                <Border x:Name="ContextBudgetBar" Background="#3A3A3E" CornerRadius="4" Height="8" Margin="8,4,8,8">
+                                    <Border.Background>
+                                        <LinearGradientBrush StartPoint="0,0.5" EndPoint="1,0.5">
+                                            <GradientStop Color="{StaticResource AccentGreen}" Offset="0"/>
+                                            <GradientStop Color="{StaticResource AccentOrange}" Offset="0.75"/>
+                                            <GradientStop Color="{StaticResource AccentRed}" Offset="1"/>
+                                        </LinearGradientBrush>
+                                    </Border.Background>
+                                </Border>
+                                
+                                <!-- Budget text info -->
+                                <TextBlock x:Name="ContextBudgetText" Text="Budget: 0 / 4096 tokens used" Foreground="{StaticResource TextSecondary}" Padding="8,0" FontSize="11"/>
+                            </StackPanel>
+                        </Border>
+
+                        <!-- Compression strategy selector -->
+                        <Border Background="{StaticResource BgSecondary}" CornerRadius="4" Margin="0,8,0,0">
+                            <StackPanel>
+                                <TextBlock Text="Compression:" Foreground="{StaticResource TextPrimary}" Padding="12,4"/>
+                                <ComboBox x:Name="ContextCompressionSelector" 
+                                          Foreground="{StaticResource TextPrimary}"
+                                          Background="{StaticResource BgTertiary}"
+                                          Margin="8,4,8,0"
+                                          Height="32">
+                                    <TextBlock Text="None"/>
+                                    <TextBlock Text="Light"/>
+                                    <TextBlock Text="Medium"/>
+                                    <TextBlock Text="Aggressive"/>
+                                </ComboBox>
+                            </StackPanel>
+                        </Border>
+
+                        <!-- Custom context injection -->
+                        <Border Background="{StaticResource BgSecondary}" CornerRadius="4" Margin="0,8,0,0">
+                            <StackPanel x:Name="ContextInjectionSection">
+                                <TextBlock Text="Custom Context:" Foreground="{StaticResource TextPrimary}" Padding="12,4"/>
+                                
+                                <!-- Inject custom context button -->
+                                <Button x:Name="InjectCustomContextBtn"
+                                        Content="+ Add Custom Context" 
+                                        Background="#0E639C"
+                                        Foreground="White"
+                                        Padding="8,4"
+                                        Margin="8,4,8,8"
+                                        HorizontalAlignment="Stretch"
+                                        Height="32"/>
+                            </StackPanel>
+                        </Border>
+
+                        <!-- Context segments visual tree -->
+                        <Border Background="{StaticResource BgSecondary}" CornerRadius="4" Margin="0,8,0,0">
+                            <ScrollViewer HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Auto">
+                                <StackPanel x:Name="ContextSegmentsPanel" Margin="0,4,0,0">
+                                    <!-- System prompt segment (always pinned) -->
+                                    <Border Background="{StaticResource BgTertiary}" CornerRadius="4" Padding="12,8" Margin="0,0,0,6">
+                                        <Grid>
+                                            <Grid.ColumnDefinitions>
+                                                <ColumnDefinition Width="*"/>
+                                                <ColumnDefinition Width="Auto"/>
+                                            </Grid.ColumnDefinitions>
+                                            
+                                            <!-- Segment info -->
+                                            <StackPanel Grid.Column="0">
+                                                <TextBlock Text="System Prompt" FontWeight="SemiBold" Foreground="{StaticResource AccentBlue}" FontSize="12"/>
+                                                 <Border Background="#2E7D32" CornerRadius="2" Padding="6,1">
+                                                     <TextBlock Text="Uncompressed (pinned)" FontSize="9" Foreground="White"/>
+                                                 </Border>
+                                            </StackPanel>
+                                            
+                                            <!-- Pinned indicator -->
+                                            <Border Grid.Column="1" Background="#4CAF50" CornerRadius="2" Padding="6,2">
+                                                <TextBlock Text="PINNED" FontSize="9" Foreground="White"/>
+                                            </Border>
+                                        </Grid>
+                                    </Border>
+
+                                    <!-- Task context snapshot segment (always pinned) -->
+                                    <Border Background="{StaticResource BgTertiary}" CornerRadius="4" Padding="12,8" Margin="0,0,0,6">
+                                        <Grid>
+                                            <Grid.ColumnDefinitions>
+                                                <ColumnDefinition Width="*"/>
+                                                <ColumnDefinition Width="Auto"/>
+                                            </Grid.ColumnDefinitions>
+                                            
+                                            <!-- Segment info -->
+                                            <StackPanel Grid.Column="0">
+                                                <TextBlock Text="Task Context" FontWeight="SemiBold" Foreground="{StaticResource AccentBlue}" FontSize="12"/>
+                                                 <Border Background="#2E7D32" CornerRadius="2" Padding="6,1">
+                                                     <TextBlock Text="Uncompressed (pinned)" FontSize="9" Foreground="White"/>
+                                                 </Border>
+                                            </StackPanel>
+                                            
+                                            <!-- Pinned indicator -->
+                                            <Border Grid.Column="1" Background="#4CAF50" CornerRadius="2" Padding="6,2">
+                                                <TextBlock Text="PINNED" FontSize="9" Foreground="White"/>
+                                            </Border>
+                                        </Grid>
+                                    </Border>
+
+                                    <!-- Compressed message segments (shown dynamically) -->
+                                    <StackPanel x:Name="CompressedSegmentsContainer">
+                                        <!-- Will be populated by code-behind based on context state -->
+                                        <TextBlock Text="No compressed segments" 
+                                                   Foreground="{StaticResource TextMuted}" 
+                                                   Padding="12,8"
+                                                   FontSize="10"/>
+                                    </StackPanel>
+
+                                    <!-- User injected custom contexts (shown dynamically) -->
+                                    <Border Background="{StaticResource BgTertiary}" CornerRadius="4" Padding="12,8" Margin="0,8,0,0">
+                                        <TextBlock Text="Injected Context:" FontWeight="SemiBold" Foreground="{StaticResource AccentBlue}" FontSize="12"/>
+                                    </Border>
+                                    
+                                    <StackPanel x:Name="CustomContextSegmentsContainer">
+                                        <!-- Will be populated by code-behind based on injected context -->
+                                    </StackPanel>
+                                </StackPanel>
+                            </ScrollViewer>
+                        </Border>
+
+                        <!-- Expandable custom context injection panel (hidden by default) -->
+                        <StackPanel x:Name="CustomContextInjectionPanel" IsVisible="False">
+                            <Border Background="{StaticResource BgSecondary}" CornerRadius="4" Margin="0,8,0,0">
+                                <StackPanel>
+                                    <!-- Injection type selector -->
+                                    <TextBlock Text="Inject Type:" Foreground="{StaticResource TextPrimary}" Padding="12,4"/>
+                                    <ComboBox x:Name="ContextInjectionTypeSelector" 
+                                              Foreground="{StaticResource TextPrimary}"
+                                              Background="{StaticResource BgTertiary}"
+                                              Margin="8,0,8,8"
+                                              Height="32">
+                                        <TextBlock Text="System Prompt (custom)"/>
+                                        <TextBlock Text="File Contents"/>
+                                        <TextBlock Text="Raw Context"/>
+                                    </ComboBox>
+                                    
+                                    <!-- Content area -->
+                                    <TextBlock Text="Content:" Foreground="{StaticResource TextPrimary}" Padding="12,4"/>
+                                    <TextBox x:Name="CustomContextContentInput" 
+                                             Foreground="{StaticResource TextPrimary}"
+                                             Background="{StaticResource BgTertiary}"
+                                             BorderThickness="0"
+                                             Margin="8,4,8,8"
+                                             Height="80"
+                                             AcceptsReturn="True"/>
+                                    
+                                    <!-- Inject button -->
+                                    <Button x:Name="CustomContextInjectBtn"
+                                            Content="Inject Context" 
+                                            Background="#4FC3F7"
+                                            Foreground="White"
+                                            Padding="12,4"
+                                            Height="36"
+                                            Margin="8"/>
+                                </StackPanel>
+                            </Border>
+                        </StackPanel>
                     </StackPanel>
 
                     <!-- Image Generation tab content -->
@@ -580,59 +826,180 @@
             </Grid>
         </Panel>
 
-        <!-- ===== RIGHT SIDEBAR (Server/Device Status) ===== -->
+        <!-- ===== RIGHT SIDEBAR (Tabs: Context / Server / Devices) ===== -->
         <Panel Grid.Column="2" Background="{StaticResource BgPrimary}">
             <DockPanel Margin="12">
-                <!-- Server status section -->
-                <TextBlock Text="Server" 
-                           FontSize="14" FontWeight="SemiBold"
-                           Foreground="#4FC3F7"
-                           DockPanel.Dock="Top"/>
+                
+                <!-- Right sidebar tabs -->
+                <StackPanel DockPanel.Dock="Top" Orientation="Horizontal" Margin="0,0,0,8">
+                    <RadioButton x:Name="RightContextTabButton" Content="Context" Classes="settingsTab" IsChecked="True"/>
+                    <RadioButton x:Name="RightServerTabButton" Content="Server" Classes="settingsTab"/>
+                    <RadioButton x:Name="RightDevicesTabButton" Content="Devices" Classes="settingsTab"/>
+                </StackPanel>
 
-                <Border Background="{StaticResource BgSecondary}" Margin="0,8,0,0">
-                    <StackPanel>
-                        <TextBlock x:Name="ServerStatusRight" Text="Server: Stopped" 
-                                   Foreground="{StaticResource AccentRed}" Padding="12,8"/>
-                        <TextBlock x:Name="ServerPortRightText" Text="Port: 8080" Padding="12,4"/>
+                <!-- Context tab content (default) -->
+                <StackPanel x:Name="RightContextContent" DockPanel.Dock="Top">
+                    <!-- Budget indicator at top -->
+                    <Border Background="{StaticResource BgSecondary}" CornerRadius="4" Margin="0,0,0,12">
+                        <StackPanel>
+                            <TextBlock Text="Context Budget:" FontWeight="SemiBold" Foreground="#4FC3F7" Padding="8,8"/>
+                            
+                            <!-- Visual budget bar -->
+                            <Border x:Name="RightBudgetBar" Background="#3A3A3E" CornerRadius="4" Height="10" Margin="8,4">
+                                <Border.Background>
+                                    <LinearGradientBrush StartPoint="0,0.5" EndPoint="1,0.5">
+                                        <GradientStop Color="#4CAF50" Offset="0"/>
+                                        <GradientStop Color="#FF9800" Offset="0.75"/>
+                                        <GradientStop Color="#FF6B6B" Offset="1"/>
+                                    </LinearGradientBrush>
+                                </Border.Background>
+                            </Border>
+                            
+                            <!-- Budget text -->
+                            <TextBlock x:Name="RightBudgetText" Text="Loading..." Foreground="{StaticResource TextSecondary}" Padding="8,0" FontSize="11"/>
+                        </StackPanel>
+                    </Border>
+
+                    <!-- Compression strategy selector -->
+                    <Border Background="{StaticResource BgSecondary}" CornerRadius="4" Margin="0,0,0,12">
+                        <StackPanel>
+                            <TextBlock Text="Compression:" Foreground="{StaticResource TextPrimary}" Padding="8,4"/>
+                            <ComboBox x:Name="RightCompressionSelector" 
+                                      Foreground="{StaticResource TextPrimary}"
+                                      Background="{StaticResource BgTertiary}"
+                                      Margin="6,0,6,6"
+                                      Height="28">
+                                <TextBlock Text="None"/>
+                                <TextBlock Text="Light"/>
+                                <TextBlock Text="Medium"/>
+                                <TextBlock Text="Aggressive"/>
+                            </ComboBox>
+                        </StackPanel>
+                    </Border>
+
+                    <!-- Context segments visual tree -->
+                    <TextBlock Text="Context Segments:" FontWeight="SemiBold" Foreground="#4FC3F7" Margin="0,8,0,0"/>
+                    
+                    <ScrollViewer HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Auto">
+                        <StackPanel x:Name="RightSegmentsContainer" Margin="0,4,0,0">
+                            <!-- Will be populated by code-behind -->
+                            <TextBlock Text="No segments loaded" 
+                                       Foreground="{StaticResource TextMuted}" 
+                                       Padding="8,4"
+                                       FontSize="10"/>
+                        </StackPanel>
+                    </ScrollViewer>
+
+                    <!-- Add custom context button -->
+                    <Button x:Name="RightAddCustomContextBtn"
+                            Content="+ Add Custom Context" 
+                            Background="#0E639C"
+                            Foreground="White"
+                            Padding="8,4"
+                            Margin="0,12,0,0"
+                            HorizontalAlignment="Stretch"/>
+
+                    <!-- Expandable custom context injection panel -->
+                    <StackPanel x:Name="RightCustomContextInjectionPanel" IsVisible="False">
+                        <Border Background="{StaticResource BgSecondary}" CornerRadius="4" Margin="0,8,0,0">
+                            <StackPanel>
+                                <TextBlock Text="Inject Type:" Foreground="{StaticResource TextPrimary}" Padding="8,4"/>
+                                <ComboBox x:Name="RightInjectionTypeSelector" 
+                                          Foreground="{StaticResource TextPrimary}"
+                                          Background="{StaticResource BgTertiary}"
+                                          Margin="6,0,6,6"
+                                          Height="28">
+                                    <TextBlock Text="System Prompt (custom)"/>
+                                    <TextBlock Text="File Contents"/>
+                                    <TextBlock Text="Raw Context"/>
+                                </ComboBox>
+                                
+                                <TextBox x:Name="RightCustomContextContentInput" 
+                                         Foreground="{StaticResource TextPrimary}"
+                                         Background="{StaticResource BgTertiary}"
+                                         BorderThickness="0"
+                                         Margin="6,4,6,8"
+                                         Height="80"
+                                         AcceptsReturn="True"/>
+                                
+                                <Button x:Name="RightCustomContextInjectBtn"
+                                        Content="Inject Context" 
+                                        Background="#4FC3F7"
+                                        Foreground="White"
+                                        Padding="12,4"
+                                        HorizontalAlignment="Stretch"/>
+                            </StackPanel>
+                        </Border>
                     </StackPanel>
-                </Border>
 
-                <!-- Device info section -->
-                <TextBlock Text="Devices" 
-                           FontSize="14" FontWeight="SemiBold"
-                           Foreground="#4FC3F7"
-                           Margin="0,16,0,0"/>
+                    <!-- Message segments for pin/suppress control -->
+                    <TextBlock Text="Message Segments:" FontWeight="SemiBold" Foreground="#4FC3F7" Margin="0,12,0,0"/>
+                    
+                    <ScrollViewer HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Auto">
+                        <StackPanel x:Name="RightMessageSegmentsContainer" Margin="0,4,0,0">
+                            <!-- Will be populated by code-behind with per-message controls -->
+                            <TextBlock Text="No messages loaded" 
+                                       Foreground="{StaticResource TextMuted}" 
+                                       Padding="8,4"
+                                       FontSize="10"/>
+                        </StackPanel>
+                    </ScrollViewer>
+                </StackPanel>
 
-                <Border Background="{StaticResource BgSecondary}" Margin="0,8,0,0">
-                    <StackPanel>
-                        <TextBlock Text="GPU: None Detected" 
-                                   Foreground="{StaticResource TextPrimary}" Padding="12,8"/>
-                        <TextBlock x:Name="CpuCoreRightText" Text="CPU Cores: 8" Padding="12,4"/>
-                        <TextBlock x:Name="RamInfoRightText" Text="RAM: 32 GB Available" Padding="12,4"/>
-                    </StackPanel>
-                </Border>
+                <!-- Server tab content (hidden by default) -->
+                <StackPanel x:Name="RightServerContent" DockPanel.Dock="Top" IsVisible="False">
+                    <Border Background="{StaticResource BgSecondary}" CornerRadius="4" Margin="0,0,0,0">
+                        <StackPanel>
+                            <TextBlock x:Name="ServerStatusRight" Text="Server: Stopped" 
+                                       Foreground="{StaticResource AccentRed}" Padding="12,8"/>
+                            <TextBlock x:Name="ServerPortRightText" Text="Port: 8080" Padding="12,4"/>
+                        </StackPanel>
+                    </Border>
 
-                <!-- Model info section -->
-                <TextBlock Text="Model" 
-                           FontSize="14" FontWeight="SemiBold"
-                           Foreground="#4FC3F7"
-                           Margin="0,16,0,0"/>
+                    <!-- Start/Stop server button -->
+                    <Button x:Name="RightServerStartStopButton"
+                            Content="Start Server" 
+                            DockPanel.Dock="Bottom"
+                            Height="36"
+                            Margin="0,8,0,0"
+                            HorizontalAlignment="Stretch"/>
+                </StackPanel>
 
-                <Border Background="{StaticResource BgSecondary}" Margin="0,8,0,0">
-                    <StackPanel>
-                        <TextBlock x:Name="LoadedModelRightText2" Text="Loaded Model: None" 
-                                   Foreground="{StaticResource TextPrimary}" Padding="12,8"/>
-                        <TextBlock x:Name="ContextLengthRightText2" Text="Context: 4096 tokens" Padding="12,4"/>
-                    </StackPanel>
-                </Border>
+                <!-- Devices tab content (hidden by default) -->
+                <StackPanel x:Name="RightDevicesContent" DockPanel.Dock="Top" IsVisible="False">
+                    <Border Background="{StaticResource BgSecondary}" CornerRadius="4" Margin="0,0,0,0">
+                        <StackPanel>
+                            <TextBlock Text="GPU: None Detected" 
+                                       Foreground="{StaticResource TextPrimary}" Padding="12,8"/>
+                            <TextBlock x:Name="CpuCoreRightText" Text="CPU Cores: 8" Padding="12,4"/>
+                            <TextBlock x:Name="RamInfoRightText" Text="RAM: 32 GB Available" Padding="12,4"/>
+                        </StackPanel>
+                    </Border>
 
-                <!-- Start/Stop server button -->
-                <Button x:Name="RightServerStartStopButton"
-                        Content="Start Server" 
-                        DockPanel.Dock="Bottom"
-                        Height="36"
-                        Margin="0,8,0,0"
-                        HorizontalAlignment="Stretch"/>
+                    <!-- Model info section -->
+                    <TextBlock Text="Model" 
+                               FontSize="14" FontWeight="SemiBold"
+                               Foreground="#4FC3F7"
+                               Margin="0,16,0,0"/>
+
+                    <Border Background="{StaticResource BgSecondary}" Margin="0,8,0,0">
+                        <StackPanel>
+                            <TextBlock x:Name="LoadedModelRightText2" Text="Loaded Model: None" 
+                                       Foreground="{StaticResource TextPrimary}" Padding="12,8"/>
+                            <TextBlock x:Name="ContextLengthRightText2" Text="Context: 4096 tokens" Padding="12,4"/>
+                        </StackPanel>
+                    </Border>
+
+                    <!-- Load model button -->
+                    <Button x:Name="LoadModelButton"
+                            Content="Load Model" 
+                            Background="#0E639C"
+                            Foreground="White"
+                            Padding="8,4"
+                            Margin="0,8,0,0"
+                            HorizontalAlignment="Stretch"
+                            Height="36"/>
+                </StackPanel>
             </DockPanel>
         </Panel>
     </Grid>

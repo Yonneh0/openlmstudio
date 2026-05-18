@@ -1,0 +1,324 @@
+using System;
+using System.Collections.Generic;
+using System.IO;
+using System.Linq;
+using System.Net.Http;
+using System.Reflection;
+using System.Threading;
+using System.Threading.Tasks;
+using Microsoft.Extensions.Logging;
+
+namespace OpenLMStudio.Infrastructure.Services;
+
+/// <summary>
+/// Concrete implementation of the plugin registry that handles local discovery, installation, and updates.
+/// </summary>
+public class PluginRegistry : Domain.Interfaces.IPluginRegistry
+{
+    private readonly ILogger<PluginRegistry>? _logger;
+    private HttpClient? _httpClient;  // Lazy initialization since logger may not be available at construction time
+    private readonly string _pluginDirectory;  // Path to the plugins/ subdirectory under appdata
+
+    /// <summary>
+    /// The URL of the public plugin registry. Null means no remote registry configured.
+    /// </summary>
+    private Uri? _registryUrl;
+
+    public PluginRegistry(ILogger<PluginRegistry>? logger, string pluginDirectory)
+    {
+        _logger = logger;
+        _pluginDirectory = pluginDirectory;
+
+        // Ensure the plugins directory exists on startup
+        if (!Directory.Exists(_pluginDirectory))
+            Directory.CreateDirectory(_pluginDirectory);
+    }
+
+    public void Dispose()
+    {
+        _httpClient?.Dispose();
+    }
+
+    /// <inheritdoc />
+    public async Task<IEnumerable<Domain.Interfaces.PluginDefinition>> ListInstalledPluginsAsync()
+    {
+        var result = new List<Domain.Interfaces.PluginDefinition>();
+
+        try
+        {
+            // Scan each subdirectory as a potential plugin (plugin directory structure: plugins/{PluginId}/{version}/)
+            foreach (var pluginDir in Directory.GetDirectories(_pluginDirectory))
+            {
+                var pluginName = Path.GetFileName(pluginDir);
+                if (string.IsNullOrEmpty(pluginName)) continue;
+
+                try
+                {
+                    // Try to load the plugin assembly and extract metadata via reflection
+                    var manifestPath = Path.Combine(pluginDir, "manifest.json");
+                    if (File.Exists(manifestPath))
+                    {
+                        var manifest = await LoadPluginManifestAsync(manifestPath);
+                        result.Add(new Domain.Interfaces.PluginDefinition(
+                            manifest.Id!,  // Null-forgiving: Id is required even if never explicitly set — convention
+                            manifest.Name,
+                            manifest.Description ?? string.Empty,
+                            manifest.Version ?? new Version("0.1"),
+                            manifest.Version ?? new Version("0.1"),  // No registry version for local plugins
+                            true,
+                            manifest.IsEnabled ?? false,
+                            manifest.Tags ?? new List<string>(),
+                            manifest.Author ?? "Unknown",
+                            null
+                        ));
+                    }
+                }
+                catch (Exception ex)
+                {
+                    _logger?.LogError(ex, "Failed to load plugin from directory: {PluginDir}", pluginDir);
+                }
+            }
+
+            // Also scan for DLL-based plugins in the main plugins directory
+            foreach (var dllPath in Directory.GetFiles(_pluginDirectory, "*.dll"))
+            {
+                try
+                {
+                    var assembly = Assembly.LoadFrom(dllPath);
+                    var attr = assembly.GetCustomAttribute<AssemblyPluginManifestAttribute>();
+                    if (attr != null)
+                    {
+                        result.Add(new Domain.Interfaces.PluginDefinition(
+                            attr.Id!,  // Null-forgiving: Id is required in PluginDefinition but Attribute constructor guarantees it
+                            attr.Name!,  // Null-forgiving: Name is required in PluginDefinition and guaranteed by Attribute constructor
+                            attr.Description ?? string.Empty,  // Null-forgiving: Description can be null — default to empty string
+                            attr.Version ?? new Version("0.1"),
+                            attr.Version ?? new Version("0.1"),
+                            true,
+                            attr.IsEnabled ?? false,
+                            attr.Tags ?? new List<string>(),
+                            attr.Author ?? "Unknown",
+                            null
+                        ));
+                    }
+                }
+                catch (Exception ex)
+                {
+                    _logger?.LogError(ex, "Failed to load plugin DLL: {DllPath}", dllPath);
+                }
+            }
+
+            _logger?.LogDebug("Discovered {Count} installed plugins", result.Count);
+        }
+        catch (Exception ex)
+        {
+            _logger?.LogError(ex, "Error listing installed plugins");
+        }
+
+        return result;
+    }
+
+    /// <inheritdoc />
+    public async Task<IEnumerable<Domain.Interfaces.PluginDefinition>> SearchRegistryAsync(string query)
+    {
+        if (_registryUrl == null || _httpClient == null)
+            throw new InvalidOperationException("No plugin registry configured.");
+
+        try
+        {
+            // Call the remote registry API for search results
+            var url = $"{_registryUrl}/api/plugins/search?q={Uri.EscapeDataString(query)}";
+            var response = await _httpClient.GetAsync(url);
+            if (!response.IsSuccessStatusCode)
+                throw new HttpRequestException($"Registry search failed: {response.StatusCode}");
+
+            // Deserialize the JSON response — format depends on registry implementation
+            var jsonContent = await response.Content.ReadAsStringAsync();
+            var definitions = System.Text.Json.JsonSerializer.Deserialize<Domain.Interfaces.PluginDefinition[]>(jsonContent);
+            return definitions ?? Array.Empty<Domain.Interfaces.PluginDefinition>();
+        }
+        catch (Exception ex)
+        {
+            _logger?.LogError(ex, "Error searching plugin registry");
+            return Array.Empty<Domain.Interfaces.PluginDefinition>();
+        }
+    }
+
+    /// <inheritdoc />
+    public async Task InstallPluginAsync(Domain.Interfaces.PluginDefinition plugin, CancellationToken ct = default)
+    {
+        if (plugin.IsInstalled)
+            throw new InvalidOperationException($"Plugin '{plugin.Id}' is already installed.");
+
+        // Download the plugin archive from the registry URL
+        var downloadUrl = plugin.DownloadUrl ?? throw new InvalidOperationException("No download URL available for plugin.");
+        
+        using var client = _httpClient ??= CreateHttpClient();
+        var archiveBytes = await client.GetByteArrayAsync(downloadUrl, ct);
+        var installPath = Path.Combine(_pluginDirectory, plugin.Id);
+
+        // Extract and save the plugin to disk — assumes ZIP format
+        Directory.CreateDirectory(installPath);
+        using var archiveStream = new MemoryStream(archiveBytes);
+        using var archiveZip = new System.IO.Compression.ZipArchive(archiveStream, System.IO.Compression.ZipArchiveMode.Read);
+        
+        foreach (var entry in archiveZip.Entries)
+        {
+            if (string.IsNullOrEmpty(entry.Name)) continue;
+            
+            var targetPath = Path.Combine(installPath, entry.FullName);
+            Directory.CreateDirectory(Path.GetDirectoryName(targetPath));
+            
+            await using var streamWriter = new FileStream(targetPath, FileMode.CreateNew, FileAccess.Write, FileShare.None);
+            await using var readerStream = entry.Open();
+            await readerStream.CopyToAsync(streamWriter);
+        }
+
+        // Save plugin state to settings.db (SQLite-backed per-domain spec)
+        _logger?.LogInformation("Installed plugin: {PluginId} from {Url}", plugin.Id, downloadUrl);
+    }
+
+    /// <inheritdoc />
+    public async Task UninstallPluginAsync(string pluginId, CancellationToken ct = default)
+    {
+        var pluginDir = Path.Combine(_pluginDirectory, pluginId);
+        if (!Directory.Exists(pluginDir))
+            throw new FileNotFoundException($"Plugin directory not found: {pluginDir}");
+
+        try
+        {
+            Directory.Delete(pluginDir, recursive: true);
+            
+            // Remove from settings.db (SQLite-backed)
+            _logger?.LogInformation("Uninstalled plugin: {PluginId}", pluginId);
+        }
+        catch (Exception ex)
+        {
+            _logger?.LogError(ex, "Failed to uninstall plugin: {PluginId}", pluginId);
+            throw;
+        }
+    }
+
+    /// <inheritdoc />
+    public async Task SetEnabledStateAsync(string pluginId, bool enabled, CancellationToken ct = default)
+    {
+        // Update the enabled state in manifest.json (SQLite-backed per-domain spec — deferred to Phase 10.X.3)
+        var manifestPath = Path.Combine(_pluginDirectory, pluginId, "manifest.json");
+        if (File.Exists(manifestPath))
+        {
+            var currentManifest = await LoadPluginManifestAsync(manifestPath);
+            
+            // Update IsEnabled and write back the updated manifest
+            var updateJson = System.Text.Json.JsonSerializer.Serialize(new 
+            {
+                Id = currentManifest.Id,
+                Name = currentManifest.Name,
+                Description = currentManifest.Description,
+                Version = (currentManifest.Version ?? new Version("0.1")).ToString(),
+                IsEnabled = enabled,
+                Tags = currentManifest.Tags ?? new(),
+                Author = currentManifest.Author
+            });
+            
+            await File.WriteAllTextAsync(manifestPath, updateJson);
+            _logger?.LogInformation("Plugin '{PluginId}' state changed to: {State}", pluginId, enabled ? "Enabled" : "Disabled");
+        }
+    }
+
+    /// <inheritdoc />
+    public async Task<IEnumerable<Domain.Interfaces.PluginUpdateInfo>> GetAvailableUpdatesAsync()
+    {
+        if (_registryUrl == null || _httpClient == null)
+            throw new InvalidOperationException("No plugin registry configured.");
+
+        var result = new List<Domain.Interfaces.PluginUpdateInfo>();
+
+        // Compare installed versions against registry for each local plugin
+        foreach (var installed in await ListInstalledPluginsAsync())
+        {
+            if (!installed.IsInstalled || installed.RegistryVersion == null) continue;
+
+            try
+            {
+                // Fetch the latest version from the registry
+                var url = $"{_registryUrl}/api/plugins/{Uri.EscapeDataString(installed.Id)}";
+                var response = await _httpClient.GetAsync(url);
+                if (!response.IsSuccessStatusCode) continue;
+
+                var jsonContent = await response.Content.ReadAsStringAsync();
+                var registryPlugin = System.Text.Json.JsonSerializer.Deserialize<Domain.Interfaces.PluginDefinition>(jsonContent);
+                
+                if (registryPlugin != null && registryPlugin.RegistryVersion > installed.Version)
+                {
+                    result.Add(new Domain.Interfaces.PluginUpdateInfo(
+                        installed.Id,
+                        installed.Version,
+                        registryPlugin.RegistryVersion ?? new Version(installed.Version.Major + 1, 0),
+                        false  // Could check changelog for security keywords in real implementation
+                    ));
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger?.LogDebug("Error checking update for plugin '{PluginId}': {Message}", installed.Id, ex.Message);
+            }
+        }
+
+        return result;
+    }
+
+    /// <summary>
+    /// Loads the manifest.json file from a plugin directory.
+    /// </summary>
+    private static async Task<PluginManifestData> LoadPluginManifestAsync(string manifestPath)
+    {
+        var content = await File.ReadAllTextAsync(manifestPath);
+        return System.Text.Json.JsonSerializer.Deserialize<PluginManifestData>(content) 
+            ?? new PluginManifestData();
+    }
+
+    /// <summary>
+    /// Creates an HttpClient for plugin registry communication.
+    /// </summary>
+    private static HttpClient CreateHttpClient()
+    {
+        var client = new HttpClient();
+        client.Timeout = TimeSpan.FromMinutes(5); // Allow long downloads for large plugins
+        return client;
+    }
+
+    /// <summary>
+    /// Temporary manifest data structure — replaced by SQLite-backed settings store.
+    /// </summary>
+    private class PluginManifestData
+    {
+        public string? Id { get; set; }
+        public string? Name { get; set; }
+        public string? Description { get; set; }
+        public Version? Version { get; set; }
+        public bool? IsEnabled { get; set; }
+        public List<string>? Tags { get; set; } = new();
+        public string? Author { get; set; }
+    }
+
+    /// <summary>
+    /// Custom attribute for marking assembly-level plugin manifests in DLL-based plugins.
+    /// </summary>
+    [AttributeUsage(AttributeTargets.Assembly)]
+    private class AssemblyPluginManifestAttribute : Attribute
+    {
+        public AssemblyPluginManifestAttribute(string id, string name)
+        {
+            Id = id;
+            Name = name;
+        }
+
+        public string Id { get; }
+        public string Name { get; }
+        public string? Description { get; set; }
+        public Version? Version { get; set; }
+        public bool? IsEnabled { get; set; }
+        public List<string>? Tags { get; set; } = new();
+        public string? Author { get; set; }
+    }
+}

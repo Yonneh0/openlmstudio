@@ -1106,12 +1106,12 @@ public partial class MainWindow : Window
         try
         {
             var indicator = await _budgeter.GetBudgetIndicatorAsync(_selectedChatId.Value);
-            
+
             // Update left sidebar budget display
             if (ContextBudgetText != null)
             {
                 ContextBudgetText.Text = $"Budget: {indicator.UsedTokens} / {indicator.MaximumTokens} tokens used";
-                
+
                 // Set color zone based on remaining percentage
                 var remainingPct = indicator.RemainingTokens > 0 ? (float)indicator.RemainingTokens / indicator.MaximumTokens : 1f;
                 if (remainingPct < 0.05f)
@@ -1126,7 +1126,7 @@ public partial class MainWindow : Window
             if (RightBudgetText != null)
             {
                 RightBudgetText.Text = $"Used: {indicator.UsedTokens} / {indicator.MaximumTokens} tokens ({(int)(indicator.PercentageUsed)}%)";
-                
+
                 // Set remaining color zone on the bar — use a SolidColorBrush based on zone instead of LinearGradientBrush which doesn't have Stops in Avalonia
                 switch (indicator.ColorZone)
                 {
@@ -1147,7 +1147,7 @@ public partial class MainWindow : Window
         catch (Exception ex)
         {
             _logger?.LogDebug("Error refreshing context budget: {Message}", ex.Message);
-            
+
             // Set fallback text on errors
             if (RightBudgetText != null) RightBudgetText.Text = "Budget unavailable";
             if (ContextBudgetText != null) ContextBudgetText.Text = "Budget unavailable";
@@ -1161,7 +1161,7 @@ public partial class MainWindow : Window
 
         var comboBox = (ComboBox)sender!;
         var selectedIndex = comboBox.SelectedIndex;
-        
+
         var strategy = selectedIndex switch
         {
             0 => Domain.Models.CompressionLevel.None,
@@ -1181,7 +1181,7 @@ public partial class MainWindow : Window
 
         var comboBox = (ComboBox)sender!;
         var selectedIndex = comboBox.SelectedIndex;
-        
+
         var strategy = selectedIndex switch
         {
             0 => Domain.Models.CompressionLevel.None,
@@ -1201,7 +1201,7 @@ public partial class MainWindow : Window
         // Toggle custom context injection panel visibility (left sidebar version)
         if (CustomContextInjectionPanel != null)
             CustomContextInjectionPanel.IsVisible = !CustomContextInjectionPanel.IsVisible;
-        
+
         // Also toggle right sidebar panel
         if (RightCustomContextInjectionPanel != null)
             RightCustomContextInjectionPanel.IsVisible = CustomContextInjectionPanel?.IsVisible == true;
@@ -1212,7 +1212,7 @@ public partial class MainWindow : Window
         // Toggle custom context injection panel visibility from right sidebar button
         if (RightCustomContextInjectionPanel != null)
             RightCustomContextInjectionPanel.IsVisible = !RightCustomContextInjectionPanel.IsVisible;
-        
+
         // Also toggle left sidebar panel
         if (CustomContextInjectionPanel != null)
             CustomContextInjectionPanel.IsVisible = RightCustomContextInjectionPanel?.IsVisible == true;
@@ -1224,7 +1224,7 @@ public partial class MainWindow : Window
 
         // Get the injection type from the ComboBox selection (0 = System Prompt custom, 1 = File Contents, 2 = Raw Context)
         var selectedTypeIndex = RightInjectionTypeSelector?.SelectedIndex ?? 0;
-        
+
         var injectionType = selectedTypeIndex switch
         {
             0 => Domain.Models.ContextInjectionType.CustomInjection,
@@ -1303,7 +1303,7 @@ public partial class MainWindow : Window
         if (_contextManager == null || _selectedChatId == null) return;
 
         var button = (Button)sender!;
-        
+
         // Get segment ID from the button's Tag property — Avalonia Button DOES support Tag properly
         var segmentIdObj = button.Tag as Guid?;
         if (segmentIdObj != null && _selectedChatId.HasValue)
@@ -1311,7 +1311,7 @@ public partial class MainWindow : Window
             try
             {
                 await _contextManager.RemoveCustomContextAsync(_selectedChatId.Value, segmentIdObj.Value);
-                
+
                 // Remove the visual representation from the UI — custom context borders are direct children of RightSegmentsContainer
                 if (_customContextBorders.TryGetValue(segmentIdObj.Value, out var borderToRemove))
                 {
@@ -1575,7 +1575,7 @@ public partial class MainWindow : Window
         // Attach right sidebar tab button click handlers
         if (RightContextTabButton != null)
             RightContextTabButton.IsCheckedChanged += (_, _) => UpdateRightSidebarTab(RightContextTabButton.IsChecked == true ? "Context" : _activeTab);
-        
+
         if (RightServerTabButton != null)
             RightServerTabButton.IsCheckedChanged += (_, _) => UpdateRightSidebarTab(RightServerTabButton.IsChecked == true ? "Server" : _activeTab);
 
@@ -1661,7 +1661,7 @@ public partial class MainWindow : Window
         try
         {
             var settingsWin = new SettingsWindow();
-            
+
             if (Owner is Window ownerWindow)
                 settingsWin.ShowDialog(ownerWindow);
             else
