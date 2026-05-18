@@ -26,7 +26,7 @@ public partial class SettingsWindow : Window
         ServerTabButton.IsCheckedChanged += OnTabChanged;
         ModelTabButton.IsCheckedChanged += OnTabChanged;
         AgentTabButton.IsCheckedChanged += OnTabChanged;
-        
+
         SaveSettingsBtn.Click += OnSaveSettingsClicked;
 
         // Set the data privacy panel title from code-behind since auto-formatting converts & back to &

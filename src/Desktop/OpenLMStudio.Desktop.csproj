@@ -6,6 +6,8 @@
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
     <RootNamespace>OpenLMStudio.Desktop</RootNamespace>
+    <!-- Suppress Avalonia AVLN3001: known false positive when using DI constructor -->
+    <NoWarn>AVLN3001;$(NoWarn)</NoWarn>
   </PropertyGroup>
 
   <!-- Avalonia UI packages for cross-platform support -->
