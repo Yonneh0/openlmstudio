@@ -179,9 +179,9 @@ public class GgufParser : IDisposable
 
             // Read magic number (first 4 bytes) - little-endian per GGUF spec
             var magicBytes = reader.ReadBytes(4);
-            var magic = System.Text.Encoding.ASCII.GetString(magicBytes);
+            var magicNumber = BinaryPrimitives.ReadUInt32LittleEndian(magicBytes);
 
-            if (magic != "GGUF")
+            if (magicNumber != GgufMagicNumber)
                 return null; // Not a valid GGUF file
 
             var metadata = new Domain.Models.ModelMetadata();
@@ -504,6 +504,11 @@ public class GgufParser : IDisposable
     {
         // No unmanaged resources to clean up
     }
+
+    /// <summary>
+    /// Gets the GGUF magic number constant used for validation.
+    /// </summary>
+    internal static uint GetMagicNumber() => GgufMagicNumber;
 }
 
 /// <summary>
