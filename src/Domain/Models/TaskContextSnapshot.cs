@@ -47,6 +47,10 @@ public class TaskContextSnapshot : IDisposable
     /// <summary>Whether this snapshot should be archived (not discarded) on task completion.</summary>
     public bool ArchiveOnCompletion { get; set; } = true;
 
+    /// <summary>The full conversation context + project state snapshot from when an agent analyzed file changes and suggested them.
+    /// Includes: AnalyzedChatHistory, ProjectStateAtTimeOfAnalysis, RelevantContextSegments.</summary>
+    public AiAnalysisResult? AiAnalysis { get; set; }
+
     public void Dispose()
     {
         // No unmanaged resources to clean up
