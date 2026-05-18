@@ -32,6 +32,7 @@ public partial class App : Avalonia.Application
 
     /// <summary>
     /// Entry point for the application. Called by the platform-specific host before the window is shown.
+    /// Must call StartWithClassicDesktopLifetime to start the Avalonia application loop and show windows.
     /// </summary>
     public static void Main(string[] args)
     {
@@ -44,11 +45,13 @@ public partial class App : Avalonia.Application
 
         System.Diagnostics.Debug.WriteLine("[App] Main called");
 
-        BuildAvaloniaApp();
+        // Build Avalonia app with desktop lifetime — this starts the application loop and shows windows.
+        BuildAvaloniaApp().StartWithClassicDesktopLifetime(args);
     }
 
     /// <summary>
     /// Helper to create a desktop app builder — must be called from Main() for Avalonia's platform setup.
+    /// The returned AppBuilder must have StartWithClassicDesktopLifetime() called on it to start the application loop.
     /// </summary>
     private static AppBuilder BuildAvaloniaApp() => AppBuilder.Configure<App>()
         .UsePlatformDetect()
@@ -124,7 +127,10 @@ public partial class App : Avalonia.Application
                 System.Diagnostics.Debug.WriteLine("[App] Showing main window");
                 mainWindow.Show();
                 System.Diagnostics.Debug.WriteLine("[App] Main window shown successfully");
-                desktop.ShutdownRequested += (_, _) => mainWindow?.Close();
+
+                // Set MainWindow as the application's startup window for proper shutdown behavior.
+                // When the last window closes, Avalonia will automatically shut down the app.
+                desktop.MainWindow = mainWindow;
             }
             catch (Exception ex)
             {
