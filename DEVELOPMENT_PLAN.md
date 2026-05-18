@@ -311,8 +311,8 @@ OpenLMStudio/
 ### 4.2 Conversation Manager
 - [x] Implement chat creation, loading, deletion (IConversationManager + SqliteConversationManager/ChatPersistenceService)
 - [x] Build message history navigation
-- [ ] Add search functionality within conversations — partial: SearchChatsAsync searches by name/content at the chat level but not per-message within a conversation
-- [ ] Implement conversation export/import
+- [x] Add search functionality within conversations — SearchMessagesInChatAsync added to IConversationManager interface and implemented in both FileConversationManager (async LINQ) and ChatPersistenceService (sync); returns messages matching query within a specific conversation ordered chronologically
+- [x] Implement conversation export/import — ExportChatAsync and ImportChatAsync are fully implemented in both FileConversationManager and ChatPersistenceService
 
 ### 4.3 Real-time Communication
 - [x] Server-Sent Events (SSE) client for streaming (HandleStreamingResponse in ServerService) — cross-platform via Kestrel
@@ -514,7 +514,7 @@ OpenLMStudio/
 
 ### 8.1 MCP Protocol Implementation
 - [x] Implement Model Context Protocol client/server communication (McpClient.cs, McpToolCaller.cs, McpResourceAccessor.cs exist)
-- [ ] Support for stdio and SSE transport modes (stdio exists; SSE needs implementation)
+- [x] Support for stdio and SSE transport modes (stdio via McpStdioClient; SSE via McpSseClient — connects to HTTP/SSE endpoint for bidirectional tool/resource/prompt access)
 - [x] Tool discovery and registration (ListToolsAsync + tools/list in McpClient.cs)
 - [ ] Resource and prompt support (resource accessor exists; prompts not yet implemented)
 
@@ -524,10 +524,10 @@ OpenLMStudio/
 - [ ] Version management and updates — GetAvailableUpdatesAsync exists but not fully implemented
 - [ ] Plugin sandbox/security model — Not started
 
-#### Phase 8 Summary — **1 of 4 items partial**
+#### Phase 8 Summary — **2 of 4 items complete**
 | Category | Items Complete | Items Remaining |
 |----------|---------------|-----------------|
-| MCP Protocol Implementation | 2 of 4 partial | SSE transport + prompt support not done |
+| MCP Protocol Implementation | 3 of 4 partial | SSE transport now implemented via McpSseClient; prompt support not yet done |
 | Plugin Manager | 0 / 4 | Partial: local plugin discovery exists; remote registry integration missing |
 
 ---
