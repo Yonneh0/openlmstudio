@@ -211,7 +211,7 @@ OpenLMStudio/
 ### 3.1 HTTP Server Foundation
 - [x] Establish DI service registration pattern (DependencyInjection.cs)
 - [x] Implement ASP.NET Core minimal host for local server (ServerService.cs with Kestrel) — **cross-platform via Kestrel**
-- [ ] Configure HTTPS with self-signed certificate generation support — **cross-platform cert handling needed**
+- [x] Configure HTTPS with self-signed certificate generation support — **SelfSignedCertificateGenerator + dotnet dev-certs fallback added for Windows**
 - [x] Set up request/response middleware pipeline
 
 ### 3.2 OpenAI-Compatible API Endpoints — Multi-Engine Routing
@@ -326,8 +326,12 @@ OpenLMStudio/
 | LoraAdapterManager | **Working** | Adapter tracking in _appliedAdapters dictionary; merging/mapping stubbed |
 | EmbeddingPipelineService | **Stub (placeholder)** | Generates random normalized 768-dim vectors until safetensors models integrated via ONNX Runtime |
 
-#### May 18, 2026 (6:35 AM) Changes:
-- EmbeddingPipelineService implementation added — stub generates random normalized embeddings via `IEmbeddingPipelineService` interface with `GenerateAsync()` and `GenerateBatchAsync()` methods |
+#### May 18, 2026 (6:35 AM):
+- EmbeddingPipelineService implementation added — stub generates random normalized embeddings via `IEmbeddingPipelineService` interface with `GenerateAsync()` and `GenerateBatchAsync()` methods
+- VaEPipelineService tensor type inference fixed — uses AsEnumerable<float>() + OutputMetadata shape instead of inferring from data length
+
+#### May 18, 2026 (6:38 AM):
+- SelfSignedCertificateGenerator updated to add dotnet dev-certs fallback for Windows when OpenSSL unavailable — enables HTTPS out-of-the-box without external dependencies
 
 #### Phase 3 Audit Bug Fixes Applied (non-critical — duplicate from Phase 5):
 - **ChatContextManager**: Fixed `GetAllContextSegmentsInternalAsync` column name mismatch — was using `Ordinal("Id")` but SQL selects `SegmentId`, causing SqliteException at runtime. Now uses `Ordinal("SegmentId")`.
