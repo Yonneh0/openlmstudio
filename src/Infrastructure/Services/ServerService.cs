@@ -181,6 +181,9 @@ public class ServerService : IServerService, IDisposable
             _logger?.LogInformation("Rate limiting enabled: {MaxRequests} requests per minute", Configuration.MaxRequestsPerMinute);
         }
 
+        // Register SSE reconnect tracking service always (needed for streaming reconnection)
+        builder.Services.AddSseReconnectTracking();
+
         // Register CORS if configured
         if (Configuration.AllowCors)
         {
@@ -1004,11 +1007,21 @@ public class ServerService : IServerService, IDisposable
         try
         {
             var requestId = Guid.NewGuid().ToString("N");
+            var connectionId = Guid.NewGuid().ToString("N")[..16]; // Shorter ID for SSE event tracking
+
+            // Check if the client is reconnecting (Last-Event-ID header)
+            string? reconnectFromEventId = null;
+            if (context.Request.Headers.TryGetValue("Last-Event-ID", out var lastEventId))
+            {
+                reconnectFromEventId = lastEventId.ToString();
+                _logger?.LogInformation("SSE reconnection detected from event ID: {EventId}", reconnectFromEventId);
+            }
 
             // Set up SSE headers
             context.Response.ContentType = "text/event-stream";
             context.Response.Headers.Append("Cache-Control", "no-cache");
             context.Response.Headers.Append("Connection", "keep-alive");
+            context.Response.Headers.Append("X-Event-ID", connectionId); // Send our event ID for future reconnects
 
             var cts = new CancellationTokenSource();
             _activeSseConnections[requestId] = cts;
