@@ -60,10 +60,21 @@ public class DiffusionPipelineService : IDiffusionPipelineService, IDisposable
 
         _logger?.LogInformation("Image generation stub — model loaded but inference not yet implemented for {ModelId}", request.ModelId);
 
-        var placeholder = new byte[100]; // minimal valid PNG-like buffer (not a real image)
+        // Return a minimal valid 1x1 red pixel PNG as placeholder until real inference is implemented.
+        const byte[] pngBytes = {
+            0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A, // PNG signature
+            0x00, 0x00, 0x00, 0x0D, 0x49, 0x48, 0x44, 0x52,  // IHDR length + type
+            0x00, 0x00, 0x00, 0x01, 0x00, 0x00, 0x00, 0x01,  // width=1, height=1
+            0x08, 0x02, 0x00, 0x00, 0x00, 0x90, 0x77, 0x53,  // bitDepth=8, colorType=RGB, interlace=none + CRC
+            0xDE, 0x00, 0x00, 0x00, 0x0C, 0x49, 0x44, 0x41,  // IDAT length + type
+            0x54, 0x08, 0xD7, 0x63, 0xF8, 0xCF, 0xC0, 0x00,  // IDAT data + CRC
+            0x00, 0x03, 0x01, 0x01, 0x00, 0x18, 0xDD, 0x8D,  // IEND length + type + CRC
+            0xB4, 0x00, 0x00, 0x00, 0x00, 0x49, 0x45, 0x4E,  // IEND data + CRC
+            0x44, 0xAE, 0x42, 0x60, 0x82                        // IEND CRC
+        };
 
         return new ImageGenerationResult(
-            placeholder,
+            pngBytes,
             request.Width,
             request.Height,
             request.EffectiveSeed,
@@ -238,16 +249,21 @@ public class DiffusionPipelineService : IDiffusionPipelineService, IDisposable
 
         _logger?.LogInformation("Inpainting stub — model loaded but inference not yet implemented for {ModelId}", request.ModelId);
 
-        // TODO: Real implementation requires:
-        // 1. Encode the init image using VAE pipeline
-        // 2. Encode the mask image (or generate noise based on it)
-        // 3. Run denoising loop conditioned on the prompt + unconditioned by the masked region
-        // 4. Decode the result with VAE pipeline
-
-        var placeholder = new byte[100]; // minimal valid PNG-like buffer (not a real image)
+        // Return a minimal valid 1x1 red pixel PNG as placeholder until real inference is implemented.
+        const byte[] pngBytes = {
+            0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A,
+            0x00, 0x00, 0x00, 0x0D, 0x49, 0x48, 0x44, 0x52,
+            0x00, 0x00, 0x00, 0x01, 0x00, 0x00, 0x00, 0x01,
+            0x08, 0x02, 0x00, 0x00, 0x00, 0x90, 0x77, 0x53,
+            0xDE, 0x00, 0x00, 0x00, 0x0C, 0x49, 0x44, 0x41,
+            0x54, 0x08, 0xD7, 0x63, 0xF8, 0xCF, 0xC0, 0x00,
+            0x00, 0x03, 0x01, 0x01, 0x00, 0x18, 0xDD, 0x8D,
+            0xB4, 0x00, 0x00, 0x00, 0x00, 0x49, 0x45, 0x4E,
+            0x44, 0xAE, 0x42, 0x60, 0x82
+        };
 
         return new ImageGenerationResult(
-            placeholder,
+            pngBytes,
             request.Width > 0 ? request.Width : 1024,
             request.Height > 0 ? request.Height : 1024,
             request.Seed ?? -1,
@@ -272,15 +288,21 @@ public class DiffusionPipelineService : IDiffusionPipelineService, IDisposable
 
         _logger?.LogInformation("Outpainting stub — model loaded but inference not yet implemented for {ModelId}", request.ModelId);
 
-        // TODO: Real implementation requires:
-        // 1. Pad the init image with zeros (or noise) in the specified direction(s)
-        // 2. Run denoising loop conditioned on the prompt + masked region from original image
-        // 3. Decode the result with VAE pipeline
-
-        var placeholder = new byte[100]; // minimal valid PNG-like buffer (not a real image)
+        // Return a minimal valid 1x1 red pixel PNG as placeholder until real inference is implemented.
+        const byte[] pngBytes = {
+            0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A,
+            0x00, 0x00, 0x00, 0x0D, 0x49, 0x48, 0x44, 0x52,
+            0x00, 0x00, 0x00, 0x01, 0x00, 0x00, 0x00, 0x01,
+            0x08, 0x02, 0x00, 0x00, 0x00, 0x90, 0x77, 0x53,
+            0xDE, 0x00, 0x00, 0x00, 0x0C, 0x49, 0x44, 0x41,
+            0x54, 0x08, 0xD7, 0x63, 0xF8, 0xCF, 0xC0, 0x00,
+            0x00, 0x03, 0x01, 0x01, 0x00, 0x18, 0xDD, 0x8D,
+            0xB4, 0x00, 0x00, 0x00, 0x00, 0x49, 0x45, 0x4E,
+            0x44, 0xAE, 0x42, 0x60, 0x82
+        };
 
         return new ImageGenerationResult(
-            placeholder,
+            pngBytes,
             request.Width > 0 ? request.Width : 1024,
             request.Height > 0 ? request.Height : 1024,
             request.Seed ?? -1,
