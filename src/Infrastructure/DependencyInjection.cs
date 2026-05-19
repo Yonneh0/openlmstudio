@@ -197,6 +197,25 @@ public static class DependencyInjection
         // SandboxService provides cross-platform process isolation (Job Objects on Windows, cgroups v2 on Linux/macOS)
         services.AddSingleton<Domain.Interfaces.ISandboxService, Services.SandboxService>();
 
+        // ---- Phase 7: Agent Harness — Tool Registry ----
+
+        // ToolRegistry manages tool discovery and instantiation for agent execution
+        services.AddSingleton<IToolRegistry>(resolver =>
+        {
+            var logger = resolver.GetService<Microsoft.Extensions.Logging.ILogger<Services.ToolRegistry>>();
+            var serviceProvider = resolver;
+            return new Services.ToolRegistry(logger, serviceProvider);
+        });
+
+        // ActiveProjectWatcher provides real-time project filesystem monitoring for the agent
+        services.AddSingleton<Services.ActiveProjectWatcher>(resolver =>
+        {
+            var logger = resolver.GetService<Microsoft.Extensions.Logging.ILogger<Services.ActiveProjectWatcher>>();
+            var appData = resolver.GetService<AppDataDirectoryResolver>();
+            var watchPath = appData?.TaskDirectory ?? Directory.GetCurrentDirectory();
+            return new Services.ActiveProjectWatcher(logger, watchPath);
+        });
+
         return services;
     }
 

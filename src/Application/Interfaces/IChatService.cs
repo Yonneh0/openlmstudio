@@ -12,9 +12,9 @@ public interface IChatService
     /// Creates a new chat conversation.
     /// </summary>
     /// <param name="title">The chat title.</param>
-    /// <param name="modelId">The model to use for this chat.</param>
+    /// <param name="modelId">The model ID to use for this chat (null means system default).</param>
     /// <returns>The created chat entity.</returns>
-    Task<Chat> CreateChatAsync(string title, Guid modelId);
+    Task<Chat> CreateChatAsync(string title, string? modelId = null);
 
     /// <summary>
     /// Gets a chat by ID.

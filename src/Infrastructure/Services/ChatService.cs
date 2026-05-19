@@ -1,5 +1,6 @@
 using Microsoft.Extensions.Logging;
 using OpenLMStudio.Application.Interfaces;
+using OpenLMStudio.Domain.Interfaces;
 using OpenLMStudio.Domain.Models;
 
 namespace OpenLMStudio.Infrastructure.Services;
@@ -15,11 +16,11 @@ public class ChatService : Application.Interfaces.IChatService
         _logger = logger;
     }
 
-    public async Task<Chat> CreateChatAsync(string title, Guid modelId)
+    public async Task<Chat> CreateChatAsync(string title, string? modelId = null)
     {
         try
         {
-            var chat = await _conversationManager.CreateChatAsync(title, modelId.ToString());
+            var chat = await _conversationManager.CreateChatAsync(title, modelId);
             _logger.LogInformation("Created new chat: {ChatId} - '{Title}'", chat.Id, chat.Name);
             return chat;
         }

@@ -10,7 +10,7 @@ public interface IChatService
     /// <summary>
     /// Creates a new chat conversation.
     /// </summary>
-    Task<Chat> CreateChatAsync(string title, Guid modelId);
+    Task<Chat> CreateChatAsync(string title, string? modelId = null);
 
     /// <summary>
     /// Retrieves a chat by its identifier.

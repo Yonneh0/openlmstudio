@@ -851,22 +851,22 @@ public class ServerService : IServerService, IDisposable
         }
     }
 
-        private ChatRequest? ParseStreamingRequest(string requestBodyStr, string requestId)
+    private ChatRequest? ParseStreamingRequest(string requestBodyStr, string requestId)
+    {
+        try
         {
-            try
+            var parsedBody = System.Text.Json.JsonSerializer.Deserialize<JsonChatRequest>(requestBodyStr);
+
+            if (parsedBody == null) return null;
+
+            // Build message list from JSON body
+            var messages = new List<Message>();
+
+            if (parsedBody.Messages != null && parsedBody.Messages.Any())
             {
-                var parsedBody = System.Text.Json.JsonSerializer.Deserialize<JsonChatRequest>(requestBodyStr);
-
-                if (parsedBody == null) return null;
-
-                // Build message list from JSON body
-                var messages = new List<Message>();
-
-                if (parsedBody.Messages != null && parsedBody.Messages.Any())
+                foreach (var msg in parsedBody.Messages)
                 {
-                    foreach (var msg in parsedBody.Messages)
-                    {
-                        var roleMap = new Dictionary<string, MessageRole>
+                    var roleMap = new Dictionary<string, MessageRole>
                         {
                             { "system", MessageRole.System },
                             { "user", MessageRole.User },
@@ -874,30 +874,30 @@ public class ServerService : IServerService, IDisposable
                             { "tool", MessageRole.Tool }
                         };
 
-                        messages.Add(new Message
-                        {
-                            Role = roleMap.GetValueOrDefault(msg.Role, MessageRole.User),
-                            Content = msg.Content ?? "",
-                            TokenCount = msg.TokenCount > 0 ? msg.TokenCount : Math.Max(1, EstimateTokenCount(msg.Content))
-                        });
-                    }
+                    messages.Add(new Message
+                    {
+                        Role = roleMap.GetValueOrDefault(msg.Role, MessageRole.User),
+                        Content = msg.Content ?? "",
+                        TokenCount = msg.TokenCount > 0 ? msg.TokenCount : Math.Max(1, EstimateTokenCount(msg.Content))
+                    });
                 }
+            }
 
-                return new ChatRequest(
-                    parsedBody.ModelId ?? "local-model",
-                    messages,
-                    parsedBody.Temperature.HasValue ? (double?)parsedBody.Temperature.Value : 0.7,
-                    parsedBody.MaxTokens > 0 ? (int?)parsedBody.MaxTokens : null,
-                    parsedBody.TopP.HasValue ? (double?)parsedBody.TopP.Value : 1.0,
-                    true
-                );
-            }
-            catch (Exception ex)
-            {
-                _logger?.LogWarning(ex, "Failed to parse streaming request — returning null to let caller handle the error");
-                return null;
-            }
+            return new ChatRequest(
+                parsedBody.ModelId ?? "local-model",
+                messages,
+                parsedBody.Temperature.HasValue ? (double?)parsedBody.Temperature.Value : 0.7,
+                parsedBody.MaxTokens > 0 ? (int?)parsedBody.MaxTokens : null,
+                parsedBody.TopP.HasValue ? (double?)parsedBody.TopP.Value : 1.0,
+                true
+            );
         }
+        catch (Exception ex)
+        {
+            _logger?.LogWarning(ex, "Failed to parse streaming request — returning null to let caller handle the error");
+            return null;
+        }
+    }
 
     // ---- Private Helpers ----
 

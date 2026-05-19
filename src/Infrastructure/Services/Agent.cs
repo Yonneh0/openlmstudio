@@ -1,10 +1,5 @@
-using System;
-using System.Collections.Concurrent;
 using System.Collections.Generic;
-using System.Linq;
-using System.Reflection;
 using System.Threading;
-using System.Threading.Tasks;
 using Microsoft.Extensions.Logging;
 using OpenLMStudio.Application.Interfaces;
 using OpenLMStudio.Domain.Models;
@@ -12,350 +7,212 @@ using OpenLMStudio.Domain.Models;
 namespace OpenLMStudio.Infrastructure.Services;
 
 /// <summary>
-/// Concrete implementation of IAgent that manages the lifecycle of an agentic task with plan/act cycle.
+/// Core agent that implements the plan/act cycle for agentic task execution.
+/// Coordinates with IToolRegistry to discover and execute available tools.
 /// </summary>
 public class Agent : IAgent, IDisposable
 {
     private readonly ILogger<Agent>? _logger;
     private readonly ITaskProgressTracker _progressTracker;
-
-    /// <summary>
-    /// The task description being worked on — used for context-aware planning.
-    /// </summary>
-    private string? _taskDescription;
-    private volatile AgentState _state = AgentState.Planning;
+    private readonly IToolRegistry _toolRegistry;
+    private readonly IChatCompletionService _chatService;
+    private readonly IChatContextManager _contextManager;
+    private AgentState _state;
     private bool _disposed;
+
     private readonly List<AgentToolCallRecord> _toolCalls = new();
     private readonly List<AgentMessageExchange> _conversationHistory = new();
+    private AgentTaskRequest? _currentRequest;
 
-    /// <summary>
-    /// Creates a new Agent instance.
-    /// </summary>
-    public Agent(ILogger<Agent>? logger, ITaskProgressTracker progressTracker)
+    public Agent(
+        ILogger<Agent>? logger,
+        ITaskProgressTracker progressTracker,
+        IToolRegistry? toolRegistry = null,
+        IChatCompletionService? chatService = null,
+        IChatContextManager? contextManager = null)
     {
         _logger = logger;
-        _progressTracker = progressTracker ?? throw new ArgumentNullException(nameof(progressTracker));
+        _progressTracker = progressTracker;
+        _toolRegistry = toolRegistry ?? throw new ArgumentNullException(nameof(toolRegistry));
+        _chatService = chatService ?? throw new ArgumentNullException(nameof(chatService));
+        _contextManager = contextManager ?? throw new ArgumentNullException(nameof(contextManager));
+        _state = AgentState.Idle;
     }
 
-    /// <inheritdoc />
     public AgentState State => _state;
 
-    /// <inheritdoc />
     public async Task<AgentTaskResult> ExecuteAsync(AgentTaskRequest request, CancellationToken ct = default)
     {
-        if (request == null || string.IsNullOrEmpty(request.Description))
-            throw new ArgumentException("Task description is required.", nameof(request));
-
-        if (_disposed) return CreateFailedResult(request.TaskId, "Agent disposed");
-
+        _currentRequest = request;
         _state = AgentState.Planning;
-        await _progressTracker.UpdateStageAsync(TaskProgressStage.InProgress).ConfigureAwait(false);
-
-        _taskDescription = request.Description;
-
-        // Log initial planning message
-        AddConversationMessage("agent", "planning", $"Planning approach for task: {request.Description}");
+        await _progressTracker.UpdateStageAsync(TaskProgressStage.InProgress);
 
         try
         {
-            int iterationCount = 0;
-            while (iterationCount < request.MaxIterations && !ct.IsCancellationRequested)
+            // Phase 1: Planning — ask LLM to propose a plan
+            var plan = await GeneratePlanAsync(request, ct);
+            if (string.IsNullOrEmpty(plan))
             {
-                // Check error conditions
-                if (_progressTracker.HasError || _progressTracker.IsIterationLimitExceeded)
-                    return CreateFailedResult(request.TaskId,
-                        $"Agent hit error condition: {_progressTracker.ErrorMessage ?? "iteration limit"}");
-
-                // Execute plan phase (determine what to do next) — use context-aware planning with task description
-                var planMessage = GeneratePlanResponse();
-                AddConversationMessage("agent", "planning", planMessage);
-
-                _state = AgentState.Acting;
-                await _progressTracker.UpdateStageAsync(TaskProgressStage.Reviewing).ConfigureAwait(false);
-
-                // Execute act phase based on plan
-                bool shouldContinue = await ExecuteActPhase(request, ct).ConfigureAwait(false);
-
-                if (!shouldContinue)
-                    break;
-
-                iterationCount++;
+                await _progressTracker.RecordErrorAsync("Failed to generate plan.");
+                _state = AgentState.Failed;
+                return CreateResult(request, AgentState.Failed);
             }
 
-            if (ct.IsCancellationRequested)
-                return CreateFailedResult(request.TaskId, "Agent execution was cancelled");
+            _state = AgentState.Acting;
 
-            _state = AgentState.Completed;
-            await _progressTracker.UpdateStageAsync(TaskProgressStage.Completed).ConfigureAwait(false);
-
-            return new AgentTaskResult(
-                request.TaskId,
-                AgentState.Completed,
-                _toolCalls.ToList().AsReadOnly(),
-                $"Completed {iterationCount} iterations");
+            // Phase 2: Act — execute actions using available tools
+            var result = await ExecuteActionsAsync(request, plan, ct);
+            return result;
         }
         catch (Exception ex)
         {
-            await _progressTracker.RecordErrorAsync(ex.Message).ConfigureAwait(false);
-            return CreateFailedResult(request.TaskId, ex.Message);
+            _logger?.LogError(ex, "Agent execution failed");
+            await _progressTracker.RecordErrorAsync(ex.Message);
+            _state = AgentState.Failed;
+            return CreateResult(request, AgentState.Failed);
         }
     }
 
-    /// <inheritdoc />
     public Task PauseAsync()
     {
-        if (_disposed) return Task.CompletedTask;
-
         _state = AgentState.Paused;
-        _logger?.LogInformation("Agent paused awaiting user input/approval");
         return Task.CompletedTask;
     }
 
-    /// <inheritdoc />
-    public async Task ResumeAsync(CancellationToken ct = default)
+    public Task ResumeAsync(CancellationToken ct = default)
     {
-        if (_disposed || _state != AgentState.Paused) return;
-
-        _logger?.LogInformation("Agent resuming from paused state");
-        await _progressTracker.UpdateStageAsync(TaskProgressStage.InProgress).ConfigureAwait(false);
-
-        // Re-activate based on current phase — could continue planning or acting
-    }
-
-    /// <inheritdoc />
-    public async Task AbortAsync()
-    {
-        if (_disposed) return;
-
-        _logger?.LogWarning("Agent aborted by user");
-        await _progressTracker.RecordErrorAsync("Agent aborted by user").ConfigureAwait(false);
-        _state = AgentState.Failed;
-    }
-
-    /// <inheritdoc />
-    public IReadOnlyList<AgentToolCallRecord> GetToolCalls() => _toolCalls.AsReadOnly();
-
-    /// <inheritdoc />
-    public IReadOnlyList<AgentMessageExchange> GetConversationHistory() => _conversationHistory.AsReadOnly();
-
-    private async Task<bool> ExecuteActPhase(AgentTaskRequest request, CancellationToken ct)
-    {
-        // Determine what tool to use based on current context and available tools
-        string? selectedToolName = TrySelectNextTool(request);
-        if (selectedToolName == null)
-            return false;  // No more work to do
-
-        ITool? tool = TryFindTool(selectedToolName);
-
-        if (tool == null)
-            return true;  // Continue even if tool not found — could be MCP tool or built-in
-
-        var parameters = new Dictionary<string, object>();
-        try
+        if (_currentRequest != null)
         {
             _state = AgentState.Acting;
-
-            // Log act phase message
-            AddConversationMessage("agent", "acting", $"Executing tool: {selectedToolName}");
-
-            // Execute the selected tool with appropriate parameters
-            var sw = System.Diagnostics.Stopwatch.StartNew();
-            bool success = await tool.ExecuteAsync(parameters).ConfigureAwait(false);
-            sw.Stop();
-
-            _toolCalls.Add(new AgentToolCallRecord(
-                selectedToolName, parameters,
-                success ? "Success" : "Failure",
-                success, sw.ElapsedMilliseconds, DateTime.UtcNow));
-
-            await _progressTracker.RecordToolCallAsync(selectedToolName, parameters,
-                success ? "Success" : "Failure", success, sw.ElapsedMilliseconds).ConfigureAwait(false);
-
-            return true;  // Continue executing
+            // TODO: Continue from last interrupted tool call
         }
-        catch (Exception ex)
-        {
-            _logger?.LogError(ex, "Tool execution failed: {Tool}", selectedToolName);
-            var errorSw = System.Diagnostics.Stopwatch.StartNew();
-            errorSw.Stop();
-            _toolCalls.Add(new AgentToolCallRecord(selectedToolName, parameters, ex.Message, false, errorSw.ElapsedMilliseconds, DateTime.UtcNow));
-
-            await _progressTracker.RecordErrorAsync($"Tool '{selectedToolName}' failed: {ex.Message}").ConfigureAwait(false);
-            return true;  // Continue even on failure — agent should try other approaches
-        }
+        return Task.CompletedTask;
     }
 
-    /// <summary>
-    /// Generates a context-aware plan response using the available tool descriptions.
-    /// When an LLM is available, this would call it to generate a dynamic plan.
-    /// Without LLM integration, provides heuristic-based planning with tool suggestions.
-    /// </summary>
-    private string GeneratePlanResponse()
+    public async Task AbortAsync()
     {
-        if (string.IsNullOrEmpty(_taskDescription))
-            return "Analyzing current state and determining next action";
-
-        // Heuristic-based planning: analyze the task description to determine likely needed tools/actions
-        var lower = _taskDescription.ToLowerInvariant();
-        var suggestedActions = new List<string>();
-
-        if (lower.Contains("file") || lower.Contains("read") || lower.Contains("write"))
-            suggestedActions.Add("Use FileRead/FileWrite tools for file operations");
-
-        if (lower.Contains("git") || lower.Contains("commit") || lower.Contains("branch"))
-            suggestedActions.Add("Use git-related tools (GitDiffTool, GitHistoryTool) for version control");
-
-        if (lower.Contains("command") || lower.Contains("run") || lower.Contains("execute"))
-            suggestedActions.Add("Use CommandExecute tool for running shell commands");
-
-        if (lower.Contains("search") || lower.Contains("find") || lower.Contains("grep"))
-            suggestedActions.Add("Use SearchFilesTool to find files or search across project");
-
-        if (lower.Contains("code") || lower.Contains("function") || lower.Contains("class"))
-            suggestedActions.Add("Use ProjectExplorer to examine code structure");
-
-        // If no specific tools were identified from the task description, suggest a general approach
-        if (suggestedActions.Count == 0)
-        {
-            return "Analyzing current state and determining next action. Task context: " + _taskDescription;
-        }
-
-        var response = new List<string> { "Planning analysis based on task context:" };
-        foreach (var suggestion in suggestedActions)
-            response.Add($"- {suggestion}");
-
-        return string.Join("\n", response);
+        _state = AgentState.Failed;
+        await _progressTracker.RecordErrorAsync("Task aborted by user.");
     }
 
-    /// <summary>
-    /// Selects the next tool to use based on available tools and least usage history.
-    /// </summary>
-    private string? TrySelectNextTool(AgentTaskRequest request)
-    {
-        if (request == null || request.AvailableTools == null || request.AvailableTools.Count == 0)
-            return null;
+    public IReadOnlyList<AgentToolCallRecord> GetToolCalls() => _toolCalls;
+    public IReadOnlyList<AgentMessageExchange> GetConversationHistory() => _conversationHistory;
 
-        // Simple tool selection: pick first available tool that hasn't been used extensively yet
-        var leastUsed = _toolCalls.GroupBy(t => t.ToolName)
-            .OrderBy(g => g.Count())
-            .Select(g => g.Key);
-
-        foreach (var tool in request.AvailableTools.Concat(leastUsed))
-        {
-            if (TryFindToolByName(tool))
-                return tool;
-        }
-
-        // Fallback: select first available tool
-        return request.AvailableTools[0];
-    }
-
-    /// <summary>
-    /// Checks if a tool with the given name exists in the loaded assemblies.
-    /// </summary>
-    private bool TryFindToolByName(string toolName)
-    {
-        try
-        {
-            var assembly = Assembly.GetExecutingAssembly();
-
-            foreach (var type in assembly.GetTypes())
-            {
-                if (type.IsAbstract || !typeof(ITool).IsAssignableFrom(type)) continue;
-
-                // Check constructor compatibility — needs ILogger and possibly IMcpClient/IMcpResourceAccessor
-                var constructors = type.GetConstructors();
-                foreach (var ctor in constructors.Where(c => c.IsPublic))
-                {
-                    try
-                    {
-                        Activator.CreateInstance(type, new object?[] { _logger, null });
-                        return true;  // Constructor found — tool exists
-                    }
-                    catch
-                    {
-                        continue;  // Constructor doesn't match — try another one
-                    }
-                }
-            }
-
-            return false;
-        }
-        catch (Exception ex)
-        {
-            _logger?.LogWarning(ex, "Failed to find tool: {Tool}", toolName);
-            return false;
-        }
-    }
-
-    /// <summary>
-    /// Attempts to instantiate a tool by name across loaded assemblies and registered tool types.
-    /// </summary>
-    private ITool? TryFindTool(string toolName)
-    {
-        // Search across all loaded assemblies (not just the executing one) to find dynamically registered tools.
-        var assemblyNames = AppDomain.CurrentDomain.GetAssemblies()
-            .Select(a => a.GetName().Name)
-            .Distinct()
-            .ToList();
-
-        foreach (var typeName in assemblyNames)
-        {
-            try
-            {
-                var assembly = AppDomain.CurrentDomain.GetAssemblies()
-                    .FirstOrDefault(a => a.GetName().Name == typeName);
-                if (assembly == null) continue;
-
-                foreach (var type in assembly.GetTypes())
-                {
-                    if (type.IsAbstract || !typeof(ITool).IsAssignableFrom(type)) continue;
-
-                    // Check if the tool name matches the type name (case-insensitive).
-                    if (!string.Equals(type.Name.Replace("Tool", ""), toolName, StringComparison.OrdinalIgnoreCase) &&
-                        !string.Equals(type.Name, toolName, StringComparison.OrdinalIgnoreCase))
-                        continue;
-
-                    // Check constructor compatibility — needs ILogger and possibly IMcpClient/IMcpResourceAccessor
-                    var constructors = type.GetConstructors();
-                    foreach (var ctor in constructors.Where(c => c.IsPublic))
-                    {
-                        try
-                        {
-                            return Activator.CreateInstance(type, new object?[] { _logger, null }) as ITool;
-                        }
-                        catch
-                        {
-                            // Constructor doesn't match — try another one
-                        }
-                    }
-                }
-            }
-            catch
-            {
-                // Assembly failed to load — skip it
-            }
-        }
-
-        return null;
-    }
-
-    private void AddConversationMessage(string senderRole, string phase, string content) =>
-        _conversationHistory.Add(new AgentMessageExchange(
-            Guid.Empty, senderRole, phase, content));
-
-    private static AgentTaskResult CreateFailedResult(Guid taskId, string message) =>
-        new(taskId, AgentState.Failed, Array.Empty<AgentToolCallRecord>().AsReadOnly(), message);
-
-    /// <inheritdoc />
     public void Dispose()
     {
         if (!_disposed)
         {
             _disposed = true;
-
-            // Clean up any unmanaged resources (tool calls are records — no disposal needed)
-            _logger?.LogInformation("Agent disposed");
         }
+    }
+
+    private async Task<string?> GeneratePlanAsync(AgentTaskRequest request, CancellationToken ct)
+    {
+        var tools = _toolRegistry.GetTools();
+        var toolNames = string.Join(", ", tools.Keys);
+
+        var systemPrompt = $"""
+You are an autonomous agent. Your task is:
+
+{request.Description}
+
+Available tools: {toolNames}
+Max iterations: {request.MaxIterations}
+
+Propose a detailed plan for completing this task. Be specific about which tools to use and in what order.
+""";
+
+        try
+        {
+            await _contextManager.GetCompressedContextAsync(request.TaskId, Domain.Models.CompressionLevel.Medium);
+            var response = await _chatService.GetCompletionAsync(new ChatRequest(
+                ModelId: "default",
+                Messages: new List<Message>
+                {
+                    new() { Role = MessageRole.System, Content = systemPrompt },
+                    new() { Role = MessageRole.User, Content = "Please propose a plan." }
+                },
+                Stream: false
+            ));
+
+            return response.Message.Content;
+        }
+        catch (Exception ex)
+        {
+            _logger?.LogWarning(ex, "Failed to generate plan");
+            return null;
+        }
+    }
+
+    private async Task<AgentTaskResult> ExecuteActionsAsync(AgentTaskRequest request, string plan, CancellationToken ct)
+    {
+        var iterations = 0;
+        var maxIterations = request.MaxIterations;
+
+        while (iterations < maxIterations && !_disposed)
+        {
+            iterations++;
+            _logger?.LogInformation("Agent iteration {Iteration}/{Max}", iterations, maxIterations);
+
+            await _progressTracker.ReportProgressAsync((int)((iterations / (double)maxIterations) * 100));
+
+            // Generate next action
+            var action = await GenerateActionAsync(request, plan, ct);
+            if (string.IsNullOrEmpty(action)) break;
+
+            // Execute each tool
+            foreach (var toolName in new[] { "CommandExecute", "FileRead" })
+            {
+                var tool = _toolRegistry.GetTool(toolName);
+                if (tool == null) continue;
+
+                var sw = System.Diagnostics.Stopwatch.StartNew();
+                var success = await tool.ExecuteAsync(new Dictionary<string, object>()) == true;
+                sw.Stop();
+
+                var record = new AgentToolCallRecord(
+                    toolName, new Dictionary<string, object>(), success ? "Completed" : "Failed", success, sw.ElapsedMilliseconds, DateTime.UtcNow);
+
+                _toolCalls.Add(record);
+                await _progressTracker.RecordToolCallAsync(toolName, new Dictionary<string, object>(), record.Result, success, sw.ElapsedMilliseconds);
+            }
+        }
+
+        _state = AgentState.Completed;
+        await _progressTracker.UpdateStageAsync(TaskProgressStage.Completed);
+        return CreateResult(request, AgentState.Completed);
+    }
+
+    private async Task<string?> GenerateActionAsync(AgentTaskRequest request, string plan, CancellationToken ct)
+    {
+        try
+        {
+            await _contextManager.GetCompressedContextAsync(request.TaskId, CompressionLevel.Medium);
+            var response = await _chatService.GetCompletionAsync(new ChatRequest(
+                ModelId: "default",
+                Messages: new List<Message>
+                {
+                    new() { Role = MessageRole.System, Content = "Continue executing the plan." },
+                    new() { Role = MessageRole.User, Content = "What action to take next?" }
+                },
+                Stream: false
+            ));
+
+            return response.Message.Content;
+        }
+        catch (Exception ex)
+        {
+            _logger?.LogWarning(ex, "Failed to generate action");
+            return null;
+        }
+    }
+
+    private AgentTaskResult CreateResult(AgentTaskRequest request, AgentState finalState)
+    {
+        var summary = finalState == AgentState.Completed
+            ? $"Task completed with {(_toolCalls?.Count ?? 0)} tool calls."
+            : $"Task failed: {finalState}";
+
+        return new AgentTaskResult(request.TaskId, finalState, _toolCalls ?? new List<AgentToolCallRecord>(), summary);
     }
 }

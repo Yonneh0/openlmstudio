@@ -140,13 +140,33 @@ public class AppDataDirectoryResolver : IDisposable
     }
 
     /// <summary>
-    /// Gets the path to a task context database file.
+    /// Gets the path to the task context database file for a specific task.
     /// </summary>
     public string GetTaskContextDatabasePath(string taskId)
     {
         var tasksDir = GetSubDirectory("tasks");
         return System.IO.Path.Combine(tasksDir, $"{taskId}.db");
     }
+
+    /// <summary>
+    /// Gets the path to the tasks subdirectory.
+    /// </summary>
+    public string TaskDirectory => GetSubDirectory("tasks");
+
+    /// <summary>
+    /// Gets the path to the metadata subdirectory.
+    /// </summary>
+    public string MetadataDirectory => GetSubDirectory("metadata");
+
+    /// <summary>
+    /// Gets the path to the models subdirectory.
+    /// </summary>
+    public string ModelsDirectory => GetSubDirectory("models");
+
+    /// <summary>
+    /// Gets the path to the logs subdirectory.
+    /// </summary>
+    public string LogsDirectory => GetSubDirectory("logs");
 
     /// <summary>
     /// Gets the path to a log file.
