@@ -28,7 +28,7 @@ public class ModelManager : IModelManager, IDisposable
     private readonly ConcurrentDictionary<string, LoadedModelInfo> _loadedModels = new();
     private bool _disposed;
 
-    public ModelManager(ILogger<ModelManager> logger, IDeviceMonitor deviceMonitor)
+    public ModelManager(ILogger<ModelManager>? logger, IDeviceMonitor deviceMonitor)
     {
         _logger = logger;
         _deviceMonitor = deviceMonitor;
