@@ -146,11 +146,12 @@ public class PluginRegistry : Domain.Interfaces.IPluginRegistry
                     {
                         var manifest = await LoadPluginManifestAsync(manifestPath);
                         result.Add(new Domain.Interfaces.PluginDefinition(
-                            manifest.Id ?? pluginName,  // Use directory name as fallback when Id not in manifest
-                            manifest.Name ?? pluginName,  // Use directory name as fallback when Name not in manifest
+                            manifest.Id ?? pluginName,
+                            manifest.Name ?? pluginName,
                             manifest.Description ?? string.Empty,
                             manifest.Version ?? new Version("0.1"),
-                            manifest.Version ?? new Version("0.1"),  // No registry version for local plugins
+                            // No registry version for local plugins
+                            null,
                             true,
                             manifest.IsEnabled ?? false,
                             manifest.Tags ?? new List<string>(),
@@ -175,11 +176,12 @@ public class PluginRegistry : Domain.Interfaces.IPluginRegistry
                     if (attr != null)
                     {
                         result.Add(new Domain.Interfaces.PluginDefinition(
-                            attr.Id!,  // Null-forgiving: Id is required in PluginDefinition but Attribute constructor guarantees it
-                            attr.Name!,  // Null-forgiving: Name is required in PluginDefinition and guaranteed by Attribute constructor
-                            attr.Description ?? string.Empty,  // Null-forgiving: Description can be null — default to empty string
+                            attr.Id!,
+                            attr.Name!,
+                            attr.Description ?? string.Empty,
                             attr.Version ?? new Version("0.1"),
-                            attr.Version ?? new Version("0.1"),
+                            // No registry version for DLL-based plugins
+                            null,
                             true,
                             attr.IsEnabled ?? false,
                             attr.Tags ?? new List<string>(),
@@ -391,7 +393,6 @@ public class PluginRegistry : Domain.Interfaces.IPluginRegistry
                 var jsonContent = await response.Content.ReadAsStringAsync();
                 var registryPlugin = System.Text.Json.JsonSerializer.Deserialize<Domain.Interfaces.PluginDefinition>(jsonContent);
 
-                // FIX: Compare against RegistryVersion (not Version), since installed.Version is the local version
                 if (registryPlugin != null && registryPlugin.RegistryVersion > installed.RegistryVersion)
                 {
                     result.Add(new Domain.Interfaces.PluginUpdateInfo(

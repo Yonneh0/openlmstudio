@@ -36,6 +36,7 @@ public partial class MainWindow : Window
     private readonly IServerService? _serverService;
     private readonly IModelRepository? _modelRepository;
     private readonly IChatCompletionService? _chatCompletionService;
+
     private readonly IChatContextManager? _contextManager;
     private readonly IContextWindowBudgeter? _budgeter;
 

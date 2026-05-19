@@ -1,7 +1,6 @@
 using Microsoft.Extensions.Logging;
 using OpenLMStudio.Application.Interfaces;
 using OpenLMStudio.Domain.Models;
-using SQLitePCL;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 

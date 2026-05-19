@@ -91,7 +91,7 @@ public record PluginDefinition(
     string Name,
     string Description,
     Version Version,
-    Version RegistryVersion,  // Latest version available in the registry
+    Version? RegistryVersion,  // Latest version available in the registry (null for local-only plugins)
     bool IsInstalled,
     bool IsEnabled,
     List<string> Tags,

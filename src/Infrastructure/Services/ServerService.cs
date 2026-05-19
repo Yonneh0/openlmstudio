@@ -1,5 +1,4 @@
 using System.Diagnostics;
-using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Http;
@@ -9,7 +8,6 @@ using OpenLMStudio.Application.Interfaces;
 using OpenLMStudio.Application.Types;
 using OpenLMStudio.Domain.Models;
 using System.Collections.Concurrent;
-using System.IO.Pipelines;
 using System.Net.Sockets;
 using System.Text;
 
@@ -59,60 +57,24 @@ public class ServerService : IServerService, IDisposable
         _modelRepository = modelRepository;
     }
 
-    // ---- Service resolution helpers (for lazy DI resolution when no pre-resolved dependency exists) ----
+    // ---- Service resolution helpers (resolve from HttpContext.RequestServices) ----
 
     /// <summary>
-    /// Resolves the chat completion service lazily from a DI container.
-    /// Used when no pre-resolved dependency was provided in constructor.
+    /// Resolves the chat completion service from an HttpContext's service provider.
     /// </summary>
-    private IChatCompletionService ResolveChatService()
+    private IChatCompletionService ResolveChatService(HttpContext context)
     {
         if (_chatCompletionService != null) return _chatCompletionService;
-
-        // Try to resolve from the application's DI container via a fresh ServiceCollection
-        try
-        {
-            var services = new ServiceCollection()
-                .AddLogging()
-                .BuildServiceProvider();
-
-            return services.GetRequiredService<IChatCompletionService>();
-        }
-        catch
-        {
-            _logger?.LogDebug("ServerService: DI not available in this context");
-        }
-
-        // Fallback to stub implementation if no service found
-        return new LlamaCppChatCompletionService(
-            (ILogger<LlamaCppChatCompletionService>)NullLogger.Instance,
-            CreateStubModelRepository(),
-            new GgufParser());
+        return context.RequestServices.GetRequiredService<IChatCompletionService>();
     }
 
     /// <summary>
-    /// Resolves the model repository lazily from a DI container.
-    /// Used when no pre-resolved dependency was provided in constructor.
+    /// Resolves the model repository from an HttpContext's service provider.
     /// </summary>
-    private IModelRepository ResolveModelRepo()
+    private IModelRepository? ResolveModelRepo(HttpContext context)
     {
         if (_modelRepository != null) return _modelRepository;
-
-        // Try to resolve from the application's DI container via a fresh ServiceCollection
-        try
-        {
-            var services = new ServiceCollection()
-                .AddLogging()
-                .BuildServiceProvider();
-
-            return services.GetService<IModelRepository>() ?? CreateStubModelRepository();
-        }
-        catch
-        {
-            _logger?.LogDebug("ServerService: DI not available in this context");
-        }
-
-        return CreateStubModelRepository();
+        return context.RequestServices.GetService<IModelRepository>();
     }
 
     private WebApplication? _application;
@@ -313,8 +275,8 @@ public class ServerService : IServerService, IDisposable
             {
                 IEnumerable<dynamic> models;
 
-                var modelRepo = _modelRepository ?? ResolveModelRepo();
-                if (modelRepo != null && modelRepo is not StubModelRepository)
+                var modelRepo = ResolveModelRepo(context);
+                if (modelRepo != null)
                 {
                     var allModels = await modelRepo.DiscoverModelsAsync();
                     models = allModels.Select(m => new
@@ -463,7 +425,7 @@ public class ServerService : IServerService, IDisposable
                 {
                     // Fallback: use default model repo for model listing
                     var modelIds = new List<string>();
-                    if (modelRepo != null && modelRepo is not StubModelRepository)
+                    if (modelRepo != null)
                     {
                         try
                         {
@@ -480,7 +442,7 @@ public class ServerService : IServerService, IDisposable
                         role = "assistant",
                         content = new[] { new {
                             type = "text",
-                            text = "[Placeholder] Connect IChatCompletionService for real responses"
+                            text = "[No chat completion service configured]"
                         } },
                         model = anthropicRequest.Model,
                         stop_reason = "end_turn",
@@ -1291,12 +1253,8 @@ public class ServerService : IServerService, IDisposable
                 }
                 else
                 {
-                    // Fallback: create stub service with available dependencies
-                    var logger = context.RequestServices.GetService<ILogger<LlamaCppChatCompletionService>>();
-                    chatService = new LlamaCppChatCompletionService(
-                        logger ?? (ILogger<LlamaCppChatCompletionService>)NullLogger.Instance,
-                        _modelRepository ?? CreateStubModelRepository(),
-                        new GgufParser());
+                    // Resolve from HttpContext's service provider
+                    chatService = ResolveChatService(context);
                 }
 
                 // Parse the request body to extract model ID and messages
@@ -1419,11 +1377,8 @@ public class ServerService : IServerService, IDisposable
             }
             else
             {
-                var logger = context.RequestServices.GetService<ILogger<LlamaCppChatCompletionService>>();
-                chatService = new LlamaCppChatCompletionService(
-                    logger ?? (ILogger<LlamaCppChatCompletionService>)NullLogger.Instance,
-                    _modelRepository ?? CreateStubModelRepository(),
-                    new GgufParser());
+                // Resolve from HttpContext's service provider
+                chatService = ResolveChatService(context);
             }
 
             var request = ParseChatRequest(requestBodyStr);
@@ -1508,8 +1463,8 @@ public class ServerService : IServerService, IDisposable
 
             // Multi-engine routing: detect model type and route to correct engine
             var modelId = request.ModelId ?? "local-model";
-            var modelRepo = _modelRepository ?? ResolveModelRepo();
-            if (modelRepo != null && !(modelRepo is StubModelRepository))
+            var modelRepo = ResolveModelRepo(context);
+            if (modelRepo != null)
             {
                 var modelType = await DetectModelTypeAsync(_logger, modelRepo, modelId);
                 // If it's a multi-modal non-text model, route to appropriate endpoint
@@ -1691,7 +1646,7 @@ public class ServerService : IServerService, IDisposable
     /// </summary>
     private static async Task<ModelType?> DetectModelTypeAsync(ILogger? logger, IModelRepository? repo, string modelId)
     {
-        if (repo == null || repo is StubModelRepository)
+        if (repo == null)
             return null;
 
         // Check multi-modal models first (image/diffusion/VAE/LoRA/embedding)
@@ -1902,8 +1857,6 @@ public class ServerService : IServerService, IDisposable
         }
     }
 
-    private IModelRepository CreateStubModelRepository() => new StubModelRepository();
-
     // ---- Private DTOs ----
 
     /// <summary>
@@ -1937,25 +1890,6 @@ public class ServerService : IServerService, IDisposable
 
     private record JsonSseChunk(string Token = "", string? FinishReason = null);
 
-    /// <summary>
-    /// Stub implementation of IModelRepository for fallback mode.
-    /// </summary>
-    private class StubModelRepository : IModelRepository
-    {
-        public Task<IEnumerable<ModelMetadata>> DiscoverModelsAsync() => Task.FromResult(Enumerable.Empty<ModelMetadata>());
-        public Task<ModelMetadata?> GetModelByIdAsync(string modelId) => Task.FromResult((ModelMetadata?)null);
-        public Task<IEnumerable<ModelMetadata>> SearchModelsAsync(string searchTerm, string? architecture = null) => Task.FromResult(Enumerable.Empty<ModelMetadata>());
-        public Task<IEnumerable<ModelMetadata>> GetModelsByArchitectureAsync(string architecture) => Task.FromResult(Enumerable.Empty<ModelMetadata>());
-        public Task SaveModelMetadataAsync(ModelMetadata metadata) => Task.CompletedTask;
-        public Task RemoveFromIndexAsync(string modelId) => Task.CompletedTask;
-        public Task<IEnumerable<string>> GetAvailableArchitecturesAsync() => Task.FromResult(Enumerable.Empty<string>());
-        public Task<IReadOnlyList<ModelMetadata>> ListModelsAsync() => Task.FromResult<IReadOnlyList<ModelMetadata>>(Enumerable.Empty<ModelMetadata>().ToList());
-
-        // ---- Multi-modal model methods (stub implementations) ----
-        public Task<IEnumerable<MultiModalModelMetadata>> SearchMultiModalModelsAsync(string? searchTerm = null, ModelType? modelTypeFilter = null, string? pipelineTypeFilter = null) => Task.FromResult(Enumerable.Empty<MultiModalModelMetadata>());
-        public Task<IReadOnlyList<MultiModalModelMetadata>> ListMultiModalModelsAsync() => Task.FromResult<IReadOnlyList<MultiModalModelMetadata>>(Enumerable.Empty<MultiModalModelMetadata>().ToList());
-        public Task<MultiModalModelMetadata?> GetMultiModalModelByIdAsync(string modelId) => Task.FromResult((MultiModalModelMetadata?)null);
-    }
 }
 
 // ---- Anthropic API DTOs ----

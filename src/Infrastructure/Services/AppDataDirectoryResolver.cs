@@ -88,12 +88,7 @@ public class AppDataDirectoryResolver : IDisposable
                 }
             }
 
-            if (_cachedAppDataPath == null)
-            {
-                throw new InvalidOperationException("Failed to determine AppData directory — this should not be reached.");
-            }
-
-            return _cachedAppDataPath;
+            return _cachedAppDataPath!;
         }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
         {

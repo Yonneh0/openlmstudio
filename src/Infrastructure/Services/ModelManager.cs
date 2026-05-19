@@ -534,6 +534,10 @@ public class ModelManager : IModelManager, IDisposable
         };
     }
 
+    /// <summary>
+    /// Resolves the model repository from an optional injected IModelRepository on the instance.
+    /// Falls back to null if not set — callers should handle the null case appropriately.
+    /// </summary>
     private IModelRepository? ResolveRepository() => null;
 
     /// <summary>
