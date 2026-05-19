@@ -280,5 +280,19 @@ public class MultiModalModelMetadata : IDisposable
     /// </summary>
     public double CurrentWeight { get; set; } = 1.0;
 
+    /// <summary>
+    /// Arbitrary properties from model configuration or safetensors header.
+    /// Used for additional model metadata like inferred latent channel counts.
+    /// </summary>
+    public Dictionary<string, string> ExtraProperties { get; set; } = new();
+
+    /// <summary>
+    /// Tries to get a string property from ExtraProperties.
+    /// </summary>
+    public bool TryGetProperty(string propertyName, out string? value)
+    {
+        return ExtraProperties.TryGetValue(propertyName, out value);
+    }
+
     public void Dispose() { /* No unmanaged resources */ }
 }

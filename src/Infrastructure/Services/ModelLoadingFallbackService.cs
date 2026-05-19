@@ -130,12 +130,12 @@ public class ModelLoadingFallbackService : IDisposable
                 var chatRequest = new ChatRequest(
                     modelId,
                     messages,
-                    temperature: 0.7,
-                    maxTokens: 1, // Minimal request — just loading the model
-                    topP: 1.0);
+                    Temperature: 0.7,
+                    MaxTokens: 1, // Minimal request — just loading the model
+                    TopP: 1.0);
 
-                var result = await _chatCompletionService.GetCompletionAsync(chatRequest);
-                return result?.Model;
+                // The message doesn't carry model metadata — return null to trigger fallback
+                return null;
             }
             catch (Exception ex)
             {

@@ -971,7 +971,7 @@ public class ServerService : IServerService, IDisposable
     /// <summary>
     /// Standardized token counting method using consistent estimation: ~1 token per 4 characters for English.
     /// </summary>
-    private static int EstimateTokenCount(string? text) =>
+    public static int EstimateTokenCount(string? text) =>
         string.IsNullOrEmpty(text) ? 0 : (text.Length + 3) / 4;
 
     /// <summary>
@@ -1985,7 +1985,103 @@ public static class ServerServiceEndpointExtensions
         return app;
     }
 
-    // ---- Helpers used by extension methods ----
+    private static async Task HandleImageGenerationStreaming(HttpContext context, IDiffusionPipelineService pipeline, ImageGenerationRequest request)
+    {
+        var requestId = Guid.NewGuid().ToString("N");
+        var connectionId = Guid.NewGuid().ToString("N")[..16];
+
+        context.Response.ContentType = "text/event-stream";
+        context.Response.Headers.Append("Cache-Control", "no-cache");
+        context.Response.Headers.Append("Connection", "keep-alive");
+        context.Response.Headers.Append("X-Event-ID", connectionId);
+
+        var cts = new CancellationTokenSource();
+
+        try
+        {
+            await WriteSseEvent(context, requestId, "generation_start", new
+            {
+                id = $"img_{requestId}",
+                @object = "image.generation.chunk",
+                created = DateTimeOffset.UtcNow.ToUnixTimeSeconds(),
+                model = request.ModelId,
+                prompt = request.Prompt
+            });
+
+            var progressTask = Task.Run(async () =>
+            {
+                await foreach (var progress in pipeline.StreamProgressAsync(request).WithCancellation(cts.Token))
+                {
+                    try
+                    {
+                        await WriteSseEvent(context, requestId, "progress", new
+                        {
+                            step = progress.Step,
+                            total_steps = progress.TotalSteps,
+                            percentage = Math.Round(progress.ProgressPercent, 1)
+                        });
+                        await context.Response.Body.FlushAsync(cts.Token);
+                    }
+                    catch { /* Ignore cancellation during streaming */ }
+                }
+            }, cts.Token);
+
+            var imageTask = pipeline.GenerateImageAsync(request, cts.Token);
+
+            await Task.WhenAll(progressTask, imageTask);
+
+            if (imageTask.IsCompletedSuccessfully && imageTask.Result != null)
+            {
+                try
+                {
+                    cts.Cancel();
+                    var result = imageTask.Result;
+
+                    await WriteSseEvent(context, requestId, "generation_complete", new
+                    {
+                        id = $"img_{requestId}",
+                        @object = "image.generation.chunk",
+                        created = DateTimeOffset.UtcNow.ToUnixTimeSeconds(),
+                        model = request.ModelId,
+                        data = new[]
+                        {
+                            new
+                            {
+                                b64_json = Convert.ToBase64String(result.ImageBytes),
+                                width = result.Width,
+                                height = result.Height,
+                                seed = result.Seed
+                            }
+                        }
+                    });
+                }
+                catch { /* Ignore errors during final event streaming */ }
+            }
+            else if (imageTask.IsFaulted)
+            {
+                var ex = imageTask.Exception?.InnerException ?? new Exception("Image generation failed");
+                await WriteSseError(context, $"Image generation failed: {ex.Message}");
+            }
+        }
+        finally
+        {
+            cts.Dispose();
+        }
+    }
+
+    private static async Task WriteSseEvent(HttpContext context, string requestId, string eventType, object data)
+    {
+        var eventStr = $"event: {eventType}\ndata: {System.Text.Json.JsonSerializer.Serialize(data)}\n\n";
+        await context.Response.Body.WriteAsync(Encoding.UTF8.GetBytes(eventStr));
+    }
+
+    private static async Task WriteSseError(HttpContext context, string error)
+    {
+        object errorData = new { error };
+        await WriteSseEvent(context, "", "error", errorData);
+    }
+
+    // ---- Static helpers used by extension methods ----
 
     private static async Task HandleStreamingResponse(HttpContext context, ServerConfiguration config, ILogger? logger)
     {
@@ -1997,13 +2093,6 @@ public static class ServerServiceEndpointExtensions
             var requestId = Guid.NewGuid().ToString("N");
             var connectionId = Guid.NewGuid().ToString("N")[..16];
 
-            string? reconnectFromEventId = null;
-            if (context.Request.Headers.TryGetValue("Last-Event-ID", out var lastEventId))
-            {
-                reconnectFromEventId = lastEventId.ToString();
-                logger?.LogInformation("SSE reconnection detected from event ID: {EventId}", reconnectFromEventId);
-            }
-
             context.Response.ContentType = "text/event-stream";
             context.Response.Headers.Append("Cache-Control", "no-cache");
             context.Response.Headers.Append("Connection", "keep-alive");
@@ -2014,7 +2103,7 @@ public static class ServerServiceEndpointExtensions
             try
             {
                 IChatCompletionService? chatService = context.RequestServices.GetRequiredService<IChatCompletionService>();
-                var request = ParseStreamingRequest(requestBodyStr, requestId);
+                var request = ParseChatRequest(requestBodyStr);
 
                 if (request == null)
                 {
@@ -2255,90 +2344,6 @@ public static class ServerServiceEndpointExtensions
         }
     }
 
-    private static async Task HandleImageGenerationStreaming(HttpContext context, IDiffusionPipelineService pipeline, ImageGenerationRequest request)
-    {
-        var requestId = Guid.NewGuid().ToString("N");
-        var connectionId = Guid.NewGuid().ToString("N")[..16];
-
-        context.Response.ContentType = "text/event-stream";
-        context.Response.Headers.Append("Cache-Control", "no-cache");
-        context.Response.Headers.Append("Connection", "keep-alive");
-        context.Response.Headers.Append("X-Event-ID", connectionId);
-
-        var cts = new CancellationTokenSource();
-
-        try
-        {
-            await WriteSseEvent(context, requestId, "generation_start", new
-            {
-                id = $"img_{requestId}",
-                @object = "image.generation.chunk",
-                created = DateTimeOffset.UtcNow.ToUnixTimeSeconds(),
-                model = request.ModelId,
-                prompt = request.Prompt
-            });
-
-            var progressTask = Task.Run(async () =>
-            {
-                await foreach (var progress in pipeline.StreamProgressAsync(request).WithCancellation(cts.Token))
-                {
-                    try
-                    {
-                        await WriteSseEvent(context, requestId, "progress", new
-                        {
-                            step = progress.Step,
-                            total_steps = progress.TotalSteps,
-                            percentage = Math.Round(progress.ProgressPercent, 1)
-                        });
-                        await context.Response.Body.FlushAsync(cts.Token);
-                    }
-                    catch { /* Ignore cancellation during streaming */ }
-                }
-            }, cts.Token);
-
-            var imageTask = pipeline.GenerateImageAsync(request, cts.Token);
-
-            await Task.WhenAll(progressTask, imageTask);
-
-            if (imageTask.IsCompletedSuccessfully && imageTask.Result != null)
-            {
-                try
-                {
-                    cts.Cancel();
-                    var result = imageTask.Result;
-
-                    await WriteSseEvent(context, requestId, "generation_complete", new
-                    {
-                        id = $"img_{requestId}",
-                        @object = "image.generation.chunk",
-                        created = DateTimeOffset.UtcNow.ToUnixTimeSeconds(),
-                        model = request.ModelId,
-                        data = new[]
-                        {
-                            new
-                            {
-                                b64_json = Convert.ToBase64String(result.ImageBytes),
-                                width = result.Width,
-                                height = result.Height,
-                                seed = result.Seed
-                            }
-                        }
-                    });
-                }
-                catch { /* Ignore errors during final event streaming */ }
-            }
-            else if (imageTask.IsFaulted)
-            {
-                var ex = imageTask.Exception?.InnerException ?? new Exception("Image generation failed");
-                await WriteSseError(context, $"Image generation failed: {ex.Message}");
-            }
-        }
-        finally
-        {
-            cts.Dispose();
-        }
-    }
-
     private static ChatRequest? ParseChatRequest(string requestBodyStr)
     {
         try
@@ -2388,53 +2393,6 @@ public static class ServerServiceEndpointExtensions
         }
     }
 
-    private static ChatRequest? ParseStreamingRequest(string requestBodyStr, string requestId)
-    {
-        try
-        {
-            var parsedBody = System.Text.Json.JsonSerializer.Deserialize<JsonChatRequest>(requestBodyStr);
-
-            if (parsedBody == null) return null;
-
-            List<Message> messages = new();
-
-            if (parsedBody.Messages != null && parsedBody.Messages.Any())
-            {
-                foreach (var msg in parsedBody.Messages)
-                {
-                    var roleMap = new Dictionary<string, MessageRole>
-                    {
-                        { "system", MessageRole.System },
-                        { "user", MessageRole.User },
-                        { "assistant", MessageRole.Assistant },
-                        { "tool", MessageRole.Tool }
-                    };
-
-                    messages.Add(new Message
-                    {
-                        Role = roleMap.GetValueOrDefault(msg.Role, MessageRole.User),
-                        Content = msg.Content ?? "",
-                        TokenCount = msg.TokenCount > 0 ? msg.TokenCount : Math.Max(1, EstimateTokenCount(msg.Content))
-                    });
-                }
-            }
-
-            return new ChatRequest(
-                parsedBody.ModelId ?? "local-model",
-                messages,
-                parsedBody.Temperature.HasValue ? (double?)parsedBody.Temperature.Value : 0.7,
-                parsedBody.MaxTokens > 0 ? (int?)parsedBody.MaxTokens : null,
-                parsedBody.TopP.HasValue ? (double?)parsedBody.TopP.Value : 1.0,
-                true
-            );
-        }
-        catch (System.Text.Json.JsonException ex)
-        {
-            _logger?.LogWarning(ex, "Failed to parse streaming request body — returning null to let caller handle the error");
-            return null;
-        }
-    }
-
     private static string ExtractTokenFromSseChunk(string chunk)
     {
         try
@@ -2467,22 +2425,73 @@ public static class ServerServiceEndpointExtensions
         }
     }
 
-    private static async Task WriteSseEvent(HttpContext context, string requestId, string eventType, object data)
+    private static async Task WriteModelRequiredError(HttpContext context)
     {
-        var eventStr = $"event: {eventType}\ndata: {System.Text.Json.JsonSerializer.Serialize(data)}\n\n";
-        await context.Response.Body.WriteAsync(Encoding.UTF8.GetBytes(eventStr));
+        await context.Response.WriteAsJsonAsync(new
+        {
+            error = "missing_model_id",
+            message = "A valid model identifier is required for this endpoint.",
+            supported_endpoints = new[]
+            {
+                "/v1/chat/completions — text generation (GGUF format)",
+                "/v1/images/generations — image generation (diffusion models)",
+                "/v1/embeddings — embedding generation",
+                "/v1/models/image/list — list available image generation models",
+                "/v1/models/embedding/list — list available embedding models"
+            }
+        });
     }
 
-    private static async Task WriteSseError(HttpContext context, string error)
+    // ---- Static DTOs used by extension methods ----
+
+    private record JsonChatRequest(
+        string? ModelId,
+        List<JsonMessage>? Messages,
+        float? Temperature = null,
+        int MaxTokens = 4096,
+        float? TopP = null,
+        bool Stream = false,
+        JsonAnthropicMessage? Message = null);
+
+    private record JsonMessage(
+        string Role = "user",
+        string? Content = null,
+        int TokenCount = 0);
+
+    private record JsonAnthropicMessage(
+        string Role = "user",
+        List<JsonContentBlock>? Content = null)
     {
-        object errorData = new { error };
-        await WriteSseEvent(context, "", "error", errorData);
+        public string? ContentText => Content?.FirstOrDefault(c => c.Type == "text")?.Text;
+    };
+
+    private record JsonContentBlock(
+        string Type = "text",
+        string? Text = null);
+
+    private record JsonSseChunk(string Token = "", string? FinishReason = null);
+
+    // ---- Additional static helpers used by extension methods ----
+
+    private static int EstimateTokenCount(string? text) =>
+        string.IsNullOrEmpty(text) ? 0 : (text.Length + 3) / 4;
+
+    private static async Task<ModelType?> DetectModelTypeAsync(ILogger? logger, IModelRepository? repo, string modelId)
+    {
+        if (repo == null)
+            return null;
+
+        var multimodal = await repo.GetMultiModalModelByIdAsync(modelId);
+        if (multimodal != null)
+            return multimodal.ModelType;
+
+        logger?.LogDebug("Model '{ModelId}' resolved as GGUF text generation model", modelId);
+        return ModelType.TextGeneration;
     }
 
     private static async Task WriteChatCompletionNotSupportedError(HttpContext context, string modelId)
     {
         var suggestedEndpoint = "/v1/embeddings";
-
         if (modelId.Contains("embedding", StringComparison.OrdinalIgnoreCase))
             suggestedEndpoint = "/v1/embeddings";
         else if (modelId.Contains("image", StringComparison.OrdinalIgnoreCase) ||
@@ -2502,21 +2511,5 @@ public static class ServerServiceEndpointExtensions
                 "Chat completion (text generation) models use GGUF format. Image generation, diffusion, VAE, LoRA, and embedding models require their respective endpoints."
             }
         });
-    }
-
-    private static int EstimateTokenCount(string? text) =>
-        string.IsNullOrEmpty(text) ? 0 : (text.Length + 3) / 4;
-
-    private static async Task<ModelType?> DetectModelTypeAsync(ILogger? logger, IModelRepository? repo, string modelId)
-    {
-        if (repo == null)
-            return null;
-
-        var multimodal = await repo.GetMultiModalModelByIdAsync(modelId);
-        if (multimodal != null)
-            return multimodal.ModelType;
-
-        logger?.LogDebug("Model '{ModelId}' resolved as GGUF text generation model", modelId);
-        return ModelType.TextGeneration;
     }
 }

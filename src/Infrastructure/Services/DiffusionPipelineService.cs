@@ -167,8 +167,8 @@ public class DiffusionPipelineService : IDiffusionPipelineService, IDisposable
         int latentChannels, latentHeight, latentWidth;
 
         // Use model metadata for latent channel count when available (read from safetensors tensor shapes).
-        // MultiModalModelMetadata stores the inferred number of latent channels in the ModelMetadata field.
-        latentChannels = modelMetadata?.ModelMetadata?.TryGetProperty<string>("latent_channels", out var lch) == true
+        // MultiModalModelMetadata stores the inferred number of latent channels in the ExtraProperties field.
+        latentChannels = modelMetadata?.ExtraProperties?.TryGetValue("latent_channels", out var lch) == true
             ? int.Parse(lch)
             : 4; // Default for SD models.
 
