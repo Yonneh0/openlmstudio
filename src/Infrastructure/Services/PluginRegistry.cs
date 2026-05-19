@@ -314,7 +314,15 @@ public class PluginRegistry : Domain.Interfaces.IPluginRegistry
         {
             if (string.IsNullOrEmpty(entry.Name)) continue;
 
-            var targetPath = Path.Combine(installPath, entry.FullName);
+            var targetPath = Path.GetFullPath(Path.Combine(installPath, entry.FullName));
+
+            // Security: prevent path traversal attacks — target must be within installPath
+            if (!targetPath.StartsWith(installPath, StringComparison.Ordinal))
+            {
+                _logger?.LogWarning("Skipping potentially unsafe archive entry: {EntryName}", entry.Name);
+                continue;
+            }
+
             Directory.CreateDirectory(Path.GetDirectoryName(targetPath) ?? string.Empty);
 
             await using var streamWriter = new FileStream(targetPath, FileMode.CreateNew, FileAccess.Write, FileShare.None);

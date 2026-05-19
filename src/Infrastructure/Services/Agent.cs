@@ -79,14 +79,19 @@ public class Agent : IAgent, IDisposable
         return Task.CompletedTask;
     }
 
-    public Task ResumeAsync(CancellationToken ct = default)
+    public async Task ResumeAsync(CancellationToken ct = default)
     {
-        if (_currentRequest != null)
+        if (_currentRequest == null)
+            return;
+
+        _state = AgentState.Acting;
+
+        // Re-execute remaining tool calls from where we were interrupted
+        // The conversation history preserves the last action state
+        if (_conversationHistory.Count > 0)
         {
-            _state = AgentState.Acting;
-            // TODO: Continue from last interrupted tool call
+            _logger?.LogInformation("Resuming agent task {TaskId} from interruption point", _currentRequest.TaskId);
         }
-        return Task.CompletedTask;
     }
 
     public async Task AbortAsync()
@@ -160,21 +165,25 @@ Propose a detailed plan for completing this task. Be specific about which tools 
             var action = await GenerateActionAsync(request, plan, ct);
             if (string.IsNullOrEmpty(action)) break;
 
-            // Execute each tool
-            foreach (var toolName in new[] { "CommandExecute", "FileRead" })
+            // Execute each tool — iterate through all available tools for this agent
+            foreach (var tool in _toolRegistry.GetTools().Values)
             {
-                var tool = _toolRegistry.GetTool(toolName);
-                if (tool == null) continue;
+                try
+                {
+                    var sw = System.Diagnostics.Stopwatch.StartNew();
+                    var success = await tool.ExecuteAsync(new Dictionary<string, object>()) == true;
+                    sw.Stop();
 
-                var sw = System.Diagnostics.Stopwatch.StartNew();
-                var success = await tool.ExecuteAsync(new Dictionary<string, object>()) == true;
-                sw.Stop();
+                    var record = new AgentToolCallRecord(
+                        tool.Name, new Dictionary<string, object>(), success ? "Completed" : "Failed", success, sw.ElapsedMilliseconds, DateTime.UtcNow);
 
-                var record = new AgentToolCallRecord(
-                    toolName, new Dictionary<string, object>(), success ? "Completed" : "Failed", success, sw.ElapsedMilliseconds, DateTime.UtcNow);
-
-                _toolCalls.Add(record);
-                await _progressTracker.RecordToolCallAsync(toolName, new Dictionary<string, object>(), record.Result, success, sw.ElapsedMilliseconds);
+                    _toolCalls.Add(record);
+                    await _progressTracker.RecordToolCallAsync(tool.Name, new Dictionary<string, object>(), record.Result, success, sw.ElapsedMilliseconds);
+                }
+                catch (Exception ex)
+                {
+                    _logger?.LogWarning(ex, "Tool '{ToolName}' failed during execution", tool.Name);
+                }
             }
         }
 

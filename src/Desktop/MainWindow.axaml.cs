@@ -861,9 +861,75 @@ public partial class MainWindow : Window
             var models = await _modelRepository.DiscoverModelsAsync();
 
             // Clear existing content from the scrollviewer and add model list
-            if (models.Any())
+            if (ModelsTabContent?.Children.Count > 0)
             {
-                // TODO: Add model items to the panel
+                ModelsTabContent.Children.Clear();
+            }
+
+            if (!models.Any())
+            {
+                ModelsTabContent?.Children.Add(new Border
+                {
+                    Background = new SolidColorBrush(Color.FromRgb(37, 37, 41)),
+                    CornerRadius = new CornerRadius(8),
+                    Padding = new Thickness(20),
+                    Margin = new Thickness(0, 8, 0, 0),
+                    Child = new TextBlock
+                    {
+                        Text = "No models discovered. Add GGUF or safetensors files to the model directory.",
+                        Foreground = new SolidColorBrush(Color.FromRgb(170, 170, 170)),
+                        FontSize = 14
+                    }
+                });
+                return;
+            }
+
+            foreach (var model in models.OrderByDescending(m => m.Name))
+            {
+                var modelBorder = new Border
+                {
+                    Background = new SolidColorBrush(Color.FromRgb(37, 37, 41)),
+                    CornerRadius = new CornerRadius(8),
+                    Padding = new Thickness(16),
+                    Margin = new Thickness(0, 8, 0, 0)
+                };
+
+                var modelStack = new StackPanel();
+
+                // Model name
+                modelStack.Children.Add(new TextBlock
+                {
+                    Text = model.Name,
+                    Foreground = new SolidColorBrush(Color.FromRgb(79, 195, 247)),
+                    FontWeight = FontWeight.SemiBold,
+                    FontSize = 14
+                });
+
+                // Path
+                if (!string.IsNullOrEmpty(model.FilePath))
+                {
+                    modelStack.Children.Add(new TextBlock
+                    {
+                        Text = model.FilePath,
+                        Foreground = new SolidColorBrush(Color.FromRgb(136, 136, 136)),
+                        FontSize = 11,
+                        Margin = new Thickness(0, 2, 0, 6)
+                    });
+                }
+
+                // Metadata summary
+                var sizeMB = model.FileSizeBytes / 1024 / 1024;
+                var metaText = $"Size: {sizeMB} MB | Type: {model.Type}";
+                modelStack.Children.Add(new TextBlock
+                {
+                    Text = metaText,
+                    Foreground = new SolidColorBrush(Color.FromRgb(170, 170, 170)),
+                    FontSize = 11,
+                    Margin = new Thickness(0, 2, 0, 0)
+                });
+
+                modelBorder.Child = modelStack;
+                ModelsTabContent?.Children.Add(modelBorder);
             }
         }
         catch (Exception ex)
