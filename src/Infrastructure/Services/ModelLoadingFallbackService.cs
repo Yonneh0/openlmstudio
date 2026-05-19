@@ -1,5 +1,6 @@
 using System.Collections.Concurrent;
 using Microsoft.Extensions.Logging;
+using OpenLMStudio.Application.Interfaces;
 using OpenLMStudio.Domain.Models;
 
 namespace OpenLMStudio.Infrastructure.Services;
@@ -12,11 +13,13 @@ namespace OpenLMStudio.Infrastructure.Services;
 public class ModelLoadingFallbackService : IDisposable
 {
     private readonly ILogger<ModelLoadingFallbackService> _logger;
+    private readonly IChatCompletionService? _chatCompletionService;
     private readonly ConcurrentDictionary<string, LoadingStrategy> _loadingAttempts = new();
 
-    public ModelLoadingFallbackService(ILogger<ModelLoadingFallbackService> logger)
+    public ModelLoadingFallbackService(ILogger<ModelLoadingFallbackService> logger, IChatCompletionService? chatCompletionService = null)
     {
         _logger = logger;
+        _chatCompletionService = chatCompletionService;
     }
 
     /// <summary>
@@ -105,11 +108,45 @@ public class ModelLoadingFallbackService : IDisposable
 
     private async Task<Domain.Models.ModelMetadata?> LoadModelDirectlyAsync(string modelId, ModelLoadOptions options)
     {
-        // TODO: This is a placeholder that will be wired to the actual IChatCompletionService
-        // when llama.cpp native bindings are available. For now, returns null to trigger fallback.
-        _logger.LogDebug("Attempting direct load of model: {ModelId} with device: {Device}", modelId, options.DevicePreference);
+        _logger.LogDebug("Attempting direct load of model: {ModelId} with device: {Device}, precision: {Precision}", modelId, options.DevicePreference, options.Precision);
 
-        // Simulate failure to trigger fallback chain until real implementation is wired up
+        // Use IChatCompletionService if available (llama.cpp backend).
+        // The service handles GGUF model loading, KV cache allocation, and inference session setup.
+        if (_chatCompletionService != null)
+        {
+            try
+            {
+                // Build a minimal context to request loading the model (the service will load into memory)
+                var messages = new List<Message>
+                {
+                    new()
+                    {
+                        Role = MessageRole.User,
+                        Content = "[load-test]",
+                        TokenCount = 1
+                    }
+                };
+
+                var chatRequest = new ChatRequest(
+                    modelId,
+                    messages,
+                    temperature: 0.7,
+                    maxTokens: 1, // Minimal request — just loading the model
+                    topP: 1.0);
+
+                var result = await _chatCompletionService.GetCompletionAsync(chatRequest);
+                return result?.Model;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogDebug(ex, "IChatCompletionService failed to load model {ModelId} with {Device} device", modelId, options.DevicePreference);
+                // Return null to trigger fallback
+                return null;
+            }
+        }
+
+        // No chat completion service available — return null to trigger fallback chain
+        _logger.LogDebug("No IChatCompletionService available for model load — triggering fallback");
         return null;
     }
 

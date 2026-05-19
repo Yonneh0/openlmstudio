@@ -20,6 +20,9 @@ public class ContextManipulator : IContextManipulator, IDisposable
     // In-memory cache of suppressed segment IDs per chat
     private readonly ConcurrentDictionary<Guid, HashSet<Guid>> _suppressedCache = new();
 
+    // Cache of chat IDs we've already synced, to avoid repeated DB scans
+    private readonly ConcurrentDictionary<Guid, bool> _syncedChats = new();
+
     public ContextManipulator(ILogger<ContextManipulator>? logger, ChatContextManager chatContextManager)
     {
         _logger = logger;
@@ -182,10 +185,47 @@ public class ContextManipulator : IContextManipulator, IDisposable
         }
     }
 
+    /// <summary>
+    /// Rebuilds the in-memory caches for a given chat by scanning the database.
+    /// Called automatically on first access to ensure caches reflect persisted state.
+    /// </summary>
+    private async Task EnsureCacheSyncedAsync(Guid chatId)
+    {
+        if (_syncedChats.TryGetValue(chatId, out _))
+            return; // Already synced for this chat
+
+        try
+        {
+            var window = await _chatContextManager.GetCompressedContextAsync(chatId);
+
+            // Populate pinned cache
+            var pinnedSet = _pinnedCache.GetOrAdd(chatId, _ => new HashSet<Guid>());
+            foreach (var seg in window.Segments.Where(s => s.IsPinned))
+            {
+                pinnedSet.Add(seg.Id);
+            }
+
+            // Populate suppressed cache
+            var suppressedSet = _suppressedCache.GetOrAdd(chatId, _ => new HashSet<Guid>());
+            foreach (var seg in window.Segments.Where(s => s.IsSuppressed))
+            {
+                suppressedSet.Add(seg.Id);
+            }
+
+            _syncedChats[chatId] = true;
+            _logger?.LogDebug("ContextManipulator caches rebuilt for chat {ChatId}: {Pinned} pinned, {Suppressed} suppressed",
+                chatId, pinnedSet.Count, suppressedSet.Count);
+        }
+        catch (Exception ex) when (ex is IOException or InvalidOperationException)
+        {
+            _logger?.LogWarning(ex, "Failed to rebuild caches for chat {ChatId}", chatId);
+        }
+    }
+
     public void Dispose()
     {
-        // Clear caches on disposal
         _pinnedCache.Clear();
         _suppressedCache.Clear();
+        _syncedChats.Clear();
     }
 }

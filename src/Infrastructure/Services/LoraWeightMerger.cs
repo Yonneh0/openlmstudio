@@ -1,4 +1,7 @@
+using System.Text.Json;
 using Microsoft.Extensions.Logging;
+using Microsoft.ML.OnnxRuntime;
+using Microsoft.ML.OnnxRuntime.Tensors;
 using OpenLMStudio.Application.Interfaces;
 using OpenLMStudio.Application.Types;
 using OpenLMStudio.Domain.Models;

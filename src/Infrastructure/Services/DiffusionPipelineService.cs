@@ -108,7 +108,7 @@ public class DiffusionPipelineService : IDiffusionPipelineService, IDisposable
             _logger?.LogInformation("Starting full 3-stage diffusion pipeline for '{ModelId}' (CLIP→UNet+CFG→VAE)", request.ModelId);
 
             // Run the full denoising loop with CFG
-            var resultBytes = await RunDenoisingLoop(engine, pipelineType, request, ct);
+            var resultBytes = await RunDenoisingLoop(engine, pipelineType, multimodalMeta, request, ct);
 
             if (resultBytes == null)
                 throw new InvalidOperationException($"Diffusion inference failed for model '{request.ModelId}'.");
@@ -138,7 +138,7 @@ public class DiffusionPipelineService : IDiffusionPipelineService, IDisposable
     /// 3. Iteratively denoise using UNet with CFG blending
     /// </summary>
     private async Task<byte[]?> RunDenoisingLoop(
-        DiffusionInferenceEngine engine, string pipelineType, ImageGenerationRequest request, CancellationToken ct)
+        DiffusionInferenceEngine engine, string pipelineType, MultiModalModelMetadata? modelMetadata, ImageGenerationRequest request, CancellationToken ct)
     {
         // Step 1: Encode both positive and negative prompts using CLIP text encoder to get text embeddings.
         // For CFG (classifier-free guidance), we need two conditions: the positive prompt and an unconditional condition.
@@ -160,46 +160,26 @@ public class DiffusionPipelineService : IDiffusionPipelineService, IDisposable
             textEmbedding = BlendTensors(textEmbedding, unconditionedEmbedding, request.GuidanceScale);
         }
 
-        // Step 2: Create initial latents from random noise — shape [1, latentChannels, height/8, width/8]
-        // Read latent channel dimensions from the loaded model's metadata, falling back to hardcoded defaults per pipeline type.
+        // Step 2: Create initial latents from random noise — shape [1, latentChannels, height/8, width/8].
+        // Read latent channel dimensions from the loaded model's metadata (MultiModalModelMetadata),
+        // falling back to pipeline-type-specific defaults.
         var rng = new Random((int)(request.EffectiveSeed & int.MaxValue));
         int latentChannels, latentHeight, latentWidth;
 
-        var loadedSession = _loadedSessions.GetValueOrDefault(request.ModelId);
-        if (loadedSession != null)
+        // Use model metadata for latent channel count when available (read from safetensors tensor shapes).
+        // MultiModalModelMetadata stores the inferred number of latent channels in the ModelMetadata field.
+        latentChannels = modelMetadata?.ModelMetadata?.TryGetProperty<string>("latent_channels", out var lch) == true
+            ? int.Parse(lch)
+            : 4; // Default for SD models.
+
+        if (pipelineType.Equals("flux", StringComparison.OrdinalIgnoreCase) && latentChannels == 4)
         {
-            // Try reading encoder input shape from the loaded session metadata
-            var encoderInputName = loadedSession.InputMetadata.Keys.FirstOrDefault(n =>
-                n.Contains("encoder", StringComparison.OrdinalIgnoreCase) ||
-                n.Contains("sample", StringComparison.OrdinalIgnoreCase) ||
-                n.Contains("input", StringComparison.OrdinalIgnoreCase));
-            if (encoderInputName != null)
-            {
-                var dims = loadedSession.InputMetadata[encoderInputName].Dimensions;
-                // For VAE encoder input (pixel space), the channel count tells us the expected latent shape.
-                // We use known defaults per pipeline type as a fallback.
-            }
+            // Flux models use 16 latent channels (VAE is 16-channel).
+            latentChannels = 16;
         }
 
-        // Use pipeline-type-specific defaults (read from VAE encoder output metadata at load time would be ideal)
-        if (pipelineType.Equals("sdxl", StringComparison.OrdinalIgnoreCase))
-        {
-            latentChannels = 4;
-            latentHeight = request.Height / 8;
-            latentWidth = request.Width / 8;
-        }
-        else if (pipelineType.Equals("flux", StringComparison.OrdinalIgnoreCase))
-        {
-            latentChannels = 16;
-            latentHeight = request.Height / 8;
-            latentWidth = request.Width / 8;
-        }
-        else
-        {
-            latentChannels = 4;
-            latentHeight = request.Height / 8;
-            latentWidth = request.Width / 8;
-        }
+        latentHeight = request.Height / 8;
+        latentWidth = request.Width / 8;
 
         var noiseTensor = new DenseTensor<float>(new[] { 1, latentChannels, latentHeight, latentWidth });
         for (int i = 0; i < noiseTensor.Length; i++)

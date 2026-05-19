@@ -228,704 +228,13 @@ public class ServerService : IServerService, IDisposable
             app.UseApiKeyAuthentication();
         }
 
-        // === OpenAI-Compatible Endpoints ===
+        // Register all endpoint groups — each group is a separate extension method for clarity and testability.
+        app.UseChatCompletionEndpoints(Configuration, _logger);
+        app.UseAnthropicEndpoints(Configuration, _logger);
+        app.UseModelListEndpoints(Configuration, _logger);
+        app.UseImageEndpoints(Configuration, _logger);
+        app.UseHealthEndpoint();
 
-        // Chat completions endpoint with streaming support
-        app.MapPost("/v1/chat/completions", async (HttpContext context) =>
-        {
-            if (!context.Request.HasJsonContentType())
-            {
-                context.Response.StatusCode = 400;
-                await context.Response.WriteAsJsonAsync(new { error = "Content-Type must be application/json" });
-                return;
-            }
-
-            using var reader = new StreamReader(context.Request.Body);
-            var requestBodyStr = await reader.ReadToEndAsync();
-
-            // Try to parse as streaming or non-streaming request
-            try
-            {
-                // Check if streaming is requested via content-type header extension
-                var streamParam = context.Request.Headers.ContainsKey("X-Stream")
-                    ? context.Request.Headers["X-Stream"].ToString().Equals("true", StringComparison.OrdinalIgnoreCase)
-                    : false;
-
-                if (streamParam || requestBodyStr.Contains("\"stream\": true"))
-                {
-                    // Handle streaming request via SSE
-                    await HandleStreamingResponse(context);
-                    return;
-                }
-
-                // Handle non-streaming request
-                var result = await ProcessChatCompletion(context, requestBodyStr, false);
-                if (result != null)
-                {
-                    context.Response.ContentType = "application/json";
-                    await context.Response.WriteAsJsonAsync(result);
-                }
-            }
-            catch (Exception ex)
-            {
-                _logger?.LogError(ex, "Error processing chat completion request");
-                context.Response.StatusCode = 500;
-                await context.Response.WriteAsJsonAsync(new { error = "Internal server error" });
-            }
-        });
-
-        // Model listing endpoint
-        app.MapGet("/v1/models", async (HttpContext context) =>
-        {
-            try
-            {
-                IEnumerable<dynamic> models;
-
-                var modelRepo = ResolveModelRepo(context);
-                if (modelRepo != null)
-                {
-                    var allModels = await modelRepo.DiscoverModelsAsync();
-                    models = allModels.Select(m => new
-                    {
-                        id = m.Id,
-                        @object = "model",
-                        created = DateTimeOffset.UtcNow.ToUnixTimeSeconds(),
-                        owned_by = "openlmstudio"
-                    });
-                }
-                else
-                {
-                    models = new[]
-                    {
-                        new { id = "local-model", @object = "model", created = DateTimeOffset.UtcNow.ToUnixTimeSeconds(), owned_by = "openlmstudio" }
-                    };
-                }
-
-                context.Response.ContentType = "application/json";
-                await context.Response.WriteAsJsonAsync(new { data = models, @object = "list" });
-            }
-            catch (Exception ex)
-            {
-                _logger?.LogError(ex, "Error listing models");
-                context.Response.StatusCode = 500;
-                await context.Response.WriteAsJsonAsync(new { error = "Failed to list models" });
-            }
-        });
-
-        // === Anthropic-Compatible Endpoints ===
-
-        app.MapPost("/v1/messages", async (IChatCompletionService chatService, IModelRepository modelRepo, HttpContext context) =>
-        {
-            if (!context.Request.HasJsonContentType())
-            {
-                context.Response.StatusCode = 400;
-                await context.Response.WriteAsJsonAsync(new { error = "Content-Type must be application/json" });
-                return;
-            }
-
-            using var reader = new StreamReader(context.Request.Body);
-            var requestBodyStr = await reader.ReadToEndAsync();
-
-            // Check for streaming (Anthropic uses stream parameter)
-            bool isStreaming = requestBodyStr.Contains("\"stream\": true") ||
-                              context.Request.Headers.ContainsKey("X-Stream");
-
-            try
-            {
-                if (isStreaming)
-                {
-                    var result = await ProcessChatCompletion(context, requestBodyStr, true);
-                    return; // Streaming handled internally by this method
-                }
-
-                // Parse the Anthropic request body
-                var anthropicRequest = System.Text.Json.JsonSerializer.Deserialize<AnthropicRequest>(requestBodyStr);
-
-                if (anthropicRequest == null)
-                {
-                    context.Response.StatusCode = 400;
-                    await context.Response.WriteAsJsonAsync(new { error = "Failed to parse Anthropic request" });
-                    return;
-                }
-
-                // Get the model from IChatCompletionService for text generation models
-                if (chatService != null)
-                {
-                    // Build messages list from Anthropic format using the already-parsed JSON body
-                    var messages = new List<Message>();
-
-                    // Try to get the system message
-                    string? systemMessage = null;
-                    try
-                    {
-                        var jsonBody = System.Text.Json.JsonSerializer.Deserialize<AnthropicRequest>(requestBodyStr);
-                        systemMessage = jsonBody?.System;
-                    }
-                    catch { /* Ignore parse errors */ }
-
-                    foreach (var message in (anthropicRequest.Messages ?? []).ToArray())
-                    {
-                        var textContent = message.Content; // Convenience accessor: joins all 'text' content blocks
-
-                        if (!string.IsNullOrEmpty(textContent))
-                        {
-                            messages.Add(new Message
-                            {
-                                Role = message.Role == "user" ? MessageRole.User : MessageRole.Assistant,
-                                Content = textContent,
-                                TokenCount = Math.Max(1, EstimateTokenCount(textContent))
-                            });
-                        }
-                    }
-
-                    // Also include system message if present in Anthropic format
-                    if (!string.IsNullOrEmpty(systemMessage))
-                    {
-                        messages.Insert(0, new Message
-                        {
-                            Role = MessageRole.System,
-                            Content = systemMessage,
-                            TokenCount = Math.Max(1, EstimateTokenCount(systemMessage))
-                        });
-                    }
-
-                    var chatReq = new ChatRequest(
-                        anthropicRequest.Model ?? "local-model",
-                        messages,
-                        (double?)(anthropicRequest.Temperature ?? 0.7),
-                        anthropicRequest.MaxTokens > 0 ? (int?)anthropicRequest.MaxTokens : null,
-                        (double?)(anthropicRequest.TopP ?? 1.0));
-
-                    var responseChoice = await chatService.GetCompletionAsync(chatReq);
-
-                    var inputTokenCount = messages.Sum(m => m.TokenCount > 0 ? m.TokenCount : EstimateTokenCount(m.Content));
-                    int outputTokenCount;
-                    if (!string.IsNullOrEmpty(responseChoice.Message.Content))
-                        outputTokenCount = responseChoice.Message.TokenCount > 0 ? responseChoice.Message.TokenCount : EstimateTokenCount(responseChoice.Message.Content);
-                    else
-                        outputTokenCount = 0;
-
-                    var response = new
-                    {
-                        id = $"msg_{Guid.NewGuid():N}",
-                        type = "message",
-                        role = "assistant",
-                        content = new[] { new {
-                            type = "text",
-                            text = responseChoice.Message.Content ?? "[No response]"
-                        } },
-                        model = anthropicRequest.Model,
-                        stop_reason = string.IsNullOrEmpty(responseChoice.FinishReason) ? "end_turn" : responseChoice.FinishReason.ToLowerInvariant(),
-                        usage = new
-                        {
-                            input_tokens = inputTokenCount,
-                            output_tokens = outputTokenCount,
-                            total_tokens = inputTokenCount + outputTokenCount
-                        }
-                    };
-
-                    context.Response.ContentType = "application/json";
-                    await context.Response.WriteAsJsonAsync(response);
-                }
-                else
-                {
-                    // Fallback: use default model repo for model listing
-                    var modelIds = new List<string>();
-                    if (modelRepo != null)
-                    {
-                        try
-                        {
-                            var models = await modelRepo.DiscoverModelsAsync();
-                            modelIds = models.Select(m => m.Id.ToString()).ToList();
-                        }
-                        catch { /* Ignore errors */ }
-                    }
-
-                    var response = new
-                    {
-                        id = $"msg_{Guid.NewGuid():N}",
-                        type = "message",
-                        role = "assistant",
-                        content = new[] { new {
-                            type = "text",
-                            text = "[No chat completion service configured]"
-                        } },
-                        model = anthropicRequest.Model,
-                        stop_reason = "end_turn",
-                        usage = new { input_tokens = 0, output_tokens = 0 },
-                        models_available = modelIds
-                    };
-
-                    context.Response.ContentType = "application/json";
-                    await context.Response.WriteAsJsonAsync(response);
-                }
-            }
-            catch (Exception ex)
-            {
-                _logger?.LogError(ex, "Error processing Anthropic message request");
-                context.Response.StatusCode = 500;
-                await context.Response.WriteAsJsonAsync(new { error = "Internal server error" });
-            }
-        });
-
-        // Model listing endpoint for image generation models (Anthropic-compatible)
-        app.MapGet("/v1/models/image/list", async (IModelRepository repo, HttpContext context) =>
-        {
-            try
-            {
-                var models = await repo.SearchMultiModalModelsAsync(modelTypeFilter: Domain.Models.ModelType.ImageGeneration);
-
-                var modelInfos = new List<object>();
-                foreach (var model in models)
-                {
-                    modelInfos.Add(new
-                    {
-                        id = model.Id,
-                        obj = "model",
-                        owned_by = "local",
-                        display_name = model.Name,
-                        model_type = "image_generation",
-                        format = model.Format.ToString()
-                    });
-                }
-
-                context.Response.StatusCode = 200;
-                await context.Response.WriteAsJsonAsync(new
-                {
-                    obj = "list",
-                    data = modelInfos
-                });
-            }
-            catch (Exception ex)
-            {
-                _logger?.LogError(ex, "Error listing image generation models");
-                context.Response.StatusCode = 500;
-                await context.Response.WriteAsJsonAsync(new { error = "Failed to list image models" });
-            }
-        });
-
-        // /v1/embeddings - Generate embeddings via embedding models
-        app.MapPost("/v1/embeddings", async (IEmbeddingPipelineService pipeline, IModelRepository modelRepo, HttpContext context) =>
-        {
-            if (!context.Request.HasJsonContentType())
-            {
-                context.Response.StatusCode = 400;
-                await context.Response.WriteAsJsonAsync(new { error = "Content-Type must be application/json" });
-                return;
-            }
-
-            using var reader = new StreamReader(context.Request.Body);
-            var requestBodyStr = await reader.ReadToEndAsync();
-
-            try
-            {
-                // Parse the request body - support both OpenAI format (input string or array) and Anthropic format
-                var embeddingsRequest = System.Text.Json.JsonSerializer.Deserialize<EmbeddingsRequest>(requestBodyStr);
-
-                if (embeddingsRequest == null || string.IsNullOrEmpty(embeddingsRequest.Model))
-                {
-                    context.Response.StatusCode = 400;
-                    await context.Response.WriteAsJsonAsync(new { error = "Model identifier and input are required" });
-                    return;
-                }
-
-                // Validate that the model is actually an embedding model
-                var modelType = await DetectModelTypeAsync(_logger, modelRepo, embeddingsRequest.Model);
-                if (modelType != ModelType.Embedding && modelType != ModelType.TextGeneration)
-                {
-                    context.Response.StatusCode = 400;
-                    await context.Response.WriteAsJsonAsync(new
-                    {
-                        error = "model_type_not_supported_for_embeddings",
-                        message = $"Model '{embeddingsRequest.Model}' is not an embedding model and cannot be used with /v1/embeddings.",
-                        suggested_endpoint = "/v1/chat/completions"
-                    });
-                    return;
-                }
-
-                var inputs = embeddingsRequest.Input switch
-                {
-                    string s => new[] { s },
-                    System.Text.Json.JsonElement[] arr => arr.Select(e => e.GetString() ?? "").ToArray(),
-                    _ => throw new InvalidOperationException("Input must be a string or array of strings")
-                };
-
-                float[][] embeddingVectors;
-
-                if (inputs.Length == 1)
-                {
-                    var vector = await pipeline.GenerateAsync(embeddingsRequest.Model, inputs[0]);
-                    embeddingVectors = new[] { vector };
-                }
-                else
-                {
-                    embeddingVectors = await pipeline.GenerateBatchAsync(embeddingsRequest.Model, inputs.ToList());
-                }
-
-                // Return response in OpenAI-compatible format
-                var data = new List<object>();
-                for (var i = 0; i < embeddingVectors.Length; i++)
-                {
-                    data.Add(new
-                    {
-                        @object = "embedding",
-                        index = i,
-                        embedding = embeddingVectors[i]
-                    });
-                }
-
-                var response = new
-                {
-                    @object = "list",
-                    model = embeddingsRequest.Model,
-                    usage = new
-                    {
-                        prompt_tokens = inputs.Sum(s => s?.Length / 4 + 3 / 4), // Approximate token count
-                        total_tokens = embeddingVectors.Length
-                    },
-                    data
-                };
-
-                context.Response.ContentType = "application/json";
-                await context.Response.WriteAsJsonAsync(response);
-            }
-            catch (Exception ex)
-            {
-                _logger?.LogError(ex, "Error processing embedding request");
-                context.Response.StatusCode = 500;
-                await context.Response.WriteAsJsonAsync(new { error = "Internal server error" });
-            }
-        });
-
-        // Model listing endpoint for embedding models (Anthropic-compatible)
-        app.MapGet("/v1/models/embedding/list", async (IModelRepository repo, HttpContext context) =>
-        {
-            try
-            {
-                var models = await repo.SearchMultiModalModelsAsync(modelTypeFilter: Domain.Models.ModelType.Embedding);
-
-                var modelInfos = new List<object>();
-                foreach (var model in models)
-                {
-                    modelInfos.Add(new
-                    {
-                        id = model.Id,
-                        obj = "model",
-                        owned_by = "local",
-                        display_name = model.Name,
-                        model_type = "embedding",
-                        format = model.Format.ToString()
-                    });
-                }
-
-                context.Response.StatusCode = 200;
-                await context.Response.WriteAsJsonAsync(new
-                {
-                    obj = "list",
-                    data = modelInfos
-                });
-            }
-            catch (Exception ex)
-            {
-                _logger?.LogError(ex, "Error listing embedding models");
-                context.Response.StatusCode = 500;
-                await context.Response.WriteAsJsonAsync(new { error = "Failed to list embedding models" });
-            }
-        });
-
-        // /v1/models/image/upscaling/list - List available upscaling/ESRGAN models (Phase 3.9)
-        app.MapGet("/v1/models/image/upscaling/list", async (IModelRepository repo, HttpContext context) =>
-        {
-            try
-            {
-                var models = await repo.SearchMultiModalModelsAsync(modelTypeFilter: Domain.Models.ModelType.ImageGeneration);
-
-                // Filter for upscaling-specific models by checking name patterns or pipeline type
-                var upscaleModels = models.Where(m =>
-                    m.Name != null && (m.Name.Contains("upscaler", StringComparison.OrdinalIgnoreCase) ||
-                                       m.PipelineType?.Equals("esrgan", StringComparison.OrdinalIgnoreCase) == true));
-
-                var modelInfos = new List<object>();
-                foreach (var model in upscaleModels)
-                {
-                    modelInfos.Add(new
-                    {
-                        id = model.Id,
-                        obj = "model",
-                        owned_by = "local",
-                        display_name = model.Name,
-                        model_type = "upscaling",
-                        format = model.Format.ToString()
-                    });
-                }
-
-                context.Response.StatusCode = 200;
-                await context.Response.WriteAsJsonAsync(new
-                {
-                    obj = "list",
-                    data = modelInfos
-                });
-            }
-            catch (Exception ex)
-            {
-                _logger?.LogError(ex, "Error listing upscaling models");
-                context.Response.StatusCode = 500;
-                await context.Response.WriteAsJsonAsync(new { error = "Failed to list upscaling models" });
-            }
-        });
-
-        // /v1/images/generations - Create image via diffusion models (supports streaming progress)
-        app.MapPost("/v1/images/generations", async (IDiffusionPipelineService pipeline, HttpContext context) =>
-        {
-            if (!context.Request.HasJsonContentType())
-            {
-                context.Response.StatusCode = 400;
-                await context.Response.WriteAsJsonAsync(new { error = "Content-Type must be application/json" });
-                return;
-            }
-
-            using var reader = new StreamReader(context.Request.Body);
-            var requestBodyStr = await reader.ReadToEndAsync();
-
-            try
-            {
-                var request = System.Text.Json.JsonSerializer.Deserialize<ImageGenerationRequest>(requestBodyStr);
-
-                if (request == null || string.IsNullOrEmpty(request.ModelId))
-                {
-                    context.Response.StatusCode = 400;
-                    await context.Response.WriteAsJsonAsync(new { error = "Model identifier and prompt are required" });
-                    return;
-                }
-
-                // Check for streaming request — SSE endpoint if client wants progress updates
-                var streamProgress = false;
-                if (context.Request.Headers.TryGetValue("X-Stream", out var streamHeader))
-                {
-                    streamProgress = string.Equals(streamHeader, "true", StringComparison.OrdinalIgnoreCase);
-                }
-
-                if (streamProgress)
-                {
-                    // Stream progress via SSE — emit per-step progress updates during denoising
-                    await HandleImageGenerationStreaming(context, pipeline, request);
-                    return;
-                }
-
-                var result = await pipeline.GenerateImageAsync(request);
-
-                // Return response in OpenAI-compatible format — data[] with B64Json, Width, Height, Seed
-                var imageDataList = new List<object>
-                {
-                    new
-                    {
-                        b64_json = Convert.ToBase64String(result.ImageBytes),
-                        width = result.Width,
-                        height = result.Height,
-                        seed = result.Seed
-                    }
-                };
-
-                var response = new
-                {
-                    data = imageDataList,
-                    @object = "list",
-                    created = DateTimeOffset.UtcNow.ToUnixTimeSeconds()
-                };
-
-                context.Response.ContentType = "application/json";
-                await context.Response.WriteAsJsonAsync(response);
-            }
-            catch (Exception ex)
-            {
-                _logger?.LogError(ex, "Error processing image generation request");
-                context.Response.StatusCode = 500;
-                await context.Response.WriteAsJsonAsync(new { error = "Internal server error" });
-            }
-        });
-
-        // /v1/images/inpainting — Inpaint an image using a mask (Phase 3.7)
-        app.MapPost("/v1/images/inpainting", async (IDiffusionPipelineService pipeline, HttpContext context) =>
-        {
-            if (!context.Request.HasJsonContentType())
-            {
-                context.Response.StatusCode = 400;
-                await context.Response.WriteAsJsonAsync(new { error = "Content-Type must be application/json" });
-                return;
-            }
-
-            using var reader = new StreamReader(context.Request.Body);
-            var requestBodyStr = await reader.ReadToEndAsync();
-
-            try
-            {
-                var request = System.Text.Json.JsonSerializer.Deserialize<ImageInpaintingRequest>(requestBodyStr);
-
-                if (request == null || string.IsNullOrEmpty(request.ModelId) || string.IsNullOrEmpty(request.InitImage))
-                {
-                    context.Response.StatusCode = 400;
-                    await context.Response.WriteAsJsonAsync(new { error = "Model identifier and init image are required" });
-                    return;
-                }
-
-                var result = await pipeline.GenerateInpaintingAsync(request);
-
-                // Return response in OpenAI-compatible format — data[] with b64_json, width, height, seed
-                var imageDataList = new List<object>
-                {
-                    new
-                    {
-                        b64_json = Convert.ToBase64String(result.ImageBytes),
-                        width = result.Width,
-                        height = result.Height,
-                        seed = result.Seed
-                    }
-                };
-
-                var response = new
-                {
-                    data = imageDataList,
-                    @object = "list",
-                    created = DateTimeOffset.UtcNow.ToUnixTimeSeconds()
-                };
-
-                context.Response.ContentType = "application/json";
-                await context.Response.WriteAsJsonAsync(response);
-            }
-            catch (Exception ex)
-            {
-                _logger?.LogError(ex, "Error processing inpainting request");
-                context.Response.StatusCode = 500;
-                await context.Response.WriteAsJsonAsync(new { error = "Internal server error" });
-            }
-        });
-
-        // /v1/images/outpainting — Outpaint an image to extend its boundaries (Phase 3.8)
-        app.MapPost("/v1/images/outpainting", async (IDiffusionPipelineService pipeline, HttpContext context) =>
-        {
-            if (!context.Request.HasJsonContentType())
-            {
-                context.Response.StatusCode = 400;
-                await context.Response.WriteAsJsonAsync(new { error = "Content-Type must be application/json" });
-                return;
-            }
-
-            using var reader = new StreamReader(context.Request.Body);
-            var requestBodyStr = await reader.ReadToEndAsync();
-
-            try
-            {
-                var request = System.Text.Json.JsonSerializer.Deserialize<ImageOutpaintingRequest>(requestBodyStr);
-
-                if (request == null || string.IsNullOrEmpty(request.ModelId) || string.IsNullOrEmpty(request.InitImage))
-                {
-                    context.Response.StatusCode = 400;
-                    await context.Response.WriteAsJsonAsync(new { error = "Model identifier and init image are required" });
-                    return;
-                }
-
-                var result = await pipeline.GenerateOutpaintingAsync(request);
-
-                // Return response in OpenAI-compatible format — data[] with b64_json, width, height, seed
-                var imageDataList = new List<object>
-                {
-                    new
-                    {
-                        b64_json = Convert.ToBase64String(result.ImageBytes),
-                        width = result.Width,
-                        height = result.Height,
-                        seed = result.Seed
-                    }
-                };
-
-                var response = new
-                {
-                    data = imageDataList,
-                    @object = "list",
-                    created = DateTimeOffset.UtcNow.ToUnixTimeSeconds()
-                };
-
-                context.Response.ContentType = "application/json";
-                await context.Response.WriteAsJsonAsync(response);
-            }
-            catch (Exception ex)
-            {
-                _logger?.LogError(ex, "Error processing outpainting request");
-                context.Response.StatusCode = 500;
-                await context.Response.WriteAsJsonAsync(new { error = "Internal server error" });
-            }
-        });
-
-        // /v1/models/vae/list - List available VAE models
-        app.MapGet("/v1/models/vae/list", async (IVAEPipelineService vaePipeline, HttpContext context) =>
-        {
-            try
-            {
-                var models = await vaePipeline.GetAvailableModelsAsync();
-
-                var modelInfos = new List<object>();
-                foreach (var model in models)
-                {
-                    modelInfos.Add(new
-                    {
-                        id = model.Id,
-                        obj = "model",
-                        owned_by = "local",
-                        display_name = model.Name,
-                        model_type = "vae"
-                    });
-                }
-
-                context.Response.StatusCode = 200;
-                await context.Response.WriteAsJsonAsync(new { obj = "list", data = modelInfos });
-            }
-            catch (Exception ex)
-            {
-                _logger?.LogError(ex, "Error listing VAE models");
-                context.Response.StatusCode = 500;
-                await context.Response.WriteAsJsonAsync(new { error = "Failed to list VAE models" });
-            }
-        });
-
-        // /v1/models/lora/list - List available LoRA adapters (legacy — kept for compatibility with old clients; prefer SearchMultiModalModelsAsync + model_type=lora_adapter on /v1/models)
-        app.MapGet("/v1/models/lora/list", async (ILoraAdapterManager loraManager, HttpContext context) =>
-        {
-            try
-            {
-                var models = await loraManager.GetAvailableAdaptersAsync();
-
-                var modelInfos = new List<object>();
-                foreach (var model in models)
-                {
-                    modelInfos.Add(new
-                    {
-                        id = model.Id,
-                        obj = "model",
-                        owned_by = "local",
-                        display_name = model.Name,
-                        model_type = "lora_adapter",
-                        format_variant = model.Format.ToString()
-                    });
-                }
-
-                context.Response.StatusCode = 200;
-                await context.Response.WriteAsJsonAsync(new { obj = "list", data = modelInfos });
-            }
-            catch (Exception ex)
-            {
-                _logger?.LogError(ex, "Error listing LoRA adapters");
-                context.Response.StatusCode = 500;
-                await context.Response.WriteAsJsonAsync(new { error = "Failed to list LoRA adapters" });
-            }
-        });
-
-        // === Health Check Endpoints ===
-
-        app.MapGet("/v1/health", () => Results.Ok(new
-        {
-            status = IsRunning ? "healthy" : "stopped",
-            server_port = Configuration.Port
-        }));
 
         _application = app;
         State = ServerState.Running;
@@ -1961,3 +1270,1261 @@ internal record EmbeddingsRequest(
 internal record ContentBlock(
     string Type = "text",
     string? Text = null);
+
+// ---- Endpoint group extension methods ----
+
+/// <summary>
+/// Extension methods for grouping ServerService endpoints in ASP.NET Core.
+/// </summary>
+public static class ServerServiceEndpointExtensions
+{
+    /// <summary>
+    /// Registers OpenAI-compatible chat completions endpoints (/v1/chat/completions, /v1/models).
+    /// </summary>
+    public static WebApplication UseChatCompletionEndpoints(
+        this WebApplication app,
+        ServerConfiguration config,
+        ILogger? logger)
+    {
+        // Chat completions endpoint with streaming support
+        app.MapPost("/v1/chat/completions", async (HttpContext context) =>
+        {
+            if (!context.Request.HasJsonContentType())
+            {
+                context.Response.StatusCode = 400;
+                await context.Response.WriteAsJsonAsync(new { error = "Content-Type must be application/json" });
+                return;
+            }
+
+            using var reader = new StreamReader(context.Request.Body);
+            var requestBodyStr = await reader.ReadToEndAsync();
+
+            try
+            {
+                var streamParam = context.Request.Headers.ContainsKey("X-Stream")
+                    ? context.Request.Headers["X-Stream"].ToString().Equals("true", StringComparison.OrdinalIgnoreCase)
+                    : false;
+
+                if (streamParam || requestBodyStr.Contains("\"stream\": true"))
+                {
+                    // Streaming handled via embedded ServerService instance
+                    await HandleStreamingResponse(context, config, logger);
+                    return;
+                }
+
+                var result = await ProcessChatCompletion(context, requestBodyStr, false, config, logger);
+                if (result != null)
+                {
+                    context.Response.ContentType = "application/json";
+                    await context.Response.WriteAsJsonAsync(result);
+                }
+            }
+            catch (Exception ex)
+            {
+                logger?.LogError(ex, "Error processing chat completion request");
+                context.Response.StatusCode = 500;
+                await context.Response.WriteAsJsonAsync(new { error = "Internal server error" });
+            }
+        });
+
+        // Model listing endpoint
+        app.MapGet("/v1/models", async (IModelRepository modelRepo, HttpContext context) =>
+        {
+            try
+            {
+                IEnumerable<dynamic> models;
+
+                if (modelRepo != null)
+                {
+                    var allModels = await modelRepo.DiscoverModelsAsync();
+                    models = allModels.Select(m => new
+                    {
+                        id = m.Id,
+                        @object = "model",
+                        created = DateTimeOffset.UtcNow.ToUnixTimeSeconds(),
+                        owned_by = "openlmstudio"
+                    });
+                }
+                else
+                {
+                    models = new[]
+                    {
+                        new { id = "local-model", @object = "model", created = DateTimeOffset.UtcNow.ToUnixTimeSeconds(), owned_by = "openlmstudio" }
+                    };
+                }
+
+                context.Response.ContentType = "application/json";
+                await context.Response.WriteAsJsonAsync(new { data = models, @object = "list" });
+            }
+            catch (Exception ex)
+            {
+                logger?.LogError(ex, "Error listing models");
+                context.Response.StatusCode = 500;
+                await context.Response.WriteAsJsonAsync(new { error = "Failed to list models" });
+            }
+        });
+
+        return app;
+    }
+
+    /// <summary>
+    /// Registers Anthropic-compatible endpoints (/v1/messages, /v1/models/embedding/list).
+    /// </summary>
+    public static WebApplication UseAnthropicEndpoints(
+        this WebApplication app,
+        ServerConfiguration config,
+        ILogger? logger)
+    {
+        app.MapPost("/v1/messages", async (IChatCompletionService chatService, IModelRepository modelRepo, HttpContext context) =>
+        {
+            if (!context.Request.HasJsonContentType())
+            {
+                context.Response.StatusCode = 400;
+                await context.Response.WriteAsJsonAsync(new { error = "Content-Type must be application/json" });
+                return;
+            }
+
+            using var reader = new StreamReader(context.Request.Body);
+            var requestBodyStr = await reader.ReadToEndAsync();
+
+            bool isStreaming = requestBodyStr.Contains("\"stream\": true") ||
+                              context.Request.Headers.ContainsKey("X-Stream");
+
+            try
+            {
+                if (isStreaming)
+                {
+                    var result = await ProcessChatCompletion(context, requestBodyStr, true, config, logger);
+                    return; // Streaming handled internally by this method
+                }
+
+                var anthropicRequest = System.Text.Json.JsonSerializer.Deserialize<AnthropicRequest>(requestBodyStr);
+
+                if (anthropicRequest == null)
+                {
+                    context.Response.StatusCode = 400;
+                    await context.Response.WriteAsJsonAsync(new { error = "Failed to parse Anthropic request" });
+                    return;
+                }
+
+                if (chatService != null)
+                {
+                    var messages = new List<Message>();
+                    string? systemMessage = null;
+                    try
+                    {
+                        var jsonBody = System.Text.Json.JsonSerializer.Deserialize<AnthropicRequest>(requestBodyStr);
+                        systemMessage = jsonBody?.System;
+                    }
+                    catch { /* Ignore parse errors */ }
+
+                    foreach (var message in (anthropicRequest.Messages ?? []).ToArray())
+                    {
+                        var textContent = message.Content;
+
+                        if (!string.IsNullOrEmpty(textContent))
+                        {
+                            messages.Add(new Message
+                            {
+                                Role = message.Role == "user" ? MessageRole.User : MessageRole.Assistant,
+                                Content = textContent,
+                                TokenCount = Math.Max(1, EstimateTokenCount(textContent))
+                            });
+                        }
+                    }
+
+                    if (!string.IsNullOrEmpty(systemMessage))
+                    {
+                        messages.Insert(0, new Message
+                        {
+                            Role = MessageRole.System,
+                            Content = systemMessage,
+                            TokenCount = Math.Max(1, EstimateTokenCount(systemMessage))
+                        });
+                    }
+
+                    var chatReq = new ChatRequest(
+                        anthropicRequest.Model ?? "local-model",
+                        messages,
+                        (double?)(anthropicRequest.Temperature ?? 0.7),
+                        anthropicRequest.MaxTokens > 0 ? (int?)anthropicRequest.MaxTokens : null,
+                        (double?)(anthropicRequest.TopP ?? 1.0));
+
+                    var responseChoice = await chatService.GetCompletionAsync(chatReq);
+
+                    var inputTokenCount = messages.Sum(m => m.TokenCount > 0 ? m.TokenCount : EstimateTokenCount(m.Content));
+                    int outputTokenCount;
+                    if (!string.IsNullOrEmpty(responseChoice.Message.Content))
+                        outputTokenCount = responseChoice.Message.TokenCount > 0 ? responseChoice.Message.TokenCount : EstimateTokenCount(responseChoice.Message.Content);
+                    else
+                        outputTokenCount = 0;
+
+                    var response = new
+                    {
+                        id = $"msg_{Guid.NewGuid():N}",
+                        type = "message",
+                        role = "assistant",
+                        content = new[] { new {
+                            type = "text",
+                            text = responseChoice.Message.Content ?? "[No response]"
+                        } },
+                        model = anthropicRequest.Model,
+                        stop_reason = string.IsNullOrEmpty(responseChoice.FinishReason) ? "end_turn" : responseChoice.FinishReason.ToLowerInvariant(),
+                        usage = new
+                        {
+                            input_tokens = inputTokenCount,
+                            output_tokens = outputTokenCount,
+                            total_tokens = inputTokenCount + outputTokenCount
+                        }
+                    };
+
+                    context.Response.ContentType = "application/json";
+                    await context.Response.WriteAsJsonAsync(response);
+                }
+                else
+                {
+                    var modelIds = new List<string>();
+                    if (modelRepo != null)
+                    {
+                        try
+                        {
+                            var models = await modelRepo.DiscoverModelsAsync();
+                            modelIds = models.Select(m => m.Id.ToString()).ToList();
+                        }
+                        catch { /* Ignore errors */ }
+                    }
+
+                    var response = new
+                    {
+                        id = $"msg_{Guid.NewGuid():N}",
+                        type = "message",
+                        role = "assistant",
+                        content = new[] { new {
+                            type = "text",
+                            text = "[No chat completion service configured]"
+                        } },
+                        model = anthropicRequest.Model,
+                        stop_reason = "end_turn",
+                        usage = new { input_tokens = 0, output_tokens = 0 },
+                        models_available = modelIds
+                    };
+
+                    context.Response.ContentType = "application/json";
+                    await context.Response.WriteAsJsonAsync(response);
+                }
+            }
+            catch (Exception ex)
+            {
+                logger?.LogError(ex, "Error processing Anthropic message request");
+                context.Response.StatusCode = 500;
+                await context.Response.WriteAsJsonAsync(new { error = "Internal server error" });
+            }
+        });
+
+        // Embeddings endpoint
+        app.MapPost("/v1/embeddings", async (IEmbeddingPipelineService pipeline, IModelRepository modelRepo, HttpContext context) =>
+        {
+            if (!context.Request.HasJsonContentType())
+            {
+                context.Response.StatusCode = 400;
+                await context.Response.WriteAsJsonAsync(new { error = "Content-Type must be application/json" });
+                return;
+            }
+
+            using var reader = new StreamReader(context.Request.Body);
+            var requestBodyStr = await reader.ReadToEndAsync();
+
+            try
+            {
+                var embeddingsRequest = System.Text.Json.JsonSerializer.Deserialize<EmbeddingsRequest>(requestBodyStr);
+
+                if (embeddingsRequest == null || string.IsNullOrEmpty(embeddingsRequest.Model))
+                {
+                    context.Response.StatusCode = 400;
+                    await context.Response.WriteAsJsonAsync(new { error = "Model identifier and input are required" });
+                    return;
+                }
+
+                var modelType = await DetectModelTypeAsync(logger, modelRepo, embeddingsRequest.Model);
+                if (modelType != ModelType.Embedding && modelType != ModelType.TextGeneration)
+                {
+                    context.Response.StatusCode = 400;
+                    await context.Response.WriteAsJsonAsync(new
+                    {
+                        error = "model_type_not_supported_for_embeddings",
+                        message = $"Model '{embeddingsRequest.Model}' is not an embedding model and cannot be used with /v1/embeddings.",
+                        suggested_endpoint = "/v1/chat/completions"
+                    });
+                    return;
+                }
+
+                var inputs = embeddingsRequest.Input switch
+                {
+                    string s => new[] { s },
+                    System.Text.Json.JsonElement[] arr => arr.Select(e => e.GetString() ?? "").ToArray(),
+                    _ => throw new InvalidOperationException("Input must be a string or array of strings")
+                };
+
+                float[][] embeddingVectors;
+
+                if (inputs.Length == 1)
+                {
+                    var vector = await pipeline.GenerateAsync(embeddingsRequest.Model, inputs[0]);
+                    embeddingVectors = new[] { vector };
+                }
+                else
+                {
+                    embeddingVectors = await pipeline.GenerateBatchAsync(embeddingsRequest.Model, inputs.ToList());
+                }
+
+                var data = new List<object>();
+                for (var i = 0; i < embeddingVectors.Length; i++)
+                {
+                    data.Add(new
+                    {
+                        @object = "embedding",
+                        index = i,
+                        embedding = embeddingVectors[i]
+                    });
+                }
+
+                var response = new
+                {
+                    @object = "list",
+                    model = embeddingsRequest.Model,
+                    usage = new
+                    {
+                        prompt_tokens = inputs.Sum(s => s?.Length / 4 + 3 / 4),
+                        total_tokens = embeddingVectors.Length
+                    },
+                    data
+                };
+
+                context.Response.ContentType = "application/json";
+                await context.Response.WriteAsJsonAsync(response);
+            }
+            catch (Exception ex)
+            {
+                logger?.LogError(ex, "Error processing embedding request");
+                context.Response.StatusCode = 500;
+                await context.Response.WriteAsJsonAsync(new { error = "Internal server error" });
+            }
+        });
+
+        return app;
+    }
+
+    /// <summary>
+    /// Registers model listing endpoints (/v1/models/image/list, /v1/models/vae/list, /v1/models/lora/list, etc.).
+    /// </summary>
+    public static WebApplication UseModelListEndpoints(
+        this WebApplication app,
+        ServerConfiguration config,
+        ILogger? logger)
+    {
+        // Image generation models
+        app.MapGet("/v1/models/image/list", async (IModelRepository repo, HttpContext context) =>
+        {
+            try
+            {
+                var models = await repo.SearchMultiModalModelsAsync(modelTypeFilter: Domain.Models.ModelType.ImageGeneration);
+
+                var modelInfos = new List<object>();
+                foreach (var model in models)
+                {
+                    modelInfos.Add(new
+                    {
+                        id = model.Id,
+                        obj = "model",
+                        owned_by = "local",
+                        display_name = model.Name,
+                        model_type = "image_generation",
+                        format = model.Format.ToString()
+                    });
+                }
+
+                context.Response.StatusCode = 200;
+                await context.Response.WriteAsJsonAsync(new { obj = "list", data = modelInfos });
+            }
+            catch (Exception ex)
+            {
+                logger?.LogError(ex, "Error listing image generation models");
+                context.Response.StatusCode = 500;
+                await context.Response.WriteAsJsonAsync(new { error = "Failed to list image models" });
+            }
+        });
+
+        // Embedding models
+        app.MapGet("/v1/models/embedding/list", async (IModelRepository repo, HttpContext context) =>
+        {
+            try
+            {
+                var models = await repo.SearchMultiModalModelsAsync(modelTypeFilter: Domain.Models.ModelType.Embedding);
+
+                var modelInfos = new List<object>();
+                foreach (var model in models)
+                {
+                    modelInfos.Add(new
+                    {
+                        id = model.Id,
+                        obj = "model",
+                        owned_by = "local",
+                        display_name = model.Name,
+                        model_type = "embedding",
+                        format = model.Format.ToString()
+                    });
+                }
+
+                context.Response.StatusCode = 200;
+                await context.Response.WriteAsJsonAsync(new { obj = "list", data = modelInfos });
+            }
+            catch (Exception ex)
+            {
+                logger?.LogError(ex, "Error listing embedding models");
+                context.Response.StatusCode = 500;
+                await context.Response.WriteAsJsonAsync(new { error = "Failed to list embedding models" });
+            }
+        });
+
+        // Upscaling models
+        app.MapGet("/v1/models/image/upscaling/list", async (IModelRepository repo, HttpContext context) =>
+        {
+            try
+            {
+                var models = await repo.SearchMultiModalModelsAsync(modelTypeFilter: Domain.Models.ModelType.ImageGeneration);
+
+                var upscaleModels = models.Where(m =>
+                    m.Name != null && (m.Name.Contains("upscaler", StringComparison.OrdinalIgnoreCase) ||
+                                       m.PipelineType?.Equals("esrgan", StringComparison.OrdinalIgnoreCase) == true));
+
+                var modelInfos = new List<object>();
+                foreach (var model in upscaleModels)
+                {
+                    modelInfos.Add(new
+                    {
+                        id = model.Id,
+                        obj = "model",
+                        owned_by = "local",
+                        display_name = model.Name,
+                        model_type = "upscaling",
+                        format = model.Format.ToString()
+                    });
+                }
+
+                context.Response.StatusCode = 200;
+                await context.Response.WriteAsJsonAsync(new { obj = "list", data = modelInfos });
+            }
+            catch (Exception ex)
+            {
+                logger?.LogError(ex, "Error listing upscaling models");
+                context.Response.StatusCode = 500;
+                await context.Response.WriteAsJsonAsync(new { error = "Failed to list upscaling models" });
+            }
+        });
+
+        // VAE models
+        app.MapGet("/v1/models/vae/list", async (IVAEPipelineService vaePipeline, HttpContext context) =>
+        {
+            try
+            {
+                var models = await vaePipeline.GetAvailableModelsAsync();
+
+                var modelInfos = new List<object>();
+                foreach (var model in models)
+                {
+                    modelInfos.Add(new
+                    {
+                        id = model.Id,
+                        obj = "model",
+                        owned_by = "local",
+                        display_name = model.Name,
+                        model_type = "vae"
+                    });
+                }
+
+                context.Response.StatusCode = 200;
+                await context.Response.WriteAsJsonAsync(new { obj = "list", data = modelInfos });
+            }
+            catch (Exception ex)
+            {
+                logger?.LogError(ex, "Error listing VAE models");
+                context.Response.StatusCode = 500;
+                await context.Response.WriteAsJsonAsync(new { error = "Failed to list VAE models" });
+            }
+        });
+
+        // LoRA adapters
+        app.MapGet("/v1/models/lora/list", async (ILoraAdapterManager loraManager, HttpContext context) =>
+        {
+            try
+            {
+                var models = await loraManager.GetAvailableAdaptersAsync();
+
+                var modelInfos = new List<object>();
+                foreach (var model in models)
+                {
+                    modelInfos.Add(new
+                    {
+                        id = model.Id,
+                        obj = "model",
+                        owned_by = "local",
+                        display_name = model.Name,
+                        model_type = "lora_adapter",
+                        format_variant = model.Format.ToString()
+                    });
+                }
+
+                context.Response.StatusCode = 200;
+                await context.Response.WriteAsJsonAsync(new { obj = "list", data = modelInfos });
+            }
+            catch (Exception ex)
+            {
+                logger?.LogError(ex, "Error listing LoRA adapters");
+                context.Response.StatusCode = 500;
+                await context.Response.WriteAsJsonAsync(new { error = "Failed to list LoRA adapters" });
+            }
+        });
+
+        return app;
+    }
+
+    /// <summary>
+    /// Registers image generation endpoints (/v1/images/*).
+    /// </summary>
+    public static WebApplication UseImageEndpoints(
+        this WebApplication app,
+        ServerConfiguration config,
+        ILogger? logger)
+    {
+        // Image generations
+        app.MapPost("/v1/images/generations", async (IDiffusionPipelineService pipeline, HttpContext context) =>
+        {
+            if (!context.Request.HasJsonContentType())
+            {
+                context.Response.StatusCode = 400;
+                await context.Response.WriteAsJsonAsync(new { error = "Content-Type must be application/json" });
+                return;
+            }
+
+            using var reader = new StreamReader(context.Request.Body);
+            var requestBodyStr = await reader.ReadToEndAsync();
+
+            try
+            {
+                var request = System.Text.Json.JsonSerializer.Deserialize<ImageGenerationRequest>(requestBodyStr);
+
+                if (request == null || string.IsNullOrEmpty(request.ModelId))
+                {
+                    context.Response.StatusCode = 400;
+                    await context.Response.WriteAsJsonAsync(new { error = "Model identifier and prompt are required" });
+                    return;
+                }
+
+                var streamProgress = false;
+                if (context.Request.Headers.TryGetValue("X-Stream", out var streamHeader))
+                {
+                    streamProgress = string.Equals(streamHeader, "true", StringComparison.OrdinalIgnoreCase);
+                }
+
+                if (streamProgress)
+                {
+                    await HandleImageGenerationStreaming(context, pipeline, request);
+                    return;
+                }
+
+                var result = await pipeline.GenerateImageAsync(request);
+
+                var imageDataList = new List<object>
+                {
+                    new
+                    {
+                        b64_json = Convert.ToBase64String(result.ImageBytes),
+                        width = result.Width,
+                        height = result.Height,
+                        seed = result.Seed
+                    }
+                };
+
+                var response = new
+                {
+                    data = imageDataList,
+                    @object = "list",
+                    created = DateTimeOffset.UtcNow.ToUnixTimeSeconds()
+                };
+
+                context.Response.ContentType = "application/json";
+                await context.Response.WriteAsJsonAsync(response);
+            }
+            catch (Exception ex)
+            {
+                logger?.LogError(ex, "Error processing image generation request");
+                context.Response.StatusCode = 500;
+                await context.Response.WriteAsJsonAsync(new { error = "Internal server error" });
+            }
+        });
+
+        // Inpainting
+        app.MapPost("/v1/images/inpainting", async (IDiffusionPipelineService pipeline, HttpContext context) =>
+        {
+            if (!context.Request.HasJsonContentType())
+            {
+                context.Response.StatusCode = 400;
+                await context.Response.WriteAsJsonAsync(new { error = "Content-Type must be application/json" });
+                return;
+            }
+
+            using var reader = new StreamReader(context.Request.Body);
+            var requestBodyStr = await reader.ReadToEndAsync();
+
+            try
+            {
+                var request = System.Text.Json.JsonSerializer.Deserialize<ImageInpaintingRequest>(requestBodyStr);
+
+                if (request == null || string.IsNullOrEmpty(request.ModelId) || string.IsNullOrEmpty(request.InitImage))
+                {
+                    context.Response.StatusCode = 400;
+                    await context.Response.WriteAsJsonAsync(new { error = "Model identifier and init image are required" });
+                    return;
+                }
+
+                var result = await pipeline.GenerateInpaintingAsync(request);
+
+                var imageDataList = new List<object>
+                {
+                    new
+                    {
+                        b64_json = Convert.ToBase64String(result.ImageBytes),
+                        width = result.Width,
+                        height = result.Height,
+                        seed = result.Seed
+                    }
+                };
+
+                var response = new
+                {
+                    data = imageDataList,
+                    @object = "list",
+                    created = DateTimeOffset.UtcNow.ToUnixTimeSeconds()
+                };
+
+                context.Response.ContentType = "application/json";
+                await context.Response.WriteAsJsonAsync(response);
+            }
+            catch (Exception ex)
+            {
+                logger?.LogError(ex, "Error processing inpainting request");
+                context.Response.StatusCode = 500;
+                await context.Response.WriteAsJsonAsync(new { error = "Internal server error" });
+            }
+        });
+
+        // Outpainting
+        app.MapPost("/v1/images/outpainting", async (IDiffusionPipelineService pipeline, HttpContext context) =>
+        {
+            if (!context.Request.HasJsonContentType())
+            {
+                context.Response.StatusCode = 400;
+                await context.Response.WriteAsJsonAsync(new { error = "Content-Type must be application/json" });
+                return;
+            }
+
+            using var reader = new StreamReader(context.Request.Body);
+            var requestBodyStr = await reader.ReadToEndAsync();
+
+            try
+            {
+                var request = System.Text.Json.JsonSerializer.Deserialize<ImageOutpaintingRequest>(requestBodyStr);
+
+                if (request == null || string.IsNullOrEmpty(request.ModelId) || string.IsNullOrEmpty(request.InitImage))
+                {
+                    context.Response.StatusCode = 400;
+                    await context.Response.WriteAsJsonAsync(new { error = "Model identifier and init image are required" });
+                    return;
+                }
+
+                var result = await pipeline.GenerateOutpaintingAsync(request);
+
+                var imageDataList = new List<object>
+                {
+                    new
+                    {
+                        b64_json = Convert.ToBase64String(result.ImageBytes),
+                        width = result.Width,
+                        height = result.Height,
+                        seed = result.Seed
+                    }
+                };
+
+                var response = new
+                {
+                    data = imageDataList,
+                    @object = "list",
+                    created = DateTimeOffset.UtcNow.ToUnixTimeSeconds()
+                };
+
+                context.Response.ContentType = "application/json";
+                await context.Response.WriteAsJsonAsync(response);
+            }
+            catch (Exception ex)
+            {
+                logger?.LogError(ex, "Error processing outpainting request");
+                context.Response.StatusCode = 500;
+                await context.Response.WriteAsJsonAsync(new { error = "Internal server error" });
+            }
+        });
+
+        return app;
+    }
+
+    /// <summary>
+    /// Registers health check endpoint (/v1/health).
+    /// </summary>
+    public static WebApplication UseHealthEndpoint(this WebApplication app)
+    {
+        app.MapGet("/v1/health", () => Results.Ok(new
+        {
+            status = "healthy",
+        }));
+        return app;
+    }
+
+    // ---- Helpers used by extension methods ----
+
+    private static async Task HandleStreamingResponse(HttpContext context, ServerConfiguration config, ILogger? logger)
+    {
+        using var reader = new StreamReader(context.Request.Body);
+        var requestBodyStr = await reader.ReadToEndAsync();
+
+        try
+        {
+            var requestId = Guid.NewGuid().ToString("N");
+            var connectionId = Guid.NewGuid().ToString("N")[..16];
+
+            string? reconnectFromEventId = null;
+            if (context.Request.Headers.TryGetValue("Last-Event-ID", out var lastEventId))
+            {
+                reconnectFromEventId = lastEventId.ToString();
+                logger?.LogInformation("SSE reconnection detected from event ID: {EventId}", reconnectFromEventId);
+            }
+
+            context.Response.ContentType = "text/event-stream";
+            context.Response.Headers.Append("Cache-Control", "no-cache");
+            context.Response.Headers.Append("Connection", "keep-alive");
+            context.Response.Headers.Append("X-Event-ID", connectionId);
+
+            var cts = new CancellationTokenSource();
+
+            try
+            {
+                IChatCompletionService? chatService = context.RequestServices.GetRequiredService<IChatCompletionService>();
+                var request = ParseStreamingRequest(requestBodyStr, requestId);
+
+                if (request == null)
+                {
+                    await WriteSseError(context, "Failed to parse request");
+                    return;
+                }
+
+                logger?.LogInformation("SSE streaming started for model: {ModelId}, request: {RequestId}",
+                    request.ModelId, requestId);
+
+                var totalPromptTokens = 0L;
+                var totalCompletionTokens = 0L;
+                bool firstChunk = true;
+
+                await foreach (var chunk in chatService.GetStreamingCompletionAsync(request).WithCancellation(cts.Token))
+                {
+                    if (cts.IsCancellationRequested) break;
+
+                    var token = ExtractTokenFromSseChunk(chunk);
+
+                    if (firstChunk)
+                    {
+                        await WriteSseEvent(context, requestId, "message_start", new
+                        {
+                            id = $"chatcmpl-{requestId}",
+                            @object = "chat.completion.chunk",
+                            created = DateTimeOffset.UtcNow.ToUnixTimeSeconds(),
+                            model = request.ModelId
+                        });
+                        firstChunk = false;
+                    }
+
+                    if (token == "<eos>")
+                    {
+                        await WriteSseEvent(context, requestId, "message_stop", new
+                        {
+                            id = $"chatcmpl-{requestId}",
+                            @object = "chat.completion.chunk",
+                            created = DateTimeOffset.UtcNow.ToUnixTimeSeconds(),
+                            model = request.ModelId,
+                            choices = new[]
+                            {
+                                new
+                                {
+                                    index = 0,
+                                    delta = new { role = "assistant", content = (string?)null },
+                                    finish_reason = "stop"
+                                }
+                            },
+                            usage = new
+                            {
+                                prompt_tokens = totalPromptTokens,
+                                completion_tokens = totalCompletionTokens,
+                                total_tokens = totalPromptTokens + totalCompletionTokens
+                            }
+                        });
+                    }
+                    else if (!string.IsNullOrEmpty(token))
+                    {
+                        await WriteSseEvent(context, requestId, "message_chunk", new
+                        {
+                            id = $"chatcmpl-{requestId}",
+                            @object = "chat.completion.chunk",
+                            created = DateTimeOffset.UtcNow.ToUnixTimeSeconds(),
+                            model = request.ModelId,
+                            choices = new[]
+                            {
+                                new
+                                {
+                                    index = 0,
+                                    delta = new { role = "assistant", content = token },
+                                    finish_reason = (string?)null
+                                }
+                            }
+                        });
+
+                        totalCompletionTokens++;
+                    }
+
+                    await context.Response.Body.FlushAsync(cts.Token);
+                }
+            }
+            finally
+            {
+                cts.Dispose();
+            }
+        }
+        catch (OperationCanceledException) when (context.RequestAborted.IsCancellationRequested)
+        {
+            logger?.LogDebug("SSE stream cancelled for request");
+        }
+        catch (Exception ex)
+        {
+            logger?.LogError(ex, "Error in SSE streaming");
+            await WriteSseError(context, "Streaming error: " + ex.Message);
+        }
+    }
+
+    private static async Task<object?> ProcessChatCompletion(HttpContext context, string requestBodyStr, bool isStreaming, ServerConfiguration config, ILogger? logger)
+    {
+        try
+        {
+            IChatCompletionService? chatService = context.RequestServices.GetRequiredService<IChatCompletionService>();
+            var request = ParseChatRequest(requestBodyStr);
+
+            if (request == null)
+            {
+                context.Response.StatusCode = 400;
+                return new { error = "Failed to parse chat completion request" };
+            }
+
+            List<Message> messages;
+
+            try
+            {
+                var jsonBody = System.Text.Json.JsonSerializer.Deserialize<JsonChatRequest>(requestBodyStr);
+
+                if (jsonBody?.Messages != null && jsonBody.Messages.Any())
+                {
+                    messages = new List<Message>();
+
+                    foreach (var msg in jsonBody.Messages)
+                    {
+                        var roleMap = new Dictionary<string, MessageRole>
+                        {
+                            { "system", MessageRole.System },
+                            { "user", MessageRole.User },
+                            { "assistant", MessageRole.Assistant },
+                            { "tool", MessageRole.Tool }
+                        };
+
+                        messages.Add(new Message
+                        {
+                            Role = roleMap.GetValueOrDefault(msg.Role, MessageRole.User),
+                            Content = msg.Content ?? "",
+                            TokenCount = msg.TokenCount > 0 ? msg.TokenCount : EstimateTokenCount(msg.Content)
+                        });
+                    }
+                }
+                else if (jsonBody?.Message != null)
+                {
+                    var contentText = jsonBody.Message.ContentText;
+                    messages = new List<Message>
+                    {
+                        new Message
+                        {
+                            Role = MessageRole.User,
+                            Content = contentText ?? "",
+                            TokenCount = Math.Max(1, EstimateTokenCount(contentText))
+                        }
+                    };
+                }
+                else
+                {
+                    messages = new List<Message>
+                    {
+                        new Message
+                        {
+                            Role = MessageRole.User,
+                            Content = "[No content provided]",
+                            TokenCount = 10
+                        }
+                    };
+                }
+            }
+            catch (System.Text.Json.JsonException)
+            {
+                messages = new List<Message>
+                {
+                    new Message
+                    {
+                        Role = MessageRole.User,
+                        Content = "[No content provided]",
+                        TokenCount = 10
+                    }
+                };
+            }
+
+            var modelRepo = context.RequestServices.GetService<IModelRepository>();
+            var modelId = request.ModelId ?? "local-model";
+            if (modelRepo != null)
+            {
+                var modelType = await DetectModelTypeAsync(logger, modelRepo, modelId);
+                if (modelType.HasValue && modelType.Value != ModelType.TextGeneration)
+                {
+                    context.Response.StatusCode = 400;
+                    await WriteChatCompletionNotSupportedError(context, modelId);
+                    return null;
+                }
+            }
+
+            var completionRequest = new ChatRequest(
+                request.ModelId ?? "local-model",
+                messages,
+                request.Temperature.HasValue ? (double)request.Temperature.Value : 0.7,
+                request.MaxTokens,
+                request.TopP.HasValue ? (double)request.TopP.Value : 1.0,
+                isStreaming
+            );
+
+            if (isStreaming)
+                return null;
+
+            var responseChoice = await chatService.GetCompletionAsync(completionRequest);
+
+            return new
+            {
+                id = $"chatcmpl-{Guid.NewGuid():N}",
+                @object = "chat.completion",
+                created = DateTimeOffset.UtcNow.ToUnixTimeSeconds(),
+                model = request.ModelId ?? "local-model",
+                choices = new[]
+                {
+                    new
+                    {
+                        index = 0,
+                        message = new
+                        {
+                            role = responseChoice.Message.Role.ToString().ToLowerInvariant(),
+                            content = responseChoice.Message.Content
+                        },
+                        finish_reason = responseChoice.FinishReason ?? "stop"
+                    }
+                },
+                usage = new
+                {
+                    prompt_tokens = 0,
+                    completion_tokens = (int)(responseChoice.Message.TokenCount > 0 ? responseChoice.Message.TokenCount : Math.Max(1, EstimateTokenCount(responseChoice.Message.Content))),
+                    total_tokens = responseChoice.Message.TokenCount > 0 ? responseChoice.Message.TokenCount + 0 : Math.Max(1, EstimateTokenCount(responseChoice.Message.Content))
+                }
+            };
+        }
+        catch (Exception ex)
+        {
+            logger?.LogError(ex, "Error processing chat completion request");
+            context.Response.StatusCode = 500;
+            return new { error = "Internal server error" };
+        }
+    }
+
+    private static async Task HandleImageGenerationStreaming(HttpContext context, IDiffusionPipelineService pipeline, ImageGenerationRequest request)
+    {
+        var requestId = Guid.NewGuid().ToString("N");
+        var connectionId = Guid.NewGuid().ToString("N")[..16];
+
+        context.Response.ContentType = "text/event-stream";
+        context.Response.Headers.Append("Cache-Control", "no-cache");
+        context.Response.Headers.Append("Connection", "keep-alive");
+        context.Response.Headers.Append("X-Event-ID", connectionId);
+
+        var cts = new CancellationTokenSource();
+
+        try
+        {
+            await WriteSseEvent(context, requestId, "generation_start", new
+            {
+                id = $"img_{requestId}",
+                @object = "image.generation.chunk",
+                created = DateTimeOffset.UtcNow.ToUnixTimeSeconds(),
+                model = request.ModelId,
+                prompt = request.Prompt
+            });
+
+            var progressTask = Task.Run(async () =>
+            {
+                await foreach (var progress in pipeline.StreamProgressAsync(request).WithCancellation(cts.Token))
+                {
+                    try
+                    {
+                        await WriteSseEvent(context, requestId, "progress", new
+                        {
+                            step = progress.Step,
+                            total_steps = progress.TotalSteps,
+                            percentage = Math.Round(progress.ProgressPercent, 1)
+                        });
+                        await context.Response.Body.FlushAsync(cts.Token);
+                    }
+                    catch { /* Ignore cancellation during streaming */ }
+                }
+            }, cts.Token);
+
+            var imageTask = pipeline.GenerateImageAsync(request, cts.Token);
+
+            await Task.WhenAll(progressTask, imageTask);
+
+            if (imageTask.IsCompletedSuccessfully && imageTask.Result != null)
+            {
+                try
+                {
+                    cts.Cancel();
+                    var result = imageTask.Result;
+
+                    await WriteSseEvent(context, requestId, "generation_complete", new
+                    {
+                        id = $"img_{requestId}",
+                        @object = "image.generation.chunk",
+                        created = DateTimeOffset.UtcNow.ToUnixTimeSeconds(),
+                        model = request.ModelId,
+                        data = new[]
+                        {
+                            new
+                            {
+                                b64_json = Convert.ToBase64String(result.ImageBytes),
+                                width = result.Width,
+                                height = result.Height,
+                                seed = result.Seed
+                            }
+                        }
+                    });
+                }
+                catch { /* Ignore errors during final event streaming */ }
+            }
+            else if (imageTask.IsFaulted)
+            {
+                var ex = imageTask.Exception?.InnerException ?? new Exception("Image generation failed");
+                await WriteSseError(context, $"Image generation failed: {ex.Message}");
+            }
+        }
+        finally
+        {
+            cts.Dispose();
+        }
+    }
+
+    private static ChatRequest? ParseChatRequest(string requestBodyStr)
+    {
+        try
+        {
+            var parsedBody = System.Text.Json.JsonSerializer.Deserialize<JsonChatRequest>(requestBodyStr);
+
+            if (parsedBody == null) return null;
+
+            List<Message> messages = new();
+
+            if (parsedBody.Messages != null && parsedBody.Messages.Any())
+            {
+                foreach (var msg in parsedBody.Messages)
+                {
+                    var roleMap = new Dictionary<string, MessageRole>
+                    {
+                        { "system", MessageRole.System },
+                        { "user", MessageRole.User },
+                        { "assistant", MessageRole.Assistant },
+                        { "tool", MessageRole.Tool }
+                    };
+
+                    messages.Add(new Message
+                    {
+                        Role = roleMap.GetValueOrDefault(msg.Role, MessageRole.User),
+                        Content = msg.Content ?? "",
+                        TokenCount = msg.TokenCount > 0 ? msg.TokenCount : Math.Max(1, EstimateTokenCount(msg.Content))
+                    });
+                }
+            }
+
+            return new ChatRequest(
+                parsedBody.ModelId ?? "local-model",
+                messages,
+                parsedBody.Temperature.HasValue ? (double?)parsedBody.Temperature.Value : 0.7,
+                parsedBody.MaxTokens > 0 ? (int?)parsedBody.MaxTokens : null,
+                parsedBody.TopP.HasValue ? (double?)parsedBody.TopP.Value : 1.0,
+                false
+            );
+        }
+        catch
+        {
+            return new ChatRequest(
+                "local-model",
+                new List<Message> { new Message { Role = MessageRole.User, Content = "[No content provided]", TokenCount = 10 } },
+                (double?)0.7);
+        }
+    }
+
+    private static ChatRequest? ParseStreamingRequest(string requestBodyStr, string requestId)
+    {
+        try
+        {
+            var parsedBody = System.Text.Json.JsonSerializer.Deserialize<JsonChatRequest>(requestBodyStr);
+
+            if (parsedBody == null) return null;
+
+            List<Message> messages = new();
+
+            if (parsedBody.Messages != null && parsedBody.Messages.Any())
+            {
+                foreach (var msg in parsedBody.Messages)
+                {
+                    var roleMap = new Dictionary<string, MessageRole>
+                    {
+                        { "system", MessageRole.System },
+                        { "user", MessageRole.User },
+                        { "assistant", MessageRole.Assistant },
+                        { "tool", MessageRole.Tool }
+                    };
+
+                    messages.Add(new Message
+                    {
+                        Role = roleMap.GetValueOrDefault(msg.Role, MessageRole.User),
+                        Content = msg.Content ?? "",
+                        TokenCount = msg.TokenCount > 0 ? msg.TokenCount : Math.Max(1, EstimateTokenCount(msg.Content))
+                    });
+                }
+            }
+
+            return new ChatRequest(
+                parsedBody.ModelId ?? "local-model",
+                messages,
+                parsedBody.Temperature.HasValue ? (double?)parsedBody.Temperature.Value : 0.7,
+                parsedBody.MaxTokens > 0 ? (int?)parsedBody.MaxTokens : null,
+                parsedBody.TopP.HasValue ? (double?)parsedBody.TopP.Value : 1.0,
+                true
+            );
+        }
+        catch
+        {
+            return new ChatRequest(
+                "local-model",
+                new List<Message> { new Message { Role = MessageRole.User, Content = "[No content provided]", TokenCount = 10 } },
+                (double?)0.7,
+                null,
+                (double?)1.0,
+                true);
+        }
+    }
+
+    private static string ExtractTokenFromSseChunk(string chunk)
+    {
+        try
+        {
+            var json = System.Text.Json.JsonSerializer.Deserialize<JsonSseChunk>(chunk);
+
+            if (json == null || string.IsNullOrEmpty(json.Token))
+                return string.Empty;
+
+            return json.Token;
+        }
+        catch
+        {
+            var start = chunk.IndexOf("\"token\":");
+            if (start >= 0)
+            {
+                var valueStart = chunk.IndexOf('\"', start + "\"token\":".Length);
+                if (valueStart >= 0 && valueStart + 1 < chunk.Length)
+                {
+                    var tokenValue = new StringBuilder();
+                    for (var i = valueStart + 1; i < chunk.Length && chunk[i] != '\"'; i++)
+                        tokenValue.Append(chunk[i]);
+
+                    return tokenValue.ToString();
+                }
+            }
+
+            var trimChars = new[] { '{', '}', '"', '\'' };
+            return chunk.Trim(trimChars).Trim();
+        }
+    }
+
+    private static async Task WriteSseEvent(HttpContext context, string requestId, string eventType, object data)
+    {
+        var eventStr = $"event: {eventType}\ndata: {System.Text.Json.JsonSerializer.Serialize(data)}\n\n";
+        await context.Response.Body.WriteAsync(Encoding.UTF8.GetBytes(eventStr));
+    }
+
+    private static async Task WriteSseError(HttpContext context, string error)
+    {
+        object errorData = new { error };
+        await WriteSseEvent(context, "", "error", errorData);
+    }
+
+    private static async Task WriteChatCompletionNotSupportedError(HttpContext context, string modelId)
+    {
+        var suggestedEndpoint = "/v1/embeddings";
+
+        if (modelId.Contains("embedding", StringComparison.OrdinalIgnoreCase))
+            suggestedEndpoint = "/v1/embeddings";
+        else if (modelId.Contains("image", StringComparison.OrdinalIgnoreCase) ||
+                 modelId.Contains("diffusion", StringComparison.OrdinalIgnoreCase) ||
+                 modelId.Contains("stable-diffusion", StringComparison.OrdinalIgnoreCase) ||
+                 modelId.Contains("sdxl", StringComparison.OrdinalIgnoreCase) ||
+                 modelId.Contains("flux", StringComparison.OrdinalIgnoreCase))
+            suggestedEndpoint = "/v1/images/generations";
+
+        await context.Response.WriteAsJsonAsync(new
+        {
+            error = "model_type_not_supported_for_chat_completion",
+            message = $"Model '{modelId}' is not a text generation model and cannot be used with /v1/chat/completions.",
+            suggested_endpoint = suggestedEndpoint,
+            details = new[]
+            {
+                "Chat completion (text generation) models use GGUF format. Image generation, diffusion, VAE, LoRA, and embedding models require their respective endpoints."
+            }
+        });
+    }
+
+    private static int EstimateTokenCount(string? text) =>
+        string.IsNullOrEmpty(text) ? 0 : (text.Length + 3) / 4;
+
+    private static async Task<ModelType?> DetectModelTypeAsync(ILogger? logger, IModelRepository? repo, string modelId)
+    {
+        if (repo == null)
+            return null;
+
+        var multimodal = await repo.GetMultiModalModelByIdAsync(modelId);
+        if (multimodal != null)
+            return multimodal.ModelType;
+
+        logger?.LogDebug("Model '{ModelId}' resolved as GGUF text generation model", modelId);
+        return ModelType.TextGeneration;
+    }
+}
