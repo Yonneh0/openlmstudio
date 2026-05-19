@@ -591,6 +591,8 @@ public class ModelManager : IModelManager, IDisposable
             }
         }
 
-        throw new InvalidOperationException("Cannot evict any model — all are critical or none are loaded.");
+        throw new InvalidOperationException(
+            "Cannot evict any model — all loaded models are critical, or no models are loaded. " +
+            "Free memory manually or unload models before loading new ones.");
     }
 }

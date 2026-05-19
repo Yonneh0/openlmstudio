@@ -495,9 +495,6 @@ public class ServerService : IServerService, IDisposable
     {
         try
         {
-        // Build command arguments using string interpolation for clarity
-        var opensslArgs = $"req -x509 -newkey rsa:2048 -keyout \"{keyPath}\" -out \"{httpsCertPath}\" -days 365 -nodes -subj \"/CN=localhost\"";
-
             // Try various OpenSSL paths
             var possibleOpenSSLPaths = new[] {
                 "openssl", // Check PATH first (Unix-like systems)
@@ -509,10 +506,12 @@ public class ServerService : IServerService, IDisposable
             {
                 try
                 {
+                    var escapedCert = httpsCertPath.Replace("\"", "\\\"");
+                    var escapedKey = keyPath.Replace("\"", "\\\"");
                     var psi = new ProcessStartInfo
                     {
                         FileName = opensslPath,
-                        Arguments = string.Format(opensslArgs, httpsCertPath.Replace("\"", "\\\""), keyPath.Replace("\"", "\\\"")),
+                        Arguments = $"req -x509 -newkey rsa:2048 -keyout \"{escapedKey}\" -out \"{escapedCert}\" -days 365 -nodes -subj \"/CN=localhost\"",
                         UseShellExecute = false,
                         RedirectStandardOutput = true,
                         RedirectStandardError = true,
@@ -726,77 +725,16 @@ public class ServerService : IServerService, IDisposable
                 return new { error = "Failed to parse chat completion request" };
             }
 
-            // Create message list from parsed body
+            // Build message list from the parsed request (avoids duplicate JSON deserialization)
             List<Message> messages;
 
-            // Try parsing the messages array from the JSON body
-            try
+            if (request.Messages.Count == 0)
             {
-                var jsonBody = System.Text.Json.JsonSerializer.Deserialize<JsonChatRequest>(requestBodyStr);
-
-                if (jsonBody?.Messages != null && jsonBody.Messages.Any())
-                {
-                    messages = new List<Message>();
-
-                    foreach (var msg in jsonBody.Messages)
-                    {
-                        var roleMap = new Dictionary<string, MessageRole>
-                        {
-                            { "system", MessageRole.System },
-                            { "user", MessageRole.User },
-                            { "assistant", MessageRole.Assistant },
-                            { "tool", MessageRole.Tool }
-                        };
-
-                        messages.Add(new Message
-                        {
-                            Role = roleMap.GetValueOrDefault(msg.Role, MessageRole.User),
-                            Content = msg.Content ?? "",
-                            TokenCount = msg.TokenCount > 0 ? msg.TokenCount : EstimateTokenCount(msg.Content)
-                        });
-                    }
-                }
-                else if (jsonBody?.Message != null)
-                {
-                    // Anthropic format: single message with content array
-                    var contentText = jsonBody.Message.ContentText;
-                    messages = new List<Message>
-                    {
-                        new Message
-                        {
-                            Role = MessageRole.User,
-                            Content = contentText ?? "",
-                            TokenCount = Math.Max(1, EstimateTokenCount(contentText))
-                        }
-                    };
-                }
-                else
-                {
-                    // Fallback: create a default user message
-                    messages = new List<Message>
-                    {
-                        new Message
-                        {
-                            Role = MessageRole.User,
-                            Content = "[No content provided]",
-                            TokenCount = 10
-                        }
-                    };
-                }
+                context.Response.StatusCode = 400;
+                return new { error = "Request must contain at least one message." };
             }
-            catch (System.Text.Json.JsonException)
-            {
-                // If we can't parse the JSON body, create a default message
-                messages = new List<Message>
-                {
-                    new Message
-                    {
-                        Role = MessageRole.User,
-                        Content = "[No content provided]",
-                        TokenCount = 10
-                    }
-                };
-            }
+
+            messages = request.Messages;
 
             // Multi-engine routing: detect model type and route to correct engine
             var modelId = request.ModelId ?? "local-model";
@@ -913,58 +851,53 @@ public class ServerService : IServerService, IDisposable
         }
     }
 
-    private ChatRequest? ParseStreamingRequest(string requestBodyStr, string requestId)
-    {
-        try
+        private ChatRequest? ParseStreamingRequest(string requestBodyStr, string requestId)
         {
-            var parsedBody = System.Text.Json.JsonSerializer.Deserialize<JsonChatRequest>(requestBodyStr);
-
-            if (parsedBody == null) return null;
-
-            // Build message list from JSON body
-            List<Message> messages = new();
-
-            if (parsedBody.Messages != null && parsedBody.Messages.Any())
+            try
             {
-                foreach (var msg in parsedBody.Messages)
+                var parsedBody = System.Text.Json.JsonSerializer.Deserialize<JsonChatRequest>(requestBodyStr);
+
+                if (parsedBody == null) return null;
+
+                // Build message list from JSON body
+                var messages = new List<Message>();
+
+                if (parsedBody.Messages != null && parsedBody.Messages.Any())
                 {
-                    var roleMap = new Dictionary<string, MessageRole>
+                    foreach (var msg in parsedBody.Messages)
                     {
-                        { "system", MessageRole.System },
-                        { "user", MessageRole.User },
-                        { "assistant", MessageRole.Assistant },
-                        { "tool", MessageRole.Tool }
-                    };
+                        var roleMap = new Dictionary<string, MessageRole>
+                        {
+                            { "system", MessageRole.System },
+                            { "user", MessageRole.User },
+                            { "assistant", MessageRole.Assistant },
+                            { "tool", MessageRole.Tool }
+                        };
 
-                    messages.Add(new Message
-                    {
-                        Role = roleMap.GetValueOrDefault(msg.Role, MessageRole.User),
-                        Content = msg.Content ?? "",
-                        TokenCount = msg.TokenCount > 0 ? msg.TokenCount : Math.Max(1, EstimateTokenCount(msg.Content))
-                    });
+                        messages.Add(new Message
+                        {
+                            Role = roleMap.GetValueOrDefault(msg.Role, MessageRole.User),
+                            Content = msg.Content ?? "",
+                            TokenCount = msg.TokenCount > 0 ? msg.TokenCount : Math.Max(1, EstimateTokenCount(msg.Content))
+                        });
+                    }
                 }
-            }
 
-            return new ChatRequest(
-                parsedBody.ModelId ?? "local-model",
-                messages,
-                parsedBody.Temperature.HasValue ? (double?)parsedBody.Temperature.Value : 0.7,
-                parsedBody.MaxTokens > 0 ? (int?)parsedBody.MaxTokens : null,
-                parsedBody.TopP.HasValue ? (double?)parsedBody.TopP.Value : 1.0,
-                true
-            );
+                return new ChatRequest(
+                    parsedBody.ModelId ?? "local-model",
+                    messages,
+                    parsedBody.Temperature.HasValue ? (double?)parsedBody.Temperature.Value : 0.7,
+                    parsedBody.MaxTokens > 0 ? (int?)parsedBody.MaxTokens : null,
+                    parsedBody.TopP.HasValue ? (double?)parsedBody.TopP.Value : 1.0,
+                    true
+                );
+            }
+            catch (Exception ex)
+            {
+                _logger?.LogWarning(ex, "Failed to parse streaming request — returning null to let caller handle the error");
+                return null;
+            }
         }
-        catch
-        {
-            return new ChatRequest(
-                "local-model",
-                new List<Message> { new Message { Role = MessageRole.User, Content = "[No content provided]", TokenCount = 10 } },
-                (double?)0.7,
-                null,
-                (double?)1.0,
-                true);
-        }
-    }
 
     // ---- Private Helpers ----
 
