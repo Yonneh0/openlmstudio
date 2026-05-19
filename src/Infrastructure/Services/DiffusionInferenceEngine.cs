@@ -438,7 +438,7 @@ public class DiffusionInferenceEngine : IDisposable
 
             return result;
         }
-        catch (Exception ex)
+        catch
         {
             // _logger is nullable, skip logging here to keep the method static-compatible.
             return null;
@@ -492,7 +492,7 @@ public class DiffusionInferenceEngine : IDisposable
                     else if (c == 2) b = clampedPixel;
                 }
 
-                skBitmap.SetPixel(w, h, new SkiaSharp.SKColor(r, g, b));
+                skBitmap.SetPixel(w, h, new SkiaSharp.SKColor((byte)r, (byte)g, (byte)b));
             }
         }
 
