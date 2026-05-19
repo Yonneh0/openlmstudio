@@ -295,9 +295,7 @@ public class PluginRegistry : Domain.Interfaces.IPluginRegistry
         if (plugin.IsInstalled)
             throw new InvalidOperationException($"Plugin '{plugin.Id}' is already installed.");
 
-        // Download the plugin archive from the registry URL
         var downloadUrl = plugin.DownloadUrl ?? throw new InvalidOperationException("No download URL available for plugin.");
-
         using var client = _httpClient ??= CreateHttpClient();
         var archiveBytes = await client.GetByteArrayAsync(downloadUrl, ct);
         var installPath = Path.Combine(_pluginDirectory, plugin.Id);
@@ -319,7 +317,38 @@ public class PluginRegistry : Domain.Interfaces.IPluginRegistry
             await readerStream.CopyToAsync(streamWriter);
         }
 
-        // Save plugin state to settings.db (SQLite-backed per-domain spec)
+        // Create manifest.json for the installed plugin
+        var manifestPath = Path.Combine(installPath, "manifest.json");
+        await File.WriteAllTextAsync(manifestPath, System.Text.Json.JsonSerializer.Serialize(new
+        {
+            Id = plugin.Id,
+            Name = plugin.Name,
+            Description = plugin.Description,
+            Version = plugin.Version.ToString(),
+            IsEnabled = true,
+            Tags = plugin.Tags,
+            Author = plugin.Author
+        }));
+
+        // Default sandbox policy for installed plugin
+        var policyPath = Path.Combine(installPath, "sandbox-policy.json");
+        await File.WriteAllTextAsync(policyPath, System.Text.Json.JsonSerializer.Serialize(new
+        {
+            AllowFileWrites = false,
+            AllowNetworkAccess = false,
+            AllowCommandExecution = false,
+            AllowedPaths = new[] { "/tmp", "/var/tmp" },
+            BlockedCommands = new[] { "sudo", "su", "chmod", "chown", "rm -rf", "dd", "mkfs", "fdisk", "iptables" },
+            MaxExecutionTimeSeconds = 300,
+            MaxMemoryMb = 256
+        }));
+
+        _sandboxPolicies[plugin.Id] = new Domain.Interfaces.PluginSandboxPolicy(
+            false, false, false,
+            new HashSet<string>(StringComparer.OrdinalIgnoreCase) { "/tmp", "/var/tmp" },
+            new HashSet<string>(StringComparer.OrdinalIgnoreCase) { "sudo", "su", "chmod", "chown", "rm -rf", "dd", "mkfs", "fdisk", "iptables" },
+            TimeSpan.FromMinutes(5), 256);
+
         _logger?.LogInformation("Installed plugin: {PluginId} from {Url}", plugin.Id, downloadUrl);
     }
 
@@ -347,13 +376,11 @@ public class PluginRegistry : Domain.Interfaces.IPluginRegistry
     /// <inheritdoc />
     public async Task SetEnabledStateAsync(string pluginId, bool enabled, CancellationToken ct = default)
     {
-        // Update the enabled state in manifest.json (SQLite-backed per-domain spec — deferred to Phase 10.X.3)
         var manifestPath = Path.Combine(_pluginDirectory, pluginId, "manifest.json");
         if (File.Exists(manifestPath))
         {
             var currentManifest = await LoadPluginManifestAsync(manifestPath);
 
-            // Update IsEnabled and write back the updated manifest
             var updateJson = System.Text.Json.JsonSerializer.Serialize(new
             {
                 Id = currentManifest.Id,
@@ -367,6 +394,10 @@ public class PluginRegistry : Domain.Interfaces.IPluginRegistry
 
             await File.WriteAllTextAsync(manifestPath, updateJson);
             _logger?.LogInformation("Plugin '{PluginId}' state changed to: {State}", pluginId, enabled ? "Enabled" : "Disabled");
+        }
+        else
+        {
+            _logger?.LogWarning("Manifest not found for plugin '{PluginId}', cannot update enabled state", pluginId);
         }
     }
 
