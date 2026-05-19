@@ -894,9 +894,9 @@ public class SqliteTaskContextStore : ITaskContextStore, IDisposable
 
             return resultDict;
         }
-        catch
+        catch (Exception ex)
         {
-            // Return empty on parse failure to maintain backward compatibility
+            _logger?.LogWarning(ex, "Failed to deserialize tool results cache — data may be corrupted");
             return new Dictionary<string, ContextSegment>();
         }
     }

@@ -15,6 +15,7 @@ public class ModelManager : IModelManager, IDisposable
     private readonly ILogger<ModelManager>? _logger;
     private readonly ConcurrentDictionary<string, IModelLoader> _loaders = new();
     private readonly IDeviceMonitor? _deviceMonitor;
+    private IModelRepository? _modelRepository;
 
     /// <summary>
     /// Estimated total memory usage across all loaded models in bytes (cached).
@@ -33,10 +34,11 @@ public class ModelManager : IModelManager, IDisposable
     /// </summary>
     private const double MemoryEvictionThreshold = 0.8;
 
-    public ModelManager(ILogger<ModelManager>? logger, IDeviceMonitor? deviceMonitor = null)
+    public ModelManager(ILogger<ModelManager>? logger, IDeviceMonitor? deviceMonitor = null, IModelRepository? modelRepository = null)
     {
         _logger = logger;
         _deviceMonitor = deviceMonitor;
+        _modelRepository = modelRepository;
     }
 
     // ---- Property helpers: typed accessors to avoid repeated dictionary lookups ----
@@ -535,10 +537,10 @@ public class ModelManager : IModelManager, IDisposable
     }
 
     /// <summary>
-    /// Resolves the model repository from an optional injected IModelRepository on the instance.
-    /// Falls back to null if not set — callers should handle the null case appropriately.
+    /// Resolves the model repository from the model repository property.
+    /// Returns null if not set — callers should handle the null case appropriately.
     /// </summary>
-    private IModelRepository? ResolveRepository() => null;
+    private IModelRepository? ResolveRepository() => _modelRepository;
 
     /// <summary>
     /// Gets the memory threshold required to load a new model, based on free VRAM and CPU memory.
