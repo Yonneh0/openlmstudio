@@ -432,13 +432,24 @@ public class DownloadManager : IDownloadManager, IDisposable
             long totalDownloaded = 0;
             var lastProgressUpdate = DateTime.UtcNow;
 
+            // Store the cancellation token source on the field so CancelDownloads() can cancel it
+            var cts = new CancellationTokenSource();
+            _activeCancellationTokenSource = cts;
+
             while (true)
             {
-                var bytesRead = await stream.ReadAsync(writeBuffer.AsMemory(0, writeBuffer.Length));
+                if (cts.IsCancellationRequested)
+                {
+                    _logger?.LogWarning("Download cancelled");
+                    OnDownloadCompleted(outputPath, false, "Download cancelled");
+                    return null;
+                }
+
+                var bytesRead = await stream.ReadAsync(writeBuffer.AsMemory(0, writeBuffer.Length), cts.Token);
 
                 if (bytesRead == 0) break; // End of stream
 
-                await fileStream.WriteAsync(writeBuffer.AsMemory(0, bytesRead));
+                await fileStream.WriteAsync(writeBuffer.AsMemory(0, bytesRead), cts.Token);
                 totalDownloaded += bytesRead;
 
                 // Calculate speed and progress

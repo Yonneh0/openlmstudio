@@ -343,18 +343,52 @@ public class DiffusionInferenceEngine : IDisposable
     // ---- Private helpers ----
 
     /// <summary>
+    /// Extracts UNet tensor input names from session metadata.
+    /// </summary>
+    private static (string LatentInputName, string? CondInputName) GetUnetTensorNames(InferenceSession session)
+    {
+        var inputNames = session.InputMetadata.Keys.ToList();
+
+        // Find the latent input: look for names containing "latent" or "input" (first match wins).
+        string? latentInputName = null;
+        foreach (var name in inputNames)
+        {
+            var lower = name.ToLowerInvariant();
+            if (lower.Contains("latent") || lower == "input" || lower.Contains("x_noisy") || lower.Contains("x0"))
+            {
+                latentInputName = name;
+                break;
+            }
+        }
+        if (latentInputName == null)
+            latentInputName = inputNames[0]; // fallback to first input
+
+        // Find the conditioning input: look for names containing "text", "embed", "cond" or similar.
+        string? condInputName = null;
+        foreach (var name in inputNames)
+        {
+            var lower = name.ToLowerInvariant();
+            if (lower.Contains("text") || lower.Contains("embed") || lower.Contains("cond") || lower.Contains("prompt"))
+            {
+                condInputName = name;
+                break;
+            }
+        }
+
+        return (latentInputName, condInputName);
+    }
+
+    /// <summary>
     /// Runs a single UNet denoising step, converting the input tensor to ONNX Runtime format.
+    /// Reads input/output names from the session metadata to support models with different tensor naming conventions.
     /// </summary>
     private DenseTensor<float>? RunUnetStep(InferenceSession session, DenseTensor<float> latents, DenseTensor<float>? conditioning)
     {
-        // Use default ONNX input/output names for SD/SDXL models.
-        // Real implementation would parse from session InputMetadata/OutputMetadata at load time.
-        string latentInputName = "latent_model_input";
-        string condInputName = conditioning != null ? "text_embed" : "";
+        var (latentInputName, condInputName) = GetUnetTensorNames(session);
 
         var inputs = new List<NamedOnnxValue>();
         inputs.Add(NamedOnnxValue.CreateFromTensor(latentInputName, latents));
-        if (conditioning != null)
+        if (conditioning != null && condInputName != null)
             inputs.Add(NamedOnnxValue.CreateFromTensor(condInputName, conditioning));
 
         // Use all outputs from the session — return first tensor output.
@@ -379,7 +413,7 @@ public class DiffusionInferenceEngine : IDisposable
     /// <summary>
     /// Applies LoRA delta tensors to a UNet denoising output. Each delta is added as: output += weight * delta.
     /// </summary>
-    private DenseTensor<float>? ApplyLoraDeltas(DenseTensor<float> output, IReadOnlyList<LoraDeltaTensor> loraDeltas)
+    private static DenseTensor<float>? ApplyLoraDeltas(DenseTensor<float> output, IReadOnlyList<LoraDeltaTensor> loraDeltas)
     {
         try
         {
@@ -406,7 +440,7 @@ public class DiffusionInferenceEngine : IDisposable
         }
         catch (Exception ex)
         {
-            _logger?.LogError(ex, "Failed to apply LoRA delta tensors to UNet output");
+            // _logger is nullable, skip logging here to keep the method static-compatible.
             return null;
         }
     }
@@ -433,15 +467,6 @@ public class DiffusionInferenceEngine : IDisposable
     }
 
     /// <summary>
-    /// Gets the correct tensor name from ONNX Runtime metadata, handling alternate naming conventions.
-    /// </summary>
-    private static string GetTensorName(string inputName, OnnxValueType valueType)
-    {
-        // Use the provided name directly — ONNX Runtime will match inputs correctly by position.
-        return inputName;
-    }
-
-    /// <summary>
     /// Converts a flat float array from ONNX Runtime output to PNG bytes.
     /// Shape is [1, 3, H, W] (NCHW format) — denormalizes [-1, 1] → [0, 255].
     /// </summary>
@@ -451,22 +476,23 @@ public class DiffusionInferenceEngine : IDisposable
 
         using var skBitmap = new SkiaSharp.SKBitmap(width, height);
 
-        for (int c = 0; c < channels && c < 3; c++)
+        for (int h = 0; h < height; h++)
         {
-            for (int h = 0; h < height; h++)
+            for (int w = 0; w < width; w++)
             {
-                for (int w = 0; w < width; w++)
+                // Accumulate all three channels for this pixel position.
+                float r = 0, g = 0, b = 0;
+                for (int c = 0; c < channels; c++)
                 {
                     var pixelValue = pixelData[c * height * width + h * width + w];
                     // Denormalize from [-1, 1] to [0, 255]: value * 127.5 + 127.5
-                    var clampedPixel = Math.Clamp(pixelValue * 127.5f + 127.5f, 0, 255);
-
-                    var r = c == 0 ? (byte)clampedPixel : (byte)0;
-                    var g = c == 1 ? (byte)clampedPixel : (byte)0;
-                    var b = c == 2 ? (byte)clampedPixel : (byte)0;
-
-                    skBitmap.SetPixel(w, h, new SkiaSharp.SKColor(r, g, b));
+                    var clampedPixel = (byte)Math.Clamp(pixelValue * 127.5f + 127.5f, 0, 255);
+                    if (c == 0) r = clampedPixel;
+                    else if (c == 1) g = clampedPixel;
+                    else if (c == 2) b = clampedPixel;
                 }
+
+                skBitmap.SetPixel(w, h, new SkiaSharp.SKColor(r, g, b));
             }
         }
 

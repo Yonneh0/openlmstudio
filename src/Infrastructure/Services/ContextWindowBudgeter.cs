@@ -285,7 +285,7 @@ internal class ChatBudgetState : IDisposable
 
     internal async Task SetSegmentRelevanceAsync(Guid segmentId, float score)
     {
-        _segmentRelevanceScores[segmentId] = score;
+        _segmentRelevanceScores.AddOrUpdate(segmentId, score, (_, _) => score);
     }
 
     internal bool IsAllSegmentsPinned()

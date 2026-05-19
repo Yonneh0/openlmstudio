@@ -288,45 +288,55 @@ public class Agent : IAgent, IDisposable
     }
 
     /// <summary>
-    /// Attempts to instantiate a tool by name in the loaded assemblies.
+    /// Attempts to instantiate a tool by name across loaded assemblies and registered tool types.
     /// </summary>
     private ITool? TryFindTool(string toolName)
     {
-        try
+        // Search across all loaded assemblies (not just the executing one) to find dynamically registered tools.
+        var assemblyNames = AppDomain.CurrentDomain.GetAssemblies()
+            .Select(a => a.GetName().Name)
+            .Distinct()
+            .ToList();
+
+        foreach (var typeName in assemblyNames)
         {
-            var assembly = Assembly.GetExecutingAssembly();
-
-            // Search for tool type in this assembly first (built-in tools like FileReadTool)
-            foreach (var type in assembly.GetTypes())
+            try
             {
-                if (type.IsAbstract || !typeof(ITool).IsAssignableFrom(type)) continue;
+                var assembly = AppDomain.CurrentDomain.GetAssemblies()
+                    .FirstOrDefault(a => a.GetName().Name == typeName);
+                if (assembly == null) continue;
 
-                var toolInterfaceName = typeof(ITool).FullName ?? "OpenLMStudio.Application.Interfaces.ITool";
-                var interfaceImpl = type.GetInterface(toolInterfaceName);
-                if (interfaceImpl == null) continue;
-
-                // Check constructor compatibility — needs ILogger and possibly IMcpClient/IMcpResourceAccessor
-                var constructors = type.GetConstructors();
-                foreach (var ctor in constructors.Where(c => c.IsPublic))
+                foreach (var type in assembly.GetTypes())
                 {
-                    try
+                    if (type.IsAbstract || !typeof(ITool).IsAssignableFrom(type)) continue;
+
+                    // Check if the tool name matches the type name (case-insensitive).
+                    if (!string.Equals(type.Name.Replace("Tool", ""), toolName, StringComparison.OrdinalIgnoreCase) &&
+                        !string.Equals(type.Name, toolName, StringComparison.OrdinalIgnoreCase))
+                        continue;
+
+                    // Check constructor compatibility — needs ILogger and possibly IMcpClient/IMcpResourceAccessor
+                    var constructors = type.GetConstructors();
+                    foreach (var ctor in constructors.Where(c => c.IsPublic))
                     {
-                        return Activator.CreateInstance(type, new object?[] { _logger, null }) as ITool;
-                    }
-                    catch
-                    {
-                        // Constructor doesn't match — try another one
+                        try
+                        {
+                            return Activator.CreateInstance(type, new object?[] { _logger, null }) as ITool;
+                        }
+                        catch
+                        {
+                            // Constructor doesn't match — try another one
+                        }
                     }
                 }
             }
+            catch
+            {
+                // Assembly failed to load — skip it
+            }
+        }
 
-            return null;  // Built-in tool not found in this assembly
-        }
-        catch (Exception ex)
-        {
-            _logger?.LogWarning(ex, "Failed to find tool: {Tool}", toolName);
-            return null;
-        }
+        return null;
     }
 
     private void AddConversationMessage(string senderRole, string phase, string content) =>

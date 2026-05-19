@@ -432,19 +432,68 @@ public class GgufParser : IDisposable
     {
         return type switch
         {
-            0 => ReadUInt64Aligned(stream),      // uint8 stored as uint64
-            1 => ReadInt64Aligned(stream),        // int8 stored as int64
-            2 => ReadUInt64Aligned(stream),       // uint16 stored as uint64
-            3 => ReadInt64Aligned(stream),        // int16 stored as int64
-            4 => ReadUInt64Aligned(stream),       // uint32 stored as uint64
-            5 => ReadInt64Aligned(stream),        // int32 stored as int64
-            6 => ReadUInt64Aligned(stream),       // uint64
-            7 => ReadInt64Aligned(stream),        // int64
-            8 => ReadDoubleAligned(stream),       // float32 stored as double
-            9 => ReadBoolAligned(stream),         // bool stored as byte
-            10 => ReadStringAligned(stream),      // string value
+            0 => (object)ReadUInt8(stream),        // uint8 — 1 byte
+            1 => (object)ReadInt8(stream),          // int8 — 1 byte
+            2 => (object)ReadUInt16(stream),        // uint16 — 2 bytes
+            3 => (object)ReadInt16(stream),         // int16 — 2 bytes
+            4 => (object)ReadUInt32(stream),        // uint32 — 4 bytes
+            5 => (object)ReadInt32(stream),         // int32 — 4 bytes
+            6 => ReadUInt64Aligned(stream),         // uint64 — 8 bytes
+            7 => ReadInt64Aligned(stream),          // int64 — 8 bytes
+            8 => ReadFloat32(stream),               // float32 — 4 bytes
+            9 => ReadBoolAligned(stream),           // bool stored as byte
+            10 => ReadStringAligned(stream),        // string value
             _ => null
         };
+    }
+
+    private byte ReadUInt8(Stream stream)
+    {
+        var bytes = new byte[1];
+        stream.Read(bytes, 0, 1);
+        return bytes[0];
+    }
+
+    private sbyte ReadInt8(Stream stream)
+    {
+        var bytes = new byte[1];
+        stream.Read(bytes, 0, 1);
+        return (sbyte)bytes[0];
+    }
+
+    private ushort ReadUInt16(Stream stream)
+    {
+        var bytes = new byte[2];
+        stream.Read(bytes, 0, 2);
+        return BinaryPrimitives.ReadUInt16LittleEndian(bytes);
+    }
+
+    private short ReadInt16(Stream stream)
+    {
+        var bytes = new byte[2];
+        stream.Read(bytes, 0, 2);
+        return BinaryPrimitives.ReadInt16LittleEndian(bytes);
+    }
+
+    private uint ReadUInt32(Stream stream)
+    {
+        var bytes = new byte[4];
+        stream.Read(bytes, 0, 4);
+        return BinaryPrimitives.ReadUInt32LittleEndian(bytes);
+    }
+
+    private int ReadInt32(Stream stream)
+    {
+        var bytes = new byte[4];
+        stream.Read(bytes, 0, 4);
+        return BinaryPrimitives.ReadInt32LittleEndian(bytes);
+    }
+
+    private float ReadFloat32(Stream stream)
+    {
+        var bytes = new byte[4];
+        stream.Read(bytes, 0, 4);
+        return BitConverter.ToSingle(bytes, 0);
     }
 
     private ulong ReadUInt64Aligned(Stream stream)
