@@ -212,7 +212,6 @@ public class ImagePostProcessingService : IImagePostProcessingService, IDisposab
         int latentW = bitmap.Width / 8;
 
         var tensor = new DenseTensor<float>(new[] { 1, 3, latentH, latentW });
-        int idx = 0;
         for (int cy = 0; cy < bitmap.Height; cy++)
         {
             for (int cx = 0; cx < bitmap.Width; cx++)

@@ -19,7 +19,7 @@ public class ModelCacheCleanupService : IModelCacheCleanupService, IDisposable
     {
         _logger = logger;
         _appDataResolver = appDataResolver;
-        _cacheIndexPath = Path.Combine(appDataResolver.MetadataPath, "cache_index.json");
+        _cacheIndexPath = Path.Combine(appDataResolver.MetadataDirectory, "cache_index.json");
     }
 
     public async Task<ModelCacheCleanupResult> CleanAsync(ModelCacheRetentionPolicy policy, CancellationToken ct = default)
@@ -103,7 +103,7 @@ public class ModelCacheCleanupService : IModelCacheCleanupService, IDisposable
         var models = new List<CachedModelInfo>();
 
         // Scan models directory for model files
-        var modelsDir = _appDataResolver.ModelsPath;
+        var modelsDir = _appDataResolver.ModelsDirectory;
         if (!Directory.Exists(modelsDir))
             return models;
 
@@ -151,7 +151,7 @@ public class ModelCacheCleanupService : IModelCacheCleanupService, IDisposable
             }
 
             // Remove associated metadata files
-            var metadataFile = Path.Combine(_appDataResolver.MetadataPath, $"{model.ModelId}.json");
+            var metadataFile = Path.Combine(_appDataResolver.MetadataDirectory, $"{model.ModelId}.json");
             if (File.Exists(metadataFile))
                 File.Delete(metadataFile);
 

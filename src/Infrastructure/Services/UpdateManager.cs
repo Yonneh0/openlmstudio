@@ -15,6 +15,7 @@ public class UpdateManager : IUpdateManager, IDisposable
     private readonly ILogger<UpdateManager> _logger;
     private readonly HttpClient _httpClient;
     private readonly string _currentVersion;
+    private readonly AppDataDirectoryResolver _appDataResolver;
     private UpdateInfo? _availableUpdate;
     private UpdateStatus _status;
     private double _downloadProgress;
@@ -23,6 +24,7 @@ public class UpdateManager : IUpdateManager, IDisposable
     {
         _logger = logger;
         _httpClient = new HttpClient { BaseAddress = new Uri("https://api.github.com/") };
+        _appDataResolver = appDataResolver;
         _currentVersion = typeof(UpdateManager).Assembly.GetName().Version?.ToString() ?? "0.0.1";
         _status = UpdateStatus.Current;
     }
@@ -42,7 +44,7 @@ public class UpdateManager : IUpdateManager, IDisposable
                 return null;
             }
 
-            using var jsonDoc = await JsonDocument.ParseAsync(await response.Content.ReadAsStreamAsync(ct), ct: ct);
+            using var jsonDoc = await JsonDocument.ParseAsync(await response.Content.ReadAsStreamAsync());
             var root = jsonDoc.RootElement;
             var tagName = root.GetProperty("tag_name").GetString() ?? "";
             var releaseNotes = root.GetProperty("body").GetString() ?? "";
@@ -96,7 +98,10 @@ public class UpdateManager : IUpdateManager, IDisposable
                 ct);
 
             using var stream = await response.Content.ReadAsStreamAsync(ct);
-            using var fileStream = File.Create(Path.Combine(AppDataDirectoryResolver.AppDataPath, "updates", "update.zip"));
+            var appDataDir = _appDataResolver.GetAppDataDirectory();
+            var updatesDir = Path.Combine(appDataDir, "updates");
+            Directory.CreateDirectory(updatesDir);
+            using var fileStream = File.Create(Path.Combine(updatesDir, "update.zip"));
             await stream.CopyToAsync(fileStream, 81920, ct);
             _downloadProgress = 100;
             _status = UpdateStatus.DownloadComplete;
