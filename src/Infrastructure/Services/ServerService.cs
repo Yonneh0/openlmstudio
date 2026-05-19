@@ -27,8 +27,14 @@ public class ServerService : IServerService, IDisposable
 
     /// <summary>
     /// Tracks active SSE streaming connections by request ID for cancellation.
+    /// Protected by _sseCleanupLock to prevent race conditions during concurrent cleanup.
     /// </summary>
     private readonly ConcurrentDictionary<string, CancellationTokenSource> _activeSseConnections = new();
+
+    /// <summary>
+    /// Lock object for synchronizing SSE connection cleanup across multiple threads.
+    /// </summary>
+    private readonly object _sseCleanupLock = new();
 
     // ---- IServerService implementation fields ----
 
@@ -499,7 +505,7 @@ public class ServerService : IServerService, IDisposable
         });
 
         // /v1/embeddings - Generate embeddings via embedding models
-        app.MapPost("/v1/embeddings", async (IEmbeddingPipelineService pipeline, HttpContext context) =>
+        app.MapPost("/v1/embeddings", async (IEmbeddingPipelineService pipeline, IModelRepository modelRepo, HttpContext context) =>
         {
             if (!context.Request.HasJsonContentType())
             {
@@ -520,6 +526,20 @@ public class ServerService : IServerService, IDisposable
                 {
                     context.Response.StatusCode = 400;
                     await context.Response.WriteAsJsonAsync(new { error = "Model identifier and input are required" });
+                    return;
+                }
+
+                // Validate that the model is actually an embedding model
+                var modelType = await DetectModelTypeAsync(_logger, modelRepo, embeddingsRequest.Model);
+                if (modelType != ModelType.Embedding && modelType != ModelType.TextGeneration)
+                {
+                    context.Response.StatusCode = 400;
+                    await context.Response.WriteAsJsonAsync(new
+                    {
+                        error = "model_type_not_supported_for_embeddings",
+                        message = $"Model '{embeddingsRequest.Model}' is not an embedding model and cannot be used with /v1/embeddings.",
+                        suggested_endpoint = "/v1/chat/completions"
+                    });
                     return;
                 }
 
@@ -947,20 +967,23 @@ public class ServerService : IServerService, IDisposable
         State = ServerState.Stopping;
         OnStateChanged(ServerState.Running, ServerState.Stopping);
 
-        // Cancel all active SSE connections first (before stopping the app)
-        foreach (var cts in _activeSseConnections.Values)
+        // Cancel all active SSE connections first (before stopping the app) — synchronize to prevent race conditions
+        lock (_sseCleanupLock)
         {
-            try
+            foreach (var cts in _activeSseConnections.Values)
             {
-                await cts.CancelAsync();
-                cts.Dispose();
+                try
+                {
+                    await cts.CancelAsync();
+                    cts.Dispose();
+                }
+                catch
+                {
+                    // Ignore cancellation errors during shutdown
+                }
             }
-            catch
-            {
-                // Ignore cancellation errors during shutdown
-            }
+            _activeSseConnections.Clear();
         }
-        _activeSseConnections.Clear();
 
         // Cancel the stopping CTS to signal all background tasks
         _stoppingCts?.Cancel();
@@ -1111,17 +1134,20 @@ public class ServerService : IServerService, IDisposable
             _stoppingCts = null;
         }
 
-        // Cancel all active SSE connections on disposal
-        foreach (var cts in _activeSseConnections.Values)
+        // Cancel all active SSE connections on disposal — synchronize to prevent race conditions
+        lock (_sseCleanupLock)
         {
-            try
+            foreach (var cts in _activeSseConnections.Values)
             {
-                cts.CancelAsync();
-                cts.Dispose();
+                try
+                {
+                    cts.CancelAsync();
+                    cts.Dispose();
+                }
+                catch { /* Ignore during disposal */ }
             }
-            catch { /* Ignore during disposal */ }
+            _activeSseConnections.Clear();
         }
-        _activeSseConnections.Clear();
     }
 
     // ---- Event helpers ----

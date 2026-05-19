@@ -72,7 +72,7 @@ public class VAEPipelineService : IVAEPipelineService, IDisposable
         var (session, tensors) = _loadedSessions[vaeModelId];
 
         // Create input tensor from latent bytes [1, embeddingDim, h/8, w/8]
-        var denseTensor = LatentBytesToDenseTensor(latents);
+        var denseTensor = LatentBytesToDenseTensor(latents, session.OutputMetadata[tensors.DecoderInputName].Dimensions.Cast<int>().ToArray());
 
         // Run decoder inference — output is pixel-space RGB image in [-1, 1] range
         var decoderInputValues = new NamedOnnxValue[] { NamedOnnxValue.CreateFromTensor(tensors.DecoderInputName, denseTensor) };
@@ -372,50 +372,46 @@ public class VAEPipelineService : IVAEPipelineService, IDisposable
     /// <summary>
     /// Converts a flat float32 byte array (NCHW layout [1, embeddingDim, h/8, w/8]) to a DenseTensor.
     /// </summary>
-    private static DenseTensor<float> LatentBytesToDenseTensor(byte[] latents)
+    /// <summary>
+    /// Converts a flat float32 byte array to a DenseTensor using the provided dimensions from model metadata.
+    /// Falls back to heuristic inference when dimensions are unknown.
+    /// </summary>
+    private static DenseTensor<float> LatentBytesToDenseTensor(byte[] latents, int[]? dimensions = null)
     {
-        // Determine dimensions from the tensor size (embeddingDim * h/8 * w/8 = total elements)
         var elementCount = latents.Length / sizeof(float);
 
-        // For a typical VAE encoder output, layout is [1, embeddingDim, height/8, width/8]
-        // We need to figure out the 4D shape from the flat array size.
-        // Common sizes: SD 512x512 → latent_dim=4, h/8=64, w/8=64 → 1*4*64*64 = 16384 elements
-        // SDXL 1024x1024 → latent_dim=4, h/8=128, w/8=128 → 1*4*128*128 = 65536 elements
-        // For simplicity, we use a common heuristic: total_elements / 4 for SD (embeddingDim=4), etc.
+        // Use explicit dimensions when provided (from model metadata) — preferred path
+        if (dimensions != null && dimensions.Length == 4)
+        {
+            var tensor = new DenseTensor<float>(dimensions);
+            for (int i = 0; i < elementCount && i * sizeof(float) < latents.Length; i++)
+                tensor[i] = BitConverter.ToSingle(latents, i * sizeof(float));
+            return tensor;
+        }
 
-        // Detect dimension from size — SDXL has 4 channels of latents
+        // Heuristic fallback: infer [1, embeddingDim, h/8, w/8] from total element count
         int embeddingDim;
-        if (elementCount == 65536)
-            embeddingDim = 16;   // SDXL: latent_dim=16, h/8=w/8=128 → 1*16*128*128=262144 (not matching, but use switch below)
-        else if (elementCount == 16384 * 16) // SDXL: 1*16*128*128 = 262144
-            embeddingDim = 16;
+        if (elementCount == 262144)
+            embeddingDim = 16;   // SDXL: 1*16*128*128
+        else if (elementCount == 16384)
+            embeddingDim = 4;    // SD: 1*4*64*64
         else
             embeddingDim = elementCount switch
             {
-                16384 => 4,   // SD 512x512 → 1 * 4 * 64 * 64
-                _ => elementCount / (64 * 64) // Default: try to infer from common pattern
+                > 0 => (int)Math.Round(Math.Pow(elementCount, 0.25)), // rough heuristic
+                _ => 4
             };
 
-        var hDiv8 = embeddingDim > 0 ? elementCount / embeddingDim : 0;
-        var wDiv8 = (int)Math.Sqrt(hDiv8);
+        var spatial = embeddingDim > 0 ? elementCount / embeddingDim : 0;
+        var side = (int)Math.Round(Math.Sqrt(spatial));
 
-        if (wDiv8 == 0 || embeddingDim == 0)
+        if (side == 0 || embeddingDim == 0)
             throw new InvalidOperationException($"Cannot determine latent tensor shape from {elementCount} elements");
 
-        // Reconstruct the DenseTensor with shape [1, embeddingDim, h/8, w/8]
-        var dims = new[] { 1, embeddingDim, wDiv8 * wDiv8 / (wDiv8), wDiv8 };
-        if (dims[2] != dims[3])
-            throw new InvalidOperationException($"Inferred latent tensor shape is not square: [{string.Join(", ", dims)}]");
-
+        var dims = new[] { 1, embeddingDim, side, side };
         var tensor = new DenseTensor<float>(dims);
-
-        // Copy bytes into the tensor
         for (int i = 0; i < elementCount && i * sizeof(float) < latents.Length; i++)
-        {
-            var value = BitConverter.ToSingle(latents, i * sizeof(float));
-            tensor[i] = value;
-        }
-
+            tensor[i] = BitConverter.ToSingle(latents, i * sizeof(float));
         return tensor;
     }
 

@@ -1,4 +1,5 @@
 using System.Buffers.Binary;
+using System.Collections.Concurrent;
 using Microsoft.Extensions.Logging;
 using Microsoft.ML.OnnxRuntime;
 using Microsoft.ML.OnnxRuntime.Tensors;
@@ -24,6 +25,11 @@ public class DiffusionInferenceEngine : IDisposable
     {
         _logger = logger;
     }
+
+    /// <summary>
+    /// Caches text encoding results per (pipelineType, prompt) pair to avoid redundant encoder runs.
+    /// </summary>
+    private readonly ConcurrentDictionary<string, DenseTensor<float>?> _promptCache = new();
 
     /// <summary>
     /// Loads the text encoder (CLIP/Tokenizer) ONNX session for a pipeline type.
@@ -245,10 +251,16 @@ public class DiffusionInferenceEngine : IDisposable
 
     /// <summary>
     /// Runs the CLIP text encoder to produce a text embedding tensor from a prompt string.
+    /// Caches the result per (pipelineType, prompt) to avoid redundant encoder runs.
     /// Returns DenseTensor<float> containing the text embedding (shape depends on pipeline type: [1, seq_len, hidden_dim]).
     /// </summary>
     public DenseTensor<float>? RunTextEncoder(string pipelineType, string prompt)
     {
+        // Check cache first
+        var cacheKey = $"{pipelineType}||{prompt}";
+        if (_promptCache.TryGetValue(cacheKey, out var cached))
+            return cached;
+
         if (!_textEncoders.TryGetValue(pipelineType, out var encoderSession) || encoderSession == null)
             return null;
 
@@ -308,11 +320,15 @@ public class DiffusionInferenceEngine : IDisposable
                 embedding[i] = embeddingData[i];
 
             _logger?.LogDebug("Text encoder produced embedding with shape [{Dims}]", string.Join(", ", dims3d));
+
+            // Cache the result
+            _promptCache[cacheKey] = embedding;
             return embedding;
         }
         catch (Exception ex)
         {
             _logger?.LogError(ex, "Failed to run text encoder for '{Pipeline}'", pipelineType);
+            _promptCache[cacheKey] = null;
             return null;
         }
     }
