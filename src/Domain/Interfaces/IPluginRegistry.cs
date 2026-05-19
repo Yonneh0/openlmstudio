@@ -96,7 +96,8 @@ public record PluginDefinition(
     bool IsEnabled,
     List<string> Tags,
     string Author,
-    Uri? DownloadUrl
+    Uri? DownloadUrl,
+    PluginSandboxPolicy? SandboxPolicy  // Optional sandbox policy from registry; null = use defaults
 );
 
 /// <summary>

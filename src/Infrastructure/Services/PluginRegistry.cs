@@ -156,7 +156,11 @@ public class PluginRegistry : Domain.Interfaces.IPluginRegistry
                             manifest.IsEnabled ?? false,
                             manifest.Tags ?? new List<string>(),
                             manifest.Author ?? "Unknown",
-                            null
+                            null,
+                            // Try to load sandbox policy from disk
+                            _sandboxPolicies.TryGetValue(manifest.Id ?? pluginName, out var storedPolicy)
+                                ? storedPolicy
+                                : null
                         ));
                     }
                 }
@@ -186,7 +190,8 @@ public class PluginRegistry : Domain.Interfaces.IPluginRegistry
                             attr.IsEnabled ?? false,
                             attr.Tags ?? new List<string>(),
                             attr.Author ?? "Unknown",
-                            null
+                            null,
+                            null  // DLL-based plugins have no registry sandbox policy
                         ));
                     }
                 }
@@ -330,24 +335,16 @@ public class PluginRegistry : Domain.Interfaces.IPluginRegistry
             Author = plugin.Author
         }));
 
-        // Default sandbox policy for installed plugin
+        // Apply sandbox policy from registry or use default
         var policyPath = Path.Combine(installPath, "sandbox-policy.json");
-        await File.WriteAllTextAsync(policyPath, System.Text.Json.JsonSerializer.Serialize(new
-        {
-            AllowFileWrites = false,
-            AllowNetworkAccess = false,
-            AllowCommandExecution = false,
-            AllowedPaths = new[] { "/tmp", "/var/tmp" },
-            BlockedCommands = new[] { "sudo", "su", "chmod", "chown", "rm -rf", "dd", "mkfs", "fdisk", "iptables" },
-            MaxExecutionTimeSeconds = 300,
-            MaxMemoryMb = 256
-        }));
-
-        _sandboxPolicies[plugin.Id] = new Domain.Interfaces.PluginSandboxPolicy(
+        var effectivePolicy = plugin.SandboxPolicy ?? new Domain.Interfaces.PluginSandboxPolicy(
             false, false, false,
             new HashSet<string>(StringComparer.OrdinalIgnoreCase) { "/tmp", "/var/tmp" },
             new HashSet<string>(StringComparer.OrdinalIgnoreCase) { "sudo", "su", "chmod", "chown", "rm -rf", "dd", "mkfs", "fdisk", "iptables" },
             TimeSpan.FromMinutes(5), 256);
+
+        await File.WriteAllTextAsync(policyPath, System.Text.Json.JsonSerializer.Serialize(effectivePolicy));
+        _sandboxPolicies[plugin.Id] = effectivePolicy;
 
         _logger?.LogInformation("Installed plugin: {PluginId} from {Url}", plugin.Id, downloadUrl);
     }
