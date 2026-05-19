@@ -12,7 +12,8 @@ public class UpdateManagerTests
     public void CurrentStatus_Initial_IsCurrent()
     {
         var logger = Substitute.For<ILogger<UpdateManager>>();
-        var appDataResolver = Substitute.For<OpenLMStudio.Infrastructure.Services.AppDataDirectoryResolver>(logger);
+        var appDataLogger = Substitute.For<ILogger<AppDataDirectoryResolver>>();
+        var appDataResolver = new AppDataDirectoryResolver(appDataLogger);
 
         var sut = new UpdateManager(logger, appDataResolver);
         Assert.That(sut.CurrentStatus, Is.EqualTo(Application.Interfaces.UpdateStatus.Current));
@@ -22,7 +23,8 @@ public class UpdateManagerTests
     public void DownloadProgress_Initial_IsZero()
     {
         var logger = Substitute.For<ILogger<UpdateManager>>();
-        var appDataResolver = Substitute.For<OpenLMStudio.Infrastructure.Services.AppDataDirectoryResolver>(logger);
+        var appDataLogger = Substitute.For<ILogger<AppDataDirectoryResolver>>();
+        var appDataResolver = new AppDataDirectoryResolver(appDataLogger);
 
         var sut = new UpdateManager(logger, appDataResolver);
         Assert.That(sut.DownloadProgress, Is.Zero);
@@ -32,7 +34,8 @@ public class UpdateManagerTests
     public async Task DownloadUpdateAsync_WhenNoUpdateAvailable_ReturnsFalse()
     {
         var logger = Substitute.For<ILogger<UpdateManager>>();
-        var appDataResolver = Substitute.For<OpenLMStudio.Infrastructure.Services.AppDataDirectoryResolver>(logger);
+        var appDataLogger = Substitute.For<ILogger<AppDataDirectoryResolver>>();
+        var appDataResolver = new AppDataDirectoryResolver(appDataLogger);
 
         var sut = new UpdateManager(logger, appDataResolver);
         var result = await sut.DownloadUpdateAsync();
@@ -43,7 +46,8 @@ public class UpdateManagerTests
     public void Dispose_DisposesHttpClient()
     {
         var logger = Substitute.For<ILogger<UpdateManager>>();
-        var appDataResolver = Substitute.For<OpenLMStudio.Infrastructure.Services.AppDataDirectoryResolver>(logger);
+        var appDataLogger = Substitute.For<ILogger<AppDataDirectoryResolver>>();
+        var appDataResolver = new AppDataDirectoryResolver(appDataLogger);
 
         var sut = new UpdateManager(logger, appDataResolver);
         sut.Dispose();
@@ -54,7 +58,8 @@ public class UpdateManagerTests
     public async Task CheckPluginUpdatesAsync_ReturnsEmptyList()
     {
         var logger = Substitute.For<ILogger<UpdateManager>>();
-        var appDataResolver = Substitute.For<OpenLMStudio.Infrastructure.Services.AppDataDirectoryResolver>(logger);
+        var appDataLogger = Substitute.For<ILogger<AppDataDirectoryResolver>>();
+        var appDataResolver = new AppDataDirectoryResolver(appDataLogger);
 
         var sut = new UpdateManager(logger, appDataResolver);
         var result = await sut.CheckPluginUpdatesAsync();
