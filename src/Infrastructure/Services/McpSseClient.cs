@@ -295,40 +295,8 @@ public class McpSseClient : IMcpClient, IDisposable
 
     private async Task DiscoverToolsInternalAsync()
     {
-        if (_httpClient == null || _sseEndpointUrl == null) return;
-
-        var discoverMessage = new McpSseMessage
-        {
-            jsonrpc = "2.0",
-            method = "tools/list",
-            id = ++_nextRequestId
-        };
-
-        var response = await SendSseMessageAsync(discoverMessage);
-
-        if (response?.result != null)
-        {
-            DiscoveredTools.Clear();
-            // Serialize JsonObject to JSON string for parsing with JsonDocument
-            var toolsJson = JsonSerializer.Serialize(response.result);
-            using var doc = System.Text.Json.JsonDocument.Parse(toolsJson);
-
-            if (doc.RootElement.TryGetProperty("tools", out var toolsProp) &&
-                toolsProp.ValueKind == System.Text.Json.JsonValueKind.Array)
-            {
-                foreach (var toolObj in toolsProp.EnumerateArray())
-                {
-                    var name = GetJsonStringValue(toolObj, "name");
-                    var description = GetJsonStringValue(toolObj, "description");
-
-                    Dictionary<string, object>? schema = null;
-                    if (toolObj.TryGetProperty("inputSchema", out var schemaProp))
-                        schema = JsonSerializer.Deserialize<Dictionary<string, object>>(schemaProp.GetRawText());
-
-                    DiscoveredTools.Add(new McpToolDefinition(name ?? "unknown", description ?? "", schema));
-                }
-            }
-        }
+        // Reuse ListToolsAsync to avoid code duplication
+        await ListToolsAsync();
     }
 
     private static string? GetJsonStringValue(System.Text.Json.JsonElement element, string propertyName)

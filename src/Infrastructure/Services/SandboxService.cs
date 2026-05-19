@@ -26,7 +26,7 @@ public class SandboxService : ISandboxService, IDisposable
     /// <inheritdoc />
     public bool IsSupported => OperatingSystem.IsWindows() || IsLinuxWithCgroupsV2() || (OperatingSystem.IsMacOS() && CanSandboxOnMacOS());
 
-    private static string? _cgroupRootPath;
+    private static volatile string? _cgroupRootPath;
     private static readonly object _cgroupDetectionLock = new();
 
     /// <summary>
