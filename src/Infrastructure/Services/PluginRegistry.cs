@@ -301,6 +301,7 @@ public class PluginRegistry : Domain.Interfaces.IPluginRegistry
             throw new InvalidOperationException($"Plugin '{plugin.Id}' is already installed.");
 
         var downloadUrl = plugin.DownloadUrl ?? throw new InvalidOperationException("No download URL available for plugin.");
+
         using var client = _httpClient ??= CreateHttpClient();
         var archiveBytes = await client.GetByteArrayAsync(downloadUrl, ct);
         var installPath = Path.Combine(_pluginDirectory, plugin.Id);
@@ -324,6 +325,9 @@ public class PluginRegistry : Domain.Interfaces.IPluginRegistry
             }
 
             Directory.CreateDirectory(Path.GetDirectoryName(targetPath) ?? string.Empty);
+
+            // Skip directories
+            if (string.IsNullOrEmpty(entry.Name.TrimEnd('/'))) continue;
 
             await using var streamWriter = new FileStream(targetPath, FileMode.CreateNew, FileAccess.Write, FileShare.None);
             await using var readerStream = entry.Open();
@@ -465,6 +469,7 @@ public class PluginRegistry : Domain.Interfaces.IPluginRegistry
     {
         var client = new HttpClient();
         client.Timeout = TimeSpan.FromMinutes(5); // Allow long downloads for large plugins
+        client.DefaultRequestHeaders.Add("User-Agent", "OpenLMStudio/1.0");
         return client;
     }
 
