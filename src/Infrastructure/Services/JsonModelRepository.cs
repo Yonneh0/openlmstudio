@@ -17,7 +17,7 @@ public class JsonModelRepository : IModelRepository, IDisposable
     private readonly GgufParser _ggufParser;
     private readonly SafetensorParser _safetensorParser;
     private readonly string _indexDirectory;
-    private readonly IReadOnlyList<string> _modelSearchPaths;
+    private readonly List<string> _modelSearchPaths;
 
     // Cached index of models (in-memory for performance)
     private Dictionary<string, ModelMetadata>? _indexedGgufModels;
@@ -300,6 +300,42 @@ public class JsonModelRepository : IModelRepository, IDisposable
         SaveIndex();
     }
 
+    // ---- Convenience methods (interface aliases) ----
+
+    public async Task<ModelMetadata?> GetMetadataAsync(string id) => await GetModelByIdAsync(id);
+
+    public async Task SaveMetadataAsync(ModelMetadata metadata) => await SaveModelMetadataAsync(metadata);
+
+    public async Task RemoveMetadataAsync(string id) => await RemoveFromIndexAsync(id);
+
+    public async Task<IEnumerable<ModelMetadata>> GetModelsByQuantizationAsync(string quantization)
+    {
+        var allModels = DiscoverGgufModelsOnly();
+        return allModels.Where(m => m.Quantization.Equals(quantization, StringComparison.OrdinalIgnoreCase));
+    }
+
+    public async Task<ModelMetadata?> GetByFilePathAsync(string filePath)
+    {
+        if (_indexedGgufModels == null) _indexedGgufModels = LoadIndex();
+
+        foreach (var model in _indexedGgufModels.Values)
+        {
+            if (string.Equals(model.FilePath, filePath, StringComparison.OrdinalIgnoreCase))
+                return model;
+        }
+
+        if (_indexedMultiModalModels != null)
+        {
+            foreach (var model in _indexedMultiModalModels.Values)
+            {
+                if (string.Equals(model.FilePath, filePath, StringComparison.OrdinalIgnoreCase))
+                    return ConvertToModelMetadata(model);
+            }
+        }
+
+        return null;
+    }
+
     /// <summary>
     /// Gets a list of all unique architectures (GGUF) found in the indexed models.
     /// Multi-modal pipeline types are returned separately via GetAvailablePipelineTypesAsync.
@@ -330,6 +366,51 @@ public class JsonModelRepository : IModelRepository, IDisposable
     {
         var allModels = await DiscoverModelsAsync();
         return new List<ModelMetadata>(allModels);
+    }
+
+    /// <summary>
+    /// Gets a list of all models, optionally from a specific path.
+    /// </summary>
+    public async Task<IReadOnlyList<ModelMetadata>> ListModelsAsync(string? path)
+    {
+        if (path != null && path != _modelSearchPaths[0])
+        {
+            // If a specific path is requested, temporarily update search paths
+            var originalPaths = _modelSearchPaths.ToList();
+            try
+            {
+                _modelSearchPaths.Clear();
+                _modelSearchPaths.Add(path);
+                var allModels = await DiscoverModelsAsync();
+                return new List<ModelMetadata>(allModels);
+            }
+            finally
+            {
+                _modelSearchPaths.Clear();
+                _modelSearchPaths.AddRange(originalPaths);
+            }
+        }
+        return await ListModelsAsync();
+    }
+
+    /// <summary>
+    /// Discovers models from a specific path.
+    /// </summary>
+    public async Task<IEnumerable<ModelMetadata>> DiscoverModelsAsync(string path)
+    {
+        // Temporarily set the search path
+        var originalPaths = _modelSearchPaths.ToList();
+        try
+        {
+            _modelSearchPaths.Clear();
+            _modelSearchPaths.Add(path);
+            return await DiscoverModelsAsync();
+        }
+        finally
+        {
+            _modelSearchPaths.Clear();
+            _modelSearchPaths.AddRange(originalPaths);
+        }
     }
 
     /// <summary>

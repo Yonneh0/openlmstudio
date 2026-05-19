@@ -66,8 +66,16 @@ public interface IModelRepository
     /// <summary>
     /// Gets a list of all models (alias for DiscoverModelsAsync).
     /// </summary>
+    /// <param name="path">Optional path to scan (uses default if null).</param>
     /// <returns>List of all model metadata entries.</returns>
-    Task<IReadOnlyList<ModelMetadata>> ListModelsAsync();
+    Task<IReadOnlyList<ModelMetadata>> ListModelsAsync(string? path = null);
+
+    /// <summary>
+    /// Discovers models from a specific path.
+    /// </summary>
+    /// <param name="path">The path to scan for models.</param>
+    /// <returns>List of discovered model metadata entries.</returns>
+    Task<IEnumerable<ModelMetadata>> DiscoverModelsAsync(string path);
 
     // ---- Multi-Modal Model Methods ----
 
@@ -84,4 +92,35 @@ public interface IModelRepository
     /// Gets a list of all multi-modal models (safetensors-based).
     /// </summary>
     Task<IReadOnlyList<MultiModalModelMetadata>> ListMultiModalModelsAsync();
+
+    // ---- Metadata Operations (convenience methods) ----
+
+    /// <summary>
+    /// Gets model metadata by ID (alias for GetModelByIdAsync).
+    /// </summary>
+    Task<ModelMetadata?> GetMetadataAsync(string id);
+
+    /// <summary>
+    /// Saves model metadata (alias for SaveModelMetadataAsync).
+    /// </summary>
+    Task SaveMetadataAsync(ModelMetadata metadata);
+
+    /// <summary>
+    /// Removes model from index (alias for RemoveFromIndexAsync).
+    /// </summary>
+    Task RemoveMetadataAsync(string id);
+
+    /// <summary>
+    /// Gets models filtered by quantization type.
+    /// </summary>
+    /// <param name="quantization">The quantization type (e.g., "Q4_K_M").</param>
+    /// <returns>List of models with matching quantization.</returns>
+    Task<IEnumerable<ModelMetadata>> GetModelsByQuantizationAsync(string quantization);
+
+    /// <summary>
+    /// Gets model metadata by its file path.
+    /// </summary>
+    /// <param name="filePath">The full file path of the model.</param>
+    /// <returns>Model metadata, or null if not found.</returns>
+    Task<ModelMetadata?> GetByFilePathAsync(string filePath);
 }

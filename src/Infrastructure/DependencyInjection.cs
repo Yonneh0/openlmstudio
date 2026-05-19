@@ -37,6 +37,20 @@ public static class DependencyInjection
         // GgufParser extracts metadata from GGUF model file headers (merged implementation with little-endian byte order)
         services.AddSingleton<GgufParser>();
 
+        // ---- Phase 2: Chat & Model Service Registrations ----
+
+        // ChatService manages chat conversations backed by FileConversationManager
+        services.AddSingleton<IChatService, Services.ChatService>();
+
+        // ModelService coordinates model discovery, metadata extraction, and management
+        services.AddSingleton<IModelService, Services.ModelService>();
+
+        // ModelMetadataService provides model metadata operations (extraction, validation, storage)
+        services.AddSingleton<IModelMetadataService, Services.ModelMetadataService>();
+
+        // TokenEstimator provides standardized token counting using character-based estimation
+        services.AddSingleton<ITokenEstimator, Services.TokenEstimator>();
+
         // ModelRepository manages GGUF model discovery and metadata storage
         services.AddSingleton<IModelRepository, Services.JsonModelRepository>();
 
