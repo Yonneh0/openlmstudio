@@ -968,13 +968,15 @@ public class ServerService : IServerService, IDisposable
         OnStateChanged(ServerState.Running, ServerState.Stopping);
 
         // Cancel all active SSE connections first (before stopping the app) — synchronize to prevent race conditions
+        var connectionsToCancel = _activeSseConnections.Values.ToList();
+        _activeSseConnections.Clear();
         lock (_sseCleanupLock)
         {
-            foreach (var cts in _activeSseConnections.Values)
+            foreach (var cts in connectionsToCancel)
             {
                 try
                 {
-                    await cts.CancelAsync();
+                    cts.CancelAsync().GetAwaiter().GetResult();
                     cts.Dispose();
                 }
                 catch
@@ -982,7 +984,6 @@ public class ServerService : IServerService, IDisposable
                     // Ignore cancellation errors during shutdown
                 }
             }
-            _activeSseConnections.Clear();
         }
 
         // Cancel the stopping CTS to signal all background tasks
@@ -1135,18 +1136,19 @@ public class ServerService : IServerService, IDisposable
         }
 
         // Cancel all active SSE connections on disposal — synchronize to prevent race conditions
+        var disposeConnections = _activeSseConnections.Values.ToList();
+        _activeSseConnections.Clear();
         lock (_sseCleanupLock)
         {
-            foreach (var cts in _activeSseConnections.Values)
+            foreach (var cts in disposeConnections)
             {
                 try
                 {
-                    cts.CancelAsync();
+                    cts.CancelAsync().GetAwaiter().GetResult();
                     cts.Dispose();
                 }
                 catch { /* Ignore during disposal */ }
             }
-            _activeSseConnections.Clear();
         }
     }
 

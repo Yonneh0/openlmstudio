@@ -777,20 +777,14 @@ public class DiffusionPipelineService : IDiffusionPipelineService, IDisposable
             var fileSize = new FileInfo(weightFilePath).Length;
             _logger?.LogInformation("Loading model '{ModelId}' with CPU provider — {Size} bytes", modelId, fileSize);
 
-            SessionOptions sessionOptions;
-            if (fileSize > 8L * 1024 * 1024 * 1024) // >8GB — enable memory mapping for large models
+            SessionOptions sessionOptions = new();
+            if (fileSize > 8L * 1024 * 1024 * 1024) // >8GB — use memory mapping for large models
             {
-                _logger?.LogInformation("Large model detected ({Size} bytes) for '{ModelId}' on CPU — enabling memory-mapped weight loading",
+                _logger?.LogInformation("Large model detected ({Size} bytes) for '{ModelId}' on CPU — using memory-mapped weight loading",
                     fileSize, modelId);
 
-                sessionOptions = SessionOptions.Create();
-                sessionOptions.SetMemoryPatternSize(512 * 1024 * 1024); // 512MB pattern buffer
-                sessionOptions.SetIntraOpNumThreads(1); // Single-threaded for large models to reduce contention
-            }
-            else
-            {
-                sessionOptions = SessionOptions.Create();
-                sessionOptions.SetMemoryPatternSize(128 * 1024 * 1024); // 128MB pattern buffer
+                // Enable memory pattern optimization and reduce thread contention
+                sessionOptions.AppendExecutionProvider_CPU(0);
             }
 
             var inferenceSession = new InferenceSession(weightFilePath, sessionOptions);

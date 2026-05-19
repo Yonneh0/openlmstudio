@@ -383,10 +383,10 @@ public class VAEPipelineService : IVAEPipelineService, IDisposable
         // Use explicit dimensions when provided (from model metadata) — preferred path
         if (dimensions != null && dimensions.Length == 4)
         {
-            var tensor = new DenseTensor<float>(dimensions);
+            var explicitTensor = new DenseTensor<float>(dimensions);
             for (int i = 0; i < elementCount && i * sizeof(float) < latents.Length; i++)
-                tensor[i] = BitConverter.ToSingle(latents, i * sizeof(float));
-            return tensor;
+                explicitTensor[i] = BitConverter.ToSingle(latents, i * sizeof(float));
+            return explicitTensor;
         }
 
         // Heuristic fallback: infer [1, embeddingDim, h/8, w/8] from total element count
