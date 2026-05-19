@@ -27,6 +27,7 @@ public class ModelLoadingFallbackService : IDisposable
     /// Returns null if all strategies fail.
     /// Note: This returns a placeholder until Phase 2 IModelManager is wired up — the real implementation will return LoadedModelInstance.
     /// For now, it always triggers fallback chain and returns null (no real model loading).
+    /// TODO: Implement real fallback chain that loads model on CPU when GPU fails.
     /// </summary>
     public async Task<Domain.Models.ModelMetadata?> LoadWithFallbackAsync(string modelId, DevicePreference initialDevice = DevicePreference.Gpu)
     {
