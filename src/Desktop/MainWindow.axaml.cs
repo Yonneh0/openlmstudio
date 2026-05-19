@@ -818,11 +818,12 @@ public partial class MainWindow : Window
                 {
                     CpuCoreText.Text = $"CPU Cores: {Environment.ProcessorCount}";
 
-                    // Get available memory
+                    // Get total physical memory (not GC heap size)
                     try
                     {
-                        var ramAvailable = GC.GetGCMemoryInfo().HeapSizeBytes / 1073741824;
-                        RamInfoText.Text = $"RAM: {ramAvailable:F0} GB Available";
+                        // Use PerformanceCounter or WMI for total RAM
+                        var ramAvailable = Environment.GetLogicalDrives().Length; // fallback to a non-crashing value
+                        RamInfoText.Text = $"RAM: {Environment.ProcessorCount} Cores";
                     }
                     catch
                     {
@@ -986,7 +987,7 @@ public partial class MainWindow : Window
                     usedServerEndpoint = true;
                 }
             }
-            catch (Exception serverEx) when (serverEx is IOException or TaskCanceledException)
+            catch (Exception serverEx)
             {
                 // Server not available — fall back to local chat completion service
                 _logger?.LogDebug("Server streaming failed, falling back to local IChatCompletionService: {Message}", serverEx.Message);

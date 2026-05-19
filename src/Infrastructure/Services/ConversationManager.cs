@@ -108,7 +108,7 @@ public class FileConversationManager : IConversationManager, IDisposable
         // Set message ID and timestamp if not set
         if (message.Id == default)
             message.Id = Guid.NewGuid();
-        if (!message.CreatedAt.Equals(default))
+        if (message.CreatedAt == default)
             message.CreatedAt = DateTime.UtcNow;
 
         chat.Messages.Add(message);
@@ -244,7 +244,7 @@ public class FileConversationManager : IConversationManager, IDisposable
 
     public async Task<int> CalculateTotalTokenCountAsync(Guid chatId)
     {
-        var messages = GetMessagesAsync(chatId).GetAwaiter().GetResult();
+        var messages = await GetMessagesAsync(chatId).ConfigureAwait(false);
 
         return messages.Sum(m => m.TokenCount > 0 ? m.TokenCount : EstimateTokenCount(m.Content));
     }
@@ -380,7 +380,7 @@ public class FileConversationManager : IConversationManager, IDisposable
             if (guid == default)
                 return 0;
 
-            return CalculateTotalTokenCountAsync(guid).GetAwaiter().GetResult();
+            return (int)CalculateTotalTokenCountAsync(guid).ConfigureAwait(false).GetAwaiter().GetResult();
         }
         catch
         {
@@ -405,12 +405,13 @@ public class FileConversationManager : IConversationManager, IDisposable
             SystemPrompt = chat.SystemPrompt,
             Temperature = chat.Temperature,
             MaxTokens = chat.MaxTokens,
-            IsActive = false, // Never persist active state
+            Description = chat.Description,
+            IsActive = chat.IsActive,
             CreatedAt = chat.CreatedAt,
             UpdatedAt = DateTime.UtcNow, // Always update the timestamp on save
             TotalTokenCount = chat.TotalTokenCount,
             MessageCount = chat.MessageCount,
-            Tags = new List<string>(chat.Tags ?? new List<string>()),
+            Tags = chat.Tags != null ? new List<string>(chat.Tags) : new List<string>(),
             Messages = chat.Messages?.Select(m => new Message
             {
                 Id = m.Id,
