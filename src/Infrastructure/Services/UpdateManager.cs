@@ -19,7 +19,7 @@ public class UpdateManager : IUpdateManager, IDisposable
     private UpdateStatus _status;
     private double _downloadProgress;
 
-    public UpdateManager(ILogger<UpdateManager> logger, IAppDataDirectoryResolver appDataResolver)
+    public UpdateManager(ILogger<UpdateManager> logger, AppDataDirectoryResolver appDataResolver)
     {
         _logger = logger;
         _httpClient = new HttpClient { BaseAddress = new Uri("https://api.github.com/") };

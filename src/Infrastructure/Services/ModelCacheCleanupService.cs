@@ -10,12 +10,12 @@ namespace OpenLMStudio.Infrastructure.Services;
 public class ModelCacheCleanupService : IModelCacheCleanupService, IDisposable
 {
     private readonly ILogger<ModelCacheCleanupService> _logger;
-    private readonly IAppDataDirectoryResolver _appDataResolver;
+    private readonly AppDataDirectoryResolver _appDataResolver;
     private readonly string _cacheIndexPath;
 
     public ModelCacheCleanupService(
         ILogger<ModelCacheCleanupService> logger,
-        IAppDataDirectoryResolver appDataResolver)
+        AppDataDirectoryResolver appDataResolver)
     {
         _logger = logger;
         _appDataResolver = appDataResolver;
