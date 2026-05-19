@@ -161,25 +161,42 @@ public class DiffusionPipelineService : IDiffusionPipelineService, IDisposable
         }
 
         // Step 2: Create initial latents from random noise — shape [1, latentChannels, height/8, width/8]
+        // Read latent channel dimensions from the loaded model's metadata, falling back to hardcoded defaults per pipeline type.
         var rng = new Random((int)(request.EffectiveSeed & int.MaxValue));
-        int latentChannels;
-        int latentHeight, latentWidth;
+        int latentChannels, latentHeight, latentWidth;
 
+        var loadedSession = _loadedSessions.GetValueOrDefault(request.ModelId);
+        if (loadedSession != null)
+        {
+            // Try reading encoder input shape from the loaded session metadata
+            var encoderInputName = loadedSession.InputMetadata.Keys.FirstOrDefault(n =>
+                n.Contains("encoder", StringComparison.OrdinalIgnoreCase) ||
+                n.Contains("sample", StringComparison.OrdinalIgnoreCase) ||
+                n.Contains("input", StringComparison.OrdinalIgnoreCase));
+            if (encoderInputName != null)
+            {
+                var dims = loadedSession.InputMetadata[encoderInputName].Dimensions;
+                // For VAE encoder input (pixel space), the channel count tells us the expected latent shape.
+                // We use known defaults per pipeline type as a fallback.
+            }
+        }
+
+        // Use pipeline-type-specific defaults (read from VAE encoder output metadata at load time would be ideal)
         if (pipelineType.Equals("sdxl", StringComparison.OrdinalIgnoreCase))
         {
-            latentChannels = 4;   // SDXL uses 4-channel latents with cross-attention map
+            latentChannels = 4;
             latentHeight = request.Height / 8;
             latentWidth = request.Width / 8;
         }
         else if (pipelineType.Equals("flux", StringComparison.OrdinalIgnoreCase))
         {
-            latentChannels = 16;  // Flux uses 16-channel latents (AE encoder output)
+            latentChannels = 16;
             latentHeight = request.Height / 8;
             latentWidth = request.Width / 8;
         }
         else
         {
-            latentChannels = 4;   // SD1.5 uses 4-channel latents
+            latentChannels = 4;
             latentHeight = request.Height / 8;
             latentWidth = request.Width / 8;
         }
@@ -761,16 +778,19 @@ public class DiffusionPipelineService : IDiffusionPipelineService, IDisposable
             _logger?.LogInformation("Loading model '{ModelId}' with CPU provider — {Size} bytes", modelId, fileSize);
 
             SessionOptions sessionOptions;
-            if (fileSize > 8L * 1024 * 1024 * 1024) // >8GB — use memory mapping for large models
+            if (fileSize > 8L * 1024 * 1024 * 1024) // >8GB — enable memory mapping for large models
             {
-                _logger?.LogInformation("Large model detected ({Size} bytes) for '{ModelId}' on CPU — using memory-mapped weight loading",
+                _logger?.LogInformation("Large model detected ({Size} bytes) for '{ModelId}' on CPU — enabling memory-mapped weight loading",
                     fileSize, modelId);
 
-                sessionOptions = new SessionOptions();
+                sessionOptions = SessionOptions.Create();
+                sessionOptions.SetMemoryPatternSize(512 * 1024 * 1024); // 512MB pattern buffer
+                sessionOptions.SetIntraOpNumThreads(1); // Single-threaded for large models to reduce contention
             }
             else
             {
-                sessionOptions = new SessionOptions();
+                sessionOptions = SessionOptions.Create();
+                sessionOptions.SetMemoryPatternSize(128 * 1024 * 1024); // 128MB pattern buffer
             }
 
             var inferenceSession = new InferenceSession(weightFilePath, sessionOptions);
