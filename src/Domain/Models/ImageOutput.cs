@@ -1,95 +1,68 @@
-using System.Runtime.Serialization;
-
 namespace OpenLMStudio.Domain.Models;
 
 /// <summary>
-/// Defines the type of image generation output (generation, inpainting, or outpainting).
+/// Represents an image generation output from a diffusion pipeline.
+/// Stores the generated image as base64-encoded PNG along with generation metadata.
 /// </summary>
-public enum ImageOutputType
+public class ImageOutput
 {
     /// <summary>
-    /// Standard text-to-image generation.
-    /// </summary>
-    [EnumMember(Value = "image_generation")]
-    TextToImage = 0,
-
-    /// <summary>
-    /// Inpainting — replace masked region with new content based on prompt.
-    /// </summary>
-    [EnumMember(Value = "inpainting")]
-    Inpainting = 1,
-
-    /// <summary>
-    /// Outpainting — extend image boundaries beyond original.
-    /// </summary>
-    [EnumMember(Value = "outpainting")]
-    Outpainting = 2,
-}
-
-/// <summary>
-/// Represents a generated or inpainted/outpainted image output within a chat message.
-/// Contains the image data (base64), generation parameters, and metadata for UI display.
-/// </summary>
-public class ImageOutput : IDisposable
-{
-    /// <summary>
-    /// Unique identifier for this image output instance.
+    /// Unique identifier for this image output.
     /// </summary>
     public Guid Id { get; set; } = Guid.NewGuid();
 
-    // Note: Image data is stored in the parent Message.Content field as a JSON-serialized representation
-    // of this ImageOutput. The DataUri property is provided by the caller (ServerService) when creating
-    // the response, not here. This class represents the domain model only.
+    /// <summary>
+    /// Base64-encoded PNG image data.
+    /// </summary>
+    public string ImageData { get; set; } = string.Empty;
 
     /// <summary>
-    /// The type of image generation (generation, inpainting, or outpainting).
+    /// MIME type of the image (e.g., "image/png", "image/jpeg").
     /// </summary>
-    public ImageOutputType OutputType { get; set; } = ImageOutputType.TextToImage;
-
-    /// <summary>
-    /// Text prompt used to generate this image.
-    /// </summary>
-    public string Prompt { get; set; } = string.Empty;
-
-    /// <summary>
-    /// Negative prompt that guided what should NOT appear in the generated output.
-    /// </summary>
-    public string? NegativePrompt { get; set; }
+    public string MimeType { get; set; } = "image/png";
 
     /// <summary>
     /// Width of the generated image in pixels.
     /// </summary>
-    public int Width { get; set; } = 1024;
+    public int Width { get; set; }
 
     /// <summary>
     /// Height of the generated image in pixels.
     /// </summary>
-    public int Height { get; set; } = 1024;
+    public int Height { get; set; }
 
     /// <summary>
-    /// Random seed used for generation (reproducible if known).
+    /// Random seed used for generation (for reproducibility).
     /// </summary>
-    public long Seed { get; set; } = -1;
+    public long Seed { get; set; }
 
     /// <summary>
-    /// Classifier-free guidance scale — higher values follow the prompt more strictly.
+    /// CFG scale used during generation (classifier-free guidance weight).
     /// </summary>
-    public double GuidanceScale { get; set; } = 7.5;
+    public double CfgScale { get; set; } = 7.5;
 
     /// <summary>
-    /// Number of diffusion steps performed during generation.
+    /// Number of denoising steps used during generation.
     /// </summary>
     public int Steps { get; set; } = 30;
 
     /// <summary>
-    /// The model ID used for generating this image (e.g., "sdxl-v1", "flux-dev").
+    /// Model ID used to generate this image.
     /// </summary>
-    public string ModelId { get; set; } = string.Empty;
+    public string? ModelId { get; set; }
 
     /// <summary>
-    /// Timestamp when the generation was completed.
+    /// Timestamp when this image was generated.
     /// </summary>
     public DateTime GeneratedAt { get; set; } = DateTime.UtcNow;
 
-    public void Dispose() { /* No unmanaged resources */ }
+    /// <summary>
+    /// The prompt used to generate this image.
+    /// </summary>
+    public string Prompt { get; set; } = string.Empty;
+
+    /// <summary>
+    /// Negative prompt used during generation.
+    /// </summary>
+    public string? NegativePrompt { get; set; }
 }
