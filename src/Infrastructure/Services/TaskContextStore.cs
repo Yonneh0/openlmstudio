@@ -174,6 +174,7 @@ public class SqliteTaskContextStore : ITaskContextStore, IDisposable
                         // Create archive table and copy data
                         var createArchiveTable = $"CREATE TABLE IF NOT EXISTS \"{DbTableName}_Archived\" (" +
                             "TaskId TEXT PRIMARY KEY, Description TEXT, CurrentState TEXT, " +
+                            "OriginalCreatedAt TEXT NOT NULL, " +
                             "CompressedContextJson TEXT, ToolResultsCacheJson TEXT, " +
                             "ActiveFileTree TEXT, GitStatusSnapshot TEXT, RelevantEntitiesJson TEXT, " +
                             "CompressedContextTokenCount INTEGER, ArchivedAt TEXT)";
@@ -181,15 +182,20 @@ public class SqliteTaskContextStore : ITaskContextStore, IDisposable
                         using var archiveTableCmd = new SqliteCommand(createArchiveTable, connection);
                         await archiveTableCmd.ExecuteNonQueryAsync();
 
-                        // Insert archived copy
-                        var insertSql = $"INSERT INTO \"{DbTableName}_Archived\" VALUES (@taskId, @desc, @state, " +
-                            "@ctxJson, @toolJson, @fileTree, @gitStatus, @entitiesJson, @tokenCount, @archivedAt)";
+                        // Insert archived copy — preserve original creation time
+                        var insertSql = $"INSERT INTO \"{DbTableName}_Archived\" (TaskId, Description, CurrentState, OriginalCreatedAt, CompressedContextJson, ToolResultsCacheJson, " +
+                            "ActiveFileTree, GitStatusSnapshot, RelevantEntitiesJson, CompressedContextTokenCount, ArchivedAt) " +
+                            "VALUES (@taskId, @desc, @state, @originalCreated, @ctxJson, @toolJson, @fileTree, @gitStatus, @entitiesJson, @tokenCount, @archivedAt)";
 
                         using (var insertCmd = new SqliteCommand(insertSql, connection))
                         {
                             insertCmd.Parameters.AddWithValue("@taskId", taskId.ToString());
                             insertCmd.Parameters.AddWithValue("@desc", reader.GetString(reader.GetOrdinal("Description")));
                             insertCmd.Parameters.AddWithValue("@state", reader.GetString(reader.GetOrdinal("CurrentState")));
+
+                            // Preserve the original creation time so it survives the archive
+                            insertCmd.Parameters.AddWithValue("@originalCreated", reader.GetString(reader.GetOrdinal("CreatedAt")));
+
                             insertCmd.Parameters.AddWithValue("@ctxJson", reader.GetValue(reader.GetOrdinal("CompressedContextJson")));
                             insertCmd.Parameters.AddWithValue("@toolJson", reader.GetValue(reader.GetOrdinal("ToolResultsCacheJson")));
                             insertCmd.Parameters.AddWithValue("@fileTree", reader.GetValue(reader.GetOrdinal("ActiveFileTree")));
@@ -340,7 +346,7 @@ public class SqliteTaskContextStore : ITaskContextStore, IDisposable
             }
 
             // Sort all results by ArchivedAt descending
-            results.Sort((a, b) => b.CreatedAt.CompareTo(a.CreatedAt));
+            results.Sort((a, b) => b.UpdatedAt.CompareTo(a.UpdatedAt));
         }
         catch (Exception ex) when (ex is IOException or InvalidOperationException)
         {
@@ -752,16 +758,6 @@ public class SqliteTaskContextStore : ITaskContextStore, IDisposable
             compressedContextTokenCount = 0;
         }
 
-        string archivedAtStr;
-        try
-        {
-            archivedAtStr = reader.GetString(reader.GetOrdinal("ArchivedAt"));
-        }
-        catch
-        {
-            archivedAtStr = DateTime.UtcNow.ToString("o");
-        }
-
         string? archivedDescription;
         try
         {
@@ -773,6 +769,29 @@ public class SqliteTaskContextStore : ITaskContextStore, IDisposable
         {
             // Handle missing column in older schema
             archivedDescription = "";
+        }
+
+        // Read ArchivedAt timestamp (for reference)
+        string archivedAtStr;
+        try
+        {
+            archivedAtStr = reader.GetString(reader.GetOrdinal("ArchivedAt"));
+        }
+        catch
+        {
+            archivedAtStr = DateTime.UtcNow.ToString("o");
+        }
+
+        // Read original creation time — preserved separately so the original timestamp survives archive.
+        string originalCreatedAtStr;
+        try
+        {
+            originalCreatedAtStr = reader.GetString(reader.GetOrdinal("OriginalCreatedAt"));
+        }
+        catch
+        {
+            // Older archived tables may not have this column — fall back to ArchivedAt.
+            originalCreatedAtStr = archivedAtStr;
         }
 
         return new TaskContextSnapshot
@@ -792,7 +811,7 @@ public class SqliteTaskContextStore : ITaskContextStore, IDisposable
                 ? JsonSerializer.Deserialize<List<string>>(relevantEntitiesJson, _jsonOptions) ?? []
                 : [],
             CompressedContextTokenCount = compressedContextTokenCount,
-            CreatedAt = DateTime.Parse(archivedAtStr),
+            CreatedAt = DateTime.Parse(originalCreatedAtStr),
             UpdatedAt = DateTime.Parse(archivedAtStr)
         };
     }

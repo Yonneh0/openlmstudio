@@ -495,8 +495,8 @@ public class ServerService : IServerService, IDisposable
     {
         try
         {
-            // Use positional placeholders for string.Format: {0} = cert path, {1} = key path
-            var opensslArgs = "req -x509 -newkey rsa:2048 -keyout \"{1}\" -out \"{0}\" -days 365 -nodes -subj \"/CN=localhost\"";
+        // Build command arguments using string interpolation for clarity
+        var opensslArgs = $"req -x509 -newkey rsa:2048 -keyout \"{keyPath}\" -out \"{httpsCertPath}\" -days 365 -nodes -subj \"/CN=localhost\"";
 
             // Try various OpenSSL paths
             var possibleOpenSSLPaths = new[] {
@@ -906,13 +906,10 @@ public class ServerService : IServerService, IDisposable
                 false
             );
         }
-        catch
+        catch (System.Text.Json.JsonException ex)
         {
-            // If we can't parse the JSON body, create a default message
-            return new ChatRequest(
-                "local-model",
-                new List<Message> { new Message { Role = MessageRole.User, Content = "[No content provided]", TokenCount = 10 } },
-                (double?)0.7);
+            _logger?.LogWarning(ex, "Failed to parse chat request body — returning null to let caller handle the error");
+            return null;
         }
     }
 
@@ -2431,15 +2428,10 @@ public static class ServerServiceEndpointExtensions
                 true
             );
         }
-        catch
+        catch (System.Text.Json.JsonException ex)
         {
-            return new ChatRequest(
-                "local-model",
-                new List<Message> { new Message { Role = MessageRole.User, Content = "[No content provided]", TokenCount = 10 } },
-                (double?)0.7,
-                null,
-                (double?)1.0,
-                true);
+            _logger?.LogWarning(ex, "Failed to parse streaming request body — returning null to let caller handle the error");
+            return null;
         }
     }
 

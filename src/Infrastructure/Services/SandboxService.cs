@@ -24,7 +24,7 @@ public class SandboxService : ISandboxService, IDisposable
     private readonly object _lockObject = new();
 
     /// <inheritdoc />
-    public bool IsSupported => OperatingSystem.IsWindows() || IsLinuxWithCgroupsV2() || (OperatingSystem.IsMacOS() && CanSandboxOnMacOS());
+    public bool IsSupported => OperatingSystem.IsWindows() || IsLinuxWithCgroupsV2();
 
     private static volatile string? _cgroupRootPath;
     private static readonly object _cgroupDetectionLock = new();
@@ -84,7 +84,6 @@ public class SandboxService : ISandboxService, IDisposable
     }
 
     private static bool IsLinuxWithCgroupsV2() => OperatingSystem.IsLinux() && GetCgroupV2RootPath() != null;
-    private static bool CanSandboxOnMacOS() => false; // macOS lacks native cgroups v2 — no sandbox on this platform.
 
     public SandboxService(ILogger<SandboxService>? logger)
     {

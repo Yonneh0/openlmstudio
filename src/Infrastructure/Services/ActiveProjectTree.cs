@@ -347,7 +347,17 @@ public class ActiveProjectTree : IActiveProjectWatcher, IDisposable
         {
             _disposed = true;
 
-            StopAsync().ConfigureAwait(false).GetAwaiter().GetResult(); // Fire-and-forget cleanup
+            // Cancel async cleanup to avoid blocking Dispose — use Task.Run with timeout to prevent deadlocks
+            var disposeTask = StopAsync();
+            try
+            {
+                if (!disposeTask.IsCompleted && disposeTask.Wait(TimeSpan.FromSeconds(2)))
+                    disposeTask.GetAwaiter().GetResult();
+            }
+            catch
+            {
+                // Timeout or cancellation — acceptable during disposal
+            }
 
             try
             {

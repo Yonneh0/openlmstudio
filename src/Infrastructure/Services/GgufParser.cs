@@ -164,6 +164,7 @@ public class GgufParser : IDisposable
     /// <summary>
     /// Parses the full GGUF model file and extracts complete metadata.
     /// Reads all key-value pairs using little-endian byte order per GGUF spec.
+    /// Uses the same async FileStream-based I/O as ParseHeaderAsync for consistency.
     /// </summary>
     /// <param name="modelPath">The full path to the GGUF file.</param>
     /// <returns>Awaitable task returning the extracted model metadata, or null if parsing fails.</returns>
@@ -174,37 +175,42 @@ public class GgufParser : IDisposable
 
         try
         {
-            var fileStream = File.OpenRead(modelPath);
-            using var reader = new BinaryReader(fileStream);
+            using var fileStream = new FileStream(modelPath, FileMode.Open, FileAccess.Read, FileShare.Read);
+
+            var metadata = new Domain.Models.ModelMetadata
+            {
+                FilePath = modelPath,
+                Id = Path.GetFileNameWithoutExtension(modelPath),
+                LastModified = File.GetLastWriteTimeUtc(modelPath),
+                FileSizeBytes = fileStream.Length
+            };
 
             // Read magic number (first 4 bytes) - little-endian per GGUF spec
-            var magicBytes = reader.ReadBytes(4);
-            var magicNumber = BinaryPrimitives.ReadUInt32LittleEndian(magicBytes);
+            var magicBytes = new byte[4];
+            if (await fileStream.ReadAsync(magicBytes, 0, 4) != 4)
+                return null;
 
+            var magicNumber = BinaryPrimitives.ReadUInt32LittleEndian(magicBytes);
             if (magicNumber != GgufMagicNumber)
                 return null; // Not a valid GGUF file
 
-            var metadata = new Domain.Models.ModelMetadata();
-            metadata.FilePath = modelPath;
-            metadata.Id = Path.GetFileNameWithoutExtension(modelPath);
-            metadata.LastModified = File.GetLastWriteTimeUtc(modelPath);
-            metadata.FileSizeBytes = fileStream.Length;
-
             // Read version (4 bytes) - LITTLE-ENDIAN per GGUF spec (was incorrectly using BigEndian before)
-            var versionBytes = reader.ReadBytes(4);
+            var versionBytes = new byte[4];
+            if (await fileStream.ReadAsync(versionBytes, 0, 4) != 4)
+                return null;
+
             var version = BinaryPrimitives.ReadUInt32LittleEndian(versionBytes);
 
             // Parse key-value pairs based on version
             if (version >= 2)
             {
-                await ParseKeyValuePairsV2(reader, metadata);
+                await ParseKeyValuePairsV2(fileStream, metadata);
             }
             else
             {
-                ParseKeyValuePairsV1(reader, metadata);
+                ParseKeyValuePairsV1(fileStream, metadata);
             }
 
-            fileStream.Close();
             return metadata;
         }
         catch (Exception ex) when (ex is System.IO.IOException or UnauthorizedAccessException)
@@ -216,84 +222,119 @@ public class GgufParser : IDisposable
 
     /// <summary>
     /// Parses key-value pairs from GGUF format version 2+ using little-endian byte order.
+    /// Uses async FileStream-based I/O consistent with ParseHeaderAsync.
     /// </summary>
-    private async Task ParseKeyValuePairsV2(BinaryReader reader, Domain.Models.ModelMetadata metadata)
+    private async Task ParseKeyValuePairsV2(Stream stream, Domain.Models.ModelMetadata metadata)
     {
         // Read number of key-value pairs (8 bytes - uint64, little-endian per GGUF spec)
-        var countBytes = reader.ReadBytes(8);
+        var countBytes = new byte[8];
+        if (await stream.ReadAsync(countBytes, 0, 8) != 8)
+            return;
+
         var pairCount = BinaryPrimitives.ReadUInt64LittleEndian(countBytes);
 
         for (ulong i = 0; i < Math.Min(pairCount, 256UL); i++) // Limit to prevent DoS
         {
-            ulong keyLengthUlong;
-            string? key = null;
             try
             {
-                var keyLengthBytes = reader.ReadBytes(8);
-                keyLengthUlong = BinaryPrimitives.ReadUInt64LittleEndian(keyLengthBytes);
-                if (keyLengthUlong > 1024) break; // Safety limit
+                // Read key length (8 bytes)
+                var keyLenBytes = new byte[8];
+                if (await stream.ReadAsync(keyLenBytes, 0, 8) != 8)
+                    break;
 
-                var keyBytes = reader.ReadBytes((int)keyLengthUlong);
-                key = System.Text.Encoding.UTF8.GetString(keyBytes);
+                var keyLength = BinaryPrimitives.ReadUInt64LittleEndian(keyLenBytes);
+                if (keyLength > 1024) break; // Safety limit
+
+                var keyBytes = new byte[keyLength];
+                if (await stream.ReadAsync(keyBytes, 0, (int)keyLength) != (int)keyLength)
+                    break;
+
+                var key = System.Text.Encoding.UTF8.GetString(keyBytes);
+
+                // Read value type (4 bytes - uint32, little-endian per GGUF spec)
+                var valueTypeBytes = new byte[4];
+                if (await stream.ReadAsync(valueTypeBytes, 0, 4) != 4)
+                    break;
+
+                var valueType = BinaryPrimitives.ReadUInt32LittleEndian(valueTypeBytes);
+                var mappedKey = TagMap.GetValueOrDefault(key, key);
+
+                switch (valueType)
+                {
+                    case 0: // String value
+                        var stringLenBytes = new byte[8];
+                        if (await stream.ReadAsync(stringLenBytes, 0, 8) != 8)
+                            break;
+
+                        var strLen = BinaryPrimitives.ReadUInt64LittleEndian(stringLenBytes);
+                        if (strLen > 10240) break;
+
+                        var valBytes = new byte[strLen];
+                        if (await stream.ReadAsync(valBytes, 0, (int)strLen) != (int)strLen)
+                            break;
+
+                        var value = System.Text.Encoding.UTF8.GetString(valBytes);
+                        SetMetadataProperty(metadata, mappedKey, value);
+                        break;
+
+                    case 1: // Bool
+                        var boolByte = new byte[1];
+                        if (await stream.ReadAsync(boolByte, 0, 1) != 1)
+                            break;
+                        var boolVal = boolByte[0] != 0;
+                        if (mappedKey == "architecture")
+                            metadata.GpuSupportAvailable = boolVal;
+                        break;
+
+                    default:
+                        // Skip unknown value types (advance stream past value)
+                        break;
+                }
             }
             catch
             {
                 return;
             }
-
-            // Read value type (4 bytes - uint32, little-endian per GGUF spec)
-            var valueTypeBytes = reader.ReadBytes(4);
-            var valueType = BinaryPrimitives.ReadUInt32LittleEndian(valueTypeBytes);
-
-            var mappedKey = TagMap.GetValueOrDefault(key!, key!);
-
-            switch (valueType)
-            {
-                case 0: // String value
-                    var stringLenBytes = reader.ReadBytes(8);
-                    var strLen = BinaryPrimitives.ReadUInt64LittleEndian(stringLenBytes);
-                    if (strLen > 10240) break;
-                    var valBytes = reader.ReadBytes((int)strLen);
-                    var value = System.Text.Encoding.UTF8.GetString(valBytes);
-
-                    SetMetadataProperty(metadata, mappedKey!, value);
-                    break;
-                case 1: // Bool
-                    var boolVal = reader.ReadByte() != 0;
-                    if (mappedKey == "architecture") metadata.GpuSupportAvailable = boolVal;
-                    break;
-            }
         }
 
         // Read tensor data type (4 bytes - uint32, little-endian per GGUF spec)
-        var dataTypeBytes = reader.ReadBytes(4);
-        var dataType = BinaryPrimitives.ReadUInt32LittleEndian(dataTypeBytes);
-
-        metadata.TensorDataType = GetTensorDataTypeName(dataType);
+        var dataTypeBytes = new byte[4];
+        if (await stream.ReadAsync(dataTypeBytes, 0, 4) == 4)
+        {
+            var dataType = BinaryPrimitives.ReadUInt32LittleEndian(dataTypeBytes);
+            metadata.TensorDataType = GetTensorDataTypeName(dataType);
+        }
     }
 
     /// <summary>
     /// Parses key-value pairs from GGUF format version 1 using little-endian byte order.
     /// </summary>
-    private void ParseKeyValuePairsV1(BinaryReader reader, Domain.Models.ModelMetadata metadata)
+    private void ParseKeyValuePairsV1(Stream stream, Domain.Models.ModelMetadata metadata)
     {
         // Version 1 has simpler binary structure - read with little-endian
-        var keyLengthBytes = reader.ReadBytes(4);
+        var keyLengthBytes = new byte[4];
+        if (stream.Read(keyLengthBytes, 0, 4) != 4)
+            return;
+
         var keyLength = BinaryPrimitives.ReadUInt32LittleEndian(keyLengthBytes);
+        var keyBytes = new byte[keyLength];
+        if (stream.Read(keyBytes, 0, (int)keyLength) != (int)keyLength)
+            return;
 
-        var keyBytes = reader.ReadBytes((int)keyLength);
         var key = System.Text.Encoding.UTF8.GetString(keyBytes);
-
         var mappedKey = TagMap.GetValueOrDefault(key, key);
 
-        // Read value as string for v1
-        var valBytes = reader.ReadBytes(64);
+        // Read value as string for v1 (64 bytes with null terminator)
+        var valBytes = new byte[64];
+        if (stream.Read(valBytes, 0, 64) != 64)
+            return;
+
         var endIndex = Array.FindIndex(valBytes, 0, b => b == 0);
         if (endIndex > 0)
             valBytes = valBytes[..endIndex];
 
         var value = System.Text.Encoding.UTF8.GetString(valBytes);
-        SetMetadataProperty(metadata, mappedKey!, value);
+        SetMetadataProperty(metadata, mappedKey, value);
     }
 
     /// <summary>

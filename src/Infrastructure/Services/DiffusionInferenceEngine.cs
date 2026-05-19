@@ -420,7 +420,11 @@ public class DiffusionInferenceEngine : IDisposable
         if (dims.Length != 4) return null; // Expected NCHW shape [1, channels, h/8, w/8]
 
         var tensor = new DenseTensor<float>(dims);
-        for (int i = 0; i < data.Length && i * sizeof(float) < result.AsEnumerable<float>().LongCount(); i++)
+        long tensorLength = 1;
+        for (int d = 0; d < dims.Length; d++)
+            tensorLength *= dims[d];
+        int copyCount = (int)Math.Min(data.Length, tensorLength);
+        for (int i = 0; i < copyCount; i++)
             tensor[i] = data[i];
 
         return tensor;
@@ -428,9 +432,15 @@ public class DiffusionInferenceEngine : IDisposable
 
     /// <summary>
     /// Applies LoRA delta tensors to a UNet denoising output. Each delta is added as: output += weight * delta.
+    /// Returns the modified tensor on success, or the original output on failure (never returns null).
     /// </summary>
-    private static DenseTensor<float>? ApplyLoraDeltas(DenseTensor<float> output, IReadOnlyList<LoraDeltaTensor> loraDeltas)
+    private static DenseTensor<float>? ApplyLoraDeltas(DenseTensor<float> output, IReadOnlyList<LoraDeltaTensor> loraDeltas, ILogger? logger = null)
     {
+        if (output == null) return null;
+
+        if (loraDeltas == null || loraDeltas.Count == 0)
+            return output;
+
         try
         {
             var result = new DenseTensor<float>(output.Dimensions);
@@ -454,10 +464,10 @@ public class DiffusionInferenceEngine : IDisposable
 
             return result;
         }
-        catch
+        catch (Exception ex)
         {
-            // _logger is nullable, skip logging here to keep the method static-compatible.
-            return null;
+            logger?.LogWarning(ex, "Failed to apply LoRA delta tensors to UNet output — returning unmodified output.");
+            return output;
         }
     }
 

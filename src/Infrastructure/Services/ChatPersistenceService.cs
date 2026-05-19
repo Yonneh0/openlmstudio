@@ -438,6 +438,9 @@ public class ChatPersistenceService : IConversationManager, IDisposable
 
         var filePath = Path.Combine(directory, $"{chat.Id}.json");
 
+        // Update StoragePath to reflect the actual save location for future operations.
+        chat.StoragePath = filePath;
+
         // Create a copy of messages with updated token counts and timestamps for persistence
         var persistedChat = new Chat
         {

@@ -37,7 +37,11 @@ public class ChatContextManager : IChatContextManager, IDisposable
         _resolver = resolver;
         _dbFactory = dbFactory;
 
-        InitializeDatabases();
+        // Fire-and-forget initialization — errors are logged and don't prevent construction
+        _ = InitializeDatabasesAsync().ContinueWith(
+            t => _logger?.LogError(t.Exception?.GetBaseException(), "Failed to initialize databases"),
+            TaskContinuationOptions.OnlyOnFaulted,
+            TaskScheduler.Default);
 
         // Ensure all appdata subdirectories are created on first run
         _resolver.InitializeSubdirectories();
@@ -489,7 +493,7 @@ public class ChatContextManager : IChatContextManager, IDisposable
         await cmd.ExecuteNonQueryAsync();
     }
 
-    private async void InitializeDatabases()
+    private async Task InitializeDatabasesAsync()
     {
         try
         {

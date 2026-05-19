@@ -41,8 +41,8 @@ public class VAEPipelineService : IVAEPipelineService, IDisposable
 
         // Decode PNG/JPEG image bytes into pixel values [1, channels, height, width]
         var (pixels, channels, height, width) = ImageToPixels(imageBytes);
-        if (channels != 3)
-            throw new InvalidOperationException($"VAE expects RGB images (3 channels), got {channels}");
+        if (channels != 3 && channels != 4)
+            throw new InvalidOperationException($"VAE expects RGB (3 channels) or RGBA (4 channels) images, got {channels}");
 
         // Normalize to [-1, 1] for SD-style VAEs and create input tensor
         var inputTensor = PixelValuesToInputTensor(pixels, channels, height, width);
@@ -235,41 +235,32 @@ public class VAEPipelineService : IVAEPipelineService, IDisposable
 
     /// <summary>
     /// Parses ONNX Runtime model to identify input/output tensor names specific to VAE architecture.
+    /// Uses session metadata to discover actual tensor names rather than hardcoding them.
     /// </summary>
     private static VaeTensorMap ParseVaETensors(InferenceSession session)
     {
-        // VAE models have specific tensor naming conventions:
-        // - Encoder: sample → hidden_states → quant → post_quant (encoder side) or similar
-        // - Decoder: post_quant → dec_latent → decoder_input → decoder_output
-        // We need to find the correct input/output names from the session's IO metadata
-
-        string encoderInput = "sample";    // Input pixel-space image tensor name
-        string latentOutput = "latent_dist.mean";  // Encoder output (latent mean) — common in SD VAEs
-        string decoderInput = "z";          // Decoder input (latent space)
-        string pixelOutput = "x_sample";   // Decoder output (reconstructed image)
-
-        // Check actual model inputs/outputs to find the correct names
         var inputNames = session.InputMetadata.Keys.ToList();
         var outputNames = session.OutputMetadata.Keys.ToList();
 
-        foreach (var name in inputNames)
-        {
-            if (name.Contains("sample") || name == "pixel_values" || name == "input")
-                encoderInput = name;
-        }
+        // Find encoder input: prefer "sample" or "pixel_values", fall back to first input
+        string encoderInput = inputNames.FirstOrDefault(n =>
+            n == "sample" || n == "pixel_values" || n.Contains("pixel", StringComparison.OrdinalIgnoreCase))
+            ?? inputNames.FirstOrDefault() ?? "sample";
 
-        foreach (var name in outputNames)
-        {
-            if (name.Contains("x_sample") || name == "latent" || name == "output")
-                pixelOutput = name;
-        }
+        // Find latent output (encoder output): prefer "latent_dist.mean", then "latents", then first output
+        string latentOutput = outputNames.FirstOrDefault(n =>
+            n.Contains("latent", StringComparison.OrdinalIgnoreCase))
+            ?? outputNames.FirstOrDefault() ?? "latent_dist.mean";
 
-        // Check for decoder-specific names
-        foreach (var name in inputNames)
-        {
-            if (name.Contains("z") || name.Contains("latents"))
-                decoderInput = name;
-        }
+        // Find decoder input: prefer "z" or "latents", fall back to first input not used as encoder input
+        string decoderInput = inputNames.FirstOrDefault(n =>
+            n == "z" || n.Contains("latent", StringComparison.OrdinalIgnoreCase))
+            ?? inputNames.Where(n => n != encoderInput).FirstOrDefault() ?? "z";
+
+        // Find pixel output (decoder output): prefer "x_sample", then "output", then last output
+        string pixelOutput = outputNames.FirstOrDefault(n =>
+            n.Contains("x_sample", StringComparison.OrdinalIgnoreCase) || n.Contains("recon", StringComparison.OrdinalIgnoreCase))
+            ?? outputNames.LastOrDefault() ?? "x_sample";
 
         return new VaeTensorMap(encoderInput, latentOutput, decoderInput, pixelOutput);
     }
@@ -282,13 +273,24 @@ public class VAEPipelineService : IVAEPipelineService, IDisposable
     {
         // Use SkiaSharp for cross-platform PNG/JPEG decoding — works on Windows/Linux/macOS
         using var bitmap = SKBitmap.Decode(new MemoryStream(imageBytes));
+        SKBitmap bitmapToUse = bitmap;
 
         var width = bitmap.Width;
         var height = bitmap.Height;
 
-        // Only support 3-channel RGB for SD-style VAEs
-        if (bitmap.ColorType != SKColorType.Rgb888x)
-            throw new InvalidOperationException($"VAE expects RGB images (3 channels), got {bitmap.ColorType}");
+        // Convert to RGB if needed (RGBA -> RGB by dropping alpha)
+        if (bitmap.ColorType == SKColorType.Rgba8888)
+        {
+            var rgbBitmap = new SKBitmap(bitmap.Width, bitmap.Height, SKColorType.Rgb888x, bitmap.AlphaType);
+            using var canvas = new SKCanvas(rgbBitmap);
+            canvas.DrawBitmap(bitmap, 0, 0);
+            bitmap.Dispose();
+            bitmapToUse = rgbBitmap;
+        }
+        else if (bitmap.ColorType != SKColorType.Rgb888x)
+        {
+            throw new InvalidOperationException($"VAE expects RGB images, got {bitmap.ColorType}");
+        }
 
         var pixels = new float[width * height]; // Will be [1, C, H, W] after reshaping to tensor
 
@@ -296,7 +298,7 @@ public class VAEPipelineService : IVAEPipelineService, IDisposable
         {
             for (int x = 0; x < width; x++)
             {
-                var color = bitmap.GetPixel(x, y);
+                var color = bitmapToUse.GetPixel(x, y);
                 // Normalize RGB from [0, 255] to [-1, 1]: value * 2/255 - 1
                 pixels[y * width + x] = (color.Red / 255f) * 2f - 1f;
             }
@@ -338,28 +340,28 @@ public class VAEPipelineService : IVAEPipelineService, IDisposable
     /// </summary>
     private static byte[] PixelValuesToPng(float[] pixelData, int height, int width)
     {
-        const int channels = 3; // RGB for SD-style VAEs
+        const int channels = 3; // RGB
 
         // Create bitmap with 3-channel RGB format using SkiaSharp (cross-platform compatible)
         using var skBitmap = new SKBitmap(width, height);
 
-        for (int c = 0; c < channels && c < 3; c++) // Only handle up to 3 channels
+        for (int h = 0; h < height; h++)
         {
-            for (int h = 0; h < height; h++)
+            for (int w = 0; w < width; w++)
             {
-                for (int w = 0; w < width; w++)
+                // Accumulate all three channels for this pixel position in one pass.
+                float r = 0, g = 0, b = 0;
+                for (int c = 0; c < channels; c++)
                 {
-                    // Denormalize from [-1, 1] to [0, 255]: value * 127.5 + 127.5
                     var pixelValue = pixelData[c * height * width + h * width + w];
-                    var clampedPixel = Math.Clamp(pixelValue * 127.5f + 127.5f, 0, 255);
-
-                    // Set the appropriate channel for this pixel position using SKColor (R=0, G=1, B=2)
-                    var r = c == 0 ? (byte)clampedPixel : (byte)0;
-                    var g = c == 1 ? (byte)clampedPixel : (byte)0;
-                    var b = c == 2 ? (byte)clampedPixel : (byte)0;
-
-                    skBitmap.SetPixel(w, h, new SKColor(r, g, b));
+                    // Denormalize from [-1, 1] to [0, 255]: value * 127.5 + 127.5
+                    float clampedPixel = Math.Clamp(pixelValue * 127.5f + 127.5f, 0, 255);
+                    if (c == 0) r = clampedPixel;
+                    else if (c == 1) g = clampedPixel;
+                    else b = clampedPixel;
                 }
+
+                skBitmap.SetPixel(w, h, new SKColor((byte)r, (byte)g, (byte)b));
             }
         }
 
@@ -384,48 +386,38 @@ public class VAEPipelineService : IVAEPipelineService, IDisposable
         if (dimensions != null && dimensions.Length == 4)
         {
             var explicitTensor = new DenseTensor<float>(dimensions);
-            for (int i = 0; i < elementCount && i * sizeof(float) < latents.Length; i++)
+            int copyCount = (int)Math.Min(elementCount, explicitTensor.Length);
+            for (int i = 0; i < copyCount && i * sizeof(float) < latents.Length; i++)
                 explicitTensor[i] = BitConverter.ToSingle(latents, i * sizeof(float));
             return explicitTensor;
         }
 
-        // Heuristic fallback: infer [1, embeddingDim, h/8, w/8] from total element count
-        int embeddingDim;
-        if (elementCount == 262144)
-            embeddingDim = 16;   // SDXL: 1*16*128*128
-        else if (elementCount == 16384)
-            embeddingDim = 4;    // SD: 1*4*64*64
-        else
-            embeddingDim = elementCount switch
-            {
-                > 0 => (int)Math.Round(Math.Pow(elementCount, 0.25)), // rough heuristic
-                _ => 4
-            };
-
-        var spatial = embeddingDim > 0 ? elementCount / embeddingDim : 0;
-        var side = (int)Math.Round(Math.Sqrt(spatial));
-
-        if (side == 0 || embeddingDim == 0)
-            throw new InvalidOperationException($"Cannot determine latent tensor shape from {elementCount} elements");
+        // Heuristic fallback: infer [1, embeddingDim, h/8, w/8] from total element count.
+        // Factor elementCount into 4 dimensions: 1 × embeddingDim × side × side.
+        int embeddingDim = 4; // default
+        int side = (int)Math.Round(Math.Pow(elementCount, 0.25));
+        if (side <= 0) side = 4;
+        embeddingDim = elementCount / (side * side);
+        if (embeddingDim <= 0) embeddingDim = 4;
 
         var dims = new[] { 1, embeddingDim, side, side };
         var tensor = new DenseTensor<float>(dims);
-        for (int i = 0; i < elementCount && i * sizeof(float) < latents.Length; i++)
+        int tensorLength = dims[1] * dims[2] * dims[3];
+        int heuristicCopyCount = (int)Math.Min(elementCount, tensorLength);
+        for (int i = 0; i < heuristicCopyCount && i * sizeof(float) < latents.Length; i++)
             tensor[i] = BitConverter.ToSingle(latents, i * sizeof(float));
         return tensor;
     }
 
     /// <summary>
-    /// Converts a flat float32 array to byte array.
+    /// Converts a flat float32 array to byte array using little-endian packing.
     /// </summary>
     private static byte[] DenseTensorToBytes(IReadOnlyList<float> tensor)
     {
         var bytes = new byte[tensor.Count * sizeof(float)];
         for (int i = 0; i < tensor.Count; i++)
         {
-            // Write float32 in little-endian format
-            var value = BitConverter.GetBytes(tensor[i]);
-            Buffer.BlockCopy(value, 0, bytes, i * sizeof(float), sizeof(float));
+            BitConverter.TryWriteBytes(new Span<byte>(bytes, i * sizeof(float), sizeof(float)), tensor[i]);
         }
         return bytes;
     }
