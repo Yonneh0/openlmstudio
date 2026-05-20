@@ -252,6 +252,23 @@ public static class DependencyInjection
         // DigitalSignatureVerifier verifies RSA signatures on model files
         services.AddSingleton<IDigitalSignatureVerifier, Services.DigitalSignatureVerifier>();
 
+        // ---- Phase 7: Agent Harness — Communication Protocol ----
+
+        // AgentCommunicationProtocol handles plan/act phase transitions and user approval gating
+        services.AddSingleton<AgentCommunicationProtocol>();
+
+        // AgentSystemPromptGenerator dynamically assembles system prompts based on available tools and context
+        services.AddSingleton<AgentSystemPromptGenerator>();
+
+        // AgentSessionPersister persists and restores agent session state to disk for crash recovery
+        services.AddSingleton<AgentSessionPersister>(resolver =>
+        {
+            var logger = resolver.GetService<Microsoft.Extensions.Logging.ILogger<Services.AgentSessionPersister>>();
+            var appData = resolver.GetService<AppDataDirectoryResolver>();
+            var sessionsDir = appData?.TaskDirectory ?? Directory.GetCurrentDirectory();
+            return new Services.AgentSessionPersister(logger, sessionsDir);
+        });
+
         // ---- Phase 10.5: Observability & Diagnostics ----
 
         // ActivityTracer traces agent tool calls with timing and resource consumption
