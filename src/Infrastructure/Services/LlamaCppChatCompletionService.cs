@@ -36,7 +36,45 @@ public class LlamaCppChatCompletionService : IChatCompletionService, IDisposable
         _modelRepository = modelRepository;
         _ggufParser = ggufParser;
 
-        _logger.LogInformation("LlamaCppChatCompletionService initialized (native bindings pending)");
+        _logger.LogInformation("LlamaCppChatCompletionService initialized — mode: {Mode}",
+            HasNativeLibrary() ? "Native (llama.cpp bindings available)" : "Simulated (placeholder responses)");
+    }
+
+    /// <summary>
+    /// Checks whether the native llama.cpp library is available on the system.
+    /// </summary>
+    private static bool HasNativeLibrary()
+    {
+        try
+        {
+            var searchPaths = new[] { AppDomain.CurrentDomain.BaseDirectory };
+            var libName = Environment.OSVersion.Platform switch
+            {
+                PlatformID.Win32NT => "libllama.dll",
+                PlatformID.Unix => "libllama.so",
+                PlatformID.MacOSX => "libllama.dylib",
+                _ => "libllama.dll"
+            };
+
+            foreach (var basePath in searchPaths)
+            {
+                if (File.Exists(Path.Combine(basePath, libName)))
+                    return true;
+            }
+
+            // Also check system paths for shared libraries
+            if (Environment.OSVersion.Platform == PlatformID.Unix)
+            {
+                var candidate = "/usr/lib/libllama.so";
+                if (File.Exists(candidate)) return true;
+            }
+
+            return false;
+        }
+        catch
+        {
+            return false;
+        }
     }
 
     /// <inheritdoc />

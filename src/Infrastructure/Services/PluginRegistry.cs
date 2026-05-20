@@ -303,11 +303,13 @@ public class PluginRegistry : Domain.Interfaces.IPluginRegistry
         var downloadUrl = plugin.DownloadUrl ?? throw new InvalidOperationException("No download URL available for plugin.");
 
         using var client = _httpClient ??= CreateHttpClient();
+        _logger?.LogInformation("Downloading plugin '{PluginId}' from {Url}", plugin.Id, downloadUrl);
         var archiveBytes = await client.GetByteArrayAsync(downloadUrl, ct);
+
         var installPath = Path.Combine(_pluginDirectory, plugin.Id);
+        Directory.CreateDirectory(installPath);
 
         // Extract and save the plugin to disk — assumes ZIP format
-        Directory.CreateDirectory(installPath);
         using var archiveStream = new MemoryStream(archiveBytes);
         using var archiveZip = new System.IO.Compression.ZipArchive(archiveStream, System.IO.Compression.ZipArchiveMode.Read);
 
@@ -333,6 +335,8 @@ public class PluginRegistry : Domain.Interfaces.IPluginRegistry
             await using var readerStream = entry.Open();
             await readerStream.CopyToAsync(streamWriter);
         }
+
+        _logger?.LogInformation("Extracted plugin '{PluginId}' to {Path}", plugin.Id, installPath);
 
         // Create manifest.json for the installed plugin
         var manifestPath = Path.Combine(installPath, "manifest.json");

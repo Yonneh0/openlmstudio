@@ -223,13 +223,17 @@ public static class DependencyInjection
         });
 
         // ActiveProjectWatcher provides real-time project filesystem monitoring for the agent
-        services.AddSingleton<Services.ActiveProjectWatcher>(resolver =>
+        services.AddSingleton<IActiveProjectWatcher>(resolver =>
         {
             var logger = resolver.GetService<Microsoft.Extensions.Logging.ILogger<Services.ActiveProjectWatcher>>();
+            var projectExplorer = resolver.GetService<IProjectExplorer>();
             var appData = resolver.GetService<AppDataDirectoryResolver>();
             var watchPath = appData?.TaskDirectory ?? Directory.GetCurrentDirectory();
-            return new Services.ActiveProjectWatcher(logger, watchPath);
+            return new Services.ActiveProjectWatcher(logger, watchPath, projectExplorer ?? throw new InvalidOperationException("IProjectExplorer not found in DI container."));
         });
+
+        // IImagePostProcessingService for upscaling, hires.fix, ControlNet, and IP-Adapter
+        services.AddSingleton<IImagePostProcessingService, Services.ImagePostProcessingService>();
 
         return services;
     }

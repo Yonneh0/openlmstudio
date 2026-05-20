@@ -78,7 +78,7 @@ public class DiffusionPipelineService : IDiffusionPipelineService, IDisposable
 
             // Load all three stages of the pipeline from safetensors model files
             // Each stage uses its own ONNX session loaded independently
-            bool textEncoderLoaded;
+            bool textEncoderLoaded, unetLoaded, vaeLoaded;
 
             if (multimodalMeta.Format == ModelFormat.Safetensors)
             {
@@ -92,17 +92,23 @@ public class DiffusionPipelineService : IDiffusionPipelineService, IDisposable
                     throw new InvalidDataException($"Safetensors header validation failed for model '{request.ModelId}'.");
 
                 textEncoderLoaded = engine.LoadTextEncoder(pipelineType, weightFile);
+                unetLoaded = engine.LoadUnet(pipelineType, weightFile);
+                vaeLoaded = engine.LoadVaeDecoder(pipelineType, weightFile);
             }
             else
             {
                 // GGUF fallback — not expected for image models but handle gracefully
                 _logger?.LogWarning("Non-safetensors model found for image generation: '{ModelId}' (format: {Format})", request.ModelId, multimodalMeta.Format);
                 textEncoderLoaded = false;
+                unetLoaded = false;
+                vaeLoaded = false;
             }
 
-            if (!textEncoderLoaded)
+            if (!textEncoderLoaded || !unetLoaded || !vaeLoaded)
             {
-                throw new InvalidOperationException($"Failed to load CLIP text encoder for model '{request.ModelId}'.");
+                _logger?.LogError("Pipeline initialization failed: TE={TE}, UNet={UNet}, VAE={VAE} for '{ModelId}'",
+                    textEncoderLoaded, unetLoaded, vaeLoaded, request.ModelId);
+                throw new InvalidOperationException($"Failed to load complete pipeline for model '{request.ModelId}'.");
             }
 
             _logger?.LogInformation("Starting full 3-stage diffusion pipeline for '{ModelId}' (CLIP→UNet+CFG→VAE)", request.ModelId);

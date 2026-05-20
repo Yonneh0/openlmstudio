@@ -161,24 +161,44 @@ Propose a detailed plan for completing this task. Be specific about which tools 
 
             await _progressTracker.ReportProgressAsync((int)((iterations / (double)maxIterations) * 100));
 
-            // Generate next action
+            // Generate next action from LLM
             var action = await GenerateActionAsync(request, plan, ct);
-            if (string.IsNullOrEmpty(action)) break;
+            if (string.IsNullOrEmpty(action))
+            {
+                _logger?.LogWarning("No action generated — stopping agent loop");
+                break;
+            }
 
-            // Execute each tool — iterate through all available tools for this agent
-            foreach (var tool in _toolRegistry.GetTools().Values)
+            // Find the best matching tool for this action by parsing the tool name from the LLM response
+            var matchingTools = FindMatchingTools(action);
+
+            if (matchingTools.Count == 0)
+            {
+                _logger?.LogWarning("No tool matched the generated action — skipping iteration");
+                continue;
+            }
+
+            // Execute the matched tool(s) — prefer the first match
+            foreach (var tool in matchingTools)
             {
                 try
                 {
                     var sw = System.Diagnostics.Stopwatch.StartNew();
-                    var success = await tool.ExecuteAsync(new Dictionary<string, object>()) == true;
+
+                    // Parse tool parameters from the LLM action response
+                    var parameters = ParseActionParameters(action, tool.Name);
+
+                    var success = await tool.ExecuteAsync(parameters).ConfigureAwait(false);
                     sw.Stop();
 
+                    var resultText = success ? "Completed" : "Failed";
                     var record = new AgentToolCallRecord(
-                        tool.Name, new Dictionary<string, object>(), success ? "Completed" : "Failed", success, sw.ElapsedMilliseconds, DateTime.UtcNow);
+                        tool.Name, parameters, resultText, success, sw.ElapsedMilliseconds, DateTime.UtcNow);
 
                     _toolCalls.Add(record);
-                    await _progressTracker.RecordToolCallAsync(tool.Name, new Dictionary<string, object>(), record.Result, success, sw.ElapsedMilliseconds);
+                    await _progressTracker.RecordToolCallAsync(tool.Name, parameters, resultText, success, sw.ElapsedMilliseconds);
+
+                    _logger?.LogInformation("Tool '{ToolName}' executed: {Result} in {Ms}ms", tool.Name, resultText, sw.ElapsedMilliseconds);
                 }
                 catch (Exception ex)
                 {
@@ -196,13 +216,31 @@ Propose a detailed plan for completing this task. Be specific about which tools 
     {
         try
         {
+            var tools = _toolRegistry.GetTools();
+            var toolNames = string.Join(", ", tools.Keys);
+            var toolDescriptions = string.Join("\n", tools.Select(t => $"- {t.Key}: {t.Value.Description}"));
+
+            var systemPrompt = $"""
+You are executing a plan for an agentic task. Your task is:
+
+{request.Description}
+
+Current plan:
+{plan}
+
+Available tools:
+{toolDescriptions}
+
+Based on the current state and the plan, what single action should you take next? Return ONLY the tool name and a brief description of what to do. Format: "Tool: <name>\nAction: <description>"
+""";
+
             await _contextManager.GetCompressedContextAsync(request.TaskId, CompressionLevel.Medium);
             var response = await _chatService.GetCompletionAsync(new ChatRequest(
                 ModelId: "default",
                 Messages: new List<Message>
                 {
-                    new() { Role = MessageRole.System, Content = "Continue executing the plan." },
-                    new() { Role = MessageRole.User, Content = "What action to take next?" }
+                    new() { Role = MessageRole.System, Content = systemPrompt },
+                    new() { Role = MessageRole.User, Content = "Continue executing the plan." }
                 },
                 Stream: false
             ));
@@ -214,6 +252,49 @@ Propose a detailed plan for completing this task. Be specific about which tools 
             _logger?.LogWarning(ex, "Failed to generate action");
             return null;
         }
+    }
+
+    /// <summary>
+    /// Parses tool parameters from the LLM action response.
+    /// Extracts key-value pairs from the action description (e.g., "path: /foo/bar").
+    /// </summary>
+    private static Dictionary<string, object> ParseActionParameters(string action, string toolName)
+    {
+        var parameters = new Dictionary<string, object>(StringComparer.OrdinalIgnoreCase);
+        parameters["tool_name"] = toolName;
+
+        // Extract file paths from the action text (common pattern: "path: /some/path")
+        var pathMatches = System.Text.RegularExpressions.Regex.Matches(action, @"(?:path|file|directory|target)[\s:=]+[\""]?([^""]+\.[a-z0-9]+|/[\w/]+)");
+        foreach (System.Text.RegularExpressions.Match match in pathMatches)
+        {
+            parameters["path"] = match.Value;
+        }
+
+        // Extract numeric parameters (common pattern: "count: 42")
+        var countMatches2 = System.Text.RegularExpressions.Regex.Matches(action, @"(?:count|num|n|steps)[\s:=]+(\d+)");
+        foreach (System.Text.RegularExpressions.Match match in countMatches2)
+        {
+            parameters["count"] = int.Parse(match.Value);
+        }
+
+        return parameters;
+    }
+
+    /// <summary>
+    /// Finds tools matching the generated action by parsing tool names from the LLM response.
+    /// </summary>
+    private IReadOnlyList<ITool> FindMatchingTools(string action)
+    {
+        var tools = _toolRegistry.GetTools();
+        var matching = new List<ITool>();
+
+        foreach (var (name, tool) in tools)
+        {
+            if (action.IndexOf(name, StringComparison.OrdinalIgnoreCase) >= 0)
+                matching.Add(tool);
+        }
+
+        return matching;
     }
 
     private AgentTaskResult CreateResult(AgentTaskRequest request, AgentState finalState)

@@ -5,99 +5,127 @@ using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Extensions.Logging;
+using OpenLMStudio.Application.Interfaces;
+using OpenLMStudio.Application.Types;
 
 namespace OpenLMStudio.Infrastructure.Services;
 
 /// <summary>
-/// Real-time project filesystem watcher that monitors a directory for file changes.
-/// Notifies subscribers via events when files are added, modified, or deleted.
+/// Real-time filesystem watcher for project tree updates.
+/// Monitors a directory for file additions, modifications, and deletions.
 /// </summary>
-public interface IActiveProjectWatcher : IDisposable
-{
-    /// <summary>
-    /// Raised when a file in the watched project changes.
-    /// </summary>
-    event EventHandler<ProjectFileChangedEventArgs>? ProjectFileChanged;
-}
-
-/// <summary>
-/// Event arguments for project file changes.
-/// </summary>
-public class ProjectFileChangedEventArgs : EventArgs
-{
-    public string FilePath { get; }
-    public FileEventType EventType { get; }
-
-    public ProjectFileChangedEventArgs(string filePath, FileEventType eventType)
-    {
-        FilePath = filePath;
-        EventType = eventType;
-    }
-}
-
-/// <summary>
-/// Types of file system events.
-/// </summary>
-public enum FileEventType
-{
-    Added,
-    Modified,
-    Deleted,
-    Renamed
-}
-
-/// <summary>
-/// Provides real-time filesystem monitoring for a project directory.
-/// Emits events for additions, modifications, and deletions.
-/// </summary>
-public class ActiveProjectWatcher : IActiveProjectWatcher, IDisposable
+public class ActiveProjectWatcher : IActiveProjectWatcher
 {
     private readonly ILogger<ActiveProjectWatcher>? _logger;
-    private readonly FileSystemWatcher? _watcher;
+    private readonly IProjectExplorer _projectExplorer;
+    private readonly string _rootPath;
+    private FileSystemWatcher? _watcher;
+    private readonly object _lock = new();
     private bool _disposed;
+    private bool _isWatching;
 
-    public event EventHandler<ProjectFileChangedEventArgs>? ProjectFileChanged;
-
-    public ActiveProjectWatcher(ILogger<ActiveProjectWatcher>? logger, string watchPath)
+    public ActiveProjectWatcher(ILogger<ActiveProjectWatcher>? logger, string rootPath, IProjectExplorer projectExplorer)
     {
         _logger = logger;
-        _watcher = new FileSystemWatcher(watchPath)
-        {
-            IncludeSubdirectories = true,
-            NotifyFilter = NotifyFilters.FileName | NotifyFilters.LastWrite | NotifyFilters.Size
-        };
-        _watcher.Created += OnChanged;
-        _watcher.Changed += OnChanged;
-        _watcher.Deleted += OnChanged;
-        _watcher.Renamed += OnRenamed;
-        _watcher.EnableRaisingEvents = true;
-        _logger?.LogInformation("Started watching directory: {Path}", watchPath);
+        _rootPath = rootPath;
+        _projectExplorer = projectExplorer;
     }
 
-    private void OnChanged(object sender, FileSystemEventArgs e)
+    public string RootPath => _rootPath;
+    public bool IsWatching => _isWatching;
+
+    public async Task StartAsync()
+    {
+        if (_disposed || _isWatching) return;
+
+        _watcher = new FileSystemWatcher(_rootPath)
+        {
+            IncludeSubdirectories = true,
+            NotifyFilter = NotifyFilters.FileName | NotifyFilters.DirectoryName | NotifyFilters.LastWrite | NotifyFilters.Size
+        };
+
+        _watcher.Created += OnFileChanged;
+        _watcher.Deleted += OnFileChanged;
+        _watcher.Changed += OnFileChanged;
+        _watcher.Renamed += OnFileRenamed;
+        _watcher.EnableRaisingEvents = true;
+        _isWatching = true;
+        _logger?.LogInformation("ActiveProjectWatcher started for directory: {Directory}", _rootPath);
+    }
+
+    public async Task StopAsync()
+    {
+        lock (_lock)
+        {
+            _watcher?.Dispose();
+            _watcher = null;
+            _isWatching = false;
+        }
+        _logger?.LogInformation("ActiveProjectWatcher stopped for {Directory}", _rootPath);
+        await Task.CompletedTask;
+    }
+
+    public async Task RefreshTreeAsync()
+    {
+        await Task.CompletedTask;
+    }
+
+    public async Task<IReadOnlyList<ProjectNode>> GetProjectTreeAsync(string? rootPath = null)
+    {
+        return await _projectExplorer.GetProjectTreeAsync(rootPath ?? _rootPath);
+    }
+
+    public async Task<FilePreviewResult?> GetFilePreviewAsync(string filePath, int maxLines = 100)
+    {
+        return await _projectExplorer.GetFilePreviewAsync(filePath, maxLines);
+    }
+
+    public bool IsBinaryFile(string filePath)
+    {
+        return _projectExplorer.IsBinaryFile(filePath);
+    }
+
+    public async Task<IReadOnlyDictionary<string, string?>> GetGitStatusAsync()
+    {
+        return await _projectExplorer.GetGitStatusAsync(_rootPath);
+    }
+
+    public event EventHandler<FileSystemChangeEventArgs>? FileSystemChanged;
+
+    private void OnFileChanged(object sender, FileSystemEventArgs e)
     {
         var eventType = e.ChangeType switch
         {
-            WatcherChangeTypes.Created => FileEventType.Added,
-            WatcherChangeTypes.Changed => FileEventType.Modified,
-            WatcherChangeTypes.Deleted => FileEventType.Deleted,
-            _ => FileEventType.Modified
+            WatcherChangeTypes.Created => FileWatchEventType.Added,
+            WatcherChangeTypes.Deleted => FileWatchEventType.Deleted,
+            WatcherChangeTypes.Changed => FileWatchEventType.Modified,
+            _ => FileWatchEventType.Modified
         };
 
-        ProjectFileChanged?.Invoke(this, new ProjectFileChangedEventArgs(e.FullPath, eventType));
+        var notification = new FileSystemChangeNotification(eventType, e.FullPath, DateTime.UtcNow);
+
+        _logger?.LogDebug("File change detected: {EventType} - {FullPath}", eventType, e.FullPath);
+        FileSystemChanged?.Invoke(this, new FileSystemChangeEventArgs(notification));
     }
 
-    private void OnRenamed(object sender, RenamedEventArgs e)
+    private void OnFileRenamed(object sender, RenamedEventArgs e)
     {
-        ProjectFileChanged?.Invoke(this, new ProjectFileChangedEventArgs(e.FullPath, FileEventType.Renamed));
+        var eventType = string.IsNullOrEmpty(e.OldName)
+            ? FileWatchEventType.Added
+            : FileWatchEventType.Modified;
+
+        var notification = new FileSystemChangeNotification(eventType, e.FullPath, DateTime.UtcNow);
+
+        _logger?.LogDebug("File renamed: {OldPath} -> {NewPath}", e.FullPath, e.Name);
+        FileSystemChanged?.Invoke(this, new FileSystemChangeEventArgs(notification));
     }
 
     public void Dispose()
     {
         if (!_disposed)
         {
-            _watcher?.Dispose();
             _disposed = true;
+            StopAsync().GetAwaiter().GetResult();
         }
     }
 }
