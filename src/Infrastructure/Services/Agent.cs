@@ -183,6 +183,7 @@ Propose a detailed plan for completing this task. Be specific about which tools 
 
         try
         {
+            // Get compressed context for planning — await the async call properly
             await _contextManager.GetCompressedContextAsync(request.TaskId, Domain.Models.CompressionLevel.Medium);
             var response = await _chatService.GetCompletionAsync(new ChatRequest(
                 ModelId: "default",
@@ -381,9 +382,10 @@ Current plan:
 Available tools:
 {toolDescriptions}
 
-Based on the current state and the plan, what single action should you take next? Return ONLY the tool name and a brief description of what to do. Format: "Tool: <name>\nAction: <description>"
+Based on the current state and the plan, what single action should you take next? Return ONLY the tool name and a brief description of what to do. Format: Tool: <name> / Action: <description>
 """;
 
+            // Get compressed context for action generation — await the async call properly
             await _contextManager.GetCompressedContextAsync(request.TaskId, CompressionLevel.Medium);
             var response = await _chatService.GetCompletionAsync(new ChatRequest(
                 ModelId: "default",
@@ -556,7 +558,7 @@ Propose a simpler, more reliable plan that focuses on completing the essential p
         var parameters = new Dictionary<string, object>(StringComparer.OrdinalIgnoreCase);
         parameters["tool_name"] = toolName;
 
-        // Extract file paths from the action text (common pattern: "path: /some/path")
+        // Extract file paths from the action text (common pattern: "path: /foo/bar")
         var pathMatches = System.Text.RegularExpressions.Regex.Matches(action, @"(?:path|file|directory|target)[\s:=]+[\""]?([^""]+\.[a-z0-9]+|/[\w/]+)");
         foreach (System.Text.RegularExpressions.Match match in pathMatches)
         {
@@ -564,10 +566,12 @@ Propose a simpler, more reliable plan that focuses on completing the essential p
         }
 
         // Extract numeric parameters (common pattern: "count: 42")
+        // Fix: extract only the matched number group, not the entire match string
         var countMatches = System.Text.RegularExpressions.Regex.Matches(action, @"(?:count|num|n|steps)[\s:=]+(\d+)");
         foreach (System.Text.RegularExpressions.Match match in countMatches)
         {
-            parameters["count"] = int.Parse(match.Value);
+            // The number is in the first capturing group, not match.Value (which includes "count: " prefix)
+            parameters["count"] = int.Parse(match.Groups[1].Value);
         }
 
         return parameters;
