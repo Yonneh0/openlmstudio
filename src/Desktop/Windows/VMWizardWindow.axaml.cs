@@ -1,5 +1,8 @@
 using Avalonia.Controls;
 using Avalonia.Interactivity;
+using Avalonia.Layout;
+using Avalonia.Media;
+using Avalonia;
 using OpenLMStudio.Application.Interfaces;
 using OpenLMStudio.Domain.Models.QEMU;
 
@@ -28,12 +31,14 @@ public partial class VMWizardWindow : Window
         var archs = Enum.GetValues<ArchitectureType>()
             .Where(a => a != Domain.Models.QEMU.ArchitectureType.AVR)
             .Select(a => a.ToString());
-        ArchCombo.Items = archs;
+        foreach (var arch in archs)
+            ArchCombo.Items.Add(arch);
         ArchCombo.SelectedIndex = 0;
 
         // Populate accelerator dropdown
         var accels = Enum.GetValues<AcceleratorType>().Select(a => a.ToString());
-        AccelCombo.Items = accels;
+        foreach (var accel in accels)
+            AccelCombo.Items.Add(accel);
         AccelCombo.SelectedIndex = 0;
 
         // Set defaults
@@ -58,20 +63,20 @@ public partial class VMWizardWindow : Window
 
         try
         {
-            var vm = await _qemuManager.CreateVMAsync(config);
+            var vm = await _qemuManager.CreateVMAsync(config).ConfigureAwait(false);
             Close();
         }
         catch (Exception ex)
         {
             var dlg = new Window { Title = "Error", Width = 300, Height = 150 };
-            var tb = new TextBlock
+            var grid = new Grid { Margin = new Thickness(16) };
+            grid.Children.Add(new TextBlock
             {
                 Text = ex.Message,
                 TextWrapping = TextWrapping.Wrap,
-                Margin = new Thickness(16),
-            };
-            dlg.Content = tb;
-            dlg.ShowDialog(this);
+            });
+            dlg.Content = grid;
+            _ = dlg.ShowDialog(this);
         }
     }
 

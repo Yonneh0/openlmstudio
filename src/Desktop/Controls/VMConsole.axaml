@@ -6,15 +6,15 @@
     <Border Background="#1E1E1E"
             CornerRadius="8"
             Margin="4">
-        <TextBox x:Name="ConsoleOutput"
-                 Text=""
-                 TextWrapping="NoWrap"
-                 IsReadOnly="True"
-                 AcceptsReturn="True"
-                 VerticalScrollBarVisibility="Auto"
-                 HorizontalScrollBarVisibility="Auto"
-                 FontFamily="Consolas, 'Courier New', monospace"
-                 Foreground="#D4D4D4"
-                 Background="#1E1E1E"/>
+        <ScrollViewer>
+            <TextBox x:Name="ConsoleOutput"
+                     Text=""
+                     TextWrapping="NoWrap"
+                     IsReadOnly="True"
+                     AcceptsReturn="True"
+                     FontFamily="Consolas, 'Courier New', monospace"
+                     Foreground="#D4D4D4"
+                     Background="#1E1E1E"/>
+        </ScrollViewer>
     </Border>
 </UserControl>

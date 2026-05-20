@@ -72,12 +72,13 @@ public class QEMUProcessManager : IQEMUProcessManager, IDisposable
             RedirectStandardError = true,
         });
 
+        var procId = proc?.Id.ToString() ?? string.Empty;
         var instance = new VMInstance(
             config.Id,
             config.Architecture,
             GetDefaultMachine(config.Architecture),
             config.Accelerator,
-            proc.Id.ToString(),
+            procId,
             new QmpSocket("tcp", "localhost", qmpPort),
             new QmpSocket("unix", $"/tmp/openlmstudio-qemu-{config.Id}-monitor", null),
             VMRunState.Paused,
@@ -89,10 +90,13 @@ public class QEMUProcessManager : IQEMUProcessManager, IDisposable
             DateTime.UtcNow);
 
         _instances[config.Id] = instance;
-        _processes[config.Id] = proc;
+        if (proc != null)
+        {
+            _processes[config.Id] = proc;
+            RegisterProcessListeners(instance, proc);
+        }
         _logger.LogInformation("Created VM {VmId} ({Architecture}) with binary {Binary}",
             config.Id, config.Architecture, binary);
-        RegisterProcessListeners(instance, proc);
 
         return instance;
     }
@@ -174,7 +178,7 @@ public class QEMUProcessManager : IQEMUProcessManager, IDisposable
     {
         var result = await ExecuteQMPCommandAsync(vmId, "query-block").ConfigureAwait(false);
         return result is JsonObject obj
-            ? obj["devices"]?.AsArray()?.Select(d => (object)d).ToList() ?? new List<object>()
+            ? obj["devices"]?.AsArray()?.Select(d => (object)d!).ToList() ?? new List<object>()
             : new List<object>();
     }
 
@@ -280,7 +284,13 @@ public class QEMUProcessManager : IQEMUProcessManager, IDisposable
     {
         var obj = new JsonObject { ["execute"] = command };
         if (args != null)
-            obj["arguments"] = new JsonObject(args.Where(kv => kv.Value != null).ToDictionary(kv => kv.Key, kv => JsonNode.Parse(JsonSerializer.Serialize(kv.Value!))!));
+        {
+            var entries = args
+                .Where(kv => kv.Value != null)
+                .Select(kv => new KeyValuePair<string, JsonNode?>(kv.Key, JsonNode.Parse(JsonSerializer.Serialize(kv.Value!))))
+                .ToList();
+            obj["arguments"] = new JsonObject(entries);
+        }
 
         await writer.WriteLineAsync(JsonSerializer.Serialize(obj)).ConfigureAwait(false);
     }

@@ -17,6 +17,7 @@ using Avalonia.Layout;
 using Avalonia.Media;
 using Avalonia.Markup.Xaml;
 using Avalonia.Threading;
+using Avalonia.VisualTree;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using OpenLMStudio.Application.Interfaces;
@@ -116,7 +117,18 @@ public partial class MainWindow : Window
             {
                 _pinguAvatar = new PinguAvatar(pinguStore);
                 _pinguAvatar.PointerPressed += OnPinguAvatarClicked;
-                AddChild(_pinguAvatar);
+
+                // Try to find the main Grid in the visual tree and add Pingu as a child
+                try
+                {
+                    var mainGrid = FindGridInVisualTree(this);
+                    if (mainGrid != null)
+                        mainGrid.Children.Add(_pinguAvatar);
+                }
+                catch
+                {
+                    // Ignore errors adding Pingu to the visual tree
+                }
             }
         }
         catch (Exception ex)
@@ -1622,6 +1634,19 @@ public partial class MainWindow : Window
         }
 
         return default;
+    }
+
+    private static Grid? FindGridInVisualTree(Visual parent, int maxDepth = 10)
+    {
+        if (parent == null || maxDepth <= 0) return null;
+
+        foreach (var child in parent.GetVisualDescendants())
+        {
+            if (child is Grid grid)
+                return grid;
+        }
+
+        return null;
     }
 
     /// <summary>

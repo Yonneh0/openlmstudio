@@ -32,8 +32,8 @@ public class PinguStore : IPinguStore, IDisposable
 
     private void OnBlinkTimerTick(object? state)
     {
-        SetBlinkStateAsync(true);
-        _blinkTimer.Change(
+        _ = SetBlinkStateAsync(true);
+        _blinkTimer?.Change(
             TimeSpan.FromSeconds(_state.BlinkIntervalMin +
                 (DateTime.UtcNow.Millisecond / 1000.0) * (_state.BlinkIntervalMax - _state.BlinkIntervalMin)),
             Timeout.InfiniteTimeSpan);

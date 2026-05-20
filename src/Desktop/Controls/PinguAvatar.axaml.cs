@@ -1,6 +1,7 @@
 using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Interactivity;
+using Avalonia.Input;
 using Avalonia.Media;
 using OpenLMStudio.Application.Interfaces;
 using OpenLMStudio.Domain.Models.Pingu;
@@ -70,17 +71,16 @@ public partial class PinguAvatar : UserControl
         // Bob animation
         var bobSpeed = state.BobSpeed;
         if (bobSpeed != 1.0)
-            Body.RenderTransform = new TransformGroup
-            {
-                Children = new TransformCollection(new[]
-                {
-                    new ScaleTransform(1.0 + 0.02 * Math.Sin(DateTime.UtcNow.Millisecond * bobSpeed / 100.0),
-                                       1.0 + 0.02 * Math.Cos(DateTime.UtcNow.Millisecond * bobSpeed / 100.0),
-                                       35, 35),
-                })
-            };
+        {
+            var scaleX = 1.0 + 0.02 * Math.Sin(DateTime.UtcNow.Millisecond * bobSpeed / 100.0);
+            var scaleY = 1.0 + 0.02 * Math.Cos(DateTime.UtcNow.Millisecond * bobSpeed / 100.0);
+            var scale = new ScaleTransform(scaleX, scaleY);
+            Body.RenderTransform = new TransformGroup { Children = new Transforms { scale } };
+        }
         else
+        {
             Body.RenderTransform = null;
+        }
     }
 
     private void OnMouthTick(object? state)

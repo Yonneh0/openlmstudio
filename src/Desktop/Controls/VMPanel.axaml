@@ -6,33 +6,27 @@
     <StackPanel>
         <!-- VM list -->
         <ListBox x:Name="VmList"
-                 ItemsSource="{Binding VmInstances}"
-                 DisplayMemberBinding="{Binding Path=Id}"
                  Margin="0,0,0,8"/>
 
         <!-- VM controls -->
         <StackPanel Orientation="Horizontal" Margin="0,0,0,8">
             <Button Content="Start"
-                    Command="{Binding StartVmCommand}"
                     Margin="0,0,4,0"/>
             <Button Content="Stop"
-                    Command="{Binding StopVmCommand}"
                     Margin="0,0,4,0"/>
             <Button Content="Pause"
-                    Command="{Binding PauseVmCommand}"
                     Margin="0,0,4,0"/>
             <Button Content="Resume"
-                    Command="{Binding ResumeVmCommand}"
                     Margin="0,0,4,0"/>
         </StackPanel>
 
         <!-- VM console -->
-        <TextBox x:Name="VmConsoleOutput"
-                 TextWrapping="Wrap"
-                 IsReadOnly="True"
-                 AcceptsReturn="True"
-                 VerticalScrollBarVisibility="Auto"
-                 HorizontalScrollBarVisibility="Auto"
-                 FontFamily="Consolas, 'Courier New', monospace"/>
+        <ScrollViewer>
+            <TextBox x:Name="VmConsoleOutput"
+                     TextWrapping="Wrap"
+                     IsReadOnly="True"
+                     AcceptsReturn="True"
+                     FontFamily="Consolas, 'Courier New', monospace"/>
+        </ScrollViewer>
     </StackPanel>
 </UserControl>
