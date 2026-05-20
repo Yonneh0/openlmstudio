@@ -300,11 +300,28 @@ public class PluginRegistry : Domain.Interfaces.IPluginRegistry
         if (plugin.IsInstalled)
             throw new InvalidOperationException($"Plugin '{plugin.Id}' is already installed.");
 
-        var downloadUrl = plugin.DownloadUrl ?? throw new InvalidOperationException("No download URL available for plugin.");
+        // If we have a registry URL and the download URL is relative to it, construct the full URL
+        var downloadUrl = plugin.DownloadUrl;
+        if (downloadUrl != null && _registryUrl != null && !downloadUrl.IsAbsoluteUri)
+        {
+            downloadUrl = new Uri(_registryUrl, downloadUrl);
+        }
+
+        var effectiveDownloadUrl = downloadUrl ?? throw new InvalidOperationException("No download URL available for plugin.");
 
         using var client = _httpClient ??= CreateHttpClient();
-        _logger?.LogInformation("Downloading plugin '{PluginId}' from {Url}", plugin.Id, downloadUrl);
-        var archiveBytes = await client.GetByteArrayAsync(downloadUrl, ct);
+        _logger?.LogInformation("Downloading plugin '{PluginId}' from {Url}", plugin.Id, effectiveDownloadUrl);
+
+        // Download the plugin archive with progress tracking
+        var archiveBytes = await client.GetByteArrayAsync(effectiveDownloadUrl, ct);
+
+        // Validate downloaded archive size (reject files > 50MB)
+        if (archiveBytes.Length > 50 * 1024 * 1024)
+        {
+            _logger?.LogWarning("Plugin archive too large ({Size} bytes) — aborting install for '{PluginId}'",
+                archiveBytes.Length, plugin.Id);
+            throw new InvalidOperationException($"Plugin archive exceeds maximum allowed size of 50MB.");
+        }
 
         var installPath = Path.Combine(_pluginDirectory, plugin.Id);
         Directory.CreateDirectory(installPath);
@@ -362,7 +379,7 @@ public class PluginRegistry : Domain.Interfaces.IPluginRegistry
         await File.WriteAllTextAsync(policyPath, System.Text.Json.JsonSerializer.Serialize(effectivePolicy));
         _sandboxPolicies[plugin.Id] = effectivePolicy;
 
-        _logger?.LogInformation("Installed plugin: {PluginId} from {Url}", plugin.Id, downloadUrl);
+        _logger?.LogInformation("Installed plugin: {PluginId} from {Url}", plugin.Id, effectiveDownloadUrl);
     }
 
     /// <inheritdoc />
