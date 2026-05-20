@@ -56,9 +56,6 @@ public partial class MainWindow : Window
     private string _activeTab = "Chat";
     private Guid? _selectedChatId;
 
-    /// <summary>
-    /// Creates the main window with pre-resolved dependencies from the application's DI container.
-    /// </summary>
     public MainWindow(
         ILogger<MainWindow>? logger,
         IConversationManager? conversationManager = null,
@@ -69,11 +66,13 @@ public partial class MainWindow : Window
         IContextWindowBudgeter? budgeter = null)
     {
         InitializeComponent();
+        _logger = logger;
 
         // Set window title programmatically to avoid XAML entity reference issues with "&" character
         this.Title = "OpenLMStudio - Local LLM Server & Chat Client";
 
-        _logger = logger;
+        // Register keyboard shortcuts immediately after init so they fire regardless of focus.
+        this.KeyDown += OnMainWindowKeyDown;
 
         // Use pre-resolved dependencies from App.OnStartup — if none are provided (for testing), fall back to DI resolution attempt.
         _conversationManager = conversationManager ?? ResolveConversationManagerFromAppServices();
@@ -95,79 +94,6 @@ public partial class MainWindow : Window
 
         RefreshChatListAsync();
     }
-
-    private void InitializeComponent()
-    {
-        AvaloniaXamlLoader.Load(this);
-    }
-
-    // ---- UI Event Handlers Setup ----
-
-    private void SetupEventHandlers()
-    {
-        // New chat button
-        if (NewChatButton != null)
-            NewChatButton.Click += OnNewChatClicked;
-
-        // Send message button
-        if (SendButton != null)
-            SendButton.Click += OnSendMessageClicked;
-
-        // Server start/stop buttons - both left and right panels need handlers
-        if (LeftServerStartStopButton != null)
-            LeftServerStartStopButton.Click += OnServerStartStopClicked;
-
-        if (RightServerStartStopButton != null)
-            RightServerStartStopButton.Click += OnServerStartStopClicked;
-
-        // Handle Enter key in input box for sending messages
-        if (MessageInputBox != null)
-            MessageInputBox.KeyDown += OnMessageInputKeyDown;
-
-        // Global keyboard shortcuts
-        this.KeyDown += OnMainWindowKeyDown;
-
-        // Context tab custom context injection button
-        if (InjectCustomContextBtn != null)
-            InjectCustomContextBtn.Click += OnInjectCustomContextClicked;
-
-        if (RightAddCustomContextBtn != null)
-            RightAddCustomContextBtn.Click += OnRightAddCustomContextClicked;
-
-        if (RightCustomContextInjectBtn != null)
-            RightCustomContextInjectBtn.Click += OnRightCustomContextInjectClicked;
-
-        // Context compression selector (left sidebar)
-        if (ContextCompressionSelector != null)
-            ContextCompressionSelector.SelectionChanged += OnContextCompressionSelectionChanged;
-
-        // Context compression selector (right sidebar)
-        if (RightCompressionSelector != null)
-            RightCompressionSelector.SelectionChanged += OnRightCompressionSelectionChanged;
-
-        // Random seed button
-        if (RandomSeedButton != null)
-            RandomSeedButton.Click += OnRandomSeedClicked;
-
-        // Image generation generate button
-        if (ImageGenGenerateBtn != null)
-            ImageGenGenerateBtn.Click += OnImageGenGenerateClicked;
-
-        // Image generation model selector
-        if (ImageGenModelSelector != null)
-            ImageGenModelSelector.SelectionChanged += OnImageGenModelSelectorSelectionChanged;
-
-        // Settings button
-        if (SettingsButton != null)
-            SettingsButton.Click += OnSettingsClicked;
-
-        // Refresh devices button
-        if (RightRefreshDevicesBtn != null)
-            RightRefreshDevicesBtn.Click += OnRefreshDevicesClicked;
-    }
-
-    // ---- Tab Navigation ----
-
     private void ShowTab(string tabName)
     {
         _activeTab = tabName;
