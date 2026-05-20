@@ -113,45 +113,45 @@ public class ServerService : IServerService, IDisposable
         // Configure Kestrel to listen on the specified host and port
         builder.WebHost.ConfigureKestrel(serverOptions =>
         {
-                // Listen on the configured port, with HTTPS if enabled
-                if (Configuration.UseHttps)
-                {
-                    var httpsCertPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "dev-cert.pfx");
-                    var keyPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "dev-key.pem");
+            // Listen on the configured port, with HTTPS if enabled
+            if (Configuration.UseHttps)
+            {
+                var httpsCertPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "dev-cert.pfx");
+                var keyPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "dev-key.pem");
 
-                    // If HTTPS is enabled but no cert exists yet, try to auto-generate one
+                // If HTTPS is enabled but no cert exists yet, try to auto-generate one
+                if (!File.Exists(httpsCertPath))
+                {
+                    _logger?.LogInformation("HTTPS certificate not found at '{CertPath}', attempting to generate...", httpsCertPath);
+                    TryGenerateCertificate(httpsCertPath, keyPath).GetAwaiter().GetResult();
+
+                    // Check again after generation attempt
                     if (!File.Exists(httpsCertPath))
                     {
-                        _logger?.LogInformation("HTTPS certificate not found at '{CertPath}', attempting to generate...", httpsCertPath);
-                        TryGenerateCertificate(httpsCertPath, keyPath).GetAwaiter().GetResult();
-
-                        // Check again after generation attempt
-                        if (!File.Exists(httpsCertPath))
-                        {
-                            _logger?.LogWarning("HTTPS certificate not found at '{CertPath}', falling back to HTTP", httpsCertPath);
-                        }
+                        _logger?.LogWarning("HTTPS certificate not found at '{CertPath}', falling back to HTTP", httpsCertPath);
                     }
+                }
 
-                    var certToUse = File.Exists(httpsCertPath) ? httpsCertPath : keyPath; // Use whichever exists (PFX or PEM+key)
+                var certToUse = File.Exists(httpsCertPath) ? httpsCertPath : keyPath; // Use whichever exists (PFX or PEM+key)
 
-                    try
+                try
+                {
+                    if (File.Exists(certToUse))
                     {
-                        if (File.Exists(certToUse))
-                        {
-                            _logger?.LogInformation("HTTPS certificate found at '{CertPath}'", certToUse);
+                        _logger?.LogInformation("HTTPS certificate found at '{CertPath}'", certToUse);
 
-                            if (certToUse.EndsWith(".pfx", StringComparison.OrdinalIgnoreCase))
-                            {
-                                // Use PFX with password on the configured port
-                                serverOptions.ListenAnyIP(Configuration.Port, opts => opts.UseHttps(certToUse));
-                            }
-                            else if (File.Exists(keyPath))
-                            {
-                                // Use PEM cert + key pair for Kestrel on the configured port
-                                serverOptions.ListenAnyIP(Configuration.Port, opts => opts.UseHttps(certToUse, keyPath));
-                            }
+                        if (certToUse.EndsWith(".pfx", StringComparison.OrdinalIgnoreCase))
+                        {
+                            // Use PFX with password on the configured port
+                            serverOptions.ListenAnyIP(Configuration.Port, opts => opts.UseHttps(certToUse));
+                        }
+                        else if (File.Exists(keyPath))
+                        {
+                            // Use PEM cert + key pair for Kestrel on the configured port
+                            serverOptions.ListenAnyIP(Configuration.Port, opts => opts.UseHttps(certToUse, keyPath));
                         }
                     }
+                }
                 catch (Exception ex)
                 {
                     _logger?.LogWarning(ex, "Failed to use HTTPS certificate at '{CertPath}', falling back to HTTP", certToUse);
