@@ -1082,10 +1082,10 @@ public partial class MainWindow : Window
                 _logger?.LogDebug("Server streaming failed, falling back to local IChatCompletionService: {Message}", serverEx.Message);
             }
 
+            // Fall back to local service if server wasn't used
             if (!usedServerEndpoint && _chatCompletionService != null)
             {
                 await StreamResponseViaLocalServiceAsync(chatId, userMessage);
-                usedServerEndpoint = true;
             }
 
             // Stop streaming indicator regardless of how the response was generated
@@ -1252,7 +1252,7 @@ public partial class MainWindow : Window
                     if (_assistantTextBlock != null)
                     {
                         _assistantTextBlock.Text += (tokenValue ?? "");
-                        ScrollToBottomAsync().ConfigureAwait(false).GetAwaiter().GetResult();
+                        ScrollToBottomAsync().ConfigureAwait(false);
                     }
                 });
             }
@@ -1262,8 +1262,7 @@ public partial class MainWindow : Window
             }
         }
 
-        await _conversationManager.AddMessageAsync(chatId, new Message { Role = MessageRole.User, Content = userMessage });
-
+        // Note: User message was already added to the conversation in OnSendMessageClicked — do NOT add again
         // Update token count after stream completes
         var totalTokens = await _conversationManager.CalculateTotalTokenCountAsync(chatId);
         TokenCountText.Text = $"Tokens: {totalTokens}";
