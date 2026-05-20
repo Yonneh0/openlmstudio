@@ -150,6 +150,21 @@ public static class DependencyInjection
         // ProjectExplorer tool for listing directory contents recursively
         services.AddSingleton<ITool, Services.ProjectExplorerTool>();
 
+        // GitDiff tool for showing differences between git refs
+        services.AddSingleton<ITool, Services.GitDiffTool>();
+
+        // GitHistory tool for listing recent commits
+        services.AddSingleton<ITool, Services.GitHistoryTool>();
+
+        // GitBlame tool for line-by-line attribution
+        services.AddSingleton<ITool, Services.GitBlameTool>();
+
+        // GitBranches tool for listing branches, tags, and remotes
+        services.AddSingleton<ITool, Services.GitBranchesTool>();
+
+        // CodeDefinitionExtractor tool for extracting class/function/method definitions from a project
+        services.AddSingleton<ITool, Services.CodeDefinitionExtractorTool>();
+
         // ---- Phase 2: Model Management — IModelManager + Loader Registration ----
 
         // ModelManager coordinates concurrent multi-model loading across all engine types with eviction policy.
