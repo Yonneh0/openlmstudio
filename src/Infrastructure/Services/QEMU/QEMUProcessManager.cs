@@ -254,7 +254,7 @@ public class QEMUProcessManager : IQEMUProcessManager, IDisposable
             // AVR: no machine flag, no disk images — runs from flash
             sb.Clear();
             sb.Append("-bios ");
-            if (config.DiskImages.Count > 0)
+            if (config.DiskImages.Count > 0 && !string.IsNullOrEmpty(config.DiskImages[0].File))
                 sb.Append(config.DiskImages[0].File);
         }
 

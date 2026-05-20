@@ -80,7 +80,7 @@ public class PinguStore : IPinguStore, IDisposable
         }
 
         if (awake)
-            await StartAwakeningSequenceAsync().ConfigureAwait(false);
+            _ = StartAwakeningSequenceAsync();
     }
 
     public Task SetLoadingProgressAsync(double progress)

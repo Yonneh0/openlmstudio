@@ -83,7 +83,7 @@ public class SystemAIClient : ISystemAIClient
                 return true;
         }
 
-        var args = $"--mlock {_config.MemoryLock} -m \"{_config.ModelPath}\" --port {_config.Port}";
+        var args = $"--mlock -m \"{_config.ModelPath}\" --port {_config.Port}";
         try
         {
             var proc = Process.Start(new ProcessStartInfo

@@ -42,6 +42,7 @@ public partial class MainWindow : Window
 
     private readonly IChatContextManager? _contextManager;
     private readonly IContextWindowBudgeter? _budgeter;
+    private readonly IPinguStore? _pinguStore;
 
     /// <summary>Pingu avatar control for the bottom-right corner of the main window.</summary>
     private PinguAvatar? _pinguAvatar;
@@ -69,7 +70,8 @@ public partial class MainWindow : Window
         IModelRepository? modelRepository = null,
         IChatCompletionService? chatCompletionService = null,
         IChatContextManager? contextManager = null,
-        IContextWindowBudgeter? budgeter = null)
+        IContextWindowBudgeter? budgeter = null,
+        IPinguStore? pinguStore = null)
     {
         InitializeComponent();
         _logger = logger;
@@ -87,6 +89,7 @@ public partial class MainWindow : Window
         _chatCompletionService = chatCompletionService ?? ResolveChatCompletionServiceFromAppServices();
         _contextManager = contextManager ?? ResolveContextManagerFromAppServices();
         _budgeter = budgeter ?? ResolveBudgeterFromAppServices();
+        _pinguStore = pinguStore;
 
         // Subscribe to server state changes
         if (_serverService is OpenLMStudio.Infrastructure.Services.ServerService realSvc)
@@ -140,6 +143,10 @@ public partial class MainWindow : Window
     private void OnPinguAvatarClicked(object? sender, PointerPressedEventArgs e)
     {
         // Toggle Pingu menu on click
+        if (_pinguStore != null)
+        {
+            _ = _pinguStore.ToggleMenuAsync();
+        }
     }
 
     private void SetupEventHandlers()
