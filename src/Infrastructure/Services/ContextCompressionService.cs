@@ -64,7 +64,10 @@ public class ContextCompressionService : IContextCompressionService
         var existingSummaryIds = compressedHistory.Select(e => e.Summary).ToList();
         var activeMessages = messages.Where(m => !existingSummaryIds.Contains(m.Content)).ToArray();
         var activeTokens = EstimateTokens(activeMessages.Sum(m => m.Content?.Length ?? 0));
-        var compressedChars = compressedHistory.Sum(e => e.Summary.Length + e.KeyDecisions.Join(", ") + e.FilesModified.Join(", "));
+        var compressedChars = compressedHistory.Sum(e =>
+            e.Summary.Length +
+            (e.KeyDecisions.Count > 0 ? e.KeyDecisions[0].Length : 0) +
+            (e.FilesModified.Count > 0 ? e.FilesModified[0].Length : 0));
         var compressionRatio = totalChars > 0 ? (int)((1 - compressedChars / totalChars) * 100) : 0;
 
         return new CompressedStats
@@ -107,8 +110,8 @@ public class ContextCompressionService : IContextCompressionService
         var content = string.Join("\n", messages.Select(m => $"[{m.Role}]: {m.Content}"));
         return new CompressedEntry
         {
-            Summary = $"Compressed {messages.Count} messages ({EstimateTokens(content)} tokens): {content.Substring(0, Math.Min(200, content.Length))}...",
-            KeyDecisions = messages.Where(m => m.Role == "assistant" && m.Content?.Contains("decision") == true)
+            Summary = $"Compressed {messages.Count} messages ({EstimateTokens(content.Length)} tokens): {(content.Length > 200 ? content.Substring(0, 200) + "..." : content)}",
+            KeyDecisions = messages.Where(m => m.Role == MessageRole.Assistant && m.Content?.Contains("decision") == true)
                 .Select(m => m.Content!).ToList(),
             FilesModified = messages.Where(m => m.Content?.Contains("file") == true)
                 .Select(m => m.Content!).ToList(),

@@ -1,6 +1,7 @@
 using Microsoft.Extensions.Logging;
 using OpenLMStudio.Application.Interfaces;
 using OpenLMStudio.Domain.Models.SystemAI;
+using System.Text;
 using System.Text.Json;
 
 namespace OpenLMStudio.Infrastructure.Services;
@@ -15,9 +16,10 @@ public class ChatMessage
 }
 
 /// <summary>
-/// Request for chat completions.
+/// Request for chat completions to the llama.cpp server.
+/// Renamed from ChatRequest to avoid collision with the ChatRequest record in IChatCompletionService.cs.
 /// </summary>
-public class ChatRequest
+public class SystemAIChatRequest
 {
     public ChatMessage[] Messages { get; set; } = Array.Empty<ChatMessage>();
     public bool Stream { get; set; }
@@ -125,7 +127,7 @@ public class SystemAIClient : ISystemAIClient
 
         messages.Add(new() { Role = "user", Content = message });
 
-        var body = new ChatRequest
+        var body = new SystemAIChatRequest
         {
             Messages = messages.ToArray(),
             Stream = true,
@@ -168,13 +170,21 @@ public class SystemAIClient : ISystemAIClient
 
                     try
                     {
-                        var parsed = JsonDocument.Parse(data).RootElement;
-                        var choices = parsed["choices"]?.GetProperty(0);
-                        var delta = choices?["delta"]?["content"]?.GetString();
-                        if (!string.IsNullOrEmpty(delta))
+                        var bytes = System.Text.Encoding.UTF8.GetBytes(data);
+                        using var doc = JsonDocument.Parse(bytes);
+                        var root = doc.RootElement;
+                        if (root.TryGetProperty("choices", out var choices) && choices.GetArrayLength() > 0)
                         {
-                            sb.Append(delta);
-                            OnChunk?.Invoke(this, new SseChunk(delta));
+                            var delta = choices[0];
+                            if (delta.TryGetProperty("delta", out var deltaProp) && deltaProp.TryGetProperty("content", out var contentProp))
+                            {
+                                var text = contentProp.GetString();
+                                if (!string.IsNullOrEmpty(text))
+                                {
+                                    sb.Append(text);
+                                    OnChunk?.Invoke(this, new SseChunk(text));
+                                }
+                            }
                         }
                     }
                     catch (JsonException ex)

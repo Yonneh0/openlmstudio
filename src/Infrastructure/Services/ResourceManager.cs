@@ -1,54 +1,122 @@
-using Microsoft.Extensions.Logging;
 using OpenLMStudio.Application.Interfaces;
+using OpenLMStudio.Domain.Models.QEMU;
+using OpenLMStudio.Infrastructure.Services.QEMU;
 
 namespace OpenLMStudio.Infrastructure.Services;
 
 /// <summary>
-/// Resource manager for CPU/memory/GPU monitoring with VM-aware allocation.
-/// Minimal stub — full implementation requires hardware monitoring libraries.
+/// Resource monitoring with VM-aware allocation.
 /// </summary>
-public class ResourceManager : IDisposable
+public class ResourceManager : IResourceManager, IDisposable
 {
-    private readonly ILogger<ResourceManager> _logger;
-    private readonly IQEMUProcessManager? _qemuManager;
-    private readonly Timer? _monitorTimer;
+    private readonly IQEMUProcessManager _qemuManager;
+    private readonly System.Threading.Timer? _monitorTimer;
+    private readonly int _monitorIntervalMs;
+    private static readonly int MAX_CONTEXT = 128 * 1024;
+    private readonly IContextCompressionService? _contextCompression;
+    private bool _disposed;
 
-    public ResourceManager(ILogger<ResourceManager> logger, IQEMUProcessManager? qemuManager = null)
+    public ResourceManager(IQEMUProcessManager qemuManager, IContextCompressionService? contextCompression = null, int monitorIntervalMs = 10000)
     {
-        _logger = logger;
         _qemuManager = qemuManager;
-        _monitorTimer = new Timer(MonitorResources, null, Timeout.Infinite, Timeout.Infinite);
+        _contextCompression = contextCompression;
+        _monitorIntervalMs = monitorIntervalMs;
+        _monitorTimer = new System.Threading.Timer(_ => MonitorResourcesAsync().ConfigureAwait(false).GetAwaiter().GetResult(), null, _monitorIntervalMs, _monitorIntervalMs);
     }
 
-    private void MonitorResources(object? state)
+    public async Task<ResourceMetrics> MonitorResourcesAsync()
+    {
+        var cpu = GetCpuUsage();
+        var memory = GetMemoryUsage();
+        var disk = GetDiskSpace();
+
+        var vmInstances = _qemuManager.Instances.Select(vm => new VmResource
+        {
+            Id = vm.Id,
+            Architecture = vm.Architecture,
+            RamBytes = vm.RamBytes,
+            State = vm.State,
+            CpuCores = vm.CpuTopology.Sockets ?? 1
+        }).ToList();
+
+        return new ResourceMetrics
+        {
+            Cpu = cpu,
+            Memory = memory,
+            Gpu = 0,
+            Disk = disk,
+            VmInstances = vmInstances
+        };
+    }
+
+    public async Task AdjustModelSettingsAsync(ResourceMetrics metrics)
+    {
+        if (metrics.Cpu > 90)
+        {
+            // In a real implementation, this would adjust model engine settings
+            // For now, just log the resource pressure
+            // System.Diagnostics.Debug.WriteLine($"CPU pressure detected: {metrics.Cpu}%");
+        }
+    }
+
+    public async Task CompactPromptIfNeededAsync(int contextLength)
+    {
+        if (contextLength > MAX_CONTEXT && _contextCompression != null)
+        {
+            await _contextCompression.CompressConversationAsync(
+                Array.Empty<OpenLMStudio.Domain.Models.Message>(),
+                Array.Empty<OpenLMStudio.Domain.Models.ContextCompression.CompressedEntry>()).ConfigureAwait(false);
+        }
+    }
+
+    private double GetCpuUsage()
     {
         try
         {
-            var process = System.Diagnostics.Process.GetCurrentProcess();
-            var cpuUsage = process.TotalProcessorTime.TotalMilliseconds /
-                (DateTime.Now - process.StartTime).TotalMilliseconds;
-
-            _logger.LogDebug("Resource monitor: CPU={Cpu:P0}", cpuUsage / Environment.ProcessorCount);
+            var proc = System.Diagnostics.Process.GetCurrentProcess();
+            var totalCores = Environment.ProcessorCount;
+            if (totalCores == 0)
+                return 0;
+            var elapsed = DateTime.UtcNow - proc.StartTime;
+            var cpuTime = proc.TotalProcessorTime.TotalMilliseconds;
+            return Math.Min(100, (cpuTime / (elapsed.TotalMilliseconds * totalCores)) * 100);
         }
-        catch (Exception ex)
+        catch
         {
-            _logger.LogWarning(ex, "Resource monitor error");
+            return 0;
         }
     }
 
-    public void StartMonitoring()
+    private double GetMemoryUsage()
     {
-        _monitorTimer?.Change(TimeSpan.FromSeconds(5), TimeSpan.FromSeconds(10));
+        try
+        {
+            var proc = System.Diagnostics.Process.GetCurrentProcess();
+            return ((double)proc.WorkingSet64 / (1024 * 1024));
+        }
+        catch
+        {
+            return 0;
+        }
     }
 
-    public void StopMonitoring()
+    private double GetDiskSpace()
     {
-        _monitorTimer?.Change(Timeout.Infinite, Timeout.Infinite);
+        try
+        {
+            var drive = new System.IO.DriveInfo(Environment.GetEnvironmentVariable("HOME") ?? Environment.GetEnvironmentVariable("USERPROFILE") ?? Environment.GetFolderPath(Environment.SpecialFolder.UserProfile));
+            return drive.TotalFreeSpace / (1024.0 * 1024 * 1024);
+        }
+        catch
+        {
+            return 0;
+        }
     }
 
     public void Dispose()
     {
-        StopMonitoring();
+        if (_disposed) return;
+        _disposed = true;
         _monitorTimer?.Dispose();
     }
 }

@@ -94,11 +94,18 @@ public class EngineLogger : IEngineLogger
         {
             try
             {
-                var parsed = JsonDocument.Parse(line);
-                var choices = parsed.RootElement["choices"]?.GetProperty(0);
-                var content = choices?["delta"]?["content"]?.GetString();
-                if (content != null)
-                    AddLogEntry(engineId, AppLogLevel.Trace, $"Token: {content}");
+                var bytes = System.Text.Encoding.UTF8.GetBytes(line);
+                using var parsed = JsonDocument.Parse(bytes);
+                if (parsed.RootElement.TryGetProperty("choices", out var choices) && choices.GetArrayLength() > 0)
+                {
+                    var delta = choices[0];
+                    if (delta.TryGetProperty("delta", out var deltaProp) && deltaProp.TryGetProperty("content", out var contentProp))
+                    {
+                        var content = contentProp.GetString();
+                        if (!string.IsNullOrEmpty(content))
+                            AddLogEntry(engineId, AppLogLevel.Trace, $"Token: {content}");
+                    }
+                }
             }
             catch
             {
@@ -116,7 +123,7 @@ public class EngineLogger : IEngineLogger
 
     private static MLogLogLevel MapLogLevel(AppLogLevel level) => level switch
     {
-        AppLogLevel.Trace => MLogLogLevel.Trace,
+        AppLogLevel.Trace => MLogLogLevel.Debug,
         AppLogLevel.Debug => MLogLogLevel.Debug,
         AppLogLevel.Info => MLogLogLevel.Information,
         AppLogLevel.Warn => MLogLogLevel.Warning,

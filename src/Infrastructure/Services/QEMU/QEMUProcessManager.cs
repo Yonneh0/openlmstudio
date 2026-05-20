@@ -2,6 +2,9 @@ using Microsoft.Extensions.Logging;
 using OpenLMStudio.Application.Interfaces;
 using OpenLMStudio.Domain.Models.QEMU;
 using System.Diagnostics;
+using System.Net;
+using System.Net.Sockets;
+using System.Text;
 using System.Text.Json;
 using System.Text.Json.Nodes;
 
@@ -38,7 +41,7 @@ public class QEMUProcessManager : IQEMUProcessManager, IDisposable
         { ArchitectureType.SPARC64, new[] { "qemu-system-sparc64" } },
     };
 
-    public QEMUProcessManager(ILogger<QEMUProcessManager>? logger = null)
+    public QEMUProcessManager(ILogger<QEMUProcessManager> logger)
     {
         _logger = logger;
     }

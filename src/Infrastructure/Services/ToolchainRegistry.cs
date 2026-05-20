@@ -50,7 +50,11 @@ public class ToolchainRegistry : IToolchainRegistry, IDisposable
         {
             var url = $"{ToolchainBaseUrl}/v1.0/{cacheKey}.tar.gz";
             var tempPath = Path.GetTempFileName();
-            await _httpClient.DownloadFileAsync(new Uri(url), tempPath).ConfigureAwait(false);
+            var response = await _httpClient.GetAsync(new Uri(url), HttpCompletionOption.ResponseHeadersRead).ConfigureAwait(false);
+            response.EnsureSuccessStatusCode();
+            using var stream = await response.Content.ReadAsStreamAsync().ConfigureAwait(false);
+            await using var fileStream = new FileStream(tempPath, FileMode.Create, FileAccess.Write);
+            await stream.CopyToAsync(fileStream).ConfigureAwait(false);
 
             Directory.CreateDirectory(localPath);
             using var archive = new FileStream(tempPath, FileMode.Open, FileAccess.Read);

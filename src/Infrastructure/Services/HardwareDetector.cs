@@ -1,4 +1,7 @@
 using Microsoft.Extensions.Logging;
+using System.Diagnostics;
+using System.Runtime.InteropServices;
+using System.Security;
 
 namespace OpenLMStudio.Infrastructure.Services;
 
@@ -9,7 +12,7 @@ public class HardwareDetector
 {
     private readonly ILogger<HardwareDetector>? _logger;
 
-    public HardwareDetector(ILogger<HardwareDetector>? logger = null)
+    public HardwareDetector(ILogger<HardwareDetector> logger)
     {
         _logger = logger;
     }
@@ -45,9 +48,9 @@ public class HardwareDetector
 
     private static string DetectPlatform()
     {
-        if (Environment.OSVersion.Platform == PlatformID.Win32Windows || Environment.OSVersion.Platform == PlatformID.Win32NT)
+        if (Environment.OSVersion.Platform == PlatformID.Win32Windows || Environment.OSVersion.Platform == PlatformID.Win32NT || Environment.OSVersion.Platform == PlatformID.Win32S)
             return "win32";
-        if (RuntimeInformation.IsOSPlatform(OSPlatform.OSX))
+        if (RuntimeInformation.IsOSPlatform(OSPlatform.Create("MACOS")))
             return "darwin";
         if (RuntimeInformation.IsOSPlatform(OSPlatform.Linux))
             return "linux";
@@ -115,7 +118,12 @@ public class HardwareDetector
                 RedirectStandardOutput = true,
                 RedirectStandardError = true,
             });
-            await proc!.WaitForExitAsync(timeout);
+            await proc!.WaitForExitAsync(CancellationToken.None);
+            if (!proc.HasExited)
+            {
+                proc.Kill();
+                return null;
+            }
             return await proc.StandardOutput.ReadToEndAsync();
         }
         catch

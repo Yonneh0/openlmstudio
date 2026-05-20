@@ -62,6 +62,8 @@ public class PinguState
     public bool IsBlinking { get; set; }
     public int MouthFrame { get; set; }
     public double BobSpeed { get; set; } = 1.0;
+    public double BlinkIntervalMin { get; set; } = 1.5;
+    public double BlinkIntervalMax { get; set; } = 3.0;
 
     // Awakening state
     public bool IsAwake { get; set; }
@@ -80,6 +82,8 @@ public class PinguState
         IsBlinking = false;
         MouthFrame = 0;
         BobSpeed = 1.0;
+        BlinkIntervalMin = 1.5;
+        BlinkIntervalMax = 3.0;
         AwakeningPhase = AwakeningPhase.None;
         IsLoadingModel = false;
         LoadProgress = 0;
