@@ -76,17 +76,23 @@ public class CommandExecutionService : ICommandExecutionService
         return Task.CompletedTask;
     }
 
-    public IReadOnlyList<SandboxProcessInfo> GetActiveProcesses() =>
-        _activeProcesses.Values
-            .Where(p => !p.HasExited)
-            .Select(p => new SandboxProcessInfo(
-                p.Id,
-                p.MainModule?.FileName ?? "N/A",
-                p.StartTime == null ? DateTime.UtcNow : p.StartTime.Value,
-                true,
-                p.TotalProcessorTime.TotalMilliseconds))
-            .ToList()
-            .AsReadOnly();
+    public IReadOnlyList<SandboxProcessInfo> GetActiveProcesses()
+    {
+        var result = new List<SandboxProcessInfo>();
+        foreach (var p in _activeProcesses.Values)
+        {
+            if (!p.HasExited)
+            {
+                result.Add(new SandboxProcessInfo(
+                    p.Id,
+                    p.MainModule?.FileName ?? "N/A",
+                    p.StartTime,
+                    true,
+                    p.TotalProcessorTime.TotalMilliseconds));
+            }
+        }
+        return result;
+    }
 
     public async Task<SandboxResourceUsage> GetResourceUsageAsync(int processId)
     {
