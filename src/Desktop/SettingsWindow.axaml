@@ -4,7 +4,6 @@
         Width="900" Height="700">
 
     <Window.Resources>
-        <!-- Dark theme resources as SolidColorBrush for StaticResource binding -->
         <SolidColorBrush x:Key="BgPrimary" Color="#1E1E22"/>
         <SolidColorBrush x:Key="BgSecondary" Color="#252529"/>
         <SolidColorBrush x:Key="BgTertiary" Color="#2D2D30"/>
@@ -15,9 +14,7 @@
         <SolidColorBrush x:Key="AccentRed" Color="#FF6B6B"/>
     </Window.Resources>
 
-    <!-- Avalonia Style selectors for styling controls by class/type -->
     <Window.Styles>
-        <!-- Tab style -->
         <Style Selector="RadioButton.settingsTab">
             <Setter Property="Background" Value="{StaticResource BgTertiary}"/>
             <Setter Property="Foreground" Value="{StaticResource TextPrimary}"/>
@@ -31,26 +28,22 @@
             <Setter Property="BorderBrush" Value="{StaticResource AccentBlue}"/>
         </Style>
 
-        <!-- Setting item style -->
         <Style Selector="StackPanel.settingItem">
             <Setter Property="Margin" Value="0,4,0,12"/>
         </Style>
 
-        <!-- Label style -->
         <Style Selector="TextBlock.settingLabel">
             <Setter Property="Foreground" Value="{StaticResource TextPrimary}"/>
             <Setter Property="FontSize" Value="13"/>
             <Setter Property="Margin" Value="0,0,0,4"/>
         </Style>
 
-        <!-- Description style -->
         <Style Selector="TextBlock.settingDescription">
             <Setter Property="Foreground" Value="{StaticResource TextSecondary}"/>
             <Setter Property="FontSize" Value="12"/>
             <Setter Property="Margin" Value="0,2,0,8"/>
         </Style>
 
-        <!-- Input style -->
         <Style Selector="TextBox.settingInput">
             <Setter Property="Background" Value="{StaticResource BgTertiary}"/>
             <Setter Property="Foreground" Value="{StaticResource TextPrimary}"/>
@@ -59,7 +52,6 @@
             <Setter Property="BorderBrush" Value="#3A3A3E"/>
         </Style>
 
-        <!-- Save button style -->
         <Style Selector="Button.saveBtn">
             <Setter Property="Background" Value="{StaticResource AccentBlue}"/>
             <Setter Property="Foreground" Value="White"/>
@@ -68,7 +60,6 @@
             <Setter Property="FontSize" Value="14"/>
         </Style>
 
-        <!-- Cancel button style -->
         <Style Selector="Button.cancelBtn">
             <Setter Property="Background" Value="{StaticResource BgTertiary}"/>
             <Setter Property="Foreground" Value="{StaticResource TextPrimary}"/>
@@ -77,7 +68,6 @@
             <Setter Property="BorderBrush" Value="#3A3A3E"/>
         </Style>
 
-        <!-- Toggle style -->
         <Style Selector="CheckBox.settingToggle">
             <Setter Property="Foreground" Value="{StaticResource TextPrimary}"/>
             <Setter Property="FontSize" Value="14"/>
@@ -86,15 +76,11 @@
 
     <Grid>
         <Grid.RowDefinitions>
-            <!-- Tab bar -->
             <RowDefinition Height="Auto"/>
-            <!-- Settings content -->
             <RowDefinition Height="*"/>
-            <!-- Buttons row -->
             <RowDefinition Height="Auto"/>
         </Grid.RowDefinitions>
 
-        <!-- Tab navigation (using RadioButton for Avalonia compatibility) -->
         <StackPanel Grid.Row="0" Orientation="Horizontal">
             <RadioButton x:Name="ServerTabButton" 
                          Content="Server"
@@ -105,21 +91,22 @@
                          Content="Model"
                          Classes="settingsTab"/>
             
-            <RadioButton x:Name="AgentTabButton"
-                         Content="Agent"
-                         Classes="settingsTab"/>
-        </StackPanel>
+             <RadioButton x:Name="AgentTabButton"
+                          Content="Agent"
+                          Classes="settingsTab"/>
+             
+             <RadioButton x:Name="PluginTabButton"
+                          Content="Plugin"
+                          Classes="settingsTab"/>
+         </StackPanel>
 
-        <!-- Settings content panels -->
         <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto">
             <Grid>
-                <!-- Server settings panel -->
                 <StackPanel x:Name="ServerSettingsPanel">
                     <Border Background="{StaticResource BgSecondary}" CornerRadius="4" Padding="20" Margin="0,0,0,16">
                         <TextBlock Text="Server Settings" FontWeight="SemiBold" Foreground="#4FC3F7" FontSize="18"/>
                     </Border>
 
-                    <!-- Port setting -->
                     <StackPanel Classes="settingItem">
                         <TextBlock Classes="settingLabel" Text="Server Port"/>
                         <TextBlock Classes="settingDescription" 
@@ -129,7 +116,6 @@
                         </TextBox>
                     </StackPanel>
 
-                    <!-- HTTPS setting -->
                     <StackPanel Classes="settingItem">
                         <TextBlock Classes="settingLabel" Text="Enable HTTPS"/>
                         <TextBlock Classes="settingDescription" 
@@ -139,7 +125,6 @@
                         </CheckBox>
                     </StackPanel>
 
-                    <!-- API Key setting -->
                     <StackPanel Classes="settingItem">
                         <TextBlock Classes="settingLabel" Text="API Key (Optional)"/>
                         <TextBlock Classes="settingDescription" 
@@ -147,7 +132,6 @@
                         <TextBox x:Name="ApiKeySettingInput" Classes="settingInput"/>
                     </StackPanel>
 
-                    <!-- Rate Limiting setting -->
                     <StackPanel Classes="settingItem">
                         <TextBlock Classes="settingLabel" Text="Rate Limiting (Requests/Minute)"/>
                         <TextBlock Classes="settingDescription" 
@@ -157,7 +141,6 @@
                         </TextBox>
                     </StackPanel>
 
-                    <!-- Context Length setting -->
                     <StackPanel Classes="settingItem">
                         <TextBlock Classes="settingLabel" Text="Default Context Length (Tokens)"/>
                         <TextBlock Classes="settingDescription" 
@@ -168,13 +151,11 @@
                     </StackPanel>
                 </StackPanel>
 
-                <!-- Model settings panel -->
                 <StackPanel x:Name="ModelSettingsPanel" IsVisible="False">
                     <Border Background="{StaticResource BgSecondary}" CornerRadius="4" Padding="20" Margin="0,0,0,16">
                         <TextBlock Text="Model Settings" FontWeight="SemiBold" Foreground="#4FC3F7" FontSize="18"/>
                     </Border>
 
-                    <!-- Default model setting -->
                     <StackPanel Classes="settingItem">
                         <TextBlock Classes="settingLabel" Text="Default Model"/>
                         <TextBlock Classes="settingDescription" 
@@ -187,7 +168,6 @@
                         </ComboBox>
                     </StackPanel>
 
-                    <!-- Offload setting -->
                     <StackPanel Classes="settingItem">
                         <TextBlock Classes="settingLabel" Text="GPU Layer Offloading (n-gpu-layers)"/>
                         <TextBlock Classes="settingDescription" 
@@ -195,15 +175,13 @@
                         <Slider x:Name="GpuOffloadSlider" Minimum="-1" Maximum="999" Value="-1"/>
                     </StackPanel>
 
-                    <!-- Context length override -->
                     <StackPanel Classes="settingItem">
                         <TextBlock Classes="settingLabel" Text="Context Length Override"/>
                         <TextBlock Classes="settingDescription" 
-                                   Text="Override the default context window size. Leave empty to use model's native context."/>
+                                   Text="Override the default context window size. Leave empty to use model native context."/>
                         <TextBox x:Name="ContextLengthOverrideInput" Classes="settingInput"/>
                     </StackPanel>
 
-                    <!-- Temperature setting -->
                     <StackPanel Classes="settingItem">
                         <TextBlock Classes="settingLabel" Text="Default Temperature"/>
                         <TextBlock Classes="settingDescription" 
@@ -211,7 +189,6 @@
                         <Slider x:Name="TemperatureSlider" Minimum="0" Maximum="2" Value="0.7"/>
                     </StackPanel>
 
-                    <!-- Top-P setting -->
                     <StackPanel Classes="settingItem">
                         <TextBlock Classes="settingLabel" Text="Default Top-P"/>
                         <TextBlock Classes="settingDescription" 
@@ -219,7 +196,6 @@
                         <Slider x:Name="TopPValueSlider" Minimum="0" Maximum="1" Value="1.0"/>
                     </StackPanel>
 
-                    <!-- Max Tokens setting -->
                     <StackPanel Classes="settingItem">
                         <TextBlock Classes="settingLabel" Text="Default Max Tokens"/>
                         <TextBlock Classes="settingDescription" 
@@ -229,12 +205,10 @@
                         </TextBox>
                     </StackPanel>
 
-                    <!-- Image generation defaults -->
                     <Border Background="{StaticResource BgSecondary}" CornerRadius="4" Padding="20" Margin="0,8,0,16">
                         <TextBlock Text="Image Generation Defaults" FontWeight="SemiBold" Foreground="#4FC3F7" FontSize="16"/>
                     </Border>
 
-                    <!-- Image resolution -->
                     <StackPanel Classes="settingItem">
                         <TextBlock Classes="settingLabel" Text="Default Resolution"/>
                         <ComboBox x:Name="ImageResSettingInput" 
@@ -247,24 +221,20 @@
                         </ComboBox>
                     </StackPanel>
 
-                    <!-- Image steps -->
                     <StackPanel Classes="settingItem">
                         <TextBlock Classes="settingLabel" Text="Default Steps"/>
                         <Slider x:Name="ImageStepsSettingSlider" Minimum="1" Maximum="100" Value="30"/>
                     </StackPanel>
 
-                    <!-- Image CFG scale -->
                     <StackPanel Classes="settingItem">
                         <TextBlock Classes="settingLabel" Text="Default CFG Scale"/>
                         <Slider x:Name="ImageCfgSettingSlider" Minimum="1.0" Maximum="20.0" Value="7.5"/>
                     </StackPanel>
 
-                    <!-- Compression default -->
                     <Border Background="{StaticResource BgSecondary}" CornerRadius="4" Padding="20" Margin="0,8,0,16">
                         <TextBlock Text="Context Compression Defaults" FontWeight="SemiBold" Foreground="#4FC3F7" FontSize="16"/>
                     </Border>
 
-                    <!-- Default compression -->
                     <StackPanel Classes="settingItem">
                         <TextBlock Classes="settingLabel" Text="Default Compression Strategy"/>
                         <ComboBox x:Name="CompressionStrategyInput" 
@@ -278,7 +248,6 @@
                         </ComboBox>
                     </StackPanel>
 
-                    <!-- Token budget -->
                     <StackPanel Classes="settingItem">
                         <TextBlock Classes="settingLabel" Text="Default Token Budget (per chat)"/>
                         <TextBox x:Name="TokenBudgetInput" Classes="settingInput">
@@ -287,13 +256,11 @@
                     </StackPanel>
                 </StackPanel>
 
-                <!-- Agent settings panel -->
                 <StackPanel x:Name="AgentSettingsPanel" IsVisible="False">
                     <Border Background="{StaticResource BgSecondary}" CornerRadius="4" Padding="20" Margin="0,0,0,16">
                         <TextBlock Text="Agent Settings" FontWeight="SemiBold" Foreground="#4FC3F7" FontSize="18"/>
                     </Border>
 
-                    <!-- Iteration limit -->
                     <StackPanel Classes="settingItem">
                         <TextBlock Classes="settingLabel" Text="Max Agent Iterations"/>
                         <TextBlock Classes="settingDescription" 
@@ -303,7 +270,6 @@
                         </TextBox>
                     </StackPanel>
 
-                    <!-- Auto-commit threshold -->
                     <StackPanel Classes="settingItem">
                         <TextBlock Classes="settingLabel" Text="Auto-Commit File Threshold (KB)"/>
                         <TextBlock Classes="settingDescription" 
@@ -313,7 +279,6 @@
                         </TextBox>
                     </StackPanel>
 
-                    <!-- Plan approval -->
                     <StackPanel Classes="settingItem">
                         <TextBlock Classes="settingLabel" Text="Require Plan Approval for Risky Operations"/>
                         <CheckBox x:Name="AgentPlanApprovalCheckbox" Classes="settingToggle">
@@ -322,13 +287,63 @@
                     </StackPanel>
                 </StackPanel>
 
-                <!-- Data privacy panel -->
-                <StackPanel x:Name="DataPrivacyPanel" IsVisible="False">
+                <StackPanel x:Name="PluginSettingsPanel" IsVisible="False">
                     <Border Background="{StaticResource BgSecondary}" CornerRadius="4" Padding="20" Margin="0,0,0,16">
-                        <TextBlock>Data Privacy &#38; Storage</TextBlock>
+                        <TextBlock Text="Plugin and MCP Settings" FontWeight="SemiBold" Foreground="#4FC3F7" FontSize="18"/>
                     </Border>
 
-                    <!-- Conversation encryption -->
+                    <StackPanel Classes="settingItem">
+                        <TextBlock Classes="settingLabel" Text="Plugin Registry URL"/>
+                        <TextBlock Classes="settingDescription" 
+                                   Text="URL of the plugin registry to download plugins from. Leave empty for local-only plugins."/>
+                        <TextBox x:Name="PluginRegistryUrlInput" Classes="settingInput"/>
+                    </StackPanel>
+
+                    <StackPanel Classes="settingItem">
+                        <TextBlock Classes="settingLabel" Text="Auto-Update Check Interval (minutes)"/>
+                        <TextBlock Classes="settingDescription" 
+                                   Text="How often to check for plugin updates. Set to 0 to disable auto-updates."/>
+                        <TextBox x:Name="PluginUpdateIntervalInput" Classes="settingInput">
+                            <TextBox.Text>60</TextBox.Text>
+                        </TextBox>
+                    </StackPanel>
+
+                    <StackPanel Classes="settingItem">
+                        <TextBlock Classes="settingLabel" Text="Default Plugin Sandbox Policy"/>
+                        <ComboBox x:Name="PluginSandboxPolicyInput" 
+                                  Foreground="{StaticResource TextPrimary}"
+                                  Background="{StaticResource BgTertiary}"
+                                  Padding="8,6">
+                            <TextBlock Text="Strict (No filesystem access)"/>
+                            <TextBlock Text="Restricted (Read-only filesystem)"/>
+                            <TextBlock Text="Full (Unrestricted)"/>
+                        </ComboBox>
+                    </StackPanel>
+
+                    <Border Background="{StaticResource BgSecondary}" CornerRadius="4" Padding="20" Margin="0,8,0,16">
+                        <TextBlock Text="MCP Client Defaults" FontWeight="SemiBold" Foreground="#4FC3F7" FontSize="16"/>
+                    </Border>
+
+                    <StackPanel Classes="settingItem">
+                        <TextBlock Classes="settingLabel" Text="MCP Client Timeout (seconds)"/>
+                        <TextBox x:Name="McptimeoutInput" Classes="settingInput">
+                            <TextBox.Text>30</TextBox.Text>
+                        </TextBox>
+                    </StackPanel>
+
+                    <StackPanel Classes="settingItem">
+                        <TextBlock Classes="settingLabel" Text="Maximum Tools per MCP Server"/>
+                        <TextBox x:Name="MaxToolsPerServerInput" Classes="settingInput">
+                            <TextBox.Text>50</TextBox.Text>
+                        </TextBox>
+                    </StackPanel>
+                </StackPanel>
+
+                <StackPanel x:Name="DataPrivacyPanel" IsVisible="False">
+                    <Border Background="{StaticResource BgSecondary}" CornerRadius="4" Padding="20" Margin="0,0,0,16">
+                        <TextBlock Text="Data Privacy and Storage" FontWeight="SemiBold" Foreground="#4FC3F7" FontSize="16"/>
+                    </Border>
+
                     <StackPanel Classes="settingItem">
                         <TextBlock Classes="settingLabel" Text="Encrypt Conversations at Rest"/>
                         <TextBlock Classes="settingDescription" 
@@ -338,7 +353,6 @@
                         </CheckBox>
                     </StackPanel>
 
-                    <!-- Export format -->
                     <StackPanel Classes="settingItem">
                         <TextBlock Classes="settingLabel" Text="Default Conversation Export Format"/>
                         <ComboBox x:Name="ExportFormatInput" 
@@ -351,12 +365,10 @@
                         </ComboBox>
                     </StackPanel>
 
-                    <!-- Model cache cleanup -->
                     <Border Background="{StaticResource BgSecondary}" CornerRadius="4" Padding="20" Margin="0,8,0,16">
                         <TextBlock Text="Model Cache Cleanup" FontWeight="SemiBold" Foreground="#4FC3F7" FontSize="16"/>
                     </Border>
 
-                    <!-- Retention policy -->
                     <StackPanel Classes="settingItem">
                         <TextBlock Classes="settingLabel" Text="Least Recently Used Model Cache Timeout (days)"/>
                         <TextBlock Classes="settingDescription" 
@@ -366,7 +378,6 @@
                         </TextBox>
                     </StackPanel>
 
-                    <!-- Auto-cleanup -->
                     <StackPanel Classes="settingItem">
                         <TextBlock Classes="settingLabel" Text="Auto-Cleanup Orphaned Model Files"/>
                         <CheckBox x:Name="AutoCleanupCheckbox" Classes="settingToggle">
@@ -377,7 +388,6 @@
             </Grid>
         </ScrollViewer>
 
-        <!-- Buttons row -->
         <Border Grid.Row="2" Background="{StaticResource BgPrimary}" Padding="16,8">
             <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
                 <Button Content="Cancel" 

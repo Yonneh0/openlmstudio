@@ -35,6 +35,7 @@ public partial class SettingsWindow : Window
         ServerTabButton.IsCheckedChanged += OnTabChanged;
         ModelTabButton.IsCheckedChanged += OnTabChanged;
         AgentTabButton.IsCheckedChanged += OnTabChanged;
+        PluginTabButton.IsCheckedChanged += OnTabChanged;
 
         SaveSettingsBtn.Click += OnSaveSettingsClicked;
 
@@ -64,8 +65,8 @@ public partial class SettingsWindow : Window
             SetPanelVisibility(ModelSettingsPanel, ServerSettingsPanel);
         else if (AgentTabButton.IsChecked == true)
             SetPanelVisibility(AgentSettingsPanel, ServerSettingsPanel);
-
-        // Data privacy panel is not exposed via tabs yet — could add a fourth tab later
+        else if (PluginTabButton.IsChecked == true)
+            SetPanelVisibility(PluginSettingsPanel, ServerSettingsPanel);
     }
 
     private static void SetPanelVisibility(StackPanel activePanel, StackPanel inactivePanel)
@@ -118,6 +119,18 @@ public partial class SettingsWindow : Window
                 AgentAutoCommitSizeInput.Text = settings.AgentAutoCommitSizeKB.ToString();
             if (AgentPlanApprovalCheckbox != null)
                 AgentPlanApprovalCheckbox.IsChecked = settings.RequirePlanApproval;
+
+            // Apply plugin settings
+            if (PluginRegistryUrlInput != null)
+                PluginRegistryUrlInput.Text = settings.PluginRegistryUrl ?? string.Empty;
+            if (PluginUpdateIntervalInput != null)
+                PluginUpdateIntervalInput.Text = settings.PluginUpdateIntervalMinutes.ToString();
+            if (PluginSandboxPolicyInput != null)
+                PluginSandboxPolicyInput.SelectedIndex = (int)settings.PluginSandboxPolicy;
+            if (McptimeoutInput != null)
+                McptimeoutInput.Text = settings.McpTimeoutSeconds.ToString();
+            if (MaxToolsPerServerInput != null)
+                MaxToolsPerServerInput.Text = settings.MaxToolsPerMcpServer.ToString();
 
             // Apply data privacy settings
             if (EncryptionEnabledCheckbox != null)
@@ -180,6 +193,18 @@ public partial class SettingsWindow : Window
                 settings.ModelCacheTimeoutDays = cacheTimeout;
 
             settings.AutoCleanupOrphanedModels = AutoCleanupCheckbox?.IsChecked == true;
+
+            // Save plugin settings
+            settings.PluginRegistryUrl = PluginRegistryUrlInput?.Text?.Trim();
+            settings.PluginUpdateIntervalMinutes = PluginUpdateIntervalInput?.Text != null && int.TryParse(PluginUpdateIntervalInput.Text, out var pluginInterval)
+                ? pluginInterval : 60;
+            settings.PluginSandboxPolicy = PluginSandboxPolicyInput?.SelectedIndex >= 0
+                ? (PluginSandboxPolicy)PluginSandboxPolicyInput.SelectedIndex
+                : PluginSandboxPolicy.Strict;
+            settings.McpTimeoutSeconds = McptimeoutInput?.Text != null && int.TryParse(McptimeoutInput.Text, out var mcptimeout)
+                ? mcptimeout : 30;
+            settings.MaxToolsPerMcpServer = MaxToolsPerServerInput?.Text != null && int.TryParse(MaxToolsPerServerInput.Text, out var maxTools)
+                ? maxTools : 50;
 
             // Write settings file
             var json = System.Text.Json.JsonSerializer.Serialize(settings, new System.Text.Json.JsonSerializerOptions
@@ -253,5 +278,22 @@ public partial class SettingsWindow : Window
         public bool EnableEncryption { get; set; }
         public int ModelCacheTimeoutDays { get; set; } = 30;
         public bool AutoCleanupOrphanedModels { get; set; }
+
+        // Plugin settings
+        public string? PluginRegistryUrl { get; set; }
+        public int PluginUpdateIntervalMinutes { get; set; } = 60;
+        public PluginSandboxPolicy PluginSandboxPolicy { get; set; } = PluginSandboxPolicy.Strict;
+        public int McpTimeoutSeconds { get; set; } = 30;
+        public int MaxToolsPerMcpServer { get; set; } = 50;
+    }
+
+    /// <summary>
+    /// Plugin sandbox policy levels.
+    /// </summary>
+    private enum PluginSandboxPolicy
+    {
+        Strict,     // No filesystem access
+        Restricted, // Read-only filesystem
+        Full        // Unrestricted
     }
 }
