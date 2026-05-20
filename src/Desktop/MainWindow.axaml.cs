@@ -124,6 +124,9 @@ public partial class MainWindow : Window
         if (MessageInputBox != null)
             MessageInputBox.KeyDown += OnMessageInputKeyDown;
 
+        // Global keyboard shortcuts
+        this.KeyDown += OnMainWindowKeyDown;
+
         // Context tab custom context injection button
         if (InjectCustomContextBtn != null)
             InjectCustomContextBtn.Click += OnInjectCustomContextClicked;
@@ -1053,28 +1056,50 @@ public partial class MainWindow : Window
             StreamingIndicator.IsVisible = true;
             _isStreaming = true;
 
-            // Use the server service if running (real model loaded on local server)
-            // or use IChatCompletionService directly as a fallback for when no server is available.
-            bool usedServerEndpoint = false;
-            try
+        // Use the server service if running (real model loaded on local server)
+        // or use IChatCompletionService directly as a fallback for when no server is available.
+        bool usedServerEndpoint = false;
+        try
+        {
+            if (_serverService != null && _serverService.State == ServerState.Running)
             {
-                if (_serverService != null && _serverService.State == ServerState.Running)
-                {
-                    await StreamResponseViaServerAsync(chatId, userMessage);
-                    usedServerEndpoint = true;
-                }
-            }
-            catch (Exception serverEx)
-            {
-                // Server not available — fall back to local chat completion service
-                _logger?.LogDebug("Server streaming failed, falling back to local IChatCompletionService: {Message}", serverEx.Message);
-            }
-
-            if (!usedServerEndpoint && _chatCompletionService != null)
-            {
-                await StreamResponseViaLocalServiceAsync(chatId, userMessage);
+                await StreamResponseViaServerAsync(chatId, userMessage);
                 usedServerEndpoint = true;
             }
+        }
+        catch (Exception serverEx)
+        {
+            // Server not available — fall back to local chat completion service
+            // Check if this is a connection reset (recoverable via reconnection)
+            if (serverEx is HttpRequestException && serverEx.Message.Contains("connection"))
+            {
+                _logger?.LogWarning("Server connection lost — attempting reconnection and retry");
+                await Dispatcher.UIThread.InvokeAsync(async () =>
+                {
+                    if (_serverService != null && _serverService.State == ServerState.Running)
+                    {
+                        await Task.Delay(1000); // Brief pause before retry
+                        try
+                        {
+                            await StreamResponseViaServerAsync(chatId, userMessage);
+                            usedServerEndpoint = true;
+                            return;
+                        }
+                        catch
+                        {
+                            // Final fallback
+                        }
+                    }
+                });
+            }
+            _logger?.LogDebug("Server streaming failed, falling back to local IChatCompletionService: {Message}", serverEx.Message);
+        }
+
+        if (!usedServerEndpoint && _chatCompletionService != null)
+        {
+            await StreamResponseViaLocalServiceAsync(chatId, userMessage);
+            usedServerEndpoint = true;
+        }
 
             // Stop streaming indicator regardless of how the response was generated
             StreamingIndicator.IsVisible = false;
@@ -2056,6 +2081,52 @@ public partial class MainWindow : Window
         {
             _logger?.LogError(ex, "Failed to open settings window");
             ShowStaticError($"Failed to open settings: {ex.Message}");
+        }
+    }
+
+    // ---- Keyboard Shortcuts ----
+
+    private void OnMainWindowKeyDown(object? sender, KeyEventArgs e)
+    {
+        // Ctrl+N: New Chat
+        if (e.KeyModifiers.HasFlag(KeyModifiers.Control) && e.Key == Key.N)
+        {
+            OnNewChatClicked(null, new RoutedEventArgs());
+            e.Handled = true;
+            return;
+        }
+
+        // Ctrl+M: Toggle Model List
+        if (e.KeyModifiers.HasFlag(KeyModifiers.Control) && e.Key == Key.M)
+        {
+            ShowTab("Models");
+            e.Handled = true;
+            return;
+        }
+
+        // Ctrl+S: Toggle Server
+        if (e.KeyModifiers.HasFlag(KeyModifiers.Control) && e.Key == Key.S)
+        {
+            OnServerStartStopClicked(null, new RoutedEventArgs());
+            e.Handled = true;
+            return;
+        }
+
+        // Ctrl+K: Toggle Context Panel
+        if (e.KeyModifiers.HasFlag(KeyModifiers.Control) && e.Key == Key.K)
+        {
+            ShowTab("Context");
+            UpdateRightSidebarTab("Context");
+            e.Handled = true;
+            return;
+        }
+
+        // Ctrl+L: Settings
+        if (e.KeyModifiers.HasFlag(KeyModifiers.Control) && e.Key == Key.L)
+        {
+            OnSettingsClicked(null, new RoutedEventArgs());
+            e.Handled = true;
+            return;
         }
     }
 
