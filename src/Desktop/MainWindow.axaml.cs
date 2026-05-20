@@ -94,6 +94,67 @@ public partial class MainWindow : Window
 
         RefreshChatListAsync();
     }
+
+    private void SetupEventHandlers()
+    {
+        // New chat button
+        if (NewChatButton != null)
+            NewChatButton.Click += OnNewChatClicked;
+
+        // Send message button
+        if (SendButton != null)
+            SendButton.Click += OnSendMessageClicked;
+
+        // Server start/stop buttons - both left and right panels need handlers
+        if (LeftServerStartStopButton != null)
+            LeftServerStartStopButton.Click += OnServerStartStopClicked;
+
+        if (RightServerStartStopButton != null)
+            RightServerStartStopButton.Click += OnServerStartStopClicked;
+
+        // Handle Enter key in input box for sending messages
+        if (MessageInputBox != null)
+            MessageInputBox.KeyDown += OnMessageInputKeyDown;
+
+        // Context tab custom context injection button
+        if (InjectCustomContextBtn != null)
+            InjectCustomContextBtn.Click += OnInjectCustomContextClicked;
+
+        if (RightAddCustomContextBtn != null)
+            RightAddCustomContextBtn.Click += OnRightAddCustomContextClicked;
+
+        if (RightCustomContextInjectBtn != null)
+            RightCustomContextInjectBtn.Click += OnRightCustomContextInjectClicked;
+
+        // Context compression selector (left sidebar)
+        if (ContextCompressionSelector != null)
+            ContextCompressionSelector.SelectionChanged += OnContextCompressionSelectionChanged;
+
+        // Context compression selector (right sidebar)
+        if (RightCompressionSelector != null)
+            RightCompressionSelector.SelectionChanged += OnRightCompressionSelectionChanged;
+
+        // Random seed button
+        if (RandomSeedButton != null)
+            RandomSeedButton.Click += OnRandomSeedClicked;
+
+        // Image generation generate button
+        if (ImageGenGenerateBtn != null)
+            ImageGenGenerateBtn.Click += OnImageGenGenerateClicked;
+
+        // Image generation model selector
+        if (ImageGenModelSelector != null)
+            ImageGenModelSelector.SelectionChanged += OnImageGenModelSelectorSelectionChanged;
+
+        // Settings button
+        if (SettingsButton != null)
+            SettingsButton.Click += OnSettingsClicked;
+
+        // Refresh devices button
+        if (RightRefreshDevicesBtn != null)
+            RightRefreshDevicesBtn.Click += OnRefreshDevicesClicked;
+    }
+
     private void ShowTab(string tabName)
     {
         _activeTab = tabName;
@@ -982,50 +1043,50 @@ public partial class MainWindow : Window
             StreamingIndicator.IsVisible = true;
             _isStreaming = true;
 
-        // Use the server service if running (real model loaded on local server)
-        // or use IChatCompletionService directly as a fallback for when no server is available.
-        bool usedServerEndpoint = false;
-        try
-        {
-            if (_serverService != null && _serverService.State == ServerState.Running)
+            // Use the server service if running (real model loaded on local server)
+            // or use IChatCompletionService directly as a fallback for when no server is available.
+            bool usedServerEndpoint = false;
+            try
             {
-                await StreamResponseViaServerAsync(chatId, userMessage);
+                if (_serverService != null && _serverService.State == ServerState.Running)
+                {
+                    await StreamResponseViaServerAsync(chatId, userMessage);
+                    usedServerEndpoint = true;
+                }
+            }
+            catch (Exception serverEx)
+            {
+                // Server not available — fall back to local chat completion service
+                // Check if this is a connection reset (recoverable via reconnection)
+                if (serverEx is HttpRequestException && serverEx.Message.Contains("connection"))
+                {
+                    _logger?.LogWarning("Server connection lost — attempting reconnection and retry");
+                    await Dispatcher.UIThread.InvokeAsync(async () =>
+                    {
+                        if (_serverService != null && _serverService.State == ServerState.Running)
+                        {
+                            await Task.Delay(1000); // Brief pause before retry
+                            try
+                            {
+                                await StreamResponseViaServerAsync(chatId, userMessage);
+                                usedServerEndpoint = true;
+                                return;
+                            }
+                            catch
+                            {
+                                // Final fallback
+                            }
+                        }
+                    });
+                }
+                _logger?.LogDebug("Server streaming failed, falling back to local IChatCompletionService: {Message}", serverEx.Message);
+            }
+
+            if (!usedServerEndpoint && _chatCompletionService != null)
+            {
+                await StreamResponseViaLocalServiceAsync(chatId, userMessage);
                 usedServerEndpoint = true;
             }
-        }
-        catch (Exception serverEx)
-        {
-            // Server not available — fall back to local chat completion service
-            // Check if this is a connection reset (recoverable via reconnection)
-            if (serverEx is HttpRequestException && serverEx.Message.Contains("connection"))
-            {
-                _logger?.LogWarning("Server connection lost — attempting reconnection and retry");
-                await Dispatcher.UIThread.InvokeAsync(async () =>
-                {
-                    if (_serverService != null && _serverService.State == ServerState.Running)
-                    {
-                        await Task.Delay(1000); // Brief pause before retry
-                        try
-                        {
-                            await StreamResponseViaServerAsync(chatId, userMessage);
-                            usedServerEndpoint = true;
-                            return;
-                        }
-                        catch
-                        {
-                            // Final fallback
-                        }
-                    }
-                });
-            }
-            _logger?.LogDebug("Server streaming failed, falling back to local IChatCompletionService: {Message}", serverEx.Message);
-        }
-
-        if (!usedServerEndpoint && _chatCompletionService != null)
-        {
-            await StreamResponseViaLocalServiceAsync(chatId, userMessage);
-            usedServerEndpoint = true;
-        }
 
             // Stop streaming indicator regardless of how the response was generated
             StreamingIndicator.IsVisible = false;
