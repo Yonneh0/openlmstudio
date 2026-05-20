@@ -49,6 +49,9 @@ public partial class MainWindow : Window
     /// <summary>The text block within the assistant message that receives streamed tokens.</summary>
     private TextBlock? _assistantTextBlock;
 
+    /// <summary>Resolves the diffusion pipeline service for image generation (lazy from DI).</summary>
+    private Application.Interfaces.IDiffusionPipelineService? _diffusionPipeline;
+
     // Tab tracking
     private string _activeTab = "Chat";
     private Guid? _selectedChatId;
@@ -142,6 +145,14 @@ public partial class MainWindow : Window
         // Random seed button
         if (RandomSeedButton != null)
             RandomSeedButton.Click += OnRandomSeedClicked;
+
+        // Image generation generate button
+        if (ImageGenGenerateBtn != null)
+            ImageGenGenerateBtn.Click += OnImageGenGenerateClicked;
+
+        // Image generation model selector
+        if (ImageGenModelSelector != null)
+            ImageGenModelSelector.SelectionChanged += OnImageGenModelSelectorSelectionChanged;
 
         // Settings button
         if (SettingsButton != null)
@@ -1666,10 +1677,136 @@ public partial class MainWindow : Window
         ShowTab("Context");
     }
 
-    private void OnImageGenTabPointerPressed(object? sender, Avalonia.Input.PointerPressedEventArgs e)
+    private void OnImageGenTabPointerPressed(object? sender, Avalonia.Input.PointerPressedEventArgs e) => ShowTab("ImageGen");
+
+    /// <summary>
+    /// Handler for the Generate Image button — calls the DiffusionPipelineService to generate an image.
+    /// </summary>
+    private async void OnImageGenGenerateClicked(object? sender, RoutedEventArgs e)
     {
-        // ImageGen tab is not currently managed by the main tab system — show a placeholder message
-        ShowError("Image generation support requires diffusion engine integration (Phase 3).");
+        if (_diffusionPipeline == null)
+        {
+            // Resolve from DI
+            try
+            {
+                _diffusionPipeline = GetAppServiceProvider()?.GetService<OpenLMStudio.Application.Interfaces.IDiffusionPipelineService>();
+            }
+            catch { /* Ignore resolution errors */ }
+        }
+
+        if (_diffusionPipeline == null)
+        {
+            ShowError("Diffusion pipeline not available. Ensure ONNX Runtime and diffusion models are configured.");
+            return;
+        }
+
+        var prompt = ImageGenPromptInput?.Text ?? string.Empty;
+        if (string.IsNullOrWhiteSpace(prompt))
+        {
+            ShowError("Prompt is required for image generation.");
+            return;
+        }
+
+        var negativePrompt = ImageGenNegPromptInput?.Text ?? string.Empty;
+
+        // Read parameters from UI
+        var steps = (int)(ImageGenStepsSlider?.Value ?? 20);
+        var cfgScale = (float)(ImageGenCfgSlider?.Value ?? 7.5);
+        var seedText = ImageGenSeedInput?.Text;
+        var seed = long.TryParse(seedText ?? string.Empty, out var parsedSeed) ? parsedSeed : -1;
+        var batchSize = (int)(ImageGenBatchSizeSlider?.Value ?? 1);
+
+        // Get resolution from selector
+        var resolutionText = ImageGenResolutionSelector?.SelectedItem?.ToString() ?? "512x512";
+        var resolution = ParseResolution(resolutionText);
+
+        // Show progress
+        ImageGenProgressText.Text = $"Generating image...";
+        ImageGenGenerateBtn.IsEnabled = false;
+
+        try
+        {
+            // Get the selected model
+            var selectedModelItem = ImageGenModelSelector?.SelectedItem as ContentControl;
+            var selectedModel = selectedModelItem?.Content as TextBlock;
+            var modelMetadata = selectedModel?.Tag as OpenLMStudio.Domain.Models.MultiModalModelMetadata;
+            var modelId = modelMetadata?.Id ?? "default";
+
+            var result = await _diffusionPipeline.GenerateImageAsync(
+                new Application.Interfaces.ImageGenerationRequest(
+                    modelId,
+                    prompt,
+                    string.IsNullOrWhiteSpace(negativePrompt) ? null : negativePrompt,
+                    resolution.Width,
+                    resolution.Height,
+                    cfgScale,
+                    steps,
+                    seed),
+                CancellationToken.None);
+
+            // Display the generated image
+            if (ImageGenOutputArea != null)
+            {
+                // ImageGenOutputArea is a Border — wrap content in a StackPanel
+                var existingPanel = ImageGenOutputArea.Child as StackPanel;
+                if (existingPanel != null)
+                {
+                    existingPanel.Children.Clear();
+                }
+                else
+                {
+                    existingPanel = new StackPanel();
+                    ImageGenOutputArea.Child = existingPanel;
+                }
+
+                // Convert to bitmap and display
+                using var ms = new MemoryStream(result.ImageBytes);
+                var image = new Avalonia.Media.Imaging.Bitmap(ms);
+
+                var imageControl = new Avalonia.Controls.Image
+                {
+                    Source = image,
+                    Stretch = Avalonia.Media.Stretch.Uniform,
+                    MaxHeight = 512
+                };
+                existingPanel.Children.Add(imageControl);
+
+                // Add metadata text
+                var metadataText = new TextBlock
+                {
+                    Text = $"Seed: {result.Seed} | CFG: {result.GuidanceScale} | Steps: {result.Steps} | Model: {result.ModelId}",
+                    Foreground = new Avalonia.Media.SolidColorBrush(Avalonia.Media.Color.FromRgb(170, 170, 170)),
+                    FontSize = 10,
+                    Margin = new Thickness(0, 8, 0, 0),
+                    TextWrapping = Avalonia.Media.TextWrapping.Wrap
+                };
+                existingPanel.Children.Add(metadataText);
+            }
+
+            ImageGenProgressText.Text = "Image generated successfully.";
+        }
+        catch (Exception ex)
+        {
+            _logger?.LogError(ex, "Error generating image");
+            ImageGenProgressText.Text = $"Error: {ex.Message}";
+        }
+        finally
+        {
+            ImageGenGenerateBtn.IsEnabled = true;
+        }
+    }
+
+    private static (int Width, int Height) ParseResolution(string resolutionText)
+    {
+        try
+        {
+            var parts = resolutionText.Replace("x", "x").Split('x');
+            return (int.Parse(parts[0]), int.Parse(parts[1]));
+        }
+        catch
+        {
+            return (512, 512);
+        }
     }
 
     /// <summary>
