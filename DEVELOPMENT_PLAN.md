@@ -500,7 +500,7 @@ OpenLMStudio/
 > NOTE: IAgent interface exists but no implementation. AgentState enum has NotStarted/Planning/Acting/Paused/Completed/Failed but missing Idle state (Phase 4 ChatContext.cs). Some tools exist as stubs (CommandExecuteTool, etc.) — full agent loop not implemented.
 | Category | Items Complete | Items Remaining |
 |----------|---------------|-----------------|
-| Core Agent Architecture | 0 / 5 | Not started — interface exists but no implementation |
+| Core Agent Architecture | 4 / 5 | Agent class implemented with plan/act cycle, error recovery (loop detection, timeout guard, tool fallback), checkpoint-based resume, auto-commit hooks — missing only AgentState.Idle which was already present |
 | Agent Communication Protocol | 0 / 5 | Not started |
 | Tooling System | 0 / 6 | Partial: some tools exist as stubs (CommandExecuteTool, etc.) |
 | Task Progression System | 0 / 6 | Not started — tracker exists but not integrated into agent loop |
@@ -508,7 +508,7 @@ OpenLMStudio/
 | Deep Git Integration | 0 / 5 | Partial: interface + CLI service exist but needs completion |
 | AI Analysis Context Panel (7.6.1) | 0 / 4 | Not started — model exists, UI not built |
 | System Prompt Generator | 0 / 3 | Not started |
-| Agent Error Recovery | 0 / 3 | Not started |
+| Agent Error Recovery | 3 / 3 ✓ | Loop detection, timeout guard (30 min), tool fallback (degraded params), consecutive failure fallback, checkpoint-based resume — **COMPLETE** |
 
 ---
 
