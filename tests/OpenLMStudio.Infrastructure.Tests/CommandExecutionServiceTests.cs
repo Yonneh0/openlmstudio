@@ -31,13 +31,14 @@ public class CommandExecutionServiceTests
     }
 
     [Test]
-    public void ExecuteAsync_InvalidCommand_ReturnsNegativeExitCode()
+    public void ExecuteAsync_InvalidCommand_Fails()
     {
         var logger = new TestLogger<CommandExecutionService>();
         var svc = new CommandExecutionService(logger);
         var request = new CommandExecuteRequest("nonexistent_command_xyz_12345", TimeoutSeconds: 5);
         var result = svc.ExecuteAsync(request).Result;
-        Assert.That(result.ExitCode, Is.LessThan(0));
+        // Exit code is platform-dependent (negative on Unix, non-zero on Windows)
+        Assert.That(result.ExitCode, Is.Not.EqualTo(0));
         svc.Dispose();
     }
 
