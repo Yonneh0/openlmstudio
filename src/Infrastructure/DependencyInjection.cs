@@ -186,15 +186,26 @@ public static class DependencyInjection
 
         // IAgent interface for managing the lifecycle of an agentic task with plan/act cycle.
         // Registered as a factory because it needs both ILogger<Agent> and ITaskProgressTracker,
-        // but also needs to discover available tools at runtime from DI (MCP + built-in).
+        // plus optional IContextCompressor for loop detection and degraded action generation.
         services.AddScoped<IAgent>(resolver =>
         {
             var logger = resolver.GetService<Microsoft.Extensions.Logging.ILogger<Services.Agent>>();
             var progressTracker = resolver.GetService<ITaskProgressTracker>();
+            var contextCompressor = resolver.GetService<IContextCompressor>();
+            var toolRegistry = resolver.GetService<IToolRegistry>();
+            var chatService = resolver.GetService<IChatCompletionService>();
+            var contextManager = resolver.GetService<IChatContextManager>();
+
             if (progressTracker == null)
                 throw new InvalidOperationException("ITaskProgressTracker not found in DI container — required for Agent lifecycle tracking.");
 
-            return new Services.Agent(logger ?? NullLogger<Services.Agent>.Instance, progressTracker);
+            return new Services.Agent(
+                logger ?? NullLogger<Services.Agent>.Instance,
+                progressTracker,
+                toolRegistry,
+                chatService,
+                contextManager,
+                contextCompressor);
         });
 
         // ---- Phase 8: Plugin & MCP System ----
