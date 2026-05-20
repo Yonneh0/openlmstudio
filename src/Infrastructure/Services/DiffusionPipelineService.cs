@@ -378,6 +378,8 @@ public class DiffusionPipelineService : IDiffusionPipelineService, IDisposable
 
             // Load all three stages of the pipeline from safetensors model files
             bool textEncoderLoaded;
+            bool unetLoaded;
+            bool vaeLoaded;
             if (multimodalMeta.Format == ModelFormat.Safetensors)
             {
                 var weightFile = GetPrimaryWeightFile(multimodalMeta);
@@ -389,15 +391,23 @@ public class DiffusionPipelineService : IDiffusionPipelineService, IDisposable
                     throw new InvalidDataException($"Safetensors header validation failed for inpainting model '{request.ModelId}'.");
 
                 textEncoderLoaded = engine.LoadTextEncoder(pipelineType, weightFile);
+                unetLoaded = engine.LoadUnet(pipelineType, weightFile);
+                vaeLoaded = engine.LoadVaeDecoder(pipelineType, weightFile);
             }
             else
             {
                 _logger?.LogWarning("Non-safetensors model found for inpainting: '{ModelId}' (format: {Format})", request.ModelId, multimodalMeta.Format);
                 textEncoderLoaded = false;
+                unetLoaded = false;
+                vaeLoaded = false;
             }
 
             if (!textEncoderLoaded)
                 throw new InvalidOperationException($"Failed to load CLIP text encoder for inpainting model '{request.ModelId}'.");
+            if (!unetLoaded)
+                throw new InvalidOperationException($"Failed to load UNet for inpainting model '{request.ModelId}'.");
+            if (!vaeLoaded)
+                throw new InvalidOperationException($"Failed to load VAE decoder for inpainting model '{request.ModelId}'.");
 
             // Step 1 for inpainting: Create initial latents from noise (inpainting doesn't need VAE encoding since we blend)
             _logger?.LogInformation("Inpainting — creating initial latent noise for inpainting model '{ModelId}'", request.ModelId);
@@ -582,6 +592,8 @@ public class DiffusionPipelineService : IDiffusionPipelineService, IDisposable
 
             // Load all three stages of the pipeline from safetensors model files
             bool textEncoderLoaded;
+            bool unetLoaded;
+            bool vaeLoaded;
             if (multimodalMeta.Format == ModelFormat.Safetensors)
             {
                 var weightFile = GetPrimaryWeightFile(multimodalMeta);
@@ -593,15 +605,23 @@ public class DiffusionPipelineService : IDiffusionPipelineService, IDisposable
                     throw new InvalidDataException($"Safetensors header validation failed for outpainting model '{request.ModelId}'.");
 
                 textEncoderLoaded = engine.LoadTextEncoder(pipelineType, weightFile);
+                unetLoaded = engine.LoadUnet(pipelineType, weightFile);
+                vaeLoaded = engine.LoadVaeDecoder(pipelineType, weightFile);
             }
             else
             {
                 _logger?.LogWarning("Non-safetensors model found for outpainting: '{ModelId}' (format: {Format})", request.ModelId, multimodalMeta.Format);
                 textEncoderLoaded = false;
+                unetLoaded = false;
+                vaeLoaded = false;
             }
 
             if (!textEncoderLoaded)
                 throw new InvalidOperationException($"Failed to load CLIP text encoder for outpainting model '{request.ModelId}'.");
+            if (!unetLoaded)
+                throw new InvalidOperationException($"Failed to load UNet for outpainting model '{request.ModelId}'.");
+            if (!vaeLoaded)
+                throw new InvalidOperationException($"Failed to load VAE decoder for outpainting model '{request.ModelId}'.");
 
             // Step 1: Create initial latents from noise for the full output canvas (including new areas)
             var rng2 = new Random((int)(request.Seed ?? DateTimeOffset.UtcNow.ToUnixTimeMilliseconds()));
