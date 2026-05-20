@@ -66,8 +66,8 @@ public class ContextCompressionService : IContextCompressionService
         var activeTokens = EstimateTokens(activeMessages.Sum(m => m.Content?.Length ?? 0));
         var compressedChars = compressedHistory.Sum(e =>
             e.Summary.Length +
-            (e.KeyDecisions.Count > 0 ? e.KeyDecisions[0].Length : 0) +
-            (e.FilesModified.Count > 0 ? e.FilesModified[0].Length : 0));
+            e.KeyDecisions.Sum(d => d.Length) +
+            e.FilesModified.Sum(f => f.Length));
         var compressionRatio = totalChars > 0 ? (int)((1 - compressedChars / totalChars) * 100) : 0;
 
         return new CompressedStats

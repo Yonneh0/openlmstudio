@@ -91,9 +91,6 @@ public partial class PinguAvatar : UserControl
 
     private void OnPointerPressed(object? sender, PointerPressedEventArgs e)
     {
-        Avalonia.Threading.Dispatcher.UIThread.InvokeAsync(() =>
-        {
-            _pingu.ToggleMenuAsync().ConfigureAwait(false).GetAwaiter().GetResult();
-        });
+        _ = _pingu.ToggleMenuAsync();
     }
 }

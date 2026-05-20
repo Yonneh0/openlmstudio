@@ -150,6 +150,8 @@ public class QEMUProcessManager : IQEMUProcessManager, IDisposable
         }
     }
 
+    // Per QMP spec, capability negotiation is per-connection, not per-command.
+    // Each ExecuteQMPCommandAsync opens a new connection, so negotiation happens once per call.
     public async Task<object?> ExecuteQMPCommandAsync(string vmId, string command, Dictionary<string, object?>? args = null)
     {
         if (!_instances.TryGetValue(vmId, out var vm))
@@ -161,9 +163,14 @@ public class QEMUProcessManager : IQEMUProcessManager, IDisposable
         using var reader = new StreamReader(ns);
         using var writer = new StreamWriter(ns) { AutoFlush = true };
 
-        // Capability negotiation handshake
+        // Capability negotiation handshake (once per connection)
         await SendQMPMessageAsync(writer, "qmp_capabilities").ConfigureAwait(false);
-        await ReadQMPResponseAsync(reader).ConfigureAwait(false);
+        var capResponse = await ReadQMPResponseAsync(reader).ConfigureAwait(false);
+        if (capResponse is JsonObject capObj && !capObj.ContainsKey("return") && !capObj.ContainsKey("error"))
+        {
+            // First response might be welcome banner; read until we get the capability response
+            await ReadQMPResponseAsync(reader).ConfigureAwait(false);
+        }
 
         // Execute command
         if (args != null)

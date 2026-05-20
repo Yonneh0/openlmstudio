@@ -48,19 +48,17 @@ public class ToolchainRegistry : IToolchainRegistry, IDisposable
 
         try
         {
-            var url = $"{ToolchainBaseUrl}/v1.0/{cacheKey}.tar.gz";
+            var url = $"{ToolchainBaseUrl}/v1.0/{cacheKey}.zip";
             var tempPath = Path.GetTempFileName();
             var response = await _httpClient.GetAsync(new Uri(url), HttpCompletionOption.ResponseHeadersRead).ConfigureAwait(false);
             response.EnsureSuccessStatusCode();
-            using var stream = await response.Content.ReadAsStreamAsync().ConfigureAwait(false);
+            await using var stream = await response.Content.ReadAsStreamAsync().ConfigureAwait(false);
             await using var fileStream = new FileStream(tempPath, FileMode.Create, FileAccess.Write);
             await stream.CopyToAsync(fileStream).ConfigureAwait(false);
 
+            // Extract the zip to the cache directory
             Directory.CreateDirectory(localPath);
-            using var archive = new FileStream(tempPath, FileMode.Open, FileAccess.Read);
-            using var archiveStream = new GZipStream(archive, CompressionMode.Decompress);
-            using var destinationStream = new FileStream(Path.Combine(localPath, "output.tar"), FileMode.Create);
-            archiveStream.CopyTo(destinationStream);
+            ZipFile.ExtractToDirectory(tempPath, localPath, overwriteFiles: true);
 
             _cache[key] = localPath;
             _logger.LogInformation("Downloaded toolchain for {Arch}/{Tool}", arch, toolName);
