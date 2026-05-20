@@ -1,0 +1,18 @@
+<UserControl x:Class="OpenLMStudio.Desktop.Controls.PinguHomeTile"
+    xmlns="https://github.com/avaloniaui"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    Width="120" Height="120"
+    HorizontalOptions="Center"
+    VerticalOptions="Center">
+
+    <Border Background="{DynamicResource SystemControlBackgroundAltHighBrush}"
+            CornerRadius="24"
+            Margin="8">
+        <TextBlock Text="Pingu"
+                   FontSize="14"
+                   HorizontalTextAlignment="Center"
+                   VerticalTextAlignment="Center"
+                   Foreground="{DynamicResource SystemControlForegroundBaseHighBrush}"
+                   TextWrapping="Wrap"/>
+    </Border>
+</UserControl>

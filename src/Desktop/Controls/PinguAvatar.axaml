@@ -1,0 +1,40 @@
+<UserControl x:Class="OpenLMStudio.Desktop.Controls.PinguAvatar"
+    xmlns="https://github.com/avaloniaui"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    Width="80"
+    Height="80"
+    HorizontalOptions="Center"
+    VerticalOptions="Center">
+
+    <Panel>
+        <!-- Avatar body -->
+        <Ellipse x:Name="Body"
+                 Width="70" Height="70"
+                 Fill="White"
+                 Stroke="Black"
+                 StrokeThickness="2"
+                 Panel.ZIndex="1"/>
+
+        <!-- Eyes -->
+        <Ellipse x:Name="EyeLeft"
+                 Width="10" Height="14"
+                 Fill="Black"
+                 Panel.ZIndex="2"/>
+        <Ellipse x:Name="EyeRight"
+                 Width="10" Height="14"
+                 Fill="Black"
+                 Panel.ZIndex="2"/>
+
+        <!-- Mouth -->
+        <Ellipse x:Name="Mouth"
+                 Width="20" Height="8"
+                 Fill="Black"
+                 Panel.ZIndex="2"/>
+
+        <!-- Blink overlay (hides eyes when blinking) -->
+        <Border x:Name="BlinkOverlay"
+                Width="70" Height="70"
+                IsHitTestVisible="False"
+                Panel.ZIndex="3"/>
+    </Panel>
+</UserControl>

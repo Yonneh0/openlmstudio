@@ -1,0 +1,58 @@
+<UserControl x:Class="OpenLMStudio.Desktop.Controls.PinguPanel"
+    xmlns="https://github.com/avaloniaui"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    Width="320" Height="480">
+
+    <Border Background="{DynamicResource SystemControlBackgroundAltHighBrush}"
+            CornerRadius="12"
+            Margin="8">
+        <StackPanel Margin="16">
+            <!-- Panel header -->
+            <TextBlock Text="Pingu Panel"
+                       FontSize="18"
+                       FontWeight="SemiBold"
+                       Margin="0,0,0,12"/>
+
+            <!-- Tab content based on active panel -->
+            <TabControl x:Name="PanelTabs"
+                        SelectedIndex="0">
+                <TabItem Header="Skills">
+                    <StackPanel>
+                        <TextBlock Text="Skills"
+                                   FontSize="14"/>
+                    </StackPanel>
+                </TabItem>
+                <TabItem Header="Settings">
+                    <StackPanel>
+                        <TextBlock Text="Pingu Settings"
+                                   FontSize="14"/>
+                    </StackPanel>
+                </TabItem>
+                <TabItem Header="Models">
+                    <StackPanel>
+                        <TextBlock Text="Models"
+                                   FontSize="14"/>
+                    </StackPanel>
+                </TabItem>
+                <TabItem Header="Compile">
+                    <StackPanel>
+                        <TextBlock Text="Compile"
+                                   FontSize="14"/>
+                    </StackPanel>
+                </TabItem>
+                <TabItem Header="Logs">
+                    <StackPanel>
+                        <TextBlock Text="Logs"
+                                   FontSize="14"/>
+                    </StackPanel>
+                </TabItem>
+                <TabItem Header="About">
+                    <StackPanel>
+                        <TextBlock Text="About Pingu"
+                                   FontSize="14"/>
+                    </StackPanel>
+                </TabItem>
+            </TabControl>
+        </StackPanel>
+    </Border>
+</UserControl>

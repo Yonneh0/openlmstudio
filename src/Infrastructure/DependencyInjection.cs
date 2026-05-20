@@ -2,6 +2,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging.Abstractions;
 using OpenLMStudio.Application.Interfaces;
 using OpenLMStudio.Infrastructure.Services;
+using OpenLMStudio.Infrastructure.Services.QEMU;
 
 namespace OpenLMStudio.Infrastructure;
 
@@ -276,6 +277,41 @@ public static class DependencyInjection
 
         // ModelLifecycleTracer tracks per-model load/unload timing and VRAM allocation
         services.AddSingleton<Tracing.ModelLifecycleTracer>();
+
+        // ---- Pingu (System AI Mascot) ----
+
+        // PinguStore manages reactive Pingu state machine (mood, awakening, blink, animation)
+        services.AddSingleton<IPinguStore, PinguStore>();
+
+        // SystemAIClient provides llama.cpp inference via HTTP POST streaming
+        services.AddSingleton<ISystemAIClient, SystemAIClient>();
+
+        // QEMUProcessManager manages VM lifecycle and QMP protocol communication
+        services.AddSingleton<IQEMUProcessManager, QEMUProcessManager>();
+
+        // ArchPromptService provides architecture-specific system prompts for cross-compilation
+        services.AddSingleton<IArchPromptService, ArchPromptService>();
+
+        // VMStore provides reactive VM instance state storage
+        services.AddSingleton<IVMStore, VMStore>();
+
+        // EngineLogger provides structured logging with disk rotation for engine stdout/stderr
+        services.AddSingleton<IEngineLogger, EngineLogger>();
+
+        // ContextCompressionService compresses conversation history using System AI
+        services.AddSingleton<IContextCompressionService, ContextCompressionService>();
+
+        // HardwareDetector detects GPU/RAM for backend recommendation
+        services.AddSingleton<HardwareDetector>();
+
+        // ToolchainRegistry downloads and caches architecture-specific compiler toolchains
+        services.AddSingleton<IToolchainRegistry, ToolchainRegistry>();
+
+        // PinguAutomation provides action animations and drag-to-pause VM management
+        services.AddSingleton<IPinguAutomation, PinguAutomation>();
+
+        // ResourceManager monitors CPU/memory with VM-aware allocation
+        services.AddSingleton<IResourceManager, ResourceManager>();
 
         return services;
     }

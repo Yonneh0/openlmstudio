@@ -1,0 +1,20 @@
+<UserControl x:Class="OpenLMStudio.Desktop.Controls.VMConsole"
+    xmlns="https://github.com/avaloniaui"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    Width="600" Height="300">
+
+    <Border Background="#1E1E1E"
+            CornerRadius="8"
+            Margin="4">
+        <TextBox x:Name="ConsoleOutput"
+                 Text=""
+                 TextWrapping="NoWrap"
+                 IsReadOnly="True"
+                 AcceptsReturn="True"
+                 VerticalScrollBarVisibility="Auto"
+                 HorizontalScrollBarVisibility="Auto"
+                 FontFamily="Consolas, 'Courier New', monospace"
+                 Foreground="#D4D4D4"
+                 Background="#1E1E1E"/>
+    </Border>
+</UserControl>

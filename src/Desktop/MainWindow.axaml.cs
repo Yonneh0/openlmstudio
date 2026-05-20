@@ -22,6 +22,8 @@ using Microsoft.Extensions.Logging;
 using OpenLMStudio.Application.Interfaces;
 using OpenLMStudio.Application.Types;
 using OpenLMStudio.Domain.Models;
+using OpenLMStudio.Domain.Models.Pingu;
+using OpenLMStudio.Desktop.Controls;
 
 namespace OpenLMStudio.Desktop;
 
@@ -39,6 +41,9 @@ public partial class MainWindow : Window
 
     private readonly IChatContextManager? _contextManager;
     private readonly IContextWindowBudgeter? _budgeter;
+
+    /// <summary>Pingu avatar control for the bottom-right corner of the main window.</summary>
+    private PinguAvatar? _pinguAvatar;
 
     /// <summary>Flag indicating whether a streaming response is in progress.</summary>
     private bool _isStreaming = false;
@@ -92,7 +97,37 @@ public partial class MainWindow : Window
         // Load tab click handlers (they need access to this instance's ShowTab method)
         AttachTabClickHandlers();
 
+        // Initialize Pingu avatar if IPinguStore is available
+        InitializePingu();
+
         RefreshChatListAsync();
+    }
+
+    /// <summary>
+    /// Initializes the Pingu avatar control and wires up state change events.
+    /// </summary>
+    private void InitializePingu()
+    {
+        try
+        {
+            var sp = GetAppServiceProvider();
+            var pinguStore = sp?.GetService<IPinguStore>();
+            if (pinguStore != null)
+            {
+                _pinguAvatar = new PinguAvatar(pinguStore);
+                _pinguAvatar.PointerPressed += OnPinguAvatarClicked;
+                AddChild(_pinguAvatar);
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger?.LogWarning(ex, "Failed to initialize Pingu avatar");
+        }
+    }
+
+    private void OnPinguAvatarClicked(object? sender, PointerPressedEventArgs e)
+    {
+        // Toggle Pingu menu on click
     }
 
     private void SetupEventHandlers()

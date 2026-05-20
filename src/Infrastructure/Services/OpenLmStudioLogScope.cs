@@ -59,7 +59,7 @@ public class OpenLmStudioLogScope : IDisposable
             CurrentCorrelationId = null;
     }
 
-    public void Write(string message, LogLevel logLevel)
+    public void Write(string message, MLogLevel logLevel)
     {
         // Build structured log entry with correlation context
         var builder = new System.Text.StringBuilder();
@@ -105,7 +105,7 @@ public static class OpenLmStudioLoggingExtensions
     /// <summary>
     /// Logs an event with the OpenLMStudio telemetry component tag.
     /// </summary>
-    public static void LogOpenLmStudioEvent(this ILogger logger, LogLevel logLevel, string eventName, int id = 0)
+    public static void LogOpenLmStudioEvent(this ILogger logger, MLogLevel logLevel, string eventName, int id = 0)
     {
         var correlationId = OpenLmStudioLogScope.CurrentCorrelationId ?? "none";
 
@@ -126,23 +126,23 @@ public static class OpenLmStudioLoggingExtensions
     /// Logs a warning event with the OpenLMStudio telemetry component tag.
     /// </summary>
     public static void WarnOpenLmStudioEvent(this ILogger logger, string eventName, int id = 0) =>
-        LogOpenLmStudioEvent(logger, LogLevel.Warning, eventName, id);
+        LogOpenLmStudioEvent(logger, MLogLevel.Warning, eventName, id);
 
     /// <summary>
     /// Logs an error event with the OpenLMStudio telemetry component tag.
     /// </summary>
     public static void ErrorOpenLmStudioEvent(this ILogger logger, string eventName, int id = 0) =>
-        LogOpenLmStudioEvent(logger, LogLevel.Error, eventName, id);
+        LogOpenLmStudioEvent(logger, MLogLevel.Error, eventName, id);
 
     /// <summary>
     /// Logs an information event with the OpenLMStudio telemetry component tag.
     /// </summary>
     public static void InfoOpenLmStudioEvent(this ILogger logger, string eventName, int id = 0) =>
-        LogOpenLmStudioEvent(logger, LogLevel.Information, eventName, id);
+        LogOpenLmStudioEvent(logger, MLogLevel.Information, eventName, id);
 
     /// <summary>
     /// Logs an informational event with the OpenLMStudio telemetry component tag.
     /// </summary>
     public static void DebugOpenLmStudioEvent(this ILogger logger, string eventName, int id = 0) =>
-        LogOpenLmStudioEvent(logger, LogLevel.Debug, eventName, id);
+        LogOpenLmStudioEvent(logger, MLogLevel.Debug, eventName, id);
 }

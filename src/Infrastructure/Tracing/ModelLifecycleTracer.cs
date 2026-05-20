@@ -3,6 +3,7 @@ global using System.Collections.Concurrent;
 global using System.Diagnostics;
 global using System.Runtime.CompilerServices;
 global using Microsoft.Extensions.Logging;
+global using MLogLevel = Microsoft.Extensions.Logging.LogLevel;
 
 namespace OpenLMStudio.Infrastructure.Tracing;
 
@@ -12,8 +13,8 @@ namespace OpenLMStudio.Infrastructure.Tracing;
 internal class NoOpLogger<T> : ILogger<T>
 {
     public IDisposable? BeginScope<TState>(TState state) where TState : notnull => null;
-    public bool IsEnabled(LogLevel logLevel) => true;
-    public void Log<TState>(LogLevel logLevel, EventId eventId, TState state, Exception? exception, Func<TState, Exception?, string> formatter) { }
+    public bool IsEnabled(MLogLevel logLevel) => true;
+    public void Log<TState>(MLogLevel logLevel, EventId eventId, TState state, Exception? exception, Func<TState, Exception?, string> formatter) { }
 }
 
 /// <summary>
