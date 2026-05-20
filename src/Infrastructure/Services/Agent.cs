@@ -298,7 +298,7 @@ Propose a detailed plan for completing this task. Be specific about which tools 
                 _logger?.LogWarning("All matching tools failed to execute");
             }
 
-            ContinueWithPlan:;
+        ContinueWithPlan:;
             // Save checkpoint periodically
             if (iterations % 5 == 0)
             {
