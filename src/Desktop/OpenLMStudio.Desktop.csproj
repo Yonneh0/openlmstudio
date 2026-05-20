@@ -6,6 +6,27 @@
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
     <RootNamespace>OpenLMStudio.Desktop</RootNamespace>
+
+    <!-- Default runtime: Windows x64 -->
+    <RuntimeIdentifier>win-x64</RuntimeIdentifier>
+
+    <!-- All supported runtimes (platforms) -->
+    <RuntimeIdentifiers>win-x64;win-arm64;osx-arm64;osx-x64;linux-x64;linux-arm64</RuntimeIdentifiers>
+
+    <!-- Publish as a single self-contained executable -->
+    <SelfContained>true</SelfContained>
+    <PublishSingleFile>true</PublishSingleFile>
+    <PublishReadyToRun>false</PublishReadyToRun>
+    <TrimMode>none</TrimMode>
+    <IncludeNativeLibrariesForSelfExtract>true</IncludeNativeLibrariesForSelfExtract>
+
+    <!-- Output to root folder so OpenLMStudio.exe is at project root -->
+    <OutputPath>..\..\</OutputPath>
+    <PublishDir>..\..\</PublishDir>
+
+    <!-- Output binary name -->
+    <AssemblyName>OpenLMStudio</AssemblyName>
+
     <!-- Suppress Avalonia AVLN3001: known false positive when using DI constructor -->
     <NoWarn>AVLN3001;$(NoWarn)</NoWarn>
   </PropertyGroup>

@@ -56,18 +56,58 @@ OpenLMStudio/
 
 ### Build & Run
 
+### Quick Start (Windows)
+
 ```bash
 # Clone the repository
 git clone https://github.com/Yonneh0/openlmstudio.git
 cd openlmstudio
 
-# Restore dependencies and build
-dotnet restore
-dotnet build
+# Publish (creates self-contained OpenLMStudio.exe in the root folder)
+dotnet publish src/Desktop/OpenLMStudio.Desktop.csproj -c Publish
 
-# Run the desktop application
-dotnet run --project src/Desktop/OpenLMStudio.Desktop.csproj
+# Run
+.\OpenLMStudio.exe
 ```
+
+> **Output:** `dotnet publish -c Publish` produces a **self-contained** `OpenLMStudio.exe` (~200 MB) in the project root that includes the .NET 8 runtime and runs on any Windows machine without needing .NET installed.
+
+### Cross-Platform Builds
+
+By default, `dotnet publish` builds for **Windows x64**. To target other platforms, specify the runtime identifier (RID):
+
+```bash
+# Windows x64 (default)
+dotnet publish src/Desktop/OpenLMStudio.Desktop.csproj -c Publish -o publish/win-x64
+
+# Windows ARM64
+dotnet publish src/Desktop/OpenLMStudio.Desktop.csproj -c Publish -r win-arm64 -o publish/win-arm64
+
+# macOS (Apple Silicon — M1/M2/M3)
+dotnet publish src/Desktop/OpenLMStudio.Desktop.csproj -c Publish -r osx-arm64 -o publish/osx-arm64
+
+# macOS (Intel)
+dotnet publish src/Desktop/OpenLMStudio.Desktop.csproj -c Publish -r osx-x64 -o publish/osx-x64
+
+# Linux (x64 — Intel/AMD)
+dotnet publish src/Desktop/OpenLMStudio.Desktop.csproj -c Publish -r linux-x64 -o publish/linux-x64
+
+# Linux (ARM64 — Raspberry Pi, Jetson)
+dotnet publish src/Desktop/OpenLMStudio.Desktop.csproj -c Publish -r linux-arm64 -o publish/linux-arm64
+```
+
+> **Note:** macOS/Linux outputs have no `.exe` extension. Use `publish/<platform>/OpenLMStudio` (without extension) to run on those platforms.
+
+### Android Builds
+
+Android support requires the .NET Android workload:
+
+```bash
+dotnet workload install android
+dotnet publish src/Desktop/OpenLMStudio.Desktop.csproj -c Publish -r android.35-arm64-v8a -o publish/android-arm64
+```
+
+Android builds produce `.apk` files.
 
 ## API Endpoints
 
