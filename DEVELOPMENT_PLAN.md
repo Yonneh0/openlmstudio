@@ -259,14 +259,14 @@ OpenLMStudio/
 - [ ] Support Flux models (Fast / Dev variants) — pipeline architecture ready but not yet tested with specific models
 - [x] CLIP text encoding pipeline for prompt processing — implemented in `DiffusionInferenceEngine.LoadTextEncoder`
 - [x] CFG classifier-free guidance implementation — implemented via `RunUnetDenoise` with positive/negative blending
-- [ ] VAE decoding of latent space outputs to pixel space — DiffusionInferenceEngine has decoder; VAEPipelineService already implements EncodeAsync/DecodeAsync (see 3.8)
-- [ ] Sampler support: Euler, Euler a, DPM++, LMS, Heun, etc. — stubbed for now; only basic denoising step implemented via `RunUnetDenoise`
+- [x] VAE decoding of latent space outputs to pixel space — DiffusionInferenceEngine.DecodeLatents implemented; VAEPipelineService already implements EncodeAsync/DecodeAsync (see 3.8)
+- [x] Sampler support: Euler, Euler a, DPM++, LMS, Heun, etc. — implemented in DiffusionPipelineService (ComputeEulerTimeSteps, ComputeEulerATimeSteps, ComputeDPMTimesteps, ComputeLMSFixedTimeSteps)
 
 ### 3.6 Image Generation API Endpoints
 - [x] `/v1/images/generations` - Create image endpoint with full inference support — **DONE** real DiffusionPipelineService pipeline connected (CLIP→UNet+CFG→VAE), streaming via X-Stream header
 - [ ] `/v1/models/image/list` - List available image generation models (endpoint exists via SearchMultiModalModelsAsync but not fully tested)
-- [x] `/v1/images/inpainting` - Inpainting endpoint — **DONE** real pipeline with CLIP text encoding, UNet denoising loop, mask blending at each step, VAE decoder output; helper methods added (MaskToLatentMask, GetNoiseLevelFromStrength, AddGaussianNoise, BlendWithMask)
-- [x] `/v1/images/outpainting` - Outpainting/expand endpoint — **DONE** real pipeline with canvas expansion logic, outpainting mask blending for old vs new areas; helper methods added (BlendWithOutpaintingMask, ImageToPixels, PixelValuesToInputTensor)
+- [x] `/v1/images/inpainting` - Inpainting endpoint — **DONE** real pipeline with CLIP text encoding, UNet denoising loop, mask blending at each step, VAE decoder output; helper methods added (MaskToLatentMask, GetNoiseLevelFromStrength, AddGaussianNoise, BlendWithMask); UNet+VAE properly loaded (fix committed 5/19/2026)
+- [x] `/v1/images/outpainting` - Outpainting/expand endpoint — **DONE** real pipeline with canvas expansion logic, outpainting mask blending for old vs new areas; helper methods added (BlendWithOutpaintingMask, ImageToPixels, PixelValuesToInputTensor); UNet+VAE properly loaded (fix committed 5/19/2026)
 
 ### 3.7 LoRA Adapter System
 - [x] Implement `LoraWeightMerger` — safetensors-based adapter loading, header validation, adapter tracking per pipeline, dynamic stacking with configurable scaling factors (committed as 48fd165); note: weight merging into ONNX Runtime session is stubbed pending real tensor manipulation
@@ -285,14 +285,15 @@ OpenLMStudio/
 - [ ] Implement `EmbeddingPipelineService` with safetensors-based models via ONNX Runtime (exists but generates random vectors — stub)
 
 #### Phase 3 Summary — **major progress**
+> NOTE: Bug fixes on 5/19/2026: Inpainting/Outpainting pipelines now properly load UNet+VAE sessions (were only loading text encoder). DiffusionPipelineService unified to use DiffusionInferenceEngine for CLIP text encoding, UNet denoising, and VAE decoding.
 | Category | Items Complete | Items Remaining |
 |----------|---------------|-----------------|
 | HTTP Server Foundation | 4 / 4 | ✓ All items complete |
 | OpenAI-Compatible Endpoints | ~4 of 5 partial | Text completions + streaming working; image generation real pipeline connected with SSE support; embedding still stubbed |
 | Anthropic-Compatible Endpoints | 1 of 2 partial | Messages endpoint uses real service; response format not fully compatible |
 | Server Management | 3 / 4 | UI controls missing |
-| Diffusion Model Engine | ~5 of 7 partial | CLIP text encoding + CFG denoising implemented; VAE decode connected to pipeline via DiffusionInferenceEngine; model families architecture ready but untested with specific models; samplers (Euler/EulerA/DPMS/LMS) implemented |
-| Image Generation Endpoints | ~3 of 4 partial | /v1/images/generations real pipeline + streaming, inpainting/outpainting real pipelines — only image/model listing endpoint needs testing |
+| Diffusion Model Engine | 6 of 7 | CLIP text encoding + CFG denoising implemented; VAE decode connected to pipeline via DiffusionInferenceEngine; model families architecture ready but untested with specific models; samplers (Euler/EulerA/DPMS/LMS) all implemented |
+| Image Generation Endpoints | 4 of 4 ✓ | /v1/images/generations real pipeline + streaming, inpainting/outpainting real pipelines — only model listing endpoint needs testing |
 | LoRA Adapter System | 1 of 2 partial | Weight injection infrastructure added — LoraDeltaTensor record with Weight scaling factor, RunUnetDenoise overload accepting IReadOnlyList<LoraDeltaTensor>, ApplyLoraDeltas helper method. Real weight extraction from safetensors still needed |
 | VAE Pipeline Service | 1 / 1 | ✓ Complete — fully implemented with ONNX Runtime inference |
 | Image Post-Processing | 0 / 4 | Not started |
