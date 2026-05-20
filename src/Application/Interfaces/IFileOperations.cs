@@ -1,4 +1,7 @@
+using System;
 using System.Collections.Generic;
+using System.Threading;
+using OpenLMStudio.Domain.Interfaces;
 
 namespace OpenLMStudio.Application.Interfaces;
 
@@ -217,22 +220,9 @@ public interface ICommandExecutionService : IDisposable
     /// Gets a summary of resource usage for an active sandboxed process.
     /// </summary>
     Task<SandboxResourceUsage> GetResourceUsageAsync(int processId);
+
+    /// <summary>
+    /// Kills a sandboxed process by ID.
+    /// </summary>
+    Task KillAsync(int processId);
 }
-
-/// <summary>
-/// Information about an active sandboxed process.
-/// </summary>
-public record SandboxProcessInfo(
-    int ProcessId,
-    string Command,
-    DateTime StartedAt,
-    bool IsRunning,
-    double ElapsedMs);
-
-/// <summary>
-/// Resource usage for a sandboxed process (CPU time, memory).
-/// </summary>
-public record SandboxResourceUsage(
-    TimeSpan CpuTimeUsed,
-    long PeakWorkingSetBytes,
-    long CurrentWorkingSetBytes);

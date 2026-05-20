@@ -250,6 +250,12 @@ public class SandboxService : ISandboxService, IDisposable
     }
 
     /// <inheritdoc />
+    public async Task KillAsync(int processId)
+    {
+        await CancelProcessAsync(processId);
+    }
+
+    /// <inheritdoc />
     public void Dispose()
     {
         // Kill all sandboxed processes on disposal.

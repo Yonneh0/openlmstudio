@@ -241,6 +241,14 @@ public static class DependencyInjection
         // DigitalSignatureVerifier verifies RSA signatures on model files
         services.AddSingleton<IDigitalSignatureVerifier, Services.DigitalSignatureVerifier>();
 
+        // ---- Phase 10.5: Observability & Diagnostics ----
+
+        // ActivityTracer traces agent tool calls with timing and resource consumption
+        services.AddSingleton<Application.Interfaces.IActivityTracer, Tracing.ActivityTracer>();
+
+        // ModelLifecycleTracer tracks per-model load/unload timing and VRAM allocation
+        services.AddSingleton<Tracing.ModelLifecycleTracer>();
+
         return services;
     }
 

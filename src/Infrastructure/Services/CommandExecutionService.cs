@@ -6,6 +6,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Extensions.Logging;
 using OpenLMStudio.Application.Interfaces;
+using OpenLMStudio.Domain.Interfaces;
 
 namespace OpenLMStudio.Infrastructure.Services;
 
@@ -71,18 +72,42 @@ public class CommandExecutionService : ICommandExecutionService
     {
         if (_activeProcesses.TryGetValue(processId, out var proc) && !proc.HasExited)
             proc.Kill(true);
+        _activeProcesses.Remove(processId);
         return Task.CompletedTask;
     }
 
     public IReadOnlyList<SandboxProcessInfo> GetActiveProcesses() =>
         _activeProcesses.Values
             .Where(p => !p.HasExited)
-            .Select(p => new SandboxProcessInfo(p.Id, "N/A", DateTime.UtcNow, true, 0))
+            .Select(p => new SandboxProcessInfo(
+                p.Id,
+                p.MainModule?.FileName ?? "N/A",
+                p.StartTime == null ? DateTime.UtcNow : p.StartTime.Value,
+                true,
+                p.TotalProcessorTime.TotalMilliseconds))
             .ToList()
             .AsReadOnly();
 
-    public Task<SandboxResourceUsage> GetResourceUsageAsync(int processId) =>
-        Task.FromResult(new SandboxResourceUsage(TimeSpan.Zero, 0, 0));
+    public async Task<SandboxResourceUsage> GetResourceUsageAsync(int processId)
+    {
+        try
+        {
+            var proc = Process.GetProcessById(processId);
+            return new SandboxResourceUsage(proc.TotalProcessorTime, proc.PeakWorkingSet64, proc.WorkingSet64);
+        }
+        catch
+        {
+            return new SandboxResourceUsage(TimeSpan.Zero, 0, 0);
+        }
+    }
+
+    public Task KillAsync(int processId)
+    {
+        if (_activeProcesses.TryGetValue(processId, out var proc) && !proc.HasExited)
+            proc.Kill(true);
+        _activeProcesses.Remove(processId);
+        return Task.CompletedTask;
+    }
 
     public void Dispose()
     {

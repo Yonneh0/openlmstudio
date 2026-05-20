@@ -61,4 +61,9 @@ public interface ISandboxService : IDisposable
     /// </summary>
     Task<int> CreateProcessWithSandboxPolicyAsync(string commandLine, string? workingDirectory = null,
         Dictionary<string, string>? environmentVariables = null, PluginSandboxPolicy? policy = null);
+
+    /// <summary>
+    /// Kills a sandboxed process by its ID.
+    /// </summary>
+    Task KillAsync(int processId);
 }
