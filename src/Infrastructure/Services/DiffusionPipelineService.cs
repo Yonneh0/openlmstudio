@@ -54,87 +54,81 @@ public class DiffusionPipelineService : IDiffusionPipelineService, IDisposable
     /// </summary>
     public async Task<ImageGenerationResult> GenerateImageAsync(ImageGenerationRequest request, CancellationToken ct = default)
     {
+        // Ensure model is loaded; load it if not already present in _loadedSessions
+        var wasAlreadyLoaded = _loadedSessions.ContainsKey(request.ModelId);
+        if (!wasAlreadyLoaded)
+        {
+            var loaded = await LoadModelAsync(request.ModelId);
+            if (!loaded || !_loadedSessions.ContainsKey(request.ModelId))
+                throw new InvalidOperationException($"Failed to load model '{request.ModelId}' before generation.");
+        }
+
+        // Create engine and load pipeline stages from the model file
         var engine = new DiffusionInferenceEngine(null);
 
-        try
+        // Get the pipeline type from model metadata — try multi-modal first, then fall back to GGUF text
+        var multimodalMeta = await _modelRepo.GetMultiModalModelByIdAsync(request.ModelId);
+        if (multimodalMeta == null)
         {
-            // Ensure model is loaded; load it if not already present in _loadedSessions
-            var wasAlreadyLoaded = _loadedSessions.ContainsKey(request.ModelId);
-            if (!wasAlreadyLoaded)
-            {
-                var loaded = await LoadModelAsync(request.ModelId);
-                if (!loaded || !_loadedSessions.ContainsKey(request.ModelId))
-                    throw new InvalidOperationException($"Failed to load model '{request.ModelId}' before generation.");
-            }
-
-            // Get the pipeline type from model metadata — try multi-modal first, then fall back to GGUF text
-            var multimodalMeta = await _modelRepo.GetMultiModalModelByIdAsync(request.ModelId);
-            if (multimodalMeta == null)
-            {
-                throw new InvalidOperationException($"Image generation model '{request.ModelId}' not found in repository.");
-            }
-
-            var pipelineType = GetPipelineType(multimodalMeta);
-
-            // Load all three stages of the pipeline from safetensors model files
-            // Each stage uses its own ONNX session loaded independently
-            bool textEncoderLoaded, unetLoaded, vaeLoaded;
-
-            if (multimodalMeta.Format == ModelFormat.Safetensors)
-            {
-                var weightFile = GetPrimaryWeightFile(multimodalMeta);
-                if (string.IsNullOrEmpty(weightFile) || !File.Exists(weightFile))
-                    throw new FileNotFoundException($"Weight file not found for model '{request.ModelId}'.");
-
-                // Validate safetensors header before loading
-                var headerValid = await _safetensorParser.ValidateHeaderAsync(weightFile);
-                if (!headerValid)
-                    throw new InvalidDataException($"Safetensors header validation failed for model '{request.ModelId}'.");
-
-                textEncoderLoaded = engine.LoadTextEncoder(pipelineType, weightFile);
-                unetLoaded = engine.LoadUnet(pipelineType, weightFile);
-                vaeLoaded = engine.LoadVaeDecoder(pipelineType, weightFile);
-            }
-            else
-            {
-                // GGUF fallback — not expected for image models but handle gracefully
-                _logger?.LogWarning("Non-safetensors model found for image generation: '{ModelId}' (format: {Format})", request.ModelId, multimodalMeta.Format);
-                textEncoderLoaded = false;
-                unetLoaded = false;
-                vaeLoaded = false;
-            }
-
-            if (!textEncoderLoaded || !unetLoaded || !vaeLoaded)
-            {
-                _logger?.LogError("Pipeline initialization failed: TE={TE}, UNet={UNet}, VAE={VAE} for '{ModelId}'",
-                    textEncoderLoaded, unetLoaded, vaeLoaded, request.ModelId);
-                throw new InvalidOperationException($"Failed to load complete pipeline for model '{request.ModelId}'.");
-            }
-
-            _logger?.LogInformation("Starting full 3-stage diffusion pipeline for '{ModelId}' (CLIP→UNet+CFG→VAE)", request.ModelId);
-
-            // Run the full denoising loop with CFG
-            var resultBytes = await RunDenoisingLoop(engine, pipelineType, multimodalMeta, request, ct);
-
-            if (resultBytes == null)
-                throw new InvalidOperationException($"Diffusion inference failed for model '{request.ModelId}'.");
-
-            return new ImageGenerationResult(
-                resultBytes,
-                request.Width,
-                request.Height,
-                request.EffectiveSeed,
-                request.GuidanceScale,
-                request.Steps,
-                request.ModelId)
-            {
-                MimeType = "image/png"
-            };
+            throw new InvalidOperationException($"Image generation model '{request.ModelId}' not found in repository.");
         }
-        finally
+
+        var pipelineType = GetPipelineType(multimodalMeta);
+
+        // Load all three stages of the pipeline from safetensors model files
+        // Each stage uses its own ONNX session loaded independently
+        bool textEncoderLoaded, unetLoaded, vaeLoaded;
+
+        if (multimodalMeta.Format == ModelFormat.Safetensors)
         {
-            engine.Dispose();
+            var weightFile = GetPrimaryWeightFile(multimodalMeta);
+            if (string.IsNullOrEmpty(weightFile) || !File.Exists(weightFile))
+                throw new FileNotFoundException($"Weight file not found for model '{request.ModelId}'.");
+
+            // Validate safetensors header before loading
+            var headerValid = await _safetensorParser.ValidateHeaderAsync(weightFile);
+            if (!headerValid)
+                throw new InvalidDataException($"Safetensors header validation failed for model '{request.ModelId}'.");
+
+            textEncoderLoaded = engine.LoadTextEncoder(pipelineType, weightFile);
+            unetLoaded = engine.LoadUnet(pipelineType, weightFile);
+            vaeLoaded = engine.LoadVaeDecoder(pipelineType, weightFile);
         }
+        else
+        {
+            // GGUF fallback — not expected for image models but handle gracefully
+            _logger?.LogWarning("Non-safetensors model found for image generation: '{ModelId}' (format: {Format})", request.ModelId, multimodalMeta.Format);
+            textEncoderLoaded = false;
+            unetLoaded = false;
+            vaeLoaded = false;
+        }
+
+        if (!textEncoderLoaded || !unetLoaded || !vaeLoaded)
+        {
+            _logger?.LogError("Pipeline initialization failed: TE={TE}, UNet={UNet}, VAE={VAE} for '{ModelId}'",
+                textEncoderLoaded, unetLoaded, vaeLoaded, request.ModelId);
+            throw new InvalidOperationException($"Failed to load complete pipeline for model '{request.ModelId}'.");
+        }
+
+        _logger?.LogInformation("Starting full 3-stage diffusion pipeline for '{ModelId}' (CLIP→UNet+CFG→VAE)", request.ModelId);
+
+        // Run the full denoising loop with CFG
+        var resultBytes = await RunDenoisingLoop(engine, pipelineType, multimodalMeta, request, ct);
+
+        if (resultBytes == null)
+            throw new InvalidOperationException($"Diffusion inference failed for model '{request.ModelId}'.");
+
+        return new ImageGenerationResult(
+            resultBytes,
+            request.Width,
+            request.Height,
+            request.EffectiveSeed,
+            request.GuidanceScale,
+            request.Steps,
+            request.ModelId)
+        {
+            MimeType = "image/png"
+        };
     }
 
     /// <summary>
@@ -311,21 +305,20 @@ public class DiffusionPipelineService : IDiffusionPipelineService, IDisposable
     /// </summary>
     public async Task<ImageGenerationResult> GenerateInpaintingAsync(ImageInpaintingRequest request, CancellationToken ct = default)
     {
-        // Note: using null logger since DiffusionInferenceEngine expects ILogger<DiffusionInferenceEngine>, not ILogger<DiffusionPipelineService>.
-        // The logging from DiffusionInferenceEngine will appear under its own scope.
+        // Ensure model is loaded; load it if not already present in _loadedSessions
+        var wasAlreadyLoaded = _loadedSessions.ContainsKey(request.ModelId);
+        if (!wasAlreadyLoaded)
+        {
+            var loaded = await LoadModelAsync(request.ModelId);
+            if (!loaded || !_loadedSessions.ContainsKey(request.ModelId))
+                throw new InvalidOperationException($"Failed to load model '{request.ModelId}' for inpainting.");
+        }
+
+        // Create engine and load pipeline stages from the model file
         var engine = new DiffusionInferenceEngine(null);
 
         try
         {
-            // Ensure model is loaded; load it if not already present in _loadedSessions
-            var wasAlreadyLoaded = _loadedSessions.ContainsKey(request.ModelId);
-            if (!wasAlreadyLoaded)
-            {
-                var loaded = await LoadModelAsync(request.ModelId);
-                if (!loaded || !_loadedSessions.ContainsKey(request.ModelId))
-                    throw new InvalidOperationException($"Failed to load model '{request.ModelId}' for inpainting.");
-            }
-
             // Decode the init image from base64
             byte[]? initImageBytes = null;
             if (!string.IsNullOrEmpty(request.InitImage))
@@ -529,20 +522,20 @@ public class DiffusionPipelineService : IDiffusionPipelineService, IDisposable
     /// </summary>
     public async Task<ImageGenerationResult> GenerateOutpaintingAsync(ImageOutpaintingRequest request, CancellationToken ct = default)
     {
-        // Note: using null logger since DiffusionInferenceEngine expects ILogger<DiffusionInferenceEngine>, not ILogger<DiffusionPipelineService>.
+        // Ensure model is loaded; load it if not already present in _loadedSessions
+        var wasAlreadyLoaded = _loadedSessions.ContainsKey(request.ModelId);
+        if (!wasAlreadyLoaded)
+        {
+            var loaded = await LoadModelAsync(request.ModelId);
+            if (!loaded || !_loadedSessions.ContainsKey(request.ModelId))
+                throw new InvalidOperationException($"Failed to load model '{request.ModelId}' for outpainting.");
+        }
+
+        // Create engine and load pipeline stages from the model file
         var engine = new DiffusionInferenceEngine(null);
 
         try
         {
-            // Ensure model is loaded; load it if not already present in _loadedSessions
-            var wasAlreadyLoaded = _loadedSessions.ContainsKey(request.ModelId);
-            if (!wasAlreadyLoaded)
-            {
-                var loaded = await LoadModelAsync(request.ModelId);
-                if (!loaded || !_loadedSessions.ContainsKey(request.ModelId))
-                    throw new InvalidOperationException($"Failed to load model '{request.ModelId}' for outpainting.");
-            }
-
             // Decode the init image from base64
             byte[]? initImageBytes = null;
             if (!string.IsNullOrEmpty(request.InitImage))

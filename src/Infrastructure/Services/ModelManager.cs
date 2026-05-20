@@ -122,31 +122,57 @@ public class ModelManager : IModelManager, IDisposable
             : "cpu";
     }
 
-    public Task<bool> OffloadModelToCpuAsync(string modelId, CancellationToken cancellationToken = default)
+    public async Task<bool> OffloadModelToCpuAsync(string modelId, CancellationToken cancellationToken = default)
     {
         if (!_loadedModels.TryGetValue(modelId, out var info) || info.Device != DeviceType.Gpu)
-            return Task.FromResult(false);
+            return false;
 
         _logger?.LogDebug("Offloading model '{ModelId}' from GPU to CPU", modelId);
-        return Task.FromResult(true);
+
+        // Unload from GPU, then reload on CPU
+        await info.Loader.UnloadModelAsync(cancellationToken);
+        _loadedModels.TryRemove(modelId, out _);
+
+        var success = await info.Loader.LoadModelAsync(modelId, cancellationToken);
+        if (success)
+        {
+            _loadedModels[modelId] = new LoadedModelInfo(info.Loader, info.Metadata.ModelType, DeviceType.Cpu);
+            _logger?.LogInformation("Model '{ModelId}' offloaded to CPU", modelId);
+            return true;
+        }
+
+        _logger?.LogWarning("Failed to offload model '{ModelId}' to CPU", modelId);
+        return false;
     }
 
-    public Task<bool> MoveModelToDeviceAsync(string modelId, string targetDevice, CancellationToken cancellationToken = default)
+    public async Task<bool> MoveModelToDeviceAsync(string modelId, string targetDevice, CancellationToken cancellationToken = default)
     {
         if (!_loadedModels.TryGetValue(modelId, out var info))
-            return Task.FromResult(false);
+            return false;
 
         var newDevice = targetDevice.Equals("gpu", StringComparison.OrdinalIgnoreCase)
             ? DeviceType.Gpu
             : DeviceType.Cpu;
 
-        if (info.Device != newDevice)
+        if (info.Device == newDevice)
+            return true;
+
+        _logger?.LogDebug("Moving model '{ModelId}' from {Current} to {Target}", modelId, info.Device, newDevice);
+
+        // Unload from current device, then reload on target device
+        await info.Loader.UnloadModelAsync(cancellationToken);
+        _loadedModels.TryRemove(modelId, out _);
+
+        var success = await info.Loader.LoadModelAsync(modelId, cancellationToken);
+        if (success)
         {
             _loadedModels[modelId] = new LoadedModelInfo(info.Loader, info.Metadata.ModelType, newDevice);
-            _logger?.LogDebug("Moved model '{ModelId}' to {Device}", modelId, newDevice);
+            _logger?.LogInformation("Model '{ModelId}' moved to {Device}", modelId, newDevice);
+            return true;
         }
 
-        return Task.FromResult(true);
+        _logger?.LogWarning("Failed to move model '{ModelId}' to {Device}", modelId, newDevice);
+        return false;
     }
 
     public void Dispose()
