@@ -235,6 +235,12 @@ public static class DependencyInjection
         // IImagePostProcessingService for upscaling, hires.fix, ControlNet, and IP-Adapter
         services.AddSingleton<IImagePostProcessingService, Services.ImagePostProcessingService>();
 
+        // IFilePreviewService provides file content previews for the agent sandbox
+        services.AddSingleton<IFilePreviewService, Services.FilePreviewService>();
+
+        // DigitalSignatureVerifier verifies RSA signatures on model files
+        services.AddSingleton<IDigitalSignatureVerifier, Services.DigitalSignatureVerifier>();
+
         return services;
     }
 

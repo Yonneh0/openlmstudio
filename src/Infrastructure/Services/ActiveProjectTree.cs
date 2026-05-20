@@ -3,9 +3,11 @@ using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.IO;
 using System.Linq;
+using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Extensions.Logging;
+using OpenLMStudio.Application.Interfaces;
 
 namespace OpenLMStudio.Infrastructure.Services;
 
@@ -51,8 +53,9 @@ public enum ProjectTreeChangeType
 
 /// <summary>
 /// File preview service for the active project tree.
+/// Implements IFilePreviewService for the agent sandbox.
 /// </summary>
-public class FilePreviewService
+public class FilePreviewService : IFilePreviewService
 {
     private readonly ILogger<FilePreviewService>? _logger;
 
@@ -61,13 +64,32 @@ public class FilePreviewService
         _logger = logger;
     }
 
-    public async Task<string?> PreviewFileAsync(string filePath, int maxLines = 50, CancellationToken ct = default)
+    public async Task<string?> GetPreviewAsync(string filePath, int maxLines = 100, CancellationToken ct = default)
     {
         if (!File.Exists(filePath)) return null;
 
         try
         {
-            return await ReadTextFileAsync(filePath, maxLines);
+            var fileInfo = new FileInfo(filePath);
+            if (fileInfo.Length > 1024 * 1024)
+                return null;
+
+            if (IsBinaryFile(filePath))
+                return null;
+
+            using var reader = new StreamReader(filePath);
+            var lines = new StringBuilder();
+            var lineCount = 0;
+
+            while (lineCount < maxLines && (await reader.ReadLineAsync(ct)) is string line)
+            {
+                if (lines.Length > 0)
+                    lines.AppendLine();
+                lines.Append(line);
+                lineCount++;
+            }
+
+            return lineCount > 0 ? lines.ToString() : null;
         }
         catch (Exception ex)
         {
@@ -76,26 +98,23 @@ public class FilePreviewService
         }
     }
 
-    private async Task<string?> ReadTextFileAsync(string filePath, int maxLines)
+    private static bool IsBinaryFile(string filePath)
     {
-        var extension = Path.GetExtension(filePath).ToLowerInvariant();
-        var binaryExtensions = new[] { ".bin", ".exe", ".dll", ".so", ".dylib", ".png", ".jpg", ".jpeg", ".gif", ".ico", ".woff", ".ttf", ".eot" };
-
-        if (binaryExtensions.Contains(extension))
-            return $"Binary file ({new FileInfo(filePath).Length} bytes)";
-
         try
         {
-            using var reader = new StreamReader(filePath);
-            var lines = new List<string>();
-            while (!reader.EndOfStream && lines.Count < maxLines)
-                lines.Add(reader.ReadLine() ?? "");
-
-            return string.Join("\n", lines);
+            using var fs = File.OpenRead(filePath);
+            var buffer = new byte[8192];
+            var bytesRead = fs.Read(buffer, 0, buffer.Length);
+            for (var i = 0; i < bytesRead; i++)
+            {
+                if (buffer[i] == 0)
+                    return true;
+            }
+            return false;
         }
         catch
         {
-            return null;
+            return false;
         }
     }
 }
