@@ -97,7 +97,153 @@ curl http://localhost:8080/v1/images/generations \
     "prompt": "a sunset over mountains",
     "size": "1024x1024"
   }'
+
+# Image inpainting
+curl http://localhost:8080/v1/images/inpainting \
+  -H "Content-Type: application/json" \
+  -d '{
+    "prompt": "a cat on a couch",
+    "image": "cat_photo.jpg",
+    "mask": "mask.png"
+  }'
+
+# Embeddings
+curl http://localhost:8080/v1/embeddings \
+  -H "Content-Type: application/json" \
+  -d '{
+    "input": "Hello, world!",
+    "model": "text-embedding-3-small"
+  }'
 ```
+
+### Anthropic-Compatible Messages Endpoint
+
+```bash
+curl http://localhost:8080/v1/messages \
+  -H "Content-Type: application/json" \
+  -d '{
+    "model": "claude-sonnet",
+    "messages": [{"role": "user", "content": "Hello"}],
+    "max_tokens": 1024
+  }'
+```
+
+### Streaming Responses
+
+All endpoints support SSE streaming via the `X-Stream: true` header:
+
+```bash
+curl http://localhost:8080/v1/chat/completions \
+  -H "Content-Type: application/json" \
+  -H "X-Stream: true" \
+  -d '{
+    "model": "default",
+    "messages": [{"role": "user", "content": "Write a poem"}],
+    "stream": true
+  }'
+```
+
+### API Key Authentication
+
+If API key auth is enabled in settings, include the key:
+
+```bash
+curl http://localhost:8080/v1/chat/completions \
+  -H "X-Api-Key: your-api-key-here" \
+  -H "Content-Type: application/json" \
+  -d '{"model": "default", "messages": [...]}'
+```
+
+### Rate Limiting
+
+The server enforces per-IP rate limits (configurable in Settings). Requests exceeding the limit receive a 429 response.
+
+## Keyboard Shortcuts
+
+| Shortcut | Action |
+|----------|--------|
+| Ctrl+N | New Chat |
+| Ctrl+M | Show Models tab |
+| Ctrl+S | Toggle Server start/stop |
+| Ctrl+K | Show Context panel |
+| Ctrl+L | Open Settings |
+
+## Context Management
+
+### Context Budget Indicator
+
+The right sidebar shows a visual context budget bar with color-coded zones:
+- **Green** — Budget healthy, all segments active
+- **Yellow** — Approaching limit, compression may trigger
+- **Red** — Budget exceeded, lowest-relevance segments evicted
+
+### Pinning & Suppressing Segments
+
+Each message in the chat supports:
+- **📌 Pin** — Keeps the segment uncompressed and always included
+- **👁️/🚫 Suppress** — Temporarily hides the segment from context
+
+### Custom Context Injection
+
+Click the **+** button in the Context panel to add custom context:
+- System prompts
+- Task context snapshots
+- Project state information
+
+### Compression Strategies
+
+Choose from:
+- **Low** — Minimal compression, preserves detail
+- **Medium** — Balanced compression with temporal decay
+- **High** — Aggressive compression, retains only key information
+
+## Agent Harness
+
+### Running Agent Tasks
+
+The agent harness supports autonomous task completion:
+1. Click **New Agent Task** in the chat input area
+2. Enter a task description
+3. The agent plans its approach, then executes actions
+
+### Agent Phases
+
+- **Planning** — Agent proposes a plan (requires user approval to proceed)
+- **Acting** — Agent executes tools and actions
+- **Reviewing** — Agent verifies results
+- **Completed/Failed** — Final state
+
+### Safe vs. Risky Operations
+
+Read-only tools (FileRead, SearchFiles, GitHistory) auto-approve. Write operations require user approval.
+
+### Context Inheritance
+
+When an agent creates child tasks, context is inherited from the parent with budget-aware filtering. On task completion, context is archived or pruned based on settings.
+
+## Model Management
+
+### Adding Models
+
+1. Go to the **Models** tab
+2. Click **Add Model**
+3. Select a GGUF file (text generation) or Safetensors files (image generation/VAE/LoRA)
+
+### Supported Model Formats
+
+| Format | Use | Engine |
+|--------|-----|--------|
+| GGUF | Text generation (LLaMA, Mistral) | llama.cpp |
+| Safetensors (single) | Image generation, VAE, LoRA | ONNX Runtime |
+| Safetensors (sharded) | Large diffusion models | ONNX Runtime |
+
+### LoRA Adapters
+
+LoRA adapters (LoRA, LoHa, LoKr) are loaded and applied dynamically to image generation pipelines with configurable scaling factors.
+
+## Troubleshooting
+
+See [TROUBLESHOOTING.md](TROUBLESHOOTING.md) for common issues.
 
 ### Streaming Responses
 
