@@ -103,10 +103,10 @@ public class DiffusionModelFamilyServiceTests
     [Test]
     public void SupportedSamplers_ShouldContainAtLeastFourValues()
     {
-        var sd15 = _service!.GetFamily("sd15");
-        Assert.That(sd15, Is.Not.Null);
-        Assert.That(sd15!.SupportedSamplers, Is.Not.Null);
-        Assert.That(sd15.SupportedSamplers.Count, Is.GreaterThanOrEqualTo(4));
+        var family = _service!.GetFamily("sd15");
+        Assert.That(family, Is.Not.Null);
+        Assert.That(family!.SupportedSamplers, Is.Not.Null);
+        Assert.That(family.SupportedSamplers.Count, Is.GreaterThanOrEqualTo(4));
     }
 
     [Test]
