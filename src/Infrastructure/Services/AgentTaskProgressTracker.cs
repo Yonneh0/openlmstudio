@@ -117,7 +117,7 @@ public class AgentTaskProgressTracker : ITaskProgressTracker
         }
 
         // Update progress to 85% when stuck in progress state (agent is working but not making visible progress)
-        if (_isIterationLimitExceeded && !_progressPercentage.Equals(85))
+        if (_isIterationLimitExceeded && _progressPercentage != 85)
         {
             _progressPercentage = 85;
         }
