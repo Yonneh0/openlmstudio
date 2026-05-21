@@ -287,6 +287,9 @@ public static class DependencyInjection
         // TaskCompletionDetector detects whether an agent task has been completed based on tool results
         services.AddSingleton<Application.Interfaces.ITaskCompletionDetector, Services.TaskCompletionDetector>();
 
+        // AgentProgressSummaryService generates human-readable progress summaries and completion reports
+        services.AddSingleton<Application.Interfaces.IAgentProgressSummaryService, Services.AgentProgressSummaryService>();
+
         // ---- Phase 10.5: Observability & Diagnostics ----
 
         // ActivityTracer traces agent tool calls with timing and resource consumption
