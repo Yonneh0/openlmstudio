@@ -403,13 +403,13 @@ OpenLMStudio/
 - [ ] Device monitoring visualization: GPU VRAM graph, CPU utilization chart, memory usage gauge — cross-platform via Vulkan.NET / nvidia-ml-net
 
 ### 6.4 Context Manipulation UI Controls
-- [ ] Right sidebar — "Context" panel tab alongside existing panels (Chat, Server, Models, Devices → + Context)
-- [ ] Display what the AI currently has access to (system prompt, task context, conversation window status)
-- [ ] Visual tree of conversation segments with compression status indicators (🟢 Uncompressed / 🟡 Compressed / 🔴 Evicted)
-- [ ] Pin/freeze segment button (📌), Suppress/reveal toggle per segment (👁️/🚫), Remove from context button (✕)
-- [ ] "Add custom context" button (+) at top of Context panel with expandable options
-- [ ] All injected context appears as pinned segments in the visual tree
-- [ ] Context budget display: visual bar showing remaining capacity with color coding
+- [x] Right sidebar — "Context" panel tab alongside existing panels (Chat, Server, Models, Devices → Context)
+- [x] Display what the AI currently has access to (system prompt, task context, conversation window status) — static UI in ContextTabContent and RightContextContent
+- [ ] Visual tree of conversation segments with compression status indicators (🟢 Uncompressed / 🟡 Compressed / 🔴 Evicted) — static segments shown (system prompt + task context); dynamic segments NOT yet rendered
+- [x] Pin/freeze segment button (📌), Suppress/reveal toggle per segment (👁️/🚫) — wired to IChatContextManager PinSegmentAsync/UnpinSegmentAsync/SuppressSegmentAsync/RevealSegmentAsync
+- [x] "Add custom context" button (+) at top of Context panel — OnInjectCustomContextClicked / OnRightAddCustomContextClicked implemented, injects via _contextManager.InjectCustomContextAsync
+- [x] All injected context appears in the visual tree — custom context rendered via RightSegmentsContainer with Remove button
+- [x] Context budget display: visual bar showing remaining capacity with color coding — RefreshContextBudgetAsync updates RightBudgetBar with green/yellow/red based on ContextBudgetColorZone
 
 ### 6.5 Plugin Management Panel
 - [ ] Plugin registry browser with search/filter
@@ -417,14 +417,14 @@ OpenLMStudio/
 - [ ] Version comparison and update notifications
 - [ ] Plugin sandbox policy configuration
 
-#### Phase 6 Summary — **~8 of 28 items partially functional**
-> NOTE: Server start/stop working, chat streaming via SSE endpoint works, context panel with budget indicator exists. Per-message pin/suppress controls now functional (OnMessagePinClicked, OnMessageSuppressClicked handlers wired to IChatContextManager). PluginManagementWindow with search/install/enable/disable/policy controls implemented. SettingsWindow with tabbed UI (Server/Model/Agent/Plugin/Privacy) and persistent JSON storage.
+#### Phase 6 Summary — **~9 of 28 items functional**
+> NOTE: Server start/stop working, chat streaming via SSE endpoint works, context panel with budget indicator (color zones: green/yellow/red) works. Per-message pin/suppress controls functional (OnMessagePinClicked, OnMessageSuppressClicked handlers wired to IChatContextManager). PluginManagementWindow with search/install/enable/disable/policy controls implemented. SettingsWindow with tabbed UI (Server/Model/Agent/Plugin/Privacy) and persistent JSON storage. Custom context injection panel functional with expandable UI.
 | Category | Items Complete | Items Remaining |
 |----------|---------------|-----------------|
 | Main Window & Chat Interface | ~5 / 14 | Server start/stop working, chat streaming via SSE works, context panel with budget indicator, per-message pin/suppress controls functional |
 | Settings/Preferences Panel | 1 / 5 | SettingsWindow with tabbed UI and persistent JSON storage |
 | Image Generation & Device Monitoring | 0 / 8 | Not started |
-| Context Manipulation UI Controls | 3 / 7 | Pin/suppress per-message controls wired to IChatContextManager; visual tree, custom context, budget bar remaining |
+| Context Manipulation UI Controls | 5 / 7 | Pin/suppress per-message controls wired; budget bar color zones; custom context injection; visual tree of compressed segments NOT yet rendered |
 | Plugin Management Panel | 1 / 4 | PluginManagementWindow with search/install/enable/disable/update/policy controls |
 
 ---
@@ -638,7 +638,7 @@ OpenLMStudio/
 | 3: Inference Engines & Server API | ~8 of 41 partial | ~20% | HTTP server foundation complete; OpenAI/Anthropic endpoints working for text only; **diffusion pipeline RunTextEncoder + CFG conditioning implemented** — real CLIP text encoding via DiffusionInferenceEngine.RunTextEncoder with character-level tokenization approximation. Image/embedding engines still stubbed. |
 | 4: Chat & Conversation System | ~5 of 9 | ~56% | Data models + SQLite-backed persistence done. NOTE: Streaming only works with server endpoint — local service streaming is placeholder response text (no real llama.cpp inference). Per-message search via SearchMessagesInChatAsync exists in both FileConversationManager and ChatPersistenceService. |
 | 5: Context Management System | **10 of 10** | **~80%** | All context service interfaces + implementations complete (SQLite-backed). NOTE: Phase 6 UI controls for per-message pin/suppress in MainWindow.axaml.cs ARE functional — buttons created in CreateMessageBorder() with Click handlers wired to OnMessagePinClicked/OnMessageSuppressClicked calling _contextManager PinSegmentAsync/UnpinSegmentAsync/SuppressSegmentAsync/RevealSegmentAsync. Service layer fully implemented; UI binding complete. |
-| 6: UI Implementation | ~4 of 28 | ~15% | Server start/stop working, chat streaming via SSE endpoint works, context panel with budget indicator exists. NOTE: Many elements are stubs. Per-message pin/suppress controls NOT functional (deferred to Phase 7). Model list display partially functional but not populated. |
+| 6: UI Implementation | ~9 of 28 | ~32% | Server start/stop working, chat streaming via SSE endpoint works, context panel with budget indicator (color zones: green/yellow/red) works. Per-message pin/suppress controls functional (OnMessagePinClicked, OnMessageSuppressClicked handlers wired to IChatContextManager). PluginManagementWindow with search/install/enable/disable/policy controls implemented. SettingsWindow with tabbed UI (Server/Model/Agent/Plugin/Privacy) and persistent JSON storage. Custom context injection panel functional with expandable UI. Dynamic compressed segment rendering NOT yet implemented. |
 | 7: Agent Harness | ~12 of 32 | ~38% | Core Agent class implemented with plan/act cycle; tool execution loop working; AgentTaskProgressTracker exists; ExecuteActionsAsync now iterates all IToolRegistry.GetTools() instead of hardcoded tool names; **New tools added**: GitDiffTool, GitHistoryTool, GitBlameTool, GitBranchesTool, CodeDefinitionExtractorTool — all implementing ITool with proper GetParameterSchema and IDisposable; **ActiveProjectWatcher** implemented for real-time project tree updates; **CommandExecutionService** sandboxed command execution fixed (cross-platform) |
 | 8: Plugin & MCP System | **8 of 8** | **~96%** | MCP stdio + SSE transport (McpSseClient.cs) both complete. Prompt support via McpPromptAccessor + McpPromptListTool, resource accessor exists — all MCP features implemented. PluginRegistry: remote registry integration complete with download URL support, manifest creation, sandbox policy enforcement on install; **path traversal attack prevention added** to ZIP extraction (target path must be within installPath); **remote registry download with hash verification** added. |
 | 9: Resilience, Security & Operations | 8 of 14 | ~57% | Model file detection via SafetensorParser; download recovery verified via SHA256/MD5; model loading fallback chain implemented; streaming SSE reconstruction exists for chat completions only. **Sandbox isolation expanded: cgroups v2 support added for Linux/macOS process sandboxing** — full ISandboxService interface extended with CreateProcessWithSandboxPolicyAsync method. SelfSignedCertificateGenerator cross-platform implementation works on Windows; certificate auto-trust only available on Windows. RateLimitMiddleware + ApiKeyAuthMiddleware + IRateLimitService complete. **Auto-update system added: IUpdateManager/UpdateManager with GitHub Releases integration.** **ConversationEncryption (AES-256+HMAC) added for encrypted conversation data at rest.** |
