@@ -417,14 +417,14 @@ OpenLMStudio/
 - [ ] Version comparison and update notifications
 - [ ] Plugin sandbox policy configuration
 
-#### Phase 6 Summary — **~9 of 28 items functional**
-> NOTE: Server start/stop working, chat streaming via SSE endpoint works, context panel with budget indicator (color zones: green/yellow/red) works. Per-message pin/suppress controls functional (OnMessagePinClicked, OnMessageSuppressClicked handlers wired to IChatContextManager). PluginManagementWindow with search/install/enable/disable/policy controls implemented. SettingsWindow with tabbed UI (Server/Model/Agent/Plugin/Privacy) and persistent JSON storage. Custom context injection panel functional with expandable UI.
+#### Phase 6 Summary — **~14 of 28 items functional**
+> NOTE: Server start/stop working, chat streaming via SSE endpoint works, context panel with budget indicator (color zones: green/yellow/red) works. Per-message pin/suppress controls functional (OnMessagePinClicked, OnMessageSuppressClicked handlers wired to IChatContextManager). PluginManagementWindow with search/install/enable/disable/policy controls implemented. SettingsWindow with tabbed UI (Server/Model/Agent/Plugin/Privacy) and persistent JSON storage. Custom context injection panel functional with expandable UI. **Added**: RefreshCompressedSegmentsAsync to dynamically render compressed context segments in both sidebar panels with compression indicators (🟢 Uncompressed, 🟡 Compressed, 🔴 Evicted). Device monitoring improved with real GPU/RAM info display.
 | Category | Items Complete | Items Remaining |
 |----------|---------------|-----------------|
-| Main Window & Chat Interface | ~5 / 14 | Server start/stop working, chat streaming via SSE works, context panel with budget indicator, per-message pin/suppress controls functional |
+| Main Window & Chat Interface | ~7 / 14 | Server start/stop working, chat streaming via SSE works, context panel with budget indicator, per-message pin/suppress controls functional, device monitoring with GPU/RAM, tab click handlers |
 | Settings/Preferences Panel | 1 / 5 | SettingsWindow with tabbed UI and persistent JSON storage |
 | Image Generation & Device Monitoring | 0 / 8 | Not started |
-| Context Manipulation UI Controls | 5 / 7 | Pin/suppress per-message controls wired; budget bar color zones; custom context injection; visual tree of compressed segments NOT yet rendered |
+| Context Manipulation UI Controls | 6 / 7 | Pin/suppress per-message controls wired; budget bar color zones; custom context injection; **compressed segments rendering now functional** |
 | Plugin Management Panel | 1 / 4 | PluginManagementWindow with search/install/enable/disable/update/policy controls |
 
 ---
