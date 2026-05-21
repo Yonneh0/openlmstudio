@@ -871,56 +871,145 @@ public partial class MainWindow : Window
         }
     }
 
-    // ---- Device Status Update ----
+    // ---- Compressed Context Segments Rendering ----
 
-    private async Task UpdateDeviceStatusAsync()
+    /// <summary>
+    /// Renders compressed context segments from the context manager into the Context sidebar panels.
+    /// Called whenever a chat is loaded or context budget changes.
+    /// </summary>
+    private async Task RefreshCompressedSegmentsAsync()
     {
-        await Dispatcher.UIThread.InvokeAsync(async () =>
+        if (_selectedChatId == null || _contextManager == null) return;
+
+        try
         {
-            if (_conversationManager == null) return;
+            var context = await _contextManager.GetCompressedContextAsync(_selectedChatId.Value, CompressionLevel.Medium);
 
-            // Get device info from the device monitor service via DI
-            try
+            // Clear existing compressed segments from both panels
+            CompressedSegmentsContainer?.Children.Clear();
+            var rightMsgContainer = RightMessageSegmentsContainer;
+            rightMsgContainer?.Children.Clear();
+
+            // Filter out pinned/system/task segments — show only regular message segments that were compressed
+            var regularSegments = context.Segments
+                .Where(s => s.InjectionType != ContextInjectionType.SystemPrompt
+                         && s.InjectionType != ContextInjectionType.TaskContextSnapshot
+                         && s.InjectionType != ContextInjectionType.ProjectState)
+                .ToList();
+
+            if (!regularSegments.Any())
             {
-                var serviceProvider = GetAppServiceProvider();
-                if (serviceProvider != null)
+                // Show placeholder
+                if (CompressedSegmentsContainer != null)
                 {
-                    var deviceMonitor = serviceProvider.GetService<IDeviceMonitor>();
-                    if (deviceMonitor != null)
+                    CompressedSegmentsContainer.Children.Add(new TextBlock
                     {
-                        CpuCoreText.Text = $"CPU Cores: {Environment.ProcessorCount}";
-
-                        // Get total physical memory (not GC heap size)
-                        try
-                        {
-                            // Use PerformanceCounter or WMI for total RAM
-                            var ramAvailable = Environment.GetLogicalDrives().Length; // fallback to a non-crashing value
-                            RamInfoText.Text = $"RAM: {Environment.ProcessorCount} Cores";
-                        }
-                        catch
-                        {
-                            RamInfoText.Text = "RAM: Unknown";
-                        }
-
-                        // Check for GPU via system info (use async to avoid blocking the UI thread)
-                        try
-                        {
-                            var gpuDevices = await deviceMonitor.GetGpuDevicesAsync();
-                            if (gpuDevices.Any())
-                                LoadedModelRightText.Text = "GPU Detected";
-                        }
-                        catch
-                        {
-                            // Ignore errors reading GPU info
-                        }
-                    }
+                        Text = "No compressed segments",
+                        Foreground = new SolidColorBrush(Color.FromRgb(102, 102, 102)),
+                        Padding = new Thickness(12, 8),
+                        FontSize = 10
+                    });
                 }
             }
-            catch
+
+            foreach (var segment in regularSegments)
             {
-                // Ignore errors updating device status
+                // Left sidebar compressed segment
+                var leftSegmentBorder = new Border
+                {
+                    Background = new SolidColorBrush(Color.FromRgb(45, 45, 48)),
+                    CornerRadius = new CornerRadius(4),
+                    Padding = new Thickness(12, 8),
+                    Margin = new Thickness(0, 0, 0, 6)
+                };
+
+                var leftGrid = new Grid();
+                leftGrid.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Star });
+                leftGrid.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
+
+                var leftLabel = new TextBlock
+                {
+                    Text = segment.Content != null && segment.Content.Length > 100
+                        ? segment.Content[..100] + "..."
+                        : segment.Content ?? "",
+                    Foreground = new SolidColorBrush(Color.FromRgb(204, 204, 204)),
+                    FontSize = 10
+                };
+
+                // Compression indicator
+                var indicatorText = segment.IsPinned ? "🟢 Uncompressed (pinned)"
+                    : segment.Content != null && segment.Content.Length == 0 ? "🔴 Evicted"
+                    : "🟡 Compressed";
+                var indicatorBorder = new Border
+                {
+                    Background = segment.IsPinned ? new SolidColorBrush(Color.FromRgb(46, 125, 50))
+                        : segment.Content != null && segment.Content.Length == 0 ? new SolidColorBrush(Color.FromRgb(244, 67, 54))
+                        : new SolidColorBrush(Color.FromRgb(255, 152, 0)),
+                    CornerRadius = new CornerRadius(2),
+                    Padding = new Thickness(6, 1)
+                };
+                indicatorBorder.Child = new TextBlock
+                {
+                    Text = indicatorText,
+                    FontSize = 9,
+                    Foreground = new SolidColorBrush(Color.FromRgb(255, 255, 255))
+                };
+
+                Grid.SetColumn(leftLabel, 0);
+                Grid.SetColumn(indicatorBorder, 1);
+                leftGrid.Children.Add(leftLabel);
+                leftGrid.Children.Add(indicatorBorder);
+                leftSegmentBorder.Child = leftGrid;
+
+                CompressedSegmentsContainer?.Children.Add(leftSegmentBorder);
+
+                // Right sidebar message segment with pin/suppress controls
+                var rightSegmentBorder = new Border
+                {
+                    Background = new SolidColorBrush(Color.FromRgb(45, 45, 48)),
+                    CornerRadius = new CornerRadius(4),
+                    Padding = new Thickness(10, 8),
+                    Margin = new Thickness(0, 0, 0, 6)
+                };
+
+                var rightGrid = new Grid();
+                rightGrid.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Star });
+                rightGrid.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
+
+                var rightLabel = new TextBlock
+                {
+                    Text = segment.Content != null && segment.Content.Length > 80
+                        ? segment.Content[..80] + "..."
+                        : segment.Content ?? "",
+                    Foreground = new SolidColorBrush(Color.FromRgb(204, 204, 204)),
+                    FontSize = 10
+                };
+
+                // Pin/suppress controls for right sidebar message segments
+                var controlStack = new StackPanel { Orientation = Avalonia.Layout.Orientation.Horizontal };
+                var pinBtn = new Button { Content = "📌", Classes = { "msgPinBtn" }, Padding = new Thickness(4, 1), FontSize = 9, BorderThickness = new Thickness(0) };
+                pinBtn.Tag = segment.Id;
+                pinBtn.Click += OnMessagePinClicked;
+                controlStack.Children.Add(pinBtn);
+
+                var suppressBtn = new Button { Content = "👁️", Classes = { "msgSuppressBtn" }, Padding = new Thickness(4, 1), FontSize = 9, BorderThickness = new Thickness(0) };
+                suppressBtn.Tag = segment.Id;
+                suppressBtn.Click += OnMessageSuppressClicked;
+                controlStack.Children.Add(suppressBtn);
+
+                Grid.SetColumn(rightLabel, 0);
+                Grid.SetColumn(controlStack, 1);
+                rightGrid.Children.Add(rightLabel);
+                rightGrid.Children.Add(controlStack);
+                rightSegmentBorder.Child = rightGrid;
+
+                rightMsgContainer?.Children.Add(rightSegmentBorder);
             }
-        });
+        }
+        catch (Exception ex)
+        {
+            _logger?.LogDebug("Error refreshing compressed segments: {Message}", ex.Message);
+        }
     }
 
     // ---- Model List Display ----
@@ -2127,7 +2216,7 @@ public partial class MainWindow : Window
             ImageGenSeedInput.Text = rng.Next(int.MinValue, int.MaxValue).ToString();
     }
 
-    // ---- Settings Window ----
+    // ---- Device Status Update ----
 
     /// <summary>
     /// Handler for the refresh devices button — re-reads device state from hardware.
@@ -2136,6 +2225,78 @@ public partial class MainWindow : Window
     {
         _ = UpdateDeviceStatusAsync();
     }
+
+    /// <summary>
+    /// Reads device info from IDeviceMonitor and updates the UI elements.
+    /// </summary>
+    private async Task UpdateDeviceStatusAsync()
+    {
+        try
+        {
+            var serviceProvider = GetAppServiceProvider();
+            if (serviceProvider == null) return;
+
+            var deviceMonitor = serviceProvider.GetService<IDeviceMonitor>();
+            if (deviceMonitor == null) return;
+
+            var devices = deviceMonitor.CurrentDeviceInformation;
+
+            // Update CPU info
+            CpuCoreText.Text = $"CPU Cores: {devices.Cpu.LogicalProcessorCount} ({devices.Cpu.PhysicalCoreCount} physical)";
+            CpuCoreRightText.Text = $"{devices.Cpu.LogicalProcessorCount} ({devices.Cpu.PhysicalCoreCount}P)";
+
+            // Update RAM info
+            long ramBytes = Environment.WorkingSet;
+            var ramGb = ramBytes > 0 ? (int)(ramBytes / (1024 * 1024 * 1024)) : 0;
+            RamInfoText.Text = $"RAM: {ramGb} GB";
+            RamInfoRightText.Text = $"~{ramGb} GB";
+
+            // Update GPU info
+            if (devices.Gpus.Any(g => g.TotalMemoryBytes > 0))
+            {
+                var gpu = devices.Gpus.First(g => g.TotalMemoryBytes > 0);
+                LoadedModelRightText.Text = "GPU Detected";
+                LoadedModelRightText2.Text = "GPU Detected";
+
+                var gpuVramGb = gpu.TotalMemoryBytes / (1024 * 1024 * 1024);
+                var gpuInfoText = $"{gpu.Name} ({gpuVramGb} GB VRAM)";
+                RightGpuDevicesList.Child = new TextBlock
+                {
+                    Text = gpuInfoText,
+                    Foreground = new SolidColorBrush(Color.FromRgb(79, 195, 247)),
+                    Padding = new Thickness(12, 8),
+                    FontSize = 12
+                };
+            }
+            else
+            {
+                LoadedModelRightText.Text = "CPU Only";
+                LoadedModelRightText2.Text = "CPU Only";
+                RightGpuDevicesList.Child = new TextBlock
+                {
+                    Text = "No GPUs detected — running on CPU",
+                    Foreground = new SolidColorBrush(Color.FromRgb(170, 170, 170)),
+                    Padding = new Thickness(12, 8),
+                    FontSize = 12
+                };
+            }
+
+            // Update context length and offload info
+            ContextLengthRightText.Text = "Context: 4096 tokens (default)";
+            ContextLengthRightText2.Text = "4096 tokens";
+            OffloadRightText.Text = "Auto (GPU)";
+        }
+        catch (Exception ex)
+        {
+            _logger?.LogDebug("Error updating device status: {Message}", ex.Message);
+            // Set fallback text
+            CpuCoreText.Text = "CPU Cores: Unknown";
+            RamInfoText.Text = "RAM: Unknown";
+            RamInfoRightText.Text = "Unknown";
+        }
+    }
+
+    // ---- Settings Window ----
 
     private void OnSettingsClicked(object? sender, RoutedEventArgs e)
     {
