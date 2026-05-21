@@ -60,3 +60,18 @@ x[64|32]/
 # Mac OS files
 .DS_Store
 *.DS_Store*
+
+# .NET Publish output (self-contained builds)
+*.pdb
+publish/
+net8.0/
+*.exe
+
+# Native libraries
+*.lib
+
+# Build artifacts in project root
+OpenLMStudio.*
+
+# Android build artifacts
+*.apk
