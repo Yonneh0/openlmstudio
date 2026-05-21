@@ -215,3 +215,32 @@ public interface IEmbeddingPipelineService : IDisposable
     /// </summary>
     Task<IEnumerable<MultiModalModelMetadata>> GetAvailableModelsAsync();
 }
+
+/// <summary>
+/// Configuration for a specific diffusion model family (SD 1.x, SDXL, SD 3, Flux, etc.).
+/// </summary>
+public record DiffusionModelFamilyConfig(
+    string Name,
+    string PipelineType,
+    int LatentChannels,
+    int DefaultWidth,
+    int DefaultHeight,
+    int RecommendedStepsMin,
+    int RecommendedStepsMax,
+    double CfgScaleMin,
+    double CfgScaleMax,
+    string? SupportedSafetensorsFilePattern,
+    IReadOnlyList<ImageSamplerType>? SupportedSamplers = null);
+
+/// <summary>
+/// Manages diffusion model families and provides configuration per family.
+/// Supports SD 1.x, SDXL, SD 3, Flux, and custom families.
+/// </summary>
+public interface IDiffusionModelFamilyService : IDisposable
+{
+    IReadOnlyList<DiffusionModelFamilyConfig> Families { get; }
+    DiffusionModelFamilyConfig? GetFamily(string pipelineType);
+    DiffusionModelFamilyConfig? GetFamilyByModelId(string modelId);
+    void RegisterFamily(DiffusionModelFamilyConfig config);
+    void RegisterDefaultFamilies();
+}

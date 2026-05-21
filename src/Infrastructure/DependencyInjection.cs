@@ -63,6 +63,9 @@ public static class DependencyInjection
         // DiffusionPipelineService for image generation using ONNX Runtime + safetensors models
         services.AddSingleton<IDiffusionPipelineService, Services.DiffusionPipelineService>();
 
+        // DiffusionModelFamilyService manages configuration for SD 1.x, SDXL, SD 3, Flux model families
+        services.AddSingleton<Application.Interfaces.IDiffusionModelFamilyService, Services.DiffusionModelFamilyService>();
+
         // VAEPipelineService for latent space encoding/decoding using ONNX Runtime + VAE models
         services.AddSingleton<IVAEPipelineService, Services.VAEPipelineService>();
 
