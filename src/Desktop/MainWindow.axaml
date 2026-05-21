@@ -837,18 +837,20 @@
         <Panel Grid.Column="2" Background="{StaticResource BgPrimary}">
             <DockPanel Margin="12">
                 
-                <!-- Right sidebar tabs -->
-                <StackPanel DockPanel.Dock="Top" Orientation="Horizontal" Margin="0,0,0,8">
-                    <RadioButton x:Name="RightContextTabButton" Content="Context" Classes="settingsTab" IsChecked="True"/>
-                    <TextBlock Text="" Foreground="#CCCCCC" FontSize="12" Padding="4,6"/>
-                    <RadioButton x:Name="RightServerTabButton" Content="Server" Classes="settingsTab"/>
-                    <TextBlock Text="" Foreground="#CCCCCC" FontSize="12" Padding="4,6"/>
-                    <RadioButton x:Name="RightDevicesTabButton" Content="Devices" Classes="settingsTab"/>
-                    <TextBlock Text="" Foreground="#CCCCCC" FontSize="12" Padding="4,6"/>
-                     <RadioButton x:Name="RightAnalysisTabButton" Content="AI Analysis" Classes="settingsTab"/>
-                     <TextBlock Text="" Foreground="#CCCCCC" FontSize="12" Padding="4,6"/>
-                     <RadioButton x:Name="RightGamesTabButton" Content="Games" Classes="settingsTab"/>
-                 </StackPanel>
+                <!-- Right sidebar tabs (scrollable) -->
+                <ScrollViewer DockPanel.Dock="Top" HorizontalScrollBarVisibility="Auto" Margin="0,0,0,8">
+                    <StackPanel Orientation="Horizontal">
+                        <RadioButton x:Name="RightContextTabButton" Content="Context" Classes="settingsTab" IsChecked="True"/>
+                        <TextBlock Text="" Foreground="#CCCCCC" FontSize="12" Padding="4,6"/>
+                        <RadioButton x:Name="RightServerTabButton" Content="Server" Classes="settingsTab"/>
+                        <TextBlock Text="" Foreground="#CCCCCC" FontSize="12" Padding="4,6"/>
+                        <RadioButton x:Name="RightDevicesTabButton" Content="Devices" Classes="settingsTab"/>
+                        <TextBlock Text="" Foreground="#CCCCCC" FontSize="12" Padding="4,6"/>
+                        <RadioButton x:Name="RightAnalysisTabButton" Content="AI Analysis" Classes="settingsTab"/>
+                        <TextBlock Text="" Foreground="#CCCCCC" FontSize="12" Padding="4,6"/>
+                        <RadioButton x:Name="RightGamesTabButton" Content="Games" Classes="settingsTab"/>
+                    </StackPanel>
+                </ScrollViewer>
 
                 <!-- Context tab content (default) -->
                 <StackPanel x:Name="RightContextContent" DockPanel.Dock="Top">
