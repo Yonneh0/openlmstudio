@@ -203,7 +203,7 @@ public static class DependencyInjection
         // IAgent interface for managing the lifecycle of an agentic task with plan/act cycle.
         // Registered as a factory because it needs both ILogger<Agent> and ITaskProgressTracker,
         // plus optional IContextCompressor for loop detection and degraded action generation.
-        services.AddScoped<IAgent>(resolver =>
+        services.AddSingleton<IAgent>(resolver =>
         {
             var logger = resolver.GetService<Microsoft.Extensions.Logging.ILogger<Services.Agent>>();
             var progressTracker = resolver.GetService<ITaskProgressTracker>();
