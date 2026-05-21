@@ -183,6 +183,18 @@ public static class DependencyInjection
             return new Services.GgufChatCompletionLoader(logger ?? NullLogger<Services.GgufChatCompletionLoader>.Instance, chatService);
         });
 
+        // DiffusionModelLoader adapts DiffusionPipelineService to IModelLoader for image generation models.
+        services.AddScoped<IModelLoader>(resolver =>
+        {
+            var logger = resolver.GetService<Microsoft.Extensions.Logging.ILogger<Services.DiffusionModelLoader>>();
+            var pipeline = resolver.GetService<Services.DiffusionPipelineService>();
+            var modelRepo = resolver.GetService<IModelRepository>();
+            if (pipeline == null || modelRepo == null)
+                throw new InvalidOperationException("DiffusionPipelineService and IModelRepository not found in DI container — required for image generation model loading.");
+
+            return new Services.DiffusionModelLoader(logger ?? NullLogger<Services.DiffusionModelLoader>.Instance, pipeline, modelRepo);
+        });
+
         // ---- Phase 7: Agent Harness — Core Agent Registration ----
 
         // IAgent interface for managing the lifecycle of an agentic task with plan/act cycle.

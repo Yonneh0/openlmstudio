@@ -1452,7 +1452,8 @@ public static class ServerServiceEndpointExtensions
                         } },
                         model = anthropicRequest.Model,
                         stop_reason = "end_turn",
-                        usage = new {
+                        usage = new
+                        {
                             input_tokens = 0,
                             output_tokens = 0,
                             cache_creation_input_tokens = 0,

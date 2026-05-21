@@ -284,14 +284,14 @@ OpenLMStudio/
 - [x] IP-Adapter face embedding pipeline — ImagePostProcessingService implemented (stub: returns CLIP-encoded image pixels)
 
 ### 3.10 Embedding Pipeline Service
-- [ ] Implement `EmbeddingPipelineService` with safetensors-based models via ONNX Runtime (exists but generates random vectors — stub)
+- [x] Implement `EmbeddingPipelineService` with safetensors-based models via ONNX Runtime — **DONE** full ONNX Runtime inference with proper tokenization, attention mask/position ID support, dynamic embedding dimension extraction, mean-pooling for sequence embeddings
 
 #### Phase 3 Summary — **major progress**
-> NOTE: Bug fixes on 5/19/2026: Inpainting/Outpainting pipelines now properly load UNet+VAE sessions (were only loading text encoder). DiffusionPipelineService unified to use DiffusionInferenceEngine for CLIP text encoding, UNet denoising, and VAE decoding. Anthropic response format enhanced 5/21/2026 (commit 3ef589d) with cache_control ephemeral, stop_sequence, thinking, and cache token tracking.
+> NOTE: Bug fixes on 5/19/2026: Inpainting/Outpainting pipelines now properly load UNet+VAE sessions (were only loading text encoder). DiffusionPipelineService unified to use DiffusionInferenceEngine for CLIP text encoding, UNet denoising, and VAE decoding. Anthropic response format enhanced 5/21/2026 (commit 3ef589d) with cache_control ephemeral, stop_sequence, thinking, and cache token tracking. **EmbeddingPipelineService has full ONNX Runtime inference (no longer stub).**
 | Category | Items Complete | Items Remaining |
 |----------|---------------|-----------------|
 | HTTP Server Foundation | 4 / 4 | ✓ All items complete |
-| OpenAI-Compatible Endpoints | ~4 of 5 partial | Text completions + streaming working; image generation real pipeline connected with SSE support; embedding still stubbed |
+| OpenAI-Compatible Endpoints | ~4 of 5 partial | Text completions + streaming working; image generation real pipeline connected with SSE support; embedding has real ONNX Runtime inference |
 | Anthropic-Compatible Endpoints | 2 of 2 ✓ | Messages endpoint uses real service; response format now enhanced with cache_control, stop_sequence, thinking fields |
 | Server Management | 3 / 4 | UI controls missing |
 | Diffusion Model Engine | 6 of 7 | CLIP text encoding + CFG denoising implemented; VAE decode connected to pipeline via DiffusionInferenceEngine; model families architecture ready but untested with specific models; samplers (Euler/EulerA/DPMS/LMS) all implemented |
@@ -299,7 +299,7 @@ OpenLMStudio/
 | LoRA Adapter System | 1 of 2 partial | Weight injection infrastructure added — LoraDeltaTensor record with Weight scaling factor, RunUnetDenoise overload accepting IReadOnlyList<LoraDeltaTensor>, ApplyLoraDeltas helper method. Real weight extraction from safetensors still needed |
 | VAE Pipeline Service | 1 / 1 | ✓ Complete — fully implemented with ONNX Runtime inference |
 | Image Post-Processing | 4 of 4 ✓ | Upscaling (stub), HiRes.fix (stub), ControlNet Canny (working), ControlNet Depth/OpenPose (stubs) — all interfaces implemented |
-| Embedding Pipeline Service | 1 of 1 ✓ | Complete — replaced stub random vector generation with actual ONNX Runtime inference in GenerateAsync/GenerateBatchAsync |
+| Embedding Pipeline Service | 1 of 1 ✓ | Complete — full ONNX Runtime inference with proper tokenization, attention mask/position ID support, dynamic embedding dimension extraction, mean-pooling |
 
 ---
 
