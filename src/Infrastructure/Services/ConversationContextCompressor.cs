@@ -1,6 +1,7 @@
-using Microsoft.Extensions.Logging;
+using global::Microsoft.Extensions.Logging;
 using OpenLMStudio.Application.Interfaces;
 using OpenLMStudio.Domain.Models;
+using OpenLMStudio.Infrastructure.Logging;
 
 namespace OpenLMStudio.Infrastructure.Services;
 
@@ -65,8 +66,7 @@ public class ConversationContextCompressor : IContextCompressor, IDisposable
         var compressedTokenCount = compressed.Sum(s => s.TokenCount);
         var ratio = originalTokenCount > 0 ? (double)(originalTokenCount - compressedTokenCount) / originalTokenCount : 0;
 
-        _logger?.LogDebug("Compression applied at level {Level}: {OriginalTokens} → {CompressedTokens} tokens ({Ratio:P1})",
-            level, originalTokenCount, compressedTokenCount, ratio);
+        _logger?.ContextCompressed(0, (int)originalTokenCount, (int)compressedTokenCount, ratio);
 
         return new CompressionResult(compressed, originalTokenCount, compressedTokenCount, ratio);
     }
