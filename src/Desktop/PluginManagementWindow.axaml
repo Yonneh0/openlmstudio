@@ -1,0 +1,114 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        x:Class="OpenLMStudio.Desktop.PluginManagementWindow"
+        Width="900" Height="700"
+        Title="Plugin Management - OpenLMStudio">
+
+    <Window.Resources>
+        <SolidColorBrush x:Key="BgPrimary" Color="#1E1E22"/>
+        <SolidColorBrush x:Key="BgSecondary" Color="#252529"/>
+        <SolidColorBrush x:Key="BgTertiary" Color="#2D2D30"/>
+        <SolidColorBrush x:Key="TextPrimary" Color="#CCCCCC"/>
+        <SolidColorBrush x:Key="TextSecondary" Color="#888888"/>
+        <SolidColorBrush x:Key="AccentBlue" Color="#4FC3F7"/>
+        <SolidColorBrush x:Key="AccentGreen" Color="#4CAF50"/>
+        <SolidColorBrush x:Key="AccentRed" Color="#FF6B6B"/>
+    </Window.Resources>
+
+    <Window.Styles>
+        <Style Selector="Button.pluginBtn">
+            <Setter Property="Background" Value="{StaticResource AccentBlue}"/>
+            <Setter Property="Foreground" Value="White"/>
+            <Setter Property="Padding" Value="12,6"/>
+            <Setter Property="BorderThickness" Value="0"/>
+            <Setter Property="FontSize" Value="13"/>
+        </Style>
+
+        <Style Selector="Button.pluginInstallBtn">
+            <Setter Property="Background" Value="{StaticResource AccentGreen}"/>
+            <Setter Property="Foreground" Value="White"/>
+            <Setter Property="Padding" Value="10,5"/>
+            <Setter Property="BorderThickness" Value="0"/>
+            <Setter Property="FontSize" Value="12"/>
+        </Style>
+
+        <Style Selector="TextBox.pluginSearch">
+            <Setter Property="Background" Value="{StaticResource BgTertiary}"/>
+            <Setter Property="Foreground" Value="{StaticResource TextPrimary}"/>
+            <Setter Property="Padding" Value="8,6"/>
+            <Setter Property="BorderThickness" Value="1"/>
+            <Setter Property="BorderBrush" Value="#3A3A3E"/>
+        </Style>
+
+        <Style Selector="TextBlock.pluginName">
+            <Setter Property="Foreground" Value="{StaticResource TextPrimary}"/>
+            <Setter Property="FontSize" Value="14"/>
+            <Setter Property="FontWeight" Value="SemiBold"/>
+        </Style>
+
+        <Style Selector="TextBlock.pluginDescription">
+            <Setter Property="Foreground" Value="{StaticResource TextSecondary}"/>
+            <Setter Property="FontSize" Value="12"/>
+        </Style>
+
+        <Style Selector="TextBlock.pluginVersion">
+            <Setter Property="Foreground" Value="{StaticResource TextSecondary}"/>
+            <Setter Property="FontSize" Value="11"/>
+        </Style>
+
+        <Style Selector="StackPanel.pluginCard">
+            <Setter Property="Background" Value="{StaticResource BgSecondary}"/>
+            <Setter Property="CornerRadius" Value="4"/>
+            <Setter Property="Padding" Value="16"/>
+            <Setter Property="Margin" Value="0,0,0,8"/>
+        </Style>
+
+        <Style Selector="StackPanel.pluginCard:disabled">
+            <Setter Property="Opacity" Value="0.6"/>
+        </Style>
+    </Window.Styles>
+
+    <Grid>
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="*"/>
+            <RowDefinition Height="Auto"/>
+        </Grid.RowDefinitions>
+
+        <!-- Header -->
+        <StackPanel Grid.Row="0" Orientation="Horizontal" Margin="16,16,16,8">
+            <TextBlock Text="Plugin Management" FontWeight="SemiBold" Foreground="#4FC3F7" FontSize="18"/>
+            <TextBlock Text="  " />
+            <TextBlock x:Name="RegistryUrlDisplay" Foreground="#888888" FontSize="12"/>
+        </StackPanel>
+
+        <!-- Toolbar -->
+        <StackPanel Grid.Row="0" Orientation="Horizontal" Margin="16,0,16,8">
+            <TextBox x:Name="PluginSearchBox"
+                     Classes="pluginSearch"
+                     Width="300"
+                     Watermark="Search plugins..."
+                     Margin="0,0,8,0"/>
+            <Button x:Name="RefreshPluginsBtn"
+                    Content="Refresh"
+                    Classes="pluginBtn"
+                    Margin="0,0,8,0"/>
+            <Button x:Name="InstallPluginBtn"
+                    Content="Install from URL"
+                    Classes="pluginBtn"/>
+        </StackPanel>
+
+        <!-- Plugin List -->
+        <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto">
+            <StackPanel x:Name="PluginListPanel"/>
+        </ScrollViewer>
+
+        <!-- Status Bar -->
+        <Border Grid.Row="2" Background="{StaticResource BgPrimary}" Padding="16,8">
+            <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
+                <TextBlock x:Name="PluginCountLabel" Foreground="#888888" FontSize="12" Margin="0,0,16,0"/>
+                <Button Content="Close" Classes="pluginBtn"/>
+            </StackPanel>
+        </Border>
+    </Grid>
+</Window>
