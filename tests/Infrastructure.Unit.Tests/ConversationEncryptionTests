@@ -1,0 +1,85 @@
+using OpenLMStudio.Infrastructure.Services;
+using Xunit;
+
+namespace Infrastructure.Unit.Tests;
+
+/// <summary>
+/// Tests for ConversationEncryptionService round-trip encryption and password validation.
+/// </summary>
+public class ConversationEncryptionTests
+{
+    private readonly ConversationEncryptionService _service;
+
+    public ConversationEncryptionTests()
+    {
+        _service = new ConversationEncryptionService();
+    }
+
+    [Fact]
+    public void EncryptDecrypt_RoundTrip_PreservesOriginalText()
+    {
+        var original = "This is a secret conversation message with emojis 🎉🔥✨";
+        var encrypted = _service.Encrypt(original, "password123");
+        var decrypted = _service.Decrypt(encrypted, "password123");
+        Assert.Equal(original, decrypted);
+    }
+
+    [Fact]
+    public void EncryptDecrypt_WithLongText_PreservesContent()
+    {
+        var original = new string('A', 10000);
+        var encrypted = _service.Encrypt(original, "longtext");
+        var decrypted = _service.Decrypt(encrypted, "longtext");
+        Assert.Equal(original, decrypted);
+    }
+
+    [Fact]
+    public void Decrypt_WithWrongPassword_ThrowsInvalidOperationException()
+    {
+        var encrypted = _service.Encrypt("secret", "correctpassword");
+        Assert.Throws<InvalidOperationException>(() => _service.Decrypt(encrypted, "wrongpassword"));
+    }
+
+    [Fact]
+    public void Decrypt_WithTamperedCiphertext_ThrowsCryptographicException()
+    {
+        var encrypted = _service.Encrypt("secret", "password");
+        var bytes = Convert.FromBase64String(encrypted);
+        // Flip a byte in the ciphertext portion
+        bytes[32] ^= 0xFF;
+        var tampered = Convert.ToBase64String(bytes);
+        Assert.Throws<CryptographicException>(() => _service.Decrypt(tampered, "password"));
+    }
+
+    [Fact]
+    public void Encrypt_WithUnicodeAndEmoji_RoundTripsCorrectly()
+    {
+        var original = "こんにちは世界 🌏 مرحبا بالعالم Привет мир";
+        var encrypted = _service.Encrypt(original, "unicode");
+        var decrypted = _service.Decrypt(encrypted, "unicode");
+        Assert.Equal(original, decrypted);
+    }
+
+    [Fact]
+    public void Encrypt_WithEmptyPassword_ThrowsArgumentException()
+    {
+        Assert.Throws<ArgumentException>(() => _service.Encrypt("text", ""));
+    }
+
+    [Fact]
+    public void Decrypt_WithEmptyPassword_ThrowsArgumentException()
+    {
+        Assert.Throws<ArgumentException>(() => _service.Decrypt("data", ""));
+    }
+
+    [Fact]
+    public void StaticEncryptDecrypt_RoundTrip()
+    {
+        var obj = new { Name = "Test", Value = 42 };
+        var json = System.Text.Json.JsonSerializer.Serialize(obj);
+        var encrypted = ConversationEncryption.EncryptJson(obj, "key");
+        var decrypted = ConversationEncryption.DecryptJson<{ Name: string; Value: int }>(encrypted, "key");
+        Assert.Equal("Test", decrypted.Name);
+        Assert.Equal(42, decrypted.Value);
+    }
+}
