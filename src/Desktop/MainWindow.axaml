@@ -550,6 +550,73 @@
                         </StackPanel>
                     </StackPanel>
 
+                    <!-- Agent tab content -->
+                    <StackPanel x:Name="AgentTabContent" DockPanel.Dock="Top" IsVisible="False">
+                        <TextBlock x:Name="AgentTabTitle" Text="Agent" FontWeight="SemiBold" Foreground="#4FC3F7" Padding="8,6" PointerPressed="OnAgentTabPointerPressed"/>
+                        
+                        <!-- Task input -->
+                        <Border Background="{StaticResource BgSecondary}" CornerRadius="4" Margin="0,8,0,0">
+                            <StackPanel>
+                                <TextBlock Text="Task:" Foreground="{StaticResource TextPrimary}" Padding="12,4"/>
+                                <TextBox x:Name="AgentTaskInput" 
+                                         Foreground="{StaticResource TextPrimary}"
+                                         Background="{StaticResource BgTertiary}"
+                                         BorderThickness="0"
+                                         Margin="8,4,8,8"
+                                         Height="80"
+                                         AcceptsReturn="True"/>
+                                
+                                <!-- Agent settings -->
+                                <TextBlock Text="Max Iterations:" Foreground="{StaticResource TextPrimary}" Padding="12,4,12,2"/>
+                                <Slider x:Name="AgentMaxIterationsSlider" 
+                                        Minimum="10" Maximum="200" Value="50"
+                                        Margin="8,4,8,8"
+                                        TickFrequency="10"
+                                        IsSnapToTickEnabled="True"/>
+                                <TextBlock x:Name="AgentMaxIterationsText" 
+                                           Text="50" 
+                                           Foreground="{StaticResource TextSecondary}" 
+                                           FontSize="11" 
+                                           HorizontalAlignment="Center"/>
+                                
+                                <Button x:Name="AgentStartButton"
+                                        Content="Start Agent" 
+                                        Background="#0E639C"
+                                        Foreground="White"
+                                        Padding="12,4"
+                                        HorizontalAlignment="Stretch"
+                                        Height="36"/>
+                                <Button x:Name="AgentStopButton"
+                                        Content="Stop Agent" 
+                                        Background="#FF6B6B"
+                                        Foreground="White"
+                                        Padding="12,4"
+                                        HorizontalAlignment="Stretch"
+                                        Height="36"
+                                        Margin="8,4,8,8"
+                                        IsVisible="False"/>
+                            </StackPanel>
+                        </Border>
+                        
+                        <!-- Agent progress -->
+                        <Border Background="{StaticResource BgSecondary}" CornerRadius="4" Margin="0,8,0,0">
+                            <StackPanel>
+                                <TextBlock Text="Progress:" Foreground="{StaticResource TextPrimary}" Padding="12,4"/>
+                                <Border x:Name="AgentProgressBar" Background="#3A3A3E" CornerRadius="4" Height="8" Margin="8,4,8,8"/>
+                                <TextBlock x:Name="AgentProgressText" Foreground="{StaticResource TextSecondary}" Padding="8,0" FontSize="11"/>
+                            </StackPanel>
+                        </Border>
+                        
+                        <!-- Tool call log -->
+                        <Border Background="{StaticResource BgSecondary}" CornerRadius="4" Margin="0,8,0,0">
+                            <ScrollViewer HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Auto">
+                                <StackPanel x:Name="AgentToolLog">
+                                    <TextBlock Text="No tool calls yet" Foreground="{StaticResource TextMuted}" Padding="12,8" FontSize="11"/>
+                                </StackPanel>
+                            </ScrollViewer>
+                        </Border>
+                    </StackPanel>
+
                     <!-- Image Generation tab content -->
                     <StackPanel x:Name="ImageGenTabContent" DockPanel.Dock="Top">
                         <TextBlock Text="Image Generation" FontWeight="SemiBold" Foreground="#4FC3F7" Padding="8,6" PointerPressed="OnImageGenTabPointerPressed"/>
