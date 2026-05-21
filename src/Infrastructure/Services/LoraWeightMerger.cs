@@ -200,7 +200,7 @@ public class LoraWeightMerger : IDisposable
         // Try model repository first (if registered via JsonModelRepository)
         if (modelRepo != null)
         {
-            var models = await modelRepo.SearchMultiModalModelsAsync(modelTypeFilter: ModelType.Embedding);
+            var models = await modelRepo.SearchMultiModalModelsAsync(modelTypeFilter: ModelType.LoRA);
             foreach (var model in models)
             {
                 if (model.Id != null && model.Id.IndexOf(adapterModelId, StringComparison.OrdinalIgnoreCase) >= 0)
