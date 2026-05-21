@@ -26,18 +26,18 @@ public partial class SettingsWindow : Window
     {
         InitializeComponent();
 
+        _logger = logger;
+
         // Set title programmatically to avoid XAML entity reference issues with "&" character
         this.Title = "Settings - OpenLMStudio";
 
-        _logger = logger;
+        // Subscribe to tab selection events (must run after InitializeComponent)
+        if (ServerTabButton != null) ServerTabButton.IsCheckedChanged += OnTabChanged;
+        if (ModelTabButton != null) ModelTabButton.IsCheckedChanged += OnTabChanged;
+        if (AgentTabButton != null) AgentTabButton.IsCheckedChanged += OnTabChanged;
+        if (PluginTabButton != null) PluginTabButton.IsCheckedChanged += OnTabChanged;
 
-        // Subscribe to tab selection events
-        ServerTabButton.IsCheckedChanged += OnTabChanged;
-        ModelTabButton.IsCheckedChanged += OnTabChanged;
-        AgentTabButton.IsCheckedChanged += OnTabChanged;
-        PluginTabButton.IsCheckedChanged += OnTabChanged;
-
-        SaveSettingsBtn.Click += OnSaveSettingsClicked;
+        if (SaveSettingsBtn != null) SaveSettingsBtn.Click += OnSaveSettingsClicked;
 
         // Set the data privacy panel title from code-behind since auto-formatting converts & back to &
         if (DataPrivacyPanel != null)

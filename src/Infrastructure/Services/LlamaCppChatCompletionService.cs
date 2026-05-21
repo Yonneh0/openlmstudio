@@ -36,7 +36,7 @@ public class LlamaCppChatCompletionService : IChatCompletionService, IDisposable
         _modelRepository = modelRepository;
         _ggufParser = ggufParser;
 
-        _logger.LogInformation("LlamaCppChatCompletionService initialized — mode: {Mode}",
+        _logger.LogInformation("LlamaCppChatCompletionService initialized -- mode: {Mode}",
             HasNativeLibrary() ? "Native (llama.cpp bindings available)" : "Simulated (placeholder responses)");
     }
 

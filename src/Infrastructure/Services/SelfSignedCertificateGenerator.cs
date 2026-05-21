@@ -72,6 +72,23 @@ public class SelfSignedCertificateGenerator : ISelfSignedCertificateService, IDi
     }
 
     /// <inheritdoc />
+    public async Task<bool> HasPrivateKeyAsync(string certificatePath, CancellationToken ct = default)
+    {
+        try
+        {
+            if (!File.Exists(certificatePath))
+                return false;
+
+            using var cert = await LoadCertificateFromDiskAsync(certificatePath, ct);
+            return cert?.HasPrivateKey == true;
+        }
+        catch
+        {
+            return false;
+        }
+    }
+
+    /// <inheritdoc />
     public async Task<bool> HasTrustedCertificateAsync(string certificatePath, CancellationToken ct = default)
     {
         var isValid = await IsCertificateValidAsync(certificatePath, ct);
@@ -137,10 +154,16 @@ public class SelfSignedCertificateGenerator : ISelfSignedCertificateService, IDi
         {
             var privateKeyFilePath = Path.Combine(Path.GetDirectoryName(certificatePath) ?? Directory.GetCurrentDirectory(), "private-key.pem");
 
-            // Use OpenSSL to generate PEM cert + key
-            if (await GenerateOpenSSLAsync(ct, new[] { "req", "-x509", "-newkey", "rsa:2048",
-                    "-keyout", privateKeyFilePath, "-out", certificatePath,
-                    "-days", "365", "-nodes", "-subj", "/CN=localhost" }))
+            // Use OpenSSL to generate PEM cert + key with SAN extension
+            if (await GenerateOpenSSLAsync(ct, new[] {
+                "req", "-x509",
+                "-newkey", "rsa:2048",
+                "-keyout", privateKeyFilePath,
+                "-out", certificatePath,
+                "-days", "365",
+                "-nodes",
+                "-subj", "/CN=localhost",
+                "-addext", "subjectAltName=DNS:localhost" }))
             {
                 // Convert PEM cert + key to PFX using OpenSSL (OpenSSL is available on Windows via Chocolatey or Git Bash)
                 var opensslDir = FindGitBashOpenSSL();
@@ -175,8 +198,8 @@ public class SelfSignedCertificateGenerator : ISelfSignedCertificateService, IDi
             return false;
         }
 
-        // Use OpenSSL to generate a self-signed certificate
-        // openssl req -x509 -newkey rsa:2048 -keyout key.pem -out cert.pem -days 365 -nodes -subj "/CN=localhost"
+        // Use OpenSSL to generate a self-signed certificate with SAN extension
+        // openssl req -x509 -newkey rsa:2048 -keyout key.pem -out cert.pem -days 365 -nodes -subj "/CN=localhost" -addext "subjectAltName=DNS:localhost"
         var success = await GenerateOpenSSLAsync(ct, new[] {
                 "req", "-x509",
                 "-newkey", "rsa:2048",
@@ -184,7 +207,8 @@ public class SelfSignedCertificateGenerator : ISelfSignedCertificateService, IDi
                 "-out", certificatePath,
                 "-days", "365",
                 "-nodes",
-                "-subj", "/CN=localhost" });
+                "-subj", "/CN=localhost",
+                "-addext", "subjectAltName=DNS:localhost" });
 
         return success;
     }

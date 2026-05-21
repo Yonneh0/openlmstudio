@@ -104,6 +104,14 @@ public partial class MainWindow : Window
         // Initialize Pingu avatar if IPinguStore is available
         InitializePingu();
 
+        // Defer chat list loading until after window is shown to avoid freezing the UI
+        this.Opened += OnMainWindowOpened;
+    }
+
+    private void OnMainWindowOpened(object? sender, EventArgs e)
+    {
+        // Unsubscribe to avoid re-running
+        this.Opened -= OnMainWindowOpened;
         RefreshChatListAsync();
     }
 
@@ -237,7 +245,7 @@ public partial class MainWindow : Window
                 break;
             case "Devices":
                 SetTabVisibility(DevicesTabContent, true);
-                UpdateDeviceStatus();
+                _ = UpdateDeviceStatusAsync();
                 break;
             case "Context":
                 SetTabVisibility(ContextTabContent, true);
@@ -383,13 +391,9 @@ public partial class MainWindow : Window
             button.Background = new SolidColorBrush(Color.FromRgb(45, 45, 48));
         }
 
-        // Add token count as tooltip - _conversationManager already verified non-null in caller path (CreateChatListItem is only called after ListChatsAsync which requires it)
-#pragma warning disable CS8602 // Dereference of a possibly null reference
-        var tokenCount = _conversationManager.CalculateTotalTokenCountAsync(chat.Id).GetAwaiter().GetResult();
-#pragma warning restore CS8602
-
         // Use Avalonia's ToolTip.SetTip() attached method instead of Tooltip property
-        var toolTipText = new TextBlock { Text = $"Tokens: {tokenCount}" };
+        // Defer token count calculation to avoid blocking the UI thread
+        var toolTipText = new TextBlock { Text = "Loading..." };
         if (button.Parent is Border buttonBorder)
             ToolTip.SetTip(button, toolTipText);
         else
@@ -399,6 +403,25 @@ public partial class MainWindow : Window
                 if (p != null && !(toolTipText.Parent is Panel))
                     ToolTip.SetTip(p, toolTipText);
             };
+
+        // Load token count asynchronously without blocking the UI thread
+        var chatIdForToken = chat.Id;
+        var mgrForToken = _conversationManager;
+        _ = Task.Run(async () =>
+        {
+            try
+            {
+                if (mgrForToken != null)
+                {
+                    var count = await mgrForToken.CalculateTotalTokenCountAsync(chatIdForToken);
+                    await Dispatcher.UIThread.InvokeAsync(() =>
+                    {
+                        toolTipText.Text = $"Tokens: {count}";
+                    });
+                }
+            }
+            catch { /* Ignore token count errors */ }
+        });
 
         button.Click += OnChatItemClicked;
         return button;
@@ -848,61 +871,56 @@ public partial class MainWindow : Window
         }
     }
 
-    /// <summary>
-    /// Async version of device status update for use from async event handlers.
-    /// </summary>
-    private async Task UpdateDeviceStatusAsync()
-    {
-        await Dispatcher.UIThread.InvokeAsync(() => UpdateDeviceStatus());
-    }
-
     // ---- Device Status Update ----
 
-    private void UpdateDeviceStatus()
+    private async Task UpdateDeviceStatusAsync()
     {
-        if (_conversationManager == null) return;
-
-        // Get device info from the device monitor service via DI
-        try
+        await Dispatcher.UIThread.InvokeAsync(async () =>
         {
-            var serviceProvider = GetAppServiceProvider();
-            if (serviceProvider != null)
+            if (_conversationManager == null) return;
+
+            // Get device info from the device monitor service via DI
+            try
             {
-                var deviceMonitor = serviceProvider.GetService<IDeviceMonitor>();
-                if (deviceMonitor != null)
+                var serviceProvider = GetAppServiceProvider();
+                if (serviceProvider != null)
                 {
-                    CpuCoreText.Text = $"CPU Cores: {Environment.ProcessorCount}";
+                    var deviceMonitor = serviceProvider.GetService<IDeviceMonitor>();
+                    if (deviceMonitor != null)
+                    {
+                        CpuCoreText.Text = $"CPU Cores: {Environment.ProcessorCount}";
 
-                    // Get total physical memory (not GC heap size)
-                    try
-                    {
-                        // Use PerformanceCounter or WMI for total RAM
-                        var ramAvailable = Environment.GetLogicalDrives().Length; // fallback to a non-crashing value
-                        RamInfoText.Text = $"RAM: {Environment.ProcessorCount} Cores";
-                    }
-                    catch
-                    {
-                        RamInfoText.Text = "RAM: Unknown";
-                    }
+                        // Get total physical memory (not GC heap size)
+                        try
+                        {
+                            // Use PerformanceCounter or WMI for total RAM
+                            var ramAvailable = Environment.GetLogicalDrives().Length; // fallback to a non-crashing value
+                            RamInfoText.Text = $"RAM: {Environment.ProcessorCount} Cores";
+                        }
+                        catch
+                        {
+                            RamInfoText.Text = "RAM: Unknown";
+                        }
 
-                    // Check for GPU via system info
-                    try
-                    {
-                        var gpuDevices = deviceMonitor.GetGpuDevicesAsync().GetAwaiter().GetResult();
-                        if (gpuDevices.Any())
-                            LoadedModelRightText.Text = "GPU Detected";
-                    }
-                    catch
-                    {
-                        // Ignore errors reading GPU info
+                        // Check for GPU via system info (use async to avoid blocking the UI thread)
+                        try
+                        {
+                            var gpuDevices = await deviceMonitor.GetGpuDevicesAsync();
+                            if (gpuDevices.Any())
+                                LoadedModelRightText.Text = "GPU Detected";
+                        }
+                        catch
+                        {
+                            // Ignore errors reading GPU info
+                        }
                     }
                 }
             }
-        }
-        catch
-        {
-            // Ignore errors updating device status
-        }
+            catch
+            {
+                // Ignore errors updating device status
+            }
+        });
     }
 
     // ---- Model List Display ----
