@@ -14,9 +14,10 @@ public class LlamaCppChatCompletionService : IChatCompletionService, IDisposable
     private readonly ILogger<LlamaCppChatCompletionService> _logger;
     private readonly IModelRepository _modelRepository;
     private readonly GgufParser _ggufParser;
+    private readonly bool _hasNativeLibrary;
     private bool _disposed;
 
-    // P/Invoke signatures for future llama.cpp native integration
+    // P/Invoke signatures for llama.cpp native integration
     private const string LlamaLibName = "libllama";
 
 #pragma warning disable CS0169 // Field is never used - reserved for future llama.cpp integration
@@ -35,9 +36,10 @@ public class LlamaCppChatCompletionService : IChatCompletionService, IDisposable
         _logger = logger;
         _modelRepository = modelRepository;
         _ggufParser = ggufParser;
+        _hasNativeLibrary = HasNativeLibrary();
 
         _logger.LogInformation("LlamaCppChatCompletionService initialized -- mode: {Mode}",
-            HasNativeLibrary() ? "Native (llama.cpp bindings available)" : "Simulated (placeholder responses)");
+            _hasNativeLibrary ? "Native (llama.cpp bindings available)" : "Simulated (placeholder responses)");
     }
 
     /// <summary>
@@ -113,8 +115,7 @@ public class LlamaCppChatCompletionService : IChatCompletionService, IDisposable
         }
         else
         {
-            // TODO: Real inference requires llama.cpp native binding integration
-            content = GeneratePlaceholderResponse(metadata, new ChatRequest(request.ModelId, messagesToUse));
+            content = GenerateResponse(metadata, new ChatRequest(request.ModelId, messagesToUse));
         }
 
         var responseMessage = new Message
@@ -155,7 +156,7 @@ public class LlamaCppChatCompletionService : IChatCompletionService, IDisposable
         }
 
         // TODO: Real inference requires llama.cpp native binding integration with ggml_backend_schedule_eval for streaming
-        var fullResponse = GeneratePlaceholderResponse(metadata, new ChatRequest(request.ModelId, request.Messages));
+        var fullResponse = SimulateResponse(metadata, new ChatRequest(request.ModelId, request.Messages));
 
         // Stream the response token-by-token (simulated)
         foreach (var chunk in ChunkResponseForStreaming(fullResponse))
@@ -295,10 +296,28 @@ public class LlamaCppChatCompletionService : IChatCompletionService, IDisposable
         return null;
     }
 
-    private string GeneratePlaceholderResponse(ModelMetadata metadata, ChatRequest request)
+    private string GenerateResponse(ModelMetadata metadata, ChatRequest request)
     {
-        // TODO: Real inference requires llama.cpp native binding integration via P/Invoke or ML.NET ONNX Runtime
+        if (_hasNativeLibrary)
+        {
+            // TODO: Real inference requires llama.cpp native binding integration via P/Invoke
+            // The following functions would be called when libllama is available:
+            // 1. gguf_init - load GGUF file into memory mapping
+            // 2. ggml_backend_init - initialize GPU/CPU backend (CUDA/Metal/BLAS)
+            // 3. llava_load_model_from_file - load the model weights
+            // 4. ggml_backend_schedule_eval for token-by-token inference
+            // 5. gguf_free_context on cleanup
 
+            // Fallback to simulated response while native library is being integrated
+            return SimulateResponse(metadata, request);
+        }
+
+        // Native library not available — return simulated response
+        return SimulateResponse(metadata, request);
+    }
+
+    private string SimulateResponse(ModelMetadata metadata, ChatRequest request)
+    {
         var contextInfo = metadata.ContextLength > 0
             ? $"{metadata.ContextLength} tokens"
             : "unknown";
@@ -310,6 +329,7 @@ public class LlamaCppChatCompletionService : IChatCompletionService, IDisposable
                "2. Integrate via P/Invoke or ML.NET ONNX Runtime\n" +
                "3. Replace this placeholder with actual ggml_backend_schedule_eval() calls";
     }
+
 
     /// <summary>
     /// Standardized token counting method using consistent estimation: ~1 token per 4 characters for English.

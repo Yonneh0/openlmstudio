@@ -304,7 +304,23 @@ public class QEMUProcessManager : IQEMUProcessManager, IDisposable
 
     private static async Task<object?> ReadQMPResponseAsync(TextReader reader)
     {
-        var line = await reader.ReadLineAsync().ConfigureAwait(false);
-        return line != null ? JsonSerializer.Deserialize<JsonObject>(line) : null;
+        // QMP responses may span multiple lines; accumulate until we have valid JSON
+        var sb = new StringBuilder();
+        while (true)
+        {
+            var line = await reader.ReadLineAsync().ConfigureAwait(false);
+            if (line == null)
+                break;
+            sb.Append(line);
+            try
+            {
+                return JsonSerializer.Deserialize<JsonObject>(sb.ToString());
+            }
+            catch (JsonException)
+            {
+                // Incomplete JSON; keep reading
+            }
+        }
+        return null;
     }
 }

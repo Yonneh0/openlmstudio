@@ -118,17 +118,75 @@ public class UpdateManager : IUpdateManager, IDisposable
         }
     }
 
-    public Task<bool> ApplyUpdateAsync(CancellationToken ct = default)
+    public async Task<bool> ApplyUpdateAsync(CancellationToken ct = default)
     {
         if (_status != UpdateStatus.DownloadComplete)
-            return Task.FromResult(false);
+            return false;
 
-        // In production, this would run the installer
-        // For now, log the action
-        _logger.LogInformation("Update applied (placeholder)");
-        _status = UpdateStatus.Current;
-        _availableUpdate = null;
-        return Task.FromResult(true);
+        var appDataDir = _appDataResolver.GetAppDataDirectory();
+        var updatesDir = Path.Combine(appDataDir, "updates");
+        var updateZip = Path.Combine(updatesDir, "update.zip");
+        if (!File.Exists(updateZip))
+        {
+            _logger.LogError("Update file not found: {Path}", updateZip);
+            _status = UpdateStatus.DownloadFailed;
+            return false;
+        }
+
+        if (_availableUpdate == null)
+        {
+            _status = UpdateStatus.Current;
+            return false;
+        }
+
+        try
+        {
+            _logger.LogInformation("Applying update {Version} from {Zip}", _availableUpdate.Version, updateZip);
+
+            // Extract update archive to a staging directory
+            var stagingDir = Path.Combine(updatesDir, $"staging-{_availableUpdate.Version}");
+            Directory.CreateDirectory(stagingDir);
+            System.IO.Compression.ZipFile.ExtractToDirectory(updateZip, stagingDir, true);
+
+            // Find the executable to replace (current app exe path)
+            var currentExe = Process.GetCurrentProcess().MainModule?.FileName ?? string.Empty;
+            if (string.IsNullOrEmpty(currentExe) || !File.Exists(currentExe))
+            {
+                _logger.LogWarning("Could not locate current executable for update replacement");
+                _status = UpdateStatus.Current;
+                return false;
+            }
+
+            // Write a small launcher script that will swap files and restart
+            var launcherScript = Path.Combine(updatesDir, $"update-launcher-{Guid.NewGuid()}.bat");
+            var backupPath = currentExe + ".backup";
+            var launcherContent = $"copy /y \"{stagingDir}\\*\" \"{Path.GetDirectoryName(currentExe)}\" && del /f /q \"{backupPath}\" && start \"\" \"{currentExe}\" && exit\n"
+                + $"copy /y \"{currentExe}\" \"{backupPath}\"\n"
+                + $"for %%f in (\"{stagingDir}\\*.dll\" \"{stagingDir}\\*.exe\" \"{stagingDir}\\*.pdb\") do copy /y \"%%f\" \"{Path.GetDirectoryName(currentExe)}\"\n"
+                + $"timeout /t 2 >nul\n"
+                + $"start \"\" \"{currentExe}\"\n"
+                + $"exit";
+            await File.WriteAllTextAsync(launcherScript, launcherContent);
+
+            // Launch the update script in background and exit gracefully
+            _logger.LogInformation("Launching update script");
+            Process.Start(new ProcessStartInfo
+            {
+                FileName = "cmd.exe",
+                Arguments = $"/c \"pushd {updatesDir} && {Path.GetFileName(launcherScript)}\"",
+                UseShellExecute = true,
+                WindowStyle = ProcessWindowStyle.Hidden
+            });
+
+            _status = UpdateStatus.Applying;
+            return true;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error applying update");
+            _status = UpdateStatus.DownloadFailed;
+            return false;
+        }
     }
 
     public async Task<IReadOnlyList<UpdateInfo>> CheckPluginUpdatesAsync(CancellationToken ct = default)
@@ -139,7 +197,7 @@ public class UpdateManager : IUpdateManager, IDisposable
             return Array.Empty<UpdateInfo>();
         }
 
-        var updates = await _pluginRegistry.GetAvailableUpdatesAsync();
+        var updates = await _pluginRegistry.GetAvailableUpdatesAsync() ?? Array.Empty<Domain.Interfaces.PluginUpdateInfo>();
         return updates.Select(u => new UpdateInfo(u.AvailableVersion.ToString(), $"{u.PluginId}: {u.InstalledVersion} → {u.AvailableVersion}", 0, DateTime.UtcNow)).ToList();
     }
 

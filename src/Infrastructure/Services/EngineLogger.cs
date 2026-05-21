@@ -94,8 +94,7 @@ public class EngineLogger : IEngineLogger
         {
             try
             {
-                var bytes = System.Text.Encoding.UTF8.GetBytes(line);
-                using var parsed = JsonDocument.Parse(bytes);
+                using var parsed = JsonDocument.Parse(line);
                 if (parsed.RootElement.TryGetProperty("choices", out var choices) && choices.GetArrayLength() > 0)
                 {
                     var delta = choices[0];

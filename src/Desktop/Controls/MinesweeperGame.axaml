@@ -1,0 +1,56 @@
+<UserControl x:Class="OpenLMStudio.Desktop.Controls.MinesweeperGame"
+    xmlns="https://github.com/avaloniaui"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    Width="320">
+
+    <StackPanel Margin="8">
+        <!-- Title -->
+        <TextBlock Text="Minesweeper"
+                   HorizontalAlignment="Center"
+                   FontSize="18"
+                   FontWeight="SemiBold"
+                   Margin="0,0,0,8"/>
+
+        <!-- Emoji centered, flags aligned to the right -->
+        <StackPanel HorizontalAlignment="Center"
+                    Margin="0,0,0,8">
+            <TextBlock x:Name="ResetButton"
+                       Text="🙂"
+                       HorizontalAlignment="Center"
+                       FontSize="28"
+                       FontWeight="Bold"/>
+            <StackPanel Orientation="Horizontal"
+                        HorizontalAlignment="Center"
+                        Margin="0,4,0,0">
+                <TextBlock x:Name="FlagCountText"
+                           Text="Flags: 10"
+                           FontSize="13"
+                           VerticalAlignment="Center"/>
+                <TextBlock x:Name="TimerDisplay"
+                           Text="⏱ 0s"
+                           FontSize="13"
+                           Margin="12,0,0,0"
+                           VerticalAlignment="Center"/>
+            </StackPanel>
+        </StackPanel>
+
+        <Border x:Name="GameBoard"
+                Background="#C0C0C0"
+                BorderThickness="2"
+                BorderBrush="#808080"
+                CornerRadius="2"
+                HorizontalAlignment="Center"/>
+
+        <TextBlock x:Name="StatusText"
+                   Text="Click to start"
+                   HorizontalAlignment="Center"
+                   Margin="0,8,0,0"
+                   FontSize="12"/>
+
+        <TextBlock x:Name="BestTimesText"
+                   Text="Best times: (none yet)"
+                   HorizontalAlignment="Center"
+                   Margin="0,8,0,8"
+                   FontSize="10"/>
+    </StackPanel>
+</UserControl>

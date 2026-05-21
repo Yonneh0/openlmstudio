@@ -98,11 +98,11 @@ public class ImagePostProcessingService : IImagePostProcessingService, IDisposab
         _logger?.LogInformation("HiRes.fix for '{ModelId}' — target: {Width}x{Height}",
             request.ModelId, request.Width, request.Height);
 
-        // Step 1: Generate at reduced resolution (1/4 of target)
-        int reducedWidth = request.Width / 4;
-        int reducedHeight = request.Height / 4;
+        // Step 1: Generate at reduced resolution (1/2 of target — balance speed vs quality)
+        int reducedWidth = request.Width / 2;
+        int reducedHeight = request.Height / 2;
 
-        // Note: ImageGenerationRequest constructor order is (ModelId, Prompt, NegativePrompt, Width, Height, GuidanceScale, Steps, Seed, LoraAdapters, StreamProgress, SamplerType)
+        // Generate low-res image first (stubbed — returns placeholder)
         var reducedRequest = new ImageGenerationRequest(
             request.ModelId,
             request.Prompt,
@@ -116,13 +116,13 @@ public class ImagePostProcessingService : IImagePostProcessingService, IDisposab
             StreamProgress: false,
             request.SamplerType);
 
-        // Step 2: Upscale using diffusion-based upscaler
+        // Step 2: Upscale the generated image to target resolution
         var upscaleRequest = new ImageUpscaleRequest(
-            request.ImageId,
-            reducedRequest.ModelId, // Stub — in real impl this would be the base64 of the generated image
+            request.ImageId ?? Guid.NewGuid().ToString(),
+            reducedRequest.ModelId,
             request.ModelId,
             request.UpscaleModelId ?? "RealESRGAN_x4",
-            request.ScaleFactor,
+            (int)((double)request.Width / reducedWidth),  // Scale factor
             request.Steps,
             request.GuidanceScale,
             request.Seed ?? -1);

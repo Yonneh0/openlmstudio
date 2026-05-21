@@ -1,6 +1,7 @@
 <Window xmlns="https://github.com/avaloniaui"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         x:Class="OpenLMStudio.Desktop.MainWindow"
+        xmlns:Controls="clr-namespace:OpenLMStudio.Desktop.Controls"
         Width="1400" Height="750"
         MinWidth="1000" MinHeight="600">
 
@@ -242,8 +243,22 @@
         </Style>
     </Window.Styles>
 
-    <!-- Three-panel layout: Left Sidebar | Center Chat | Right Sidebar -->
-    <Grid>
+    <!-- Main content wrapper (Window can only have one child) -->
+    <DockPanel>
+        <!-- Menu bar -->
+        <DockPanel DockPanel.Dock="Top" Background="#252529" Height="32">
+            <TextBlock Text="OpenLMStudio" Foreground="#4FC3F7" FontSize="14" FontWeight="SemiBold" Padding="8,4" VerticalAlignment="Center"/>
+            <Button x:Name="MenuOpenModel" Content="Open Model" Background="Transparent" Foreground="#CCC" Padding="8,4"/>
+            <Button x:Name="MenuExit" Content="Exit" Background="Transparent" Foreground="#CCC" Padding="8,4"/>
+            <Button x:Name="MenuMinesweeper" Content="Minesweeper" Background="Transparent" Foreground="#CCC" Padding="8,4"/>
+            <Button x:Name="MenuTetris" Content="Tetris" Background="Transparent" Foreground="#CCC" Padding="8,4"/>
+            <Button x:Name="MenuSnake" Content="Snake" Background="Transparent" Foreground="#CCC" Padding="8,4"/>
+            <Button x:Name="MenuJezzball" Content="Jezzball" Background="Transparent" Foreground="#CCC" Padding="8,4"/>
+            <Button x:Name="MenuSolitaire" Content="Solitaire" Background="Transparent" Foreground="#CCC" Padding="8,4"/>
+        </DockPanel>
+
+        <!-- Three-panel layout: Left Sidebar | Center Chat | Right Sidebar -->
+        <Grid>
         <Grid.ColumnDefinitions>
             <!-- Left sidebar: Fixed width for navigation -->
             <ColumnDefinition Width="280"/>
@@ -830,8 +845,10 @@
                     <TextBlock Text="" Foreground="#CCCCCC" FontSize="12" Padding="4,6"/>
                     <RadioButton x:Name="RightDevicesTabButton" Content="Devices" Classes="settingsTab"/>
                     <TextBlock Text="" Foreground="#CCCCCC" FontSize="12" Padding="4,6"/>
-                    <RadioButton x:Name="RightAnalysisTabButton" Content="AI Analysis" Classes="settingsTab"/>
-                </StackPanel>
+                     <RadioButton x:Name="RightAnalysisTabButton" Content="AI Analysis" Classes="settingsTab"/>
+                     <TextBlock Text="" Foreground="#CCCCCC" FontSize="12" Padding="4,6"/>
+                     <RadioButton x:Name="RightGamesTabButton" Content="Games" Classes="settingsTab"/>
+                 </StackPanel>
 
                 <!-- Context tab content (default) -->
                 <StackPanel x:Name="RightContextContent" DockPanel.Dock="Top">
@@ -999,8 +1016,13 @@
                             HorizontalAlignment="Stretch"/>
                 </StackPanel>
 
-                <!-- Devices tab content (hidden by default) -->
-                <StackPanel x:Name="RightDevicesContent" DockPanel.Dock="Top" IsVisible="False">
+                     <!-- Games panel content (hidden by default) -->
+                     <StackPanel x:Name="RightGamesContent" DockPanel.Dock="Top" IsVisible="False">
+                         <Controls:GamesPanel x:Name="RightGamesPanel"/>
+                     </StackPanel>
+
+                     <!-- Devices tab content (hidden by default) -->
+                     <StackPanel x:Name="RightDevicesContent" DockPanel.Dock="Top" IsVisible="False">
                     <!-- GPU info section -->
                     <Border Background="{StaticResource BgSecondary}" CornerRadius="4" Margin="0,0,0,12">
                         <StackPanel>
@@ -1078,5 +1100,6 @@
                 </StackPanel>
             </DockPanel>
         </Panel>
-    </Grid>
+        </Grid>
+    </DockPanel>
 </Window>

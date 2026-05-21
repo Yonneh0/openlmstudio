@@ -1,0 +1,37 @@
+<UserControl x:Class="OpenLMStudio.Desktop.Controls.SnakeGame"
+    xmlns="https://github.com/avaloniaui"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    Width="320" Height="400">
+
+    <StackPanel Margin="8">
+        <TextBlock Text="Snake"
+                   HorizontalAlignment="Center"
+                   FontSize="16"
+                   FontWeight="SemiBold"
+                   Margin="0,0,0,8"/>
+
+        <StackPanel Orientation="Horizontal"
+                    HorizontalAlignment="Center"
+                    Margin="0,0,0,8">
+            <TextBlock x:Name="ScoreText"
+                       Text="Score: 0"
+                       FontSize="14"
+                       Margin="0,0,16,0"/>
+            <Button x:Name="ResetButton"
+                    Content="Reset"
+                    FontSize="12"/>
+        </StackPanel>
+
+        <Border x:Name="GameBoard"
+                Background="#111"
+                BorderThickness="2"
+                BorderBrush="#444"
+                CornerRadius="2"/>
+
+        <TextBlock x:Name="StatusText"
+                   Text="Use arrow keys to play"
+                   HorizontalAlignment="Center"
+                   Margin="0,8,0,0"
+                   FontSize="12"/>
+    </StackPanel>
+</UserControl>

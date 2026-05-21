@@ -1,62 +1,63 @@
 <Window x:Class="OpenLMStudio.Desktop.Windows.VMWizardWindow"
     xmlns="https://github.com/avaloniaui"
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:qemu="clr-namespace:OpenLMStudio.Domain.Models.QEMU;assembly=OpenLMStudio.Domain"
     Title="Create Virtual Machine"
-    Width="500" Height="600"
+    Width="600" Height="550"
+    MinWidth="550" MinHeight="450"
     WindowStartupLocation="CenterOwner">
 
-    <StackPanel Margin="24">
-        <TextBlock Text="New Virtual Machine"
-                   FontSize="20"
-                   FontWeight="SemiBold"
-                   Margin="0,0,0,16"/>
+    <Design.DataContext>
+        <qemu:VMCreationForm/>
+    </Design.DataContext>
 
-        <!-- VM Name -->
-        <TextBlock Text="Name:"/>
-        <TextBox x:Name="NameInput"
-                 Text="vm-1"
-                 Margin="0,0,0,12"/>
+    <Grid Margin="24" RowDefinitions="Auto,*,Auto">
+        <!-- Header -->
+        <StackPanel Grid.Row="0" Margin="0,0,0,16">
+            <TextBlock Text="New Virtual Machine"
+                       FontSize="22"
+                       FontWeight="SemiBold"/>
+            <TextBlock Text="Configure your virtual machine settings"
+                       FontSize="13"
+                       Foreground="#888"
+                       Margin="0,4,0,0"/>
+        </StackPanel>
 
-        <!-- Architecture -->
-        <TextBlock Text="Architecture:"/>
-        <ComboBox x:Name="ArchCombo"
-                  SelectedIndex="0"
-                  Margin="0,0,0,12"/>
+        <!-- Wizard Content Area -->
+        <Border Grid.Row="1"
+                Background="#F5F5F5"
+                CornerRadius="8"
+                Padding="24"
+                Margin="0,0,0,16">
+            <ScrollViewer>
+                <ContentControl x:Name="WizardContent"/>
+            </ScrollViewer>
+        </Border>
 
-        <!-- Accelerator -->
-        <TextBlock Text="Accelerator:"/>
-        <ComboBox x:Name="AccelCombo"
-                  SelectedIndex="0"
-                  Margin="0,0,0,12"/>
-
-        <!-- CPU -->
-        <TextBlock Text="CPU Cores:"/>
-        <Slider x:Name="CpuSlider"
-                Minimum="1" Maximum="32" Value="2"
-                Margin="0,0,0,12"/>
-
-        <!-- RAM -->
-        <TextBlock Text="RAM (MB):"/>
-        <Slider x:Name="RamSlider"
-                Minimum="256" Maximum="32768" Value="2048"
-                TickFrequency="256"
-                Margin="0,0,0,12"/>
-
-        <!-- Disk -->
-        <TextBlock Text="Disk Image:"/>
-        <TextBox x:Name="DiskInput"
-                 Text=""
-                 Margin="0,0,0,12"/>
-
-        <!-- Buttons -->
-        <StackPanel Orientation="Horizontal"
+        <!-- Footer with Navigation -->
+        <StackPanel Grid.Row="2"
+                    Orientation="Horizontal"
                     HorizontalAlignment="Right">
-            <Button Content="Cancel"
+            <Button x:Name="CancelButton"
+                    Content="Cancel"
                     HorizontalAlignment="Right"
-                    Margin="0,0,8,0"/>
+                    Margin="0,0,8,0"
+                    Padding="16,8"/>
+            <Button x:Name="PrevButton"
+                    Content="Previous"
+                    HorizontalAlignment="Right"
+                    Margin="0,0,8,0"
+                    Padding="16,8"
+                    IsVisible="False"/>
+            <Button x:Name="NextButton"
+                    Content="Next"
+                    HorizontalAlignment="Right"
+                    Padding="16,8"/>
             <Button x:Name="CreateButton"
                     Content="Create"
-                    HorizontalAlignment="Right"/>
+                    HorizontalAlignment="Right"
+                    Padding="16,8"
+                    IsVisible="False"/>
         </StackPanel>
-    </StackPanel>
+    </Grid>
 </Window>

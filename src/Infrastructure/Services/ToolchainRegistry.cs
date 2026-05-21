@@ -56,9 +56,22 @@ public class ToolchainRegistry : IToolchainRegistry, IDisposable
             await using var fileStream = new FileStream(tempPath, FileMode.Create, FileAccess.Write);
             await stream.CopyToAsync(fileStream).ConfigureAwait(false);
 
-            // Extract the zip to the cache directory
+            // Extract the zip to the cache directory with path traversal protection
             Directory.CreateDirectory(localPath);
             ZipFile.ExtractToDirectory(tempPath, localPath, overwriteFiles: true);
+
+            // Validate all extracted files stay within the cache directory
+            var cacheDir = Path.GetFullPath(localPath);
+            foreach (var entry in ZipFile.OpenRead(tempPath).Entries)
+            {
+                var entryPath = Path.GetFullPath(Path.Combine(cacheDir, entry.FullName));
+                if (!entryPath.StartsWith(cacheDir, StringComparison.Ordinal))
+                {
+                    File.Delete(tempPath);
+                    _logger.LogWarning("Rejected zip entry outside cache directory: {Entry}", entry.FullName);
+                    return null;
+                }
+            }
 
             _cache[key] = localPath;
             _logger.LogInformation("Downloaded toolchain for {Arch}/{Tool}", arch, toolName);

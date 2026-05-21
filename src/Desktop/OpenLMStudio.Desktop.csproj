@@ -52,11 +52,38 @@
     <PackageReference Include="CommunityToolkit.Mvvm" Version="8.3.2" />
   </ItemGroup>
 
+  <!-- Global usings for Avalonia types -->
+  <ItemGroup>
+    <Using Include="Avalonia.Interactivity" />
+    <Using Include="Avalonia.Controls" />
+    <Using Include="Avalonia.Controls.Primitives" />
+    <Using Include="Avalonia.Input" />
+    <Using Include="Avalonia.Media" />
+    <Using Include="Avalonia.Layout" />
+    <Using Include="Avalonia.Platform.Storage" />
+    <Using Include="System.IO" />
+    <Using Include="System.Collections.Generic" />
+    <Using Include="System.Linq" />
+    <Using Include="System.Text" />
+    <Using Include="System.Threading.Tasks" />
+  </ItemGroup>
+
   <!-- Project references remain the same -->
   <ItemGroup>
     <ProjectReference Include="..\Domain\OpenLMStudio.Domain.csproj" />
     <ProjectReference Include="..\Application\OpenLMStudio.Application.csproj" />
     <ProjectReference Include="..\Infrastructure\OpenLMStudio.Infrastructure.csproj" />
+  </ItemGroup>
+
+  <!-- Avalonia resources for mini-games and VM wizard -->
+  <ItemGroup>
+    <AvaloniaResource Remove="Controls\MinesweeperGame.axaml" />
+    <AvaloniaResource Remove="Controls\TetrisGame.axaml" />
+    <AvaloniaResource Remove="Controls\SnakeGame.axaml" />
+    <AvaloniaResource Remove="Controls\JezzballGame.axaml" />
+    <AvaloniaResource Remove="Controls\SolitaireGame.axaml" />
+    <AvaloniaResource Remove="Controls\VMConsole.axaml" />
+    <AvaloniaResource Remove="Windows\VMWizardWindow.axaml" />
   </ItemGroup>
 
 </Project>

@@ -18,6 +18,8 @@ public class VMStore : IVMStore, IDisposable
     public VMStore()
     {
         _stateTimer = new Timer(OnStateTimerTick, null, Timeout.Infinite, Timeout.Infinite);
+        // Start the timer so state changes are periodically notified
+        _stateTimer.Change(TimeSpan.FromSeconds(2), Timeout.InfiniteTimeSpan);
     }
 
     private void OnStateTimerTick(object? state)

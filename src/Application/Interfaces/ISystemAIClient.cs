@@ -16,7 +16,7 @@ public class SseDone;
 
 /// <summary>
 /// Client for the System AI (llama.cpp) inference engine.
-/// Communicates via stdin/stdout JSON protocol, not HTTP.
+/// Communicates via HTTP POST to llama-server (spawns llama-server process).
 /// </summary>
 public interface ISystemAIClient : IDisposable
 {

@@ -5,6 +5,21 @@ using OpenLMStudio.Domain.Models.Pingu;
 namespace OpenLMStudio.Infrastructure.Services;
 
 /// <summary>
+/// Event published by PinguStore for cross-component communication.
+/// </summary>
+public record PinguEvent(string Name);
+
+/// <summary>
+/// Static event bus for Pingu cross-component communication.
+/// </summary>
+public static class PinguEventBus
+{
+    public static event Action<PinguEvent>? OnEvent;
+
+    public static void Publish(PinguEvent @event) => OnEvent?.Invoke(@event);
+}
+
+/// <summary>
 /// Reactive state store for the Pingu System AI avatar.
 /// </summary>
 public class PinguStore : IPinguStore, IDisposable
@@ -58,6 +73,8 @@ public class PinguStore : IPinguStore, IDisposable
                 _state.ActivePanel = PinguPanelType.None;
             NotifyChanged();
         }
+        var eventName = _state.IsMenuOpen ? "pingu-chat-open" : "pingu-chat-close";
+        PinguEventBus.Publish(new PinguEvent(eventName));
         return Task.CompletedTask;
     }
 
@@ -81,6 +98,32 @@ public class PinguStore : IPinguStore, IDisposable
 
         if (awake)
             _ = StartAwakeningSequenceAsync();
+    }
+
+    public async Task PinAndOpenChatAsync()
+    {
+        lock (_stateLock)
+        {
+            _state.IsVisible = true;
+            _state.IsMenuOpen = true;
+            _state.ActivePanel = PinguPanelType.About;
+            NotifyChanged();
+        }
+        PinguEventBus.Publish(new PinguEvent("pingu-chat-open"));
+        await Task.CompletedTask;
+    }
+
+    public async Task UnpinPinguAsync()
+    {
+        lock (_stateLock)
+        {
+            _state.IsVisible = false;
+            _state.IsMenuOpen = false;
+            _state.ActivePanel = PinguPanelType.None;
+            NotifyChanged();
+        }
+        PinguEventBus.Publish(new PinguEvent("pingu-chat-close"));
+        await Task.CompletedTask;
     }
 
     public Task SetLoadingProgressAsync(double progress)
@@ -127,6 +170,7 @@ public class PinguStore : IPinguStore, IDisposable
         NotifyChanged();
 
         _logger?.LogInformation("Pingu awakened successfully.");
+        PinguEventBus.Publish(new PinguEvent("pingu-awakened"));
     }
 
     public Task StartBlinkTimerAsync()

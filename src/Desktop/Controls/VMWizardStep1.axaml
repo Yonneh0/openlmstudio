@@ -1,0 +1,43 @@
+<UserControl x:Class="OpenLMStudio.Desktop.Controls.VMWizardStep1"
+    xmlns="https://github.com/avaloniaui"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:qemu="clr-namespace:OpenLMStudio.Domain.Models.QEMU;assembly=OpenLMStudio.Domain">
+
+    <Design.DataContext>
+        <qemu:VMCreationForm/>
+    </Design.DataContext>
+
+    <StackPanel>
+        <TextBlock Text="Step 1 of 5: Basic Settings"
+                   FontSize="16"
+                   FontWeight="SemiBold"
+                   Margin="0,0,0,16"/>
+
+        <!-- VM Name -->
+        <TextBlock Text="VM Name:" FontWeight="SemiBold" Margin="0,0,0,4"/>
+        <TextBox x:Name="NameInput"
+                 Text="vm-1"
+                 Margin="0,0,0,16"/>
+
+        <!-- Architecture -->
+        <TextBlock Text="Architecture:" FontWeight="SemiBold" Margin="0,0,0,4"/>
+        <ComboBox x:Name="ArchCombo"
+                  Margin="0,0,0,16"/>
+
+        <!-- Accelerator -->
+        <TextBlock Text="Accelerator:" FontWeight="SemiBold" Margin="0,0,0,4"/>
+        <ComboBox x:Name="AccelCombo"
+                  Margin="0,0,0,16"/>
+
+        <!-- Hardware Info -->
+        <Border Background="#E8E8E8" CornerRadius="4" Padding="12" Margin="0,8,0,0">
+            <StackPanel>
+                <TextBlock Text="Detected Hardware" FontWeight="SemiBold" Margin="0,0,0,8"/>
+                <TextBlock x:Name="HardwareInfoText"
+                           Text="Loading..."
+                           FontSize="12"
+                           Foreground="#666"/>
+            </StackPanel>
+        </Border>
+    </StackPanel>
+</UserControl>

@@ -9,6 +9,7 @@ public enum UpdateStatus
     UpdateAvailable,
     Downloading,
     DownloadComplete,
+    Applying,
     DownloadFailed
 }
 

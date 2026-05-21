@@ -301,6 +301,9 @@ public static class DependencyInjection
         // ModelLifecycleTracer tracks per-model load/unload timing and VRAM allocation
         services.AddSingleton<Tracing.ModelLifecycleTracer>();
 
+        // WindowSettingsService persists and restores main window state (position, size, active tab)
+        services.AddSingleton<IWindowSettings, Services.WindowSettingsService>();
+
         // ---- Pingu (System AI Mascot) ----
 
         // PinguStore manages reactive Pingu state machine (mood, awakening, blink, animation)
@@ -335,6 +338,18 @@ public static class DependencyInjection
 
         // ResourceManager monitors CPU/memory with VM-aware allocation
         services.AddSingleton<IResourceManager, ResourceManager>();
+
+        // SystemAICoordinator orchestrates System AI with QEMU VMs for cross-architecture workflows
+        services.AddSingleton<ISystemAICoordinator, SystemAICoordinator>();
+
+        // EngineBinaryDownloader downloads and caches llama.cpp engine binaries from GitHub releases
+        services.AddSingleton<EngineBinaryDownloader>();
+
+        // EngineConfigService persists and loads engine configuration to/from disk
+        services.AddSingleton<IEngineConfigService, EngineConfigService>();
+
+        // AppUpdateChecker checks for application updates via GitHub Releases API
+        services.AddSingleton<IAppUpdateChecker, AppUpdateChecker>();
 
         // UpdateManager provides application-level update checking via GitHub Releases API.
         services.AddSingleton<IUpdateManager>(resolver =>

@@ -15,7 +15,8 @@ using Avalonia.Input;
 using Avalonia.Interactivity;
 using Avalonia.Layout;
 using Avalonia.Media;
-using Avalonia.Markup.Xaml;
+using Avalonia.Media.TextFormatting;
+using Avalonia.Platform.Storage;
 using Avalonia.Threading;
 using Avalonia.VisualTree;
 using Microsoft.Extensions.DependencyInjection;
@@ -43,6 +44,7 @@ public partial class MainWindow : Window
     private readonly IChatContextManager? _contextManager;
     private readonly IContextWindowBudgeter? _budgeter;
     private readonly IPinguStore? _pinguStore;
+    private readonly IWindowSettings? _windowSettings;
 
     /// <summary>Pingu avatar control for the bottom-right corner of the main window.</summary>
     private PinguAvatar? _pinguAvatar;
@@ -71,7 +73,8 @@ public partial class MainWindow : Window
         IChatCompletionService? chatCompletionService = null,
         IChatContextManager? contextManager = null,
         IContextWindowBudgeter? budgeter = null,
-        IPinguStore? pinguStore = null)
+        IPinguStore? pinguStore = null,
+        IWindowSettings? windowSettings = null)
     {
         InitializeComponent();
         _logger = logger;
@@ -90,6 +93,10 @@ public partial class MainWindow : Window
         _contextManager = contextManager ?? ResolveContextManagerFromAppServices();
         _budgeter = budgeter ?? ResolveBudgeterFromAppServices();
         _pinguStore = pinguStore;
+        _windowSettings = windowSettings ?? ResolveWindowSettingsFromAppServices();
+
+        // Load saved window state and apply it
+        _ = LoadWindowStateAsync();
 
         // Subscribe to server state changes
         if (_serverService is OpenLMStudio.Infrastructure.Services.ServerService realSvc)
@@ -215,6 +222,28 @@ public partial class MainWindow : Window
         // Refresh devices button
         if (RightRefreshDevicesBtn != null)
             RightRefreshDevicesBtn.Click += OnRefreshDevicesClicked;
+
+        // Menu bar buttons
+        if (MenuOpenModel != null)
+            MenuOpenModel.Click += OnOpenModelClicked;
+
+        if (MenuExit != null)
+            MenuExit.Click += OnExitClicked;
+
+        if (MenuMinesweeper != null)
+            MenuMinesweeper.Click += OnOpenMinesweeperClicked;
+
+        if (MenuTetris != null)
+            MenuTetris.Click += OnOpenTetrisClicked;
+
+        if (MenuSnake != null)
+            MenuSnake.Click += OnOpenSnakeClicked;
+
+        if (MenuJezzball != null)
+            MenuJezzball.Click += OnOpenJezzballClicked;
+
+        if (MenuSolitaire != null)
+            MenuSolitaire.Click += OnOpenSolitaireClicked;
     }
 
     private void ShowTab(string tabName)
@@ -323,12 +352,14 @@ public partial class MainWindow : Window
         SetPanelVisibility(RightServerContent, activeTab == "Server");
         SetPanelVisibility(RightDevicesContent, activeTab == "Devices");
         SetPanelVisibility(RightAnalysisContent, activeTab == "Analysis");
+        SetPanelVisibility(RightGamesContent, activeTab == "Games");
 
         // Update tab button states
         if (RightContextTabButton != null) RightContextTabButton.IsChecked = activeTab == "Context";
         if (RightServerTabButton != null) RightServerTabButton.IsChecked = activeTab == "Server";
         if (RightDevicesTabButton != null) RightDevicesTabButton.IsChecked = activeTab == "Devices";
         if (RightAnalysisTabButton != null) RightAnalysisTabButton.IsChecked = activeTab == "Analysis";
+        if (RightGamesTabButton != null) RightGamesTabButton.IsChecked = activeTab == "Games";
 
         // Update context budget when switching to context tab
         if (activeTab == "Context")
@@ -2109,6 +2140,9 @@ public partial class MainWindow : Window
 
         if (RightAnalysisTabButton != null)
             RightAnalysisTabButton.IsCheckedChanged += (_, _) => UpdateRightSidebarTab(RightAnalysisTabButton.IsChecked == true ? "Analysis" : _activeTab);
+
+        if (RightGamesTabButton != null)
+            RightGamesTabButton.IsCheckedChanged += (_, _) => UpdateRightSidebarTab(RightGamesTabButton.IsChecked == true ? "Games" : _activeTab);
     }
 
     /// <summary>
@@ -2501,11 +2535,77 @@ public partial class MainWindow : Window
         }
     }
 
+    // ---- Window State Persistence ----
+
+    /// <summary>
+    /// Loads the previously saved window state and applies it to this window.
+    /// Avalonia's Window doesn't expose Left/Top, so we only restore size and active tab.
+    /// </summary>
+    private async Task LoadWindowStateAsync()
+    {
+        if (_windowSettings == null) return;
+
+        try
+        {
+            var state = await _windowSettings.LoadAsync();
+
+            // Apply window dimensions
+            Width = state.Width;
+            Height = state.Height;
+
+            // Restore active tab
+            if (!string.IsNullOrEmpty(state.ActiveTab))
+            {
+                ShowTab(state.ActiveTab);
+            }
+
+            // Restore selected chat
+            if (state.SelectedChatId.HasValue)
+            {
+                _selectedChatId = state.SelectedChatId.Value;
+                _ = LoadConversationMessagesAsync(state.SelectedChatId.Value).ConfigureAwait(false);
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger?.LogWarning(ex, "Failed to load window state, using defaults");
+        }
+    }
+
+    /// <summary>
+    /// Saves the current window state to disk.
+    /// Avalonia's Window doesn't expose Left/Top, so we only save size and active tab.
+    /// </summary>
+    private async Task SaveWindowStateAsync()
+    {
+        if (_windowSettings == null) return;
+
+        try
+        {
+            var state = new WindowStateSettings
+            {
+                Width = Width,
+                Height = Height,
+                ActiveTab = _activeTab,
+                SelectedChatId = _selectedChatId
+            };
+
+            await _windowSettings.SaveAsync(state);
+        }
+        catch (Exception ex)
+        {
+            _logger?.LogWarning(ex, "Failed to save window state");
+        }
+    }
+
     // ---- Cleanup on window close ----
 
     protected override void OnClosing(WindowClosingEventArgs e)
     {
         base.OnClosing(e);
+
+        // Save window state before closing
+        _ = SaveWindowStateAsync();
 
         // Unsubscribe from server state changes before the window is closed
         if (_serverService is OpenLMStudio.Infrastructure.Services.ServerService realSvc)
@@ -2513,6 +2613,81 @@ public partial class MainWindow : Window
 
         // Dispose context manager if it implements IDisposable
         _contextManager?.Dispose();
+    }
+
+    // ---- Game Menu Handlers ----
+
+    private void OnOpenModelClicked(object? sender, RoutedEventArgs e)
+    {
+        // Open model file dialog using Avalonia's modern StorageProvider API
+        _ = Task.Run(async () =>
+        {
+            var files = await this.StorageProvider.OpenFilePickerAsync(new FilePickerOpenOptions
+            {
+                Title = "Open Model",
+                AllowMultiple = false
+            });
+            if (files.Any())
+            {
+                _logger?.LogInformation("User selected model: {Path}", files.First().Path.ToString());
+            }
+        });
+    }
+
+    private void OnExitClicked(object? sender, RoutedEventArgs e)
+    {
+        this.Close();
+    }
+
+    private void OnOpenMinesweeperClicked(object? sender, RoutedEventArgs e)
+    {
+        if (RightGamesPanel != null)
+        {
+            try { RightGamesPanel.ActivateGame("minesweeper"); } catch { }
+        }
+    }
+
+    private void OnOpenTetrisClicked(object? sender, RoutedEventArgs e)
+    {
+        if (RightGamesPanel != null)
+        {
+            try { RightGamesPanel.ActivateGame("tetris"); } catch { }
+        }
+    }
+
+    private void OnOpenSnakeClicked(object? sender, RoutedEventArgs e)
+    {
+        if (RightGamesPanel != null)
+        {
+            try { RightGamesPanel.ActivateGame("snake"); } catch { }
+        }
+    }
+
+    private void OnOpenJezzballClicked(object? sender, RoutedEventArgs e)
+    {
+        if (RightGamesPanel != null)
+        {
+            try { RightGamesPanel.ActivateGame("jezzball"); } catch { }
+        }
+    }
+
+    private void OnOpenSolitaireClicked(object? sender, RoutedEventArgs e)
+    {
+        if (RightGamesPanel != null)
+        {
+            try { RightGamesPanel.ActivateGame("solitaire"); } catch { }
+        }
+    }
+
+    // ---- Helper Methods ----
+
+    /// <summary>
+    /// Attempts to resolve the window settings service from App.ApplicationServices (DI fallback).
+    /// </summary>
+    private static IWindowSettings? ResolveWindowSettingsFromAppServices()
+    {
+        var sp = GetAppServiceProvider();
+        return sp?.GetRequiredService<IWindowSettings>();
     }
 
 }
