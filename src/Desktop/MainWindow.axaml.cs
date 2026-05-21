@@ -598,74 +598,122 @@ public partial class MainWindow : Window
         }
         else
         {
-            // Add role label for user/system messages and context controls
-            var outerStackPanel = new StackPanel();
+        // Add role label for user/system messages and context controls
+        var outerStackPanel = new StackPanel();
 
-            // Top row: Role label + per-message context controls
-            if (_contextManager != null && _selectedChatId.HasValue)
+        // Top row: Role label + per-message context controls
+        if (_contextManager != null && _selectedChatId.HasValue)
+        {
+            var topRow = new Grid();
+            topRow.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Star });
+            topRow.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
+
+            // Role label on the left
+            var roleLabel = new TextBlock
             {
-                var topRow = new Grid();
-                topRow.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Star });
-                topRow.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
+                Text = message.Role.ToString().ToUpper(),
+                Foreground = new SolidColorBrush(Color.FromRgb(79, 195, 247)),
+                FontWeight = FontWeight.SemiBold,
+                Margin = new Thickness(0, 0, 8, 4)
+            };
 
-                // Role label on the left
-                var roleLabel = new TextBlock
+            if (message.Role == MessageRole.User)
+                roleLabel.Foreground = new SolidColorBrush(Color.FromRgb(76, 175, 80)); // Green for user
+
+            Grid.SetColumn(roleLabel, 0);
+            topRow.Children.Add(roleLabel);
+
+            // Per-message context controls on the right
+            var controlPanel = new StackPanel { Orientation = Avalonia.Layout.Orientation.Horizontal };
+
+            // Pin button — lock from compression/reordering
+            var pinBtn = new Button
+            {
+                Content = "📌",
+                Classes = { "msgPinBtn" },
+                Padding = new Thickness(6, 2),
+                FontSize = 10,
+                BorderThickness = new Thickness(0)
+            };
+            // Store message ID on button Tag so event handler can look it up — 
+            // unlike WPF where Button.Tag is directly accessible in Avalonia.
+            pinBtn.Tag = message.Id;
+            pinBtn.Click += OnMessagePinClicked;
+            controlPanel.Children.Add(pinBtn);
+
+            // Suppress button — toggle visibility to AI
+            var suppressBtn = new Button
+            {
+                Content = "👁️",
+                Classes = { "msgSuppressBtn" },
+                Padding = new Thickness(6, 2),
+                FontSize = 10,
+                BorderThickness = new Thickness(0)
+            };
+            // Store message ID on button Tag so event handler can look it up — 
+            // unlike WPF where Button.Tag is directly accessible in Avalonia.
+            suppressBtn.Tag = message.Id;
+            suppressBtn.Click += OnMessageSuppressClicked;
+            controlPanel.Children.Add(suppressBtn);
+
+            Grid.SetColumn(controlPanel, 1);
+            topRow.Children.Add(controlPanel);
+
+            outerStackPanel.Children.Add(topRow);
+        }
+
+        // Content text block below the role label + controls
+        outerStackPanel.Children.Add(textBlock);
+
+        // Render ImageOutput(s) for image generation responses
+        if (message.ImageOutputs?.Any() == true)
+        {
+            foreach (var img in message.ImageOutputs)
+            {
+                try
                 {
-                    Text = message.Role.ToString().ToUpper(),
-                    Foreground = new SolidColorBrush(Color.FromRgb(79, 195, 247)),
-                    FontWeight = FontWeight.SemiBold,
-                    Margin = new Thickness(0, 0, 8, 4)
-                };
+                    byte[] imageBytes;
+                    if (img.ImageData.Length < 1024 && !img.ImageData.Contains(',') && img.ImageData.All(b => b >= 32 && b < 128))
+                    {
+                        // It's a base64-encoded PNG string
+                        imageBytes = Convert.FromBase64String(img.ImageData);
+                    }
+                    else
+                    {
+                        // It's already a byte array serialized as a string
+                        imageBytes = Encoding.UTF8.GetBytes(img.ImageData);
+                    }
+                    using var ms = new MemoryStream(imageBytes);
+                    var image = new Avalonia.Media.Imaging.Bitmap(ms);
 
-                if (message.Role == MessageRole.User)
-                    roleLabel.Foreground = new SolidColorBrush(Color.FromRgb(76, 175, 80)); // Green for user
+                    var imageControl = new Avalonia.Controls.Image
+                    {
+                        Source = image,
+                        Stretch = Avalonia.Media.Stretch.Uniform,
+                        MaxHeight = 512,
+                        Margin = new Thickness(0, 8, 0, 0)
+                    };
+                    outerStackPanel.Children.Add(imageControl);
 
-                Grid.SetColumn(roleLabel, 0);
-                topRow.Children.Add(roleLabel);
-
-                // Per-message context controls on the right
-                var controlPanel = new StackPanel { Orientation = Avalonia.Layout.Orientation.Horizontal };
-
-                // Pin button — lock from compression/reordering
-                var pinBtn = new Button
+                    // Image metadata
+                    var imgMeta = new TextBlock
+                    {
+                        Text = $"Seed: {img.Seed} | CFG: {img.CfgScale} | Steps: {img.Steps} | {img.Width}x{img.Height} | Model: {img.ModelId}",
+                        Foreground = new SolidColorBrush(Color.FromRgb(136, 136, 136)),
+                        FontSize = 10,
+                        Margin = new Thickness(0, 4, 0, 0),
+                        TextWrapping = TextWrapping.Wrap
+                    };
+                    outerStackPanel.Children.Add(imgMeta);
+                }
+                catch (Exception ex)
                 {
-                    Content = "📌",
-                    Classes = { "msgPinBtn" },
-                    Padding = new Thickness(6, 2),
-                    FontSize = 10,
-                    BorderThickness = new Thickness(0)
-                };
-                // Store message ID on button Tag so event handler can look it up — 
-                // unlike WPF where Button.Tag is directly accessible in Avalonia.
-                pinBtn.Tag = message.Id;
-                pinBtn.Click += OnMessagePinClicked;
-                controlPanel.Children.Add(pinBtn);
-
-                // Suppress button — toggle visibility to AI
-                var suppressBtn = new Button
-                {
-                    Content = "👁️",
-                    Classes = { "msgSuppressBtn" },
-                    Padding = new Thickness(6, 2),
-                    FontSize = 10,
-                    BorderThickness = new Thickness(0)
-                };
-                // Store message ID on button Tag so event handler can look it up — 
-                // unlike WPF where Button.Tag is directly accessible in Avalonia.
-                suppressBtn.Tag = message.Id;
-                suppressBtn.Click += OnMessageSuppressClicked;
-                controlPanel.Children.Add(suppressBtn);
-
-                Grid.SetColumn(controlPanel, 1);
-                topRow.Children.Add(controlPanel);
-
-                outerStackPanel.Children.Add(topRow);
+                    _logger?.LogWarning(ex, "Failed to render image output for message {MessageId}", message.Id);
+                }
             }
+        }
 
-            // Content text block below the role label + controls
-            outerStackPanel.Children.Add(textBlock);
-
-            border.Child = outerStackPanel;
+        border.Child = outerStackPanel;
         }
 
         return border;

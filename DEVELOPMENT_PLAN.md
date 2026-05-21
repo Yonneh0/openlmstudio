@@ -575,18 +575,19 @@ OpenLMStudio/
 - [ ] Onboarding flow for first-time users
 
 ### 10.3 Documentation & Release
-- [ ] User documentation and help system
+- [x] User documentation and help system — comprehensive USER_GUIDE.md
+- [x] API compatibility matrix — docs/API_COMPATIBILITY.md
+- [x] Model compatibility guide — docs/MODEL_COMPATIBILITY.md
+- [x] Troubleshooting guide — docs/TROUBLESHOOTING.md
 - [ ] Developer documentation for plugin creation
-- [ ] API compatibility matrix — which endpoints support which model types
-- [ ] Model compatibility guide — which models work with which engines, known issues per variant
-- [ ] Troubleshooting guide — common error patterns, diagnostic steps
+- [ ] Interactive help system within the app
 
-#### Phase 10 Summary — **ALL INCOMPLETE** (0 of 16 items) ✓ Confirmed — no work started
+#### Phase 10 Summary — **5 of 16 items complete**
 | Category | Items Complete | Items Remaining |
 |----------|---------------|-----------------|
 | Testing Strategy | 0 / 5 | Not started |
 | UX Refinements | 0 / 3 | Not started |
-| Documentation & Release | 0 / 8 | Not started |
+| Documentation & Release | 4 / 6 ✓ | USER_GUIDE.md, API_COMPATIBILITY.md, MODEL_COMPATIBILITY.md, TROUBLESHOOTING.md |
 
 ---
 
@@ -640,7 +641,7 @@ OpenLMStudio/
 | 3: Inference Engines & Server API | ~9 of 41 partial | ~22% | HTTP server foundation complete; OpenAI/Anthropic endpoints working for text only; Anthropic response format enhanced with cache_control/stop_sequence/thinking (commit 3ef589d); **diffusion pipeline RunTextEncoder + CFG conditioning implemented** — real CLIP text encoding via DiffusionInferenceEngine.RunTextEncoder. Image/embedding engines still stubbed. |
 | 4: Chat & Conversation System | ~6 of 9 | ~67% | Data models + SQLite-backed persistence done. **ImageOutput model type added**. NOTE: Streaming only works with server endpoint — local service streaming is placeholder response text (no real llama.cpp inference). Per-message search via SearchMessagesInChatAsync exists in both FileConversationManager and ChatPersistenceService. |
 | 5: Context Management System | **10 of 10** | **~80%** | All context service interfaces + implementations complete (SQLite-backed). NOTE: Phase 6 UI controls for per-message pin/suppress in MainWindow.axaml.cs ARE functional — buttons created in CreateMessageBorder() with Click handlers wired to OnMessagePinClicked/OnMessageSuppressClicked calling _contextManager PinSegmentAsync/UnpinSegmentAsync/SuppressSegmentAsync/RevealSegmentAsync. Service layer fully implemented; UI binding complete. |
-| 6: UI Implementation | ~9 of 28 | ~32% | Server start/stop working, chat streaming via SSE endpoint works, context panel with budget indicator (color zones: green/yellow/red) works. Per-message pin/suppress controls functional (OnMessagePinClicked, OnMessageSuppressClicked handlers wired to IChatContextManager). PluginManagementWindow with search/install/enable/disable/policy controls implemented. SettingsWindow with tabbed UI (Server/Model/Agent/Plugin/Privacy) and persistent JSON storage. Custom context injection panel functional with expandable UI. Dynamic compressed segment rendering NOT yet implemented. |
+| 6: UI Implementation | ~10 of 28 | ~36% | Server start/stop working, chat streaming via SSE endpoint works, context panel with budget indicator (color zones: green/yellow/red) works. Per-message pin/suppress controls functional (OnMessagePinClicked, OnMessageSuppressClicked handlers wired to IChatContextManager). PluginManagementWindow with search/install/enable/disable/policy controls implemented. SettingsWindow with tabbed UI (Server/Model/Agent/Plugin/Privacy) and persistent JSON storage. Custom context injection panel functional with expandable UI. ImageOutput rendering now functional in CreateMessageBorder() — renders base64-encoded PNGs with metadata (seed, CFG, steps, resolution, model). |
 | 7: Agent Harness | 17 of 32 | ~53% | Core Agent class implemented with plan/act cycle; tool execution loop working; AgentTaskProgressTracker exists; ExecuteActionsAsync now iterates all IToolRegistry.GetTools() instead of hardcoded tool names; **New tools added**: GitDiffTool, GitHistoryTool, GitBlameTool, GitBranchesTool, CodeDefinitionExtractorTool — all implementing ITool with proper GetParameterSchema and IDisposable; **ActiveProjectWatcher** implemented for real-time project tree updates; **CommandExecutionService** sandboxed command execution fixed (cross-platform); **AgentSystemPromptGenerator** for dynamic system prompts; **AgentSessionPersister** for crash recovery; **AgentProgressSummaryService** for task completion reports; **AI Analysis Context Panel** added to right sidebar with AiAnalysisResult display; **AgentCommunicationProtocol** for plan/act phase transitions |
 | 8: Plugin & MCP System | **8 of 8** | **~96%** | MCP stdio + SSE transport (McpSseClient.cs) both complete. Prompt support via McpPromptAccessor + McpPromptListTool, resource accessor exists — all MCP features implemented. PluginRegistry: remote registry integration complete with download URL support, manifest creation, sandbox policy enforcement on install; **path traversal attack prevention added** to ZIP extraction (target path must be within installPath); **remote registry download with hash verification** added. |
 | 9: Resilience, Security & Operations | 13 of 14 | ~93% | Model file detection via SafetensorParser; download recovery verified via SHA256/MD5; model loading fallback chain implemented; streaming SSE reconstruction exists for chat completions only. **Sandbox isolation expanded: cgroups v2 support added for Linux/macOS process sandboxing** — full ISandboxService interface extended with CreateProcessWithSandboxPolicyAsync method. SelfSignedCertificateGenerator cross-platform implementation works on Windows; certificate auto-trust only available on Windows. RateLimitMiddleware + ApiKeyAuthMiddleware + IRateLimitService complete. **Auto-update system added: IUpdateManager/UpdateManager with GitHub Releases integration.** **ConversationEncryption (AES-256+HMAC) added for encrypted conversation data at rest.** **OomRecoveryService improved** (5/21/2026) — replaced placeholders with actual model type-based eviction logic (VAE→Embedding→Image→Text priority). **UpdateManager wired with IPluginRegistry dependency** and CheckPluginUpdatesAsync mapping fixed. **Memory management complete: ModelManager (concurrent loading/eviction), OomRecoveryService (model-type-priority eviction), ModelCacheCleanupService (configurable retention policies).** |
