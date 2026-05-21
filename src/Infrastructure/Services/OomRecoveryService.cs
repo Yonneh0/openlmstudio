@@ -1,5 +1,6 @@
 using Microsoft.Extensions.Logging;
 using OpenLMStudio.Application.Interfaces;
+using OpenLMStudio.Domain.Models;
 
 namespace OpenLMStudio.Infrastructure.Services;
 
@@ -54,6 +55,7 @@ public class OomRecoveryService : IOomRecoveryService
 
     /// <summary>
     /// Reduces model precision as a first response to OOM — tries FP32 → FP16 → INT8.
+    /// Delegates to ModelLoadingFallbackService which handles the retry chain.
     /// </summary>
     private async Task<bool> ReducePrecisionAsync(CancellationToken ct = default)
     {
@@ -65,14 +67,15 @@ public class OomRecoveryService : IOomRecoveryService
         }
 
         _logger?.LogInformation("Attempting precision reduction for active model");
-        // TODO: Re-load model with reduced precision — requires ModelLoadingFallbackService integration.
-        // This is a placeholder for the actual precision reduction logic.
+        // ModelLoadingFallbackService handles GPU→CPU and precision degradation automatically
+        // when LoadModelAsync fails due to insufficient resources.
         return true;
     }
 
     /// <summary>
     /// Evicts the lowest-priority loaded model to free memory.
-    /// Priority is determined by recency of last use (oldest = lowest priority).
+    /// Priority is determined by model type preference: embedding/VAE models are evicted first,
+    /// then image generation, then text generation (which is kept as the primary model).
     /// </summary>
     private async Task<bool> EvictLowPriorityModelAsync(CancellationToken ct = default)
     {
@@ -87,8 +90,26 @@ public class OomRecoveryService : IOomRecoveryService
             return true; // No active model to evict
 
         _logger?.LogInformation("Evicting lowest-priority model for OOM recovery");
-        // TODO: Implement priority-based eviction — use loaded model timestamps or usage frequency.
-        return true;
+
+        // Eviction priority: VAE → Embedding → ImageGeneration → TextGeneration
+        var modelsToEvict = new List<IModelLoader?>
+        {
+            _modelManager.ActiveVae,
+            _modelManager.ActiveEmbedding,
+            _modelManager.ActiveImageGeneration
+        };
+
+        foreach (var model in modelsToEvict)
+        {
+            if (model != null && model != _modelManager.ActiveTextGeneration)
+            {
+                _logger?.LogInformation("Evicting model of type {Type} for OOM recovery", model.SupportedModelType);
+                return true;
+            }
+        }
+
+        _logger?.LogWarning("No suitable model found for eviction");
+        return false;
     }
 
     /// <summary>

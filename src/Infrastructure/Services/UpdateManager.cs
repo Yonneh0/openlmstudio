@@ -3,6 +3,7 @@ using System.Net.Http.Json;
 using System.Text.Json;
 using Microsoft.Extensions.Logging;
 using OpenLMStudio.Application.Interfaces;
+using OpenLMStudio.Domain.Interfaces;
 
 namespace OpenLMStudio.Infrastructure.Services;
 
@@ -16,15 +17,17 @@ public class UpdateManager : IUpdateManager, IDisposable
     private readonly HttpClient _httpClient;
     private readonly string _currentVersion;
     private readonly AppDataDirectoryResolver _appDataResolver;
+    private readonly IPluginRegistry? _pluginRegistry;
     private UpdateInfo? _availableUpdate;
     private UpdateStatus _status;
     private double _downloadProgress;
 
-    public UpdateManager(ILogger<UpdateManager> logger, AppDataDirectoryResolver appDataResolver)
+    public UpdateManager(ILogger<UpdateManager> logger, AppDataDirectoryResolver appDataResolver, IPluginRegistry? pluginRegistry = null)
     {
         _logger = logger;
         _httpClient = new HttpClient { BaseAddress = new Uri("https://api.github.com/") };
         _appDataResolver = appDataResolver;
+        _pluginRegistry = pluginRegistry;
         _currentVersion = typeof(UpdateManager).Assembly.GetName().Version?.ToString() ?? "0.0.1";
         _status = UpdateStatus.Current;
     }
@@ -130,9 +133,14 @@ public class UpdateManager : IUpdateManager, IDisposable
 
     public async Task<IReadOnlyList<UpdateInfo>> CheckPluginUpdatesAsync(CancellationToken ct = default)
     {
-        // Delegate to PluginRegistry.GetAvailableUpdatesAsync
-        // This is a placeholder that returns empty — real implementation needs PluginRegistry access
-        return Array.Empty<UpdateInfo>();
+        if (_pluginRegistry == null)
+        {
+            _logger.LogDebug("IPluginRegistry not available for plugin update checks");
+            return Array.Empty<UpdateInfo>();
+        }
+
+        var updates = await _pluginRegistry.GetAvailableUpdatesAsync();
+        return updates.Select(u => new UpdateInfo(u.AvailableVersion.ToString(), $"{u.PluginId}: {u.InstalledVersion} → {u.AvailableVersion}", 0, DateTime.UtcNow)).ToList();
     }
 
     public void Dispose()

@@ -325,6 +325,13 @@ public static class DependencyInjection
         // ResourceManager monitors CPU/memory with VM-aware allocation
         services.AddSingleton<IResourceManager, ResourceManager>();
 
+        // UpdateManager provides application-level update checking via GitHub Releases API.
+        services.AddSingleton<IUpdateManager>(resolver =>
+            new UpdateManager(
+                resolver.GetService<Microsoft.Extensions.Logging.ILogger<UpdateManager>>() ?? NullLogger<UpdateManager>.Instance,
+                resolver.GetService<AppDataDirectoryResolver>() ?? new AppDataDirectoryResolver(),
+                resolver.GetService<Domain.Interfaces.IPluginRegistry>()));
+
         return services;
     }
 
