@@ -9,6 +9,7 @@ using OpenLMStudio.Application.Types;
 using OpenLMStudio.Domain.Models;
 using System.Collections.Concurrent;
 using System.Net.Sockets;
+using System.Security.Cryptography.X509Certificates;
 using System.Text;
 
 namespace OpenLMStudio.Infrastructure.Services;
@@ -131,37 +132,41 @@ public class ServerService : IServerService, IDisposable
                     {
                         _logger?.LogWarning("Failed to auto-generate HTTPS certificate, falling back to HTTP");
                     }
+                }
 
-                    // Check again after generation attempt
-                    if (!File.Exists(httpsCertPath))
+                // Validate cert has private key before attempting HTTPS — Kestrel will throw if it doesn't
+                bool certIsValid = false;
+                if (File.Exists(httpsCertPath))
+                {
+                    try
                     {
-                        _logger?.LogWarning("HTTPS certificate not found at '{CertPath}', falling back to HTTP", httpsCertPath);
+                        var testCert = new X509Certificate2(httpsCertPath);
+                        certIsValid = testCert.HasPrivateKey;
+                        if (!certIsValid)
+                        {
+                            _logger?.LogWarning("Certificate at '{CertPath}' has no private key, falling back to HTTP", httpsCertPath);
+                            // Remove the corrupt cert so we don't try again
+                            File.Delete(httpsCertPath);
+                        }
+                    }
+                    catch (Exception ex)
+                    {
+                        _logger?.LogWarning(ex, "Invalid certificate at '{CertPath}', falling back to HTTP", httpsCertPath);
+                        File.Delete(httpsCertPath);
                     }
                 }
 
-                var certToUse = File.Exists(httpsCertPath) ? httpsCertPath : keyPath; // Use whichever exists (PFX or PEM+key)
-
-                try
+                if (certIsValid)
                 {
-                    if (File.Exists(certToUse))
+                    try
                     {
-                        _logger?.LogInformation("HTTPS certificate found at '{CertPath}'", certToUse);
-
-                        if (certToUse.EndsWith(".pfx", StringComparison.OrdinalIgnoreCase))
-                        {
-                            // Use PFX with password on the configured port
-                            serverOptions.ListenAnyIP(Configuration.Port, opts => opts.UseHttps(certToUse));
-                        }
-                        else if (File.Exists(keyPath))
-                        {
-                            // Use PEM cert + key pair for Kestrel on the configured port
-                            serverOptions.ListenAnyIP(Configuration.Port, opts => opts.UseHttps(certToUse, keyPath));
-                        }
+                        _logger?.LogInformation("HTTPS certificate found at '{CertPath}'", httpsCertPath);
+                        serverOptions.ListenAnyIP(Configuration.Port, opts => opts.UseHttps(httpsCertPath));
                     }
-                }
-                catch (Exception ex)
-                {
-                    _logger?.LogWarning(ex, "Failed to use HTTPS certificate at '{CertPath}', falling back to HTTP", certToUse);
+                    catch (Exception ex)
+                    {
+                        _logger?.LogWarning(ex, "Failed to use HTTPS certificate, falling back to HTTP");
+                    }
                 }
             }
         });
