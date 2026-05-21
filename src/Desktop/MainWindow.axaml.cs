@@ -280,22 +280,53 @@ public partial class MainWindow : Window
         }
 
         var maxIterations = (int)(AgentMaxIterationsSlider?.Value ?? 50);
-        _logger?.LogInformation("Starting agent task with max iterations: {Max}", maxIterations);
+        _logger?.LogInformation("Starting agent task: {Task}, max iterations: {Max}", taskDescription, maxIterations);
 
         AgentStartButton?.SetValue(Button.IsEnabledProperty, false);
         AgentStopButton?.SetValue(Button.IsVisibleProperty, true);
 
-        // TODO: Start agent with task description and max iterations
-        // AgentTaskInput?.SetValue(TextBlock.TextProperty, "Starting...");
+        if (_agentService != null)
+        {
+            try
+            {
+                var taskRequest = new AgentTaskRequest(
+                    Guid.NewGuid(),
+                    taskDescription,
+                    MaxIterations: maxIterations);
+
+                _ = Task.Run(async () => await _agentService.ExecuteAsync(taskRequest, CancellationToken.None));
+            }
+            catch (Exception ex)
+            {
+                _logger?.LogError(ex, "Failed to start agent task");
+                AgentStartButton?.SetValue(Button.IsEnabledProperty, true);
+                AgentStopButton?.SetValue(Button.IsVisibleProperty, false);
+            }
+        }
+        else
+        {
+            _logger?.LogWarning("IAgent service not available");
+            AgentStartButton?.SetValue(Button.IsEnabledProperty, true);
+            AgentStopButton?.SetValue(Button.IsVisibleProperty, false);
+        }
     }
 
     private void OnAgentStopClicked(object? sender, RoutedEventArgs e)
     {
         _logger?.LogInformation("Stopping agent");
+        if (_agentService != null)
+        {
+            try
+            {
+                _ = _agentService.AbortAsync();
+            }
+            catch (Exception ex)
+            {
+                _logger?.LogError(ex, "Failed to abort agent");
+            }
+        }
         AgentStartButton?.SetValue(Button.IsEnabledProperty, true);
         AgentStopButton?.SetValue(Button.IsVisibleProperty, false);
-
-        // TODO: Stop agent
     }
 
     private void OnAgentMaxIterationsValueChanged(object? sender, RangeBaseValueChangedEventArgs e)
