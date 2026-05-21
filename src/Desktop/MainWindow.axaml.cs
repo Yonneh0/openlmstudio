@@ -14,6 +14,7 @@ using Avalonia.Controls;
 using Avalonia.Controls.ApplicationLifetimes;
 using Avalonia.Input;
 using Avalonia.Interactivity;
+using Avalonia.Controls.Primitives;
 using Avalonia.Layout;
 using Avalonia.Media;
 using Avalonia.Media.TextFormatting;
@@ -41,6 +42,7 @@ public partial class MainWindow : Window
     private readonly IServerService? _serverService;
     private readonly IModelRepository? _modelRepository;
     private readonly IChatCompletionService? _chatCompletionService;
+    private readonly IAgent? _agentService;
 
     private readonly IChatContextManager? _contextManager;
     private readonly IContextWindowBudgeter? _budgeter;
@@ -72,6 +74,7 @@ public partial class MainWindow : Window
         IServerService? serverService = null,
         IModelRepository? modelRepository = null,
         IChatCompletionService? chatCompletionService = null,
+        IAgent? agentService = null,
         IChatContextManager? contextManager = null,
         IContextWindowBudgeter? budgeter = null,
         IPinguStore? pinguStore = null,
@@ -93,6 +96,7 @@ public partial class MainWindow : Window
         _chatCompletionService = chatCompletionService ?? ResolveChatCompletionServiceFromAppServices();
         _contextManager = contextManager ?? ResolveContextManagerFromAppServices();
         _budgeter = budgeter ?? ResolveBudgeterFromAppServices();
+        _agentService = agentService;
         _pinguStore = pinguStore;
         _windowSettings = windowSettings ?? ResolveWindowSettingsFromAppServices();
 
@@ -208,6 +212,16 @@ public partial class MainWindow : Window
         if (RandomSeedButton != null)
             RandomSeedButton.Click += OnRandomSeedClicked;
 
+        // Agent tab handlers
+        if (AgentStartButton != null)
+            AgentStartButton.Click += OnAgentStartClicked;
+
+        if (AgentStopButton != null)
+            AgentStopButton.Click += OnAgentStopClicked;
+
+        if (AgentMaxIterationsSlider != null)
+            AgentMaxIterationsSlider.ValueChanged += OnAgentMaxIterationsValueChanged;
+
         // Image generation generate button
         if (ImageGenGenerateBtn != null)
             ImageGenGenerateBtn.Click += OnImageGenGenerateClicked;
@@ -245,5 +259,48 @@ public partial class MainWindow : Window
 
         if (MenuSolitaire != null)
             MenuSolitaire.Click += OnOpenSolitaireClicked;
+    }
+
+    // =========================================================================
+    // Agent tab handlers
+    // =========================================================================
+
+    private void OnAgentTabPointerPressed(object? sender, PointerPressedEventArgs e)
+    {
+        ShowTab("Agent");
+    }
+
+    private void OnAgentStartClicked(object? sender, RoutedEventArgs e)
+    {
+        var taskDescription = AgentTaskInput?.Text ?? string.Empty;
+        if (string.IsNullOrWhiteSpace(taskDescription))
+        {
+            _logger?.LogWarning("Agent task description is empty");
+            return;
+        }
+
+        var maxIterations = (int)(AgentMaxIterationsSlider?.Value ?? 50);
+        _logger?.LogInformation("Starting agent task with max iterations: {Max}", maxIterations);
+
+        AgentStartButton?.SetValue(Button.IsEnabledProperty, false);
+        AgentStopButton?.SetValue(Button.IsVisibleProperty, true);
+
+        // TODO: Start agent with task description and max iterations
+        // AgentTaskInput?.SetValue(TextBlock.TextProperty, "Starting...");
+    }
+
+    private void OnAgentStopClicked(object? sender, RoutedEventArgs e)
+    {
+        _logger?.LogInformation("Stopping agent");
+        AgentStartButton?.SetValue(Button.IsEnabledProperty, true);
+        AgentStopButton?.SetValue(Button.IsVisibleProperty, false);
+
+        // TODO: Stop agent
+    }
+
+    private void OnAgentMaxIterationsValueChanged(object? sender, RangeBaseValueChangedEventArgs e)
+    {
+        if (AgentMaxIterationsText != null)
+            AgentMaxIterationsText.Text = ((int)(AgentMaxIterationsSlider?.Value ?? 50)).ToString();
     }
 }

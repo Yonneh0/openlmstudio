@@ -25,6 +25,7 @@ public partial class MainWindow
         SetTabVisibility(ModelsTabContent, false);
         SetTabVisibility(DevicesTabContent, false);
         SetTabVisibility(ContextTabContent, false);
+        SetTabVisibility(AgentTabContent, false);
         SetTabVisibility(ImageGenTabContent, false);
 
         // Show the selected tab content
@@ -48,6 +49,9 @@ public partial class MainWindow
             case "Context":
                 SetTabVisibility(ContextTabContent, true);
                 _ = RefreshContextBudgetAsync();
+                break;
+            case "Agent":
+                SetTabVisibility(AgentTabContent, true);
                 break;
             case "ImageGen":
                 SetTabVisibility(ImageGenTabContent, true);
@@ -84,6 +88,9 @@ public partial class MainWindow
         if (ContextTabContent != null)
             tabs.Add(ContextTabContent.Children.OfType<TextBlock>().FirstOrDefault());
 
+        if (AgentTabContent != null)
+            tabs.Add(AgentTabContent.Children.OfType<TextBlock>().FirstOrDefault());
+
         foreach (var tb in tabs)
         {
             if (tb == null) continue;
@@ -91,7 +98,7 @@ public partial class MainWindow
             // Only update the first TextBlock of each tab section (the tab title)
             var parent = tb.Parent as Panel;
             if (parent?.Name != null &&
-                new[] { "ChatTabContent", "ServerTabContent", "ModelsTabContent", "DevicesTabContent", "ContextTabContent" }
+                new[] { "ChatTabContent", "ServerTabContent", "ModelsTabContent", "DevicesTabContent", "ContextTabContent", "AgentTabContent" }
                     .Contains(parent.Name))
             {
                 if (activeTabName.Equals(tb.Text, StringComparison.OrdinalIgnoreCase) ||
@@ -170,7 +177,7 @@ public partial class MainWindow
     private void AttachTabClickHandlers()
     {
         // Each tab's title TextBlock is inside a StackPanel — attach click to that panel instead for better hit target
-        var tabPanels = new[] { ChatTabContent, ServerTabContent, ModelsTabContent, DevicesTabContent, ContextTabContent };
+        var tabPanels = new[] { ChatTabContent, ServerTabContent, ModelsTabContent, DevicesTabContent, ContextTabContent, AgentTabContent };
         foreach (var tab in tabPanels)
         {
             if (tab == null) continue;
@@ -193,6 +200,8 @@ public partial class MainWindow
                             child.PointerPressed += (_, _) => ShowTab("Devices"); break;
                         case "ContextTabContent":
                             child.PointerPressed += (_, _) => { UpdateRightSidebarTab("Context"); ShowTab("Context"); }; break;
+                        case "AgentTabContent":
+                            child.PointerPressed += (_, _) => ShowTab("Agent"); break;
                     }
                 }
                 catch { /* Ignore errors on individual tab attaches */ }
