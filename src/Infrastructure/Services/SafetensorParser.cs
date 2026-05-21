@@ -123,7 +123,7 @@ public class SafetensorParser : IDisposable
                         StartOffset = startOffset,
                         EndOffset = endOffset,
                         NumElements = shapeArray.Aggregate(1L, (a, b) => a * b),
-                        ByteSize = GetByteSizeForDtype(dtypeOrDefault)
+                        ByteSize = SafetensorParser.GetByteSizeForDtype(dtypeOrDefault)
                     };
                 }
                 catch (Exception ex) when (ex is KeyNotFoundException or InvalidOperationException)
@@ -298,7 +298,20 @@ public class SafetensorParser : IDisposable
         return result != null && result.TotalTensorCount > 0;
     }
 
-    private int GetByteSizeForDtype(string dtype)
+    /// <summary>
+    /// Gets the tensor metadata from a safetensors file (convenience wrapper around ParseHeaderAsync).
+    /// Returns null if the file cannot be parsed.
+    /// </summary>
+    public async Task<IReadOnlyDictionary<string, TensorMetadata>?> GetTensorMetadataAsync(string filePath, CancellationToken cancellationToken = default)
+    {
+        var header = await ParseHeaderAsync(filePath, cancellationToken);
+        return header?.TensorsMetadata;
+    }
+
+    /// <summary>
+    /// Gets the number of bytes per element for a given dtype string.
+    /// </summary>
+    public static int GetByteSizeForDtype(string dtype)
     {
         if (string.IsNullOrEmpty(dtype))
             return 0;
