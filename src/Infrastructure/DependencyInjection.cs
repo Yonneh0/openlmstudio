@@ -282,6 +282,11 @@ public static class DependencyInjection
             return new Services.AgentSessionPersister(logger, sessionsDir);
         });
 
+        // ---- Phase 7: Task Completion Detection ----
+
+        // TaskCompletionDetector detects whether an agent task has been completed based on tool results
+        services.AddSingleton<Application.Interfaces.ITaskCompletionDetector, Services.TaskCompletionDetector>();
+
         // ---- Phase 10.5: Observability & Diagnostics ----
 
         // ActivityTracer traces agent tool calls with timing and resource consumption
