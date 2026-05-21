@@ -317,19 +317,26 @@ public partial class MainWindow : Window
         SetPanelVisibility(RightContextContent, false);
         SetPanelVisibility(RightServerContent, false);
         SetPanelVisibility(RightDevicesContent, false);
+        SetPanelVisibility(RightAnalysisContent, false);
 
         SetPanelVisibility(RightContextContent, activeTab == "Context");
         SetPanelVisibility(RightServerContent, activeTab == "Server");
         SetPanelVisibility(RightDevicesContent, activeTab == "Devices");
+        SetPanelVisibility(RightAnalysisContent, activeTab == "Analysis");
 
         // Update tab button states
         if (RightContextTabButton != null) RightContextTabButton.IsChecked = activeTab == "Context";
         if (RightServerTabButton != null) RightServerTabButton.IsChecked = activeTab == "Server";
         if (RightDevicesTabButton != null) RightDevicesTabButton.IsChecked = activeTab == "Devices";
+        if (RightAnalysisTabButton != null) RightAnalysisTabButton.IsChecked = activeTab == "Analysis";
 
         // Update context budget when switching to context tab
         if (activeTab == "Context")
             _ = RefreshContextBudgetAsync();
+
+        // Update analysis data when switching to analysis tab
+        if (activeTab == "Analysis")
+            _ = RefreshAnalysisContextAsync();
     }
 
     private void SetPanelVisibility(StackPanel? panel, bool visible)
@@ -2051,6 +2058,9 @@ public partial class MainWindow : Window
 
         if (RightDevicesTabButton != null)
             RightDevicesTabButton.IsCheckedChanged += (_, _) => UpdateRightSidebarTab(RightDevicesTabButton.IsChecked == true ? "Devices" : _activeTab);
+
+        if (RightAnalysisTabButton != null)
+            RightAnalysisTabButton.IsCheckedChanged += (_, _) => UpdateRightSidebarTab(RightAnalysisTabButton.IsChecked == true ? "Analysis" : _activeTab);
     }
 
     /// <summary>
@@ -2224,6 +2234,87 @@ public partial class MainWindow : Window
     private async void OnRefreshDevicesClicked(object? sender, RoutedEventArgs e)
     {
         _ = UpdateDeviceStatusAsync();
+    }
+
+    // ---- AI Analysis Context Panel ----
+
+    /// <summary>
+    /// Refreshes the AI Analysis Context Panel with the latest analysis data from the task context store.
+    /// </summary>
+    private async Task RefreshAnalysisContextAsync()
+    {
+        try
+        {
+            var sp = GetAppServiceProvider();
+            if (sp == null) return;
+
+            // Get the latest task context snapshot from the task store
+            var taskStore = sp.GetService<OpenLMStudio.Application.Interfaces.ITaskContextStore>();
+            if (taskStore == null) return;
+
+            var tasks = await taskStore.ListArchivedAsync();
+            var latestTask = tasks.OrderByDescending(t => t.UpdatedAt).FirstOrDefault();
+
+            if (latestTask == null || latestTask.AiAnalysis == null)
+            {
+                // No analysis data available
+                if (AnalysisTimestampRightText != null) AnalysisTimestampRightText.Text = "N/A";
+                if (AnalysisTokenCountRightText != null) AnalysisTokenCountRightText.Text = "0";
+                if (AnalysisHistoryRightText != null) AnalysisHistoryRightText.Text = "No compressed history";
+                if (AnalysisProjectStateRightText != null) AnalysisProjectStateRightText.Text = "No project state";
+                if (AnalysisSegmentsRightText != null) AnalysisSegmentsRightText.Text = "N/A";
+                return;
+            }
+
+            var analysis = latestTask.AiAnalysis;
+            AnalysisTimestampRightText.Text = analysis.AnalyzedAt.ToString("yyyy-MM-dd HH:mm:ss");
+            AnalysisTokenCountRightText.Text = analysis.AnalysisTokenCount.ToString();
+
+            // Compressed history
+            if (AnalysisHistoryRightText != null)
+            {
+                if (analysis.AnalyzedChatHistory != null && analysis.AnalyzedChatHistory.Any())
+                {
+                    var history = string.Join("\n", analysis.AnalyzedChatHistory.Take(10).Select(s => s.Content ?? "(empty)"));
+                    AnalysisHistoryRightText.Text = history.Length > 500 ? history[..500] + "..." : history;
+                }
+                else
+                {
+                    AnalysisHistoryRightText.Text = "No compressed history";
+                }
+            }
+
+            // Project state
+            if (AnalysisProjectStateRightText != null)
+            {
+                if (!string.IsNullOrEmpty(analysis.ProjectStateAtTimeOfAnalysis))
+                {
+                    var state = analysis.ProjectStateAtTimeOfAnalysis;
+                    AnalysisProjectStateRightText.Text = state.Length > 500 ? state[..500] + "..." : state;
+                }
+                else
+                {
+                    AnalysisProjectStateRightText.Text = "No project state";
+                }
+            }
+
+            // Relevant segment IDs
+            if (AnalysisSegmentsRightText != null)
+            {
+                if (analysis.RelevantContextSegmentIds != null && analysis.RelevantContextSegmentIds.Any())
+                {
+                    AnalysisSegmentsRightText.Text = string.Join(", ", analysis.RelevantContextSegmentIds.Take(5));
+                }
+                else
+                {
+                    AnalysisSegmentsRightText.Text = "N/A";
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger?.LogDebug("Error refreshing analysis context: {Message}", ex.Message);
+        }
     }
 
     /// <summary>

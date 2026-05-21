@@ -829,6 +829,8 @@
                     <RadioButton x:Name="RightServerTabButton" Content="Server" Classes="settingsTab"/>
                     <TextBlock Text="" Foreground="#CCCCCC" FontSize="12" Padding="4,6"/>
                     <RadioButton x:Name="RightDevicesTabButton" Content="Devices" Classes="settingsTab"/>
+                    <TextBlock Text="" Foreground="#CCCCCC" FontSize="12" Padding="4,6"/>
+                    <RadioButton x:Name="RightAnalysisTabButton" Content="AI Analysis" Classes="settingsTab"/>
                 </StackPanel>
 
                 <!-- Context tab content (default) -->
@@ -934,6 +936,48 @@
                                        FontSize="10"/>
                         </StackPanel>
                     </ScrollViewer>
+                </StackPanel>
+
+                <!-- AI Analysis tab content (hidden by default) -->
+                <StackPanel x:Name="RightAnalysisContent" DockPanel.Dock="Top" IsVisible="False">
+                    <Border Background="{StaticResource BgSecondary}" CornerRadius="4" Margin="0,0,0,12">
+                        <StackPanel>
+                            <TextBlock Text="AI Analysis Context:" FontWeight="SemiBold" Foreground="#4FC3F7" Padding="12,8"/>
+                            
+                            <!-- Analysis timestamp -->
+                            <DockPanel Margin="8,4">
+                                <TextBlock Text="Analyzed At:" Width="90" Foreground="{StaticResource TextSecondary}"/>
+                                <TextBlock x:Name="AnalysisTimestampRightText" Text="N/A" 
+                                           Foreground="{StaticResource TextPrimary}" DockPanel.Dock="Right"/>
+                            </DockPanel>
+                            
+                            <!-- Token count -->
+                            <DockPanel Margin="8,4">
+                                <TextBlock Text="Token Count:" Width="90" Foreground="{StaticResource TextSecondary}"/>
+                                <TextBlock x:Name="AnalysisTokenCountRightText" Text="0" 
+                                           Foreground="{StaticResource TextPrimary}" DockPanel.Dock="Right"/>
+                            </DockPanel>
+                            
+                            <!-- Compressed history -->
+                            <TextBlock Text="Compressed History:" Foreground="{StaticResource TextPrimary}" Padding="8,4"/>
+                            <ScrollViewer Height="120" Margin="8,0">
+                                <TextBlock x:Name="AnalysisHistoryRightText" Text="No compressed history" 
+                                           Foreground="{StaticResource TextMuted}" Padding="4" FontSize="10"/>
+                            </ScrollViewer>
+                            
+                            <!-- Project state -->
+                            <TextBlock Text="Project State:" Foreground="{StaticResource TextPrimary}" Padding="8,4"/>
+                            <ScrollViewer Height="120" Margin="8,0">
+                                <TextBlock x:Name="AnalysisProjectStateRightText" Text="No project state" 
+                                           Foreground="{StaticResource TextMuted}" Padding="4" FontSize="10"/>
+                            </ScrollViewer>
+                            
+                            <!-- Relevant segment IDs -->
+                            <TextBlock Text="Relevant Context Segments:" Foreground="{StaticResource TextPrimary}" Padding="8,4"/>
+                            <TextBlock x:Name="AnalysisSegmentsRightText" Text="N/A" 
+                                       Foreground="{StaticResource TextMuted}" Padding="8" FontSize="10"/>
+                        </StackPanel>
+                    </Border>
                 </StackPanel>
 
                 <!-- Server tab content (hidden by default) -->
