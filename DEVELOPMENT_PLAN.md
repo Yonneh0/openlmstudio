@@ -582,12 +582,12 @@ OpenLMStudio/
 - [ ] Developer documentation for plugin creation
 - [ ] Interactive help system within the app
 
-#### Phase 10 Summary — **5 of 16 items complete**
+#### Phase 10 Summary — **7 of 16 items complete**
 | Category | Items Complete | Items Remaining |
 |----------|---------------|-----------------|
-| Testing Strategy | 0 / 5 | Not started |
+| Testing Strategy | 2 / 5 | Infrastructure test suite: 90 tests across 17 test classes (AgentTests, AgentCommunicationProtocolTests, ActivityTracerTests, AgentTaskProgressTrackerTests, CommandExecutionServiceTests, ContextCompressorTests, ContextWindowBudgeterTests, GgufParserTests, ModelCacheCleanupTests, ModelManagerTests, PluginRegistryTests, SandboxServiceTests, ServerServiceTests, TaskCompletionDetectorTests, UpdateManagerTests, TestHelpers, TestLogger) — all passing; CI/CD via GitHub Actions workflow |
 | UX Refinements | 0 / 3 | Not started |
-| Documentation & Release | 4 / 6 ✓ | USER_GUIDE.md, API_COMPATIBILITY.md, MODEL_COMPATIBILITY.md, TROUBLESHOOTING.md |
+| Documentation & Release | 5 / 6 ✓ | USER_GUIDE.md (expanded with API endpoints, agent harness, context management, keyboard shortcuts, LoRA, plugin management), API_COMPATIBILITY.md, MODEL_COMPATIBILITY.md, TROUBLESHOOTING.md |
 
 ---
 
