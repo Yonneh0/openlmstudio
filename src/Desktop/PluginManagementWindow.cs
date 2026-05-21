@@ -63,9 +63,9 @@ public partial class PluginManagementWindow : Window
         await RefreshPlugins();
     }
 
-    private async void OnRefreshPlugins(object? sender, RoutedEventArgs e)
+    private void OnRefreshPlugins(object? sender, RoutedEventArgs e)
     {
-        await RefreshPlugins();
+        _ = Task.Run(async () => await RefreshPlugins());
     }
 
     private async Task RefreshPlugins()
@@ -82,7 +82,7 @@ public partial class PluginManagementWindow : Window
                 Margin = new Thickness(16)
             };
             PluginListPanel?.Children.Add(msg);
-            if (PluginCountLabel != null) PluginCountLabel.Text = "No registry configured";
+            PluginCountLabel.Text = "No registry configured";
             return;
         }
 
@@ -97,8 +97,8 @@ public partial class PluginManagementWindow : Window
 
             _filteredPlugins.Clear();
             _filteredPlugins.AddRange(_allPlugins);
-            RenderPluginCards();
-            if (PluginCountLabel != null) PluginCountLabel.Text = "Plugins: " + plugins.Count.ToString();
+            await RenderPluginCardsAsync();
+            PluginCountLabel.Text = "Plugins: " + plugins.Count.ToString();
         }
         catch (Exception ex)
         {
@@ -117,10 +117,10 @@ public partial class PluginManagementWindow : Window
                 p.Definition.Name.ToLowerInvariant().Contains(query) ||
                 p.Definition.Description.ToLowerInvariant().Contains(query) ||
                 p.Definition.Id.ToLowerInvariant().Contains(query)));
-        RenderPluginCards();
+        _ = Task.Run(async () => await RenderPluginCardsAsync());
     }
 
-    private void RenderPluginCards()
+    private async Task RenderPluginCardsAsync()
     {
         PluginListPanel?.Children.Clear();
 
@@ -264,7 +264,7 @@ public partial class PluginManagementWindow : Window
         }
     }
 
-    private void OnPolicyChanged(object? sender, RoutedEventArgs e)
+    private async void OnPolicyChanged(object? sender, RoutedEventArgs e)
     {
         if (sender is not ComboBox combo || combo.Tag is not PluginDefinition plugin) return;
         var idx = combo.SelectedIndex;

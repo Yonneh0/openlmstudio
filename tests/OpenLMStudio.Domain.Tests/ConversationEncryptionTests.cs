@@ -1,5 +1,5 @@
 using OpenLMStudio.Domain.Models;
-using Xunit;
+using NUnit.Framework;
 
 namespace OpenLMStudio.Domain.Tests;
 
@@ -8,35 +8,35 @@ namespace OpenLMStudio.Domain.Tests;
 /// </summary>
 public class ConversationEncryptionTests
 {
-    [Fact]
+    [Test]
     public void Encrypt_WhenNullInput_ReturnsEmptyString()
     {
         var result = ConversationEncryption.Encrypt(null!, "password");
-        Assert.Equal(string.Empty, result);
+        Assert.That(result, Is.Empty);
     }
 
-    [Fact]
+    [Test]
     public void Decrypt_WhenNullInput_ReturnsEmptyString()
     {
         var result = ConversationEncryption.Decrypt(null!, "password");
-        Assert.Equal(string.Empty, result);
+        Assert.That(result, Is.Empty);
     }
 
-    [Fact]
+    [Test]
     public void EncryptDecrypt_Cycle_ReturnsOriginal()
     {
         var original = "Hello, this is a secret conversation message.";
         var password = "my-secret-password";
 
         var encrypted = ConversationEncryption.Encrypt(original, password);
-        Assert.NotEmpty(encrypted);
-        Assert.NotEqual(original, encrypted);
+        Assert.That(encrypted, Is.Not.Empty);
+        Assert.That(encrypted, Is.Not.EqualTo(original));
 
         var decrypted = ConversationEncryption.Decrypt(encrypted, password);
-        Assert.Equal(original, decrypted);
+        Assert.That(decrypted, Is.EqualTo(original));
     }
 
-    [Fact]
+    [Test]
     public void EncryptDecrypt_MultipleMessages_AllDecryptCorrectly()
     {
         var messages = new[]
@@ -52,11 +52,11 @@ public class ConversationEncryptionTests
         {
             var encrypted = ConversationEncryption.Encrypt(msg, password);
             var decrypted = ConversationEncryption.Decrypt(encrypted, password);
-            Assert.Equal(msg, decrypted);
+            Assert.That(decrypted, Is.EqualTo(msg));
         }
     }
 
-    [Fact]
+    [Test]
     public void Decrypt_WithWrongPassword_ThrowsCryptographicException()
     {
         var original = "Sensitive conversation data";
@@ -67,7 +67,7 @@ public class ConversationEncryptionTests
         Assert.Throws<CryptographicException>(() => ConversationEncryption.Decrypt(encrypted, wrongPassword));
     }
 
-    [Fact]
+    [Test]
     public void Decrypt_WithTamperedCiphertext_ThrowsCryptographicException()
     {
         var original = "Sensitive conversation data";
@@ -82,7 +82,7 @@ public class ConversationEncryptionTests
         Assert.Throws<CryptographicException>(() => ConversationEncryption.Decrypt(tampered, password));
     }
 
-    [Fact]
+    [Test]
     public void EncryptDecrypt_UnicodeAndSpecialCharacters_PreservesContent()
     {
         var original = "こんにちは 🌟 Привет мир 你好世界";
@@ -90,6 +90,6 @@ public class ConversationEncryptionTests
 
         var encrypted = ConversationEncryption.Encrypt(original, password);
         var decrypted = ConversationEncryption.Decrypt(encrypted, password);
-        Assert.Equal(original, decrypted);
+        Assert.That(decrypted, Is.EqualTo(original));
     }
 }
