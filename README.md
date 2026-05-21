@@ -12,6 +12,7 @@ Built as a cross-platform desktop application supporting Windows, macOS, and Lin
 - **Agentic Task Harness** — Plan/act cycle with extensible tooling system (file operations, code execution, git integration)
 - **Intelligent Context Management** — Token-aware context window with compression, relevance scoring, and user-driven manipulation
 - **Plugin & MCP System** — Model Context Protocol client/server for third-party integrations
+- **Cross-Platform Device Monitoring** — GPU VRAM, CPU utilization, memory usage across Windows/macOS/Linux
 
 ## Architecture
 
@@ -46,6 +47,8 @@ OpenLMStudio/
 | Text Inference Engine | llama-cpp-net — cross-platform GGUF inference |
 | Image Generation Engine | ONNX Runtime + diffusers model integration |
 | Embedding Engine | ONNX Runtime + safetensors model loader |
+| Device Monitoring | Vulkan.NET + nvidia-ml-net for GPU VRAM |
+| Security | AES-256 encryption at rest, SHA256 hash verification |
 
 ## Getting Started
 
@@ -56,7 +59,7 @@ OpenLMStudio/
 
 ### Build & Run
 
-### Quick Start (Windows)
+#### Quick Start (Windows)
 
 ```bash
 # Clone the repository
@@ -72,7 +75,7 @@ dotnet publish src/Desktop/OpenLMStudio.Desktop.csproj -c Publish
 
 > **Output:** `dotnet publish -c Publish` produces a **self-contained** `OpenLMStudio.exe` (~200 MB) in the project root that includes the .NET 8 runtime and runs on any Windows machine without needing .NET installed.
 
-### Cross-Platform Builds
+#### Cross-Platform Builds
 
 By default, `dotnet publish` builds for **Windows x64**. To target other platforms, specify the runtime identifier (RID):
 
@@ -98,7 +101,7 @@ dotnet publish src/Desktop/OpenLMStudio.Desktop.csproj -c Publish -r linux-arm64
 
 > **Note:** macOS/Linux outputs have no `.exe` extension. Use `publish/<platform>/OpenLMStudio` (without extension) to run on those platforms.
 
-### Android Builds
+#### Android Builds
 
 Android support requires the .NET Android workload:
 
@@ -115,8 +118,10 @@ Android builds produce `.apk` files.
 
 | Endpoint | Method | Description |
 |----------|--------|-------------|
-| `/v1/chat/completions` | POST | Chat completion (text) |
+| `/v1/chat/completions` | POST | Chat completion (text) with streaming via SSE |
 | `/v1/images/generations` | POST | Image generation via diffusion models |
+| `/v1/images/inpainting` | POST | Inpainting with mask blending |
+| `/v1/images/outpainting` | POST | Outpainting/canvas expansion |
 | `/v1/embeddings` | POST | Embedding generation |
 | `/v1/models/list` | GET | List available models |
 
@@ -124,7 +129,7 @@ Android builds produce `.apk` files.
 
 | Endpoint | Method | Description |
 |----------|--------|-------------|
-| `/v1/messages` | POST | Message endpoint |
+| `/v1/messages` | POST | Message endpoint with cache_control, stop_sequence, thinking support |
 
 ## Model Formats Supported
 
@@ -142,13 +147,26 @@ Android builds produce `.apk` files.
 | 3: Inference Engines & Server API | Text + image + embedding engines + server routing | ~15% |
 | 4: Chat & Conversation System | Data models, SQLite-backed persistence | ~67% |
 | 5: Context Management System | All context services (conversation + agentic) | ~3% |
-| 6: UI Implementation — Sub-phases | 5 sub-panels covering all UI needs | 0% |
+| 6: UI Implementation | Main window, settings, plugin management, image gen panel | 0% |
 | 7: Agent Harness | Plan/act, tooling, project tree, Git integration | 0% |
 | 8: Plugin & MCP System | Protocol + plugin management | 0% |
 | 9: Resilience, Security & Operations | Error recovery, security model | 0% |
 | 10: Testing & Release | Comprehensive testing + documentation | 0% |
 
 **Overall Progress**: ~52% complete across all phases
+
+## Testing
+
+```bash
+# Run all tests
+dotnet test
+
+# Run a specific test project
+dotnet test tests/OpenLMStudio.Infrastructure.Tests/OpenLMStudio.Infrastructure.Tests.csproj
+
+# Verify formatting
+dotnet format --verify-no-changes
+```
 
 ## Contributing
 

@@ -2,162 +2,242 @@
 
 ## Getting Started
 
-OpenLMStudio is a cross-platform desktop application for running local AI models with a server capable of exposing OpenAI- and Anthropic-compatible APIs.
+### Installation
 
-### Launching the Application
+1. Download the appropriate build for your platform from [releases](#)
+2. Extract the archive
+3. Run the application:
+   - **Windows**: Double-click `OpenLMStudio.exe`
+   - **macOS**: `open OpenLMStudio`
+   - **Linux**: `./OpenLMStudio`
 
+### First Launch
+
+When you first launch OpenLMStudio, you'll see the main window with:
+
+- **Left Sidebar** — Navigation tabs (Chats, Server, Models, Devices, Context, Image Gen)
+- **Center Pane** — Chat interface with message display and input
+- **Right Sidebar** — Context panel with budget indicator and controls
+
+## Interface Overview
+
+### Navigation Tabs
+
+#### Chat Tab
+- Create new chats with the **+ New Chat** button
+- Browse conversations in the chat list
+- Click a chat to load its message history
+- Hover over a chat to see its token count
+
+#### Server Tab
+- Start/stop the local inference server
+- View the server port and status
+- Configure server settings in the Settings dialog
+
+#### Models Tab
+- Browse available GGUF and Safetensor models
+- Add models from your local file system
+- Load/unload models for inference
+
+#### Devices Tab
+- View GPU VRAM, CPU cores, and available RAM
+- See currently loaded model information
+- Monitor device resources in real-time
+
+#### Context Tab
+- View the context budget (green = healthy, yellow = warning, red = critical)
+- Select compression strategies
+- Add custom context injections
+- Pin/suppress conversation segments for fine-grained control
+
+#### Image Gen Tab
+- Select a diffusion model (SD 1.x, SDXL, SD 3, Flux)
+- Enter a prompt and optional negative prompt
+- Configure resolution, steps, CFG scale, and seed
+- Generate images with streaming progress updates
+- Apply LoRA adapters for style transfer
+
+### Settings Dialog
+
+Access Settings via the gear icon in the left sidebar. Available tabs:
+
+- **Server** — Port, HTTPS certificate, API key, rate limiting
+- **Model** — Default model, offloading config, context compression defaults
+- **Agent** — Iteration limits, auto-commit thresholds, plan approval requirements
+- **Plugin** — Registry URL, update check interval, sandbox policy
+- **Privacy** — Conversation encryption toggle, export format preferences
+
+## Using the Inference Server
+
+### Starting the Server
+
+1. Go to the **Server** tab
+2. Click **Start Server**
+3. The server starts on port 8080 by default (configurable)
+4. The status indicator shows **Running (Port 8080)**
+
+### API Endpoints
+
+The server exposes endpoints compatible with the OpenAI and Anthropic APIs:
+
+```bash
+# Chat completions (OpenAI-compatible)
+curl http://localhost:8080/v1/chat/completions \
+  -H "Content-Type: application/json" \
+  -d '{
+    "model": "default",
+    "messages": [{"role": "user", "content": "Hello"}]
+  }'
+
+# Image generation
+curl http://localhost:8080/v1/images/generations \
+  -H "Content-Type: application/json" \
+  -d '{
+    "model": "stable-diffusion-xl",
+    "prompt": "a sunset over mountains",
+    "size": "1024x1024"
+  }'
 ```
-dotnet run --project src/Desktop/OpenLMStudio.Desktop.csproj
-```
-
-### Main Interface
-
-The main window has five tabs across the top:
-
-| Tab | Purpose |
-|-----|---------|
-| **Chat** | Conversational chat interface with streaming responses |
-| **Server** | Start/stop local inference server, view port and API status |
-| **Models** | Discover and list available GGUF / safetensors models |
-| **Devices** | Hardware status (CPU cores, RAM, GPU detection) |
-| **Context** | Active context window, budget tracking, pin/suppress controls |
-
-### Keyboard Shortcuts
-
-| Shortcut | Action |
-|----------|--------|
-| `Ctrl+N` | Create new chat |
-| `Ctrl+M` | Show Models tab |
-| `Ctrl+S` | Toggle server start/stop |
-| `Ctrl+K` | Show Context tab |
-| `Ctrl+L` | Open Settings |
-| `Enter` | Send message (in chat input) |
-| `Shift+Enter` | New line in chat input |
-| `Ctrl+Enter` | Send message from chat input |
-
-## Chat
-
-### Starting a Conversation
-
-1. Click **New Chat** (or press `Ctrl+N`)
-2. Type your message in the input box at the bottom
-3. Press Enter or click the Send button
 
 ### Streaming Responses
 
-When the local server is running, responses stream token-by-token via SSE (Server-Sent Events). A "⏳ Generating response..." placeholder appears while the stream initializes.
+Enable streaming with the `X-Stream: true` header for real-time token delivery via Server-Sent Events.
 
-### Per-Message Context Controls
+## Loading Models
 
-Each message in the chat has two controls in the upper-right:
+### GGUF Models (Text Generation)
 
-- **📌 Pin** — Locks the message so it cannot be compressed or evicted during context window management.
-- **👁️ Reveal** — Toggle visibility of the message to the AI. Suppressed messages remain in history but are excluded from the active context window.
+1. Navigate to **Models** → click **Add Model**
+2. Select a `.gguf` file
+3. The model is indexed and appears in the model list
+4. Click **Load Model** to load it into memory
 
-### Custom Context Injection
+### Safetensor Models (Image Generation)
 
-The Context tab includes a "Custom Context Injection" panel where you can add:
+1. Navigate to **Image Gen** tab
+2. Select a diffusion model from the dropdown
+3. Models are automatically discovered from the models directory
 
-- **System Prompt** — Custom system-level instructions
-- **File Contents** — Inject raw text from project files
-- **Raw Context** — Arbitrary text injected as a pinned segment
+### Model Storage
 
-## Server
-
-### Starting the Local Server
-
-1. Open the **Server** tab
-2. Click **Start Server** (the server defaults to port 8080 with HTTPS)
-3. The status indicator turns green when running
-
-The server exposes:
-
-- `POST /v1/chat/completions` — OpenAI-compatible text completions (streaming via SSE)
-- `POST /v1/images/generations` — Image generation (DiffusionPipelineService)
-- `POST /v1/messages` — Anthropic-compatible messages
-- `GET  /v1/models/image/list` — Available image generation models
-- `GET  /v1/models/embedding/list` — Available embedding models
-- `GET  /v1/models/upscaling/list` — Available upscaling models
-- `GET  /v1/models/vae/list` — Available VAE models
-- `GET  /v1/models/lora/list` — Available LoRA adapters
-
-### HTTPS Certificate
-
-On Windows, the server automatically trusts the self-signed HTTPS certificate using `dotnet dev-certs --trust`. On other platforms, you may need to manually trust the certificate.
+Models are stored in the platform-specific application data directory:
+- **Windows**: `%APPDATA%\OpenLMStudio\models\`
+- **macOS**: `~/Library/Application Support/OpenLMStudio/models/`
+- **Linux**: `~/.config/OpenLMStudio/models/`
 
 ## Image Generation
 
-The Image Generation tab provides a full diffusion pipeline workflow:
+### Basic Generation
 
-1. Select a model from the dropdown (auto-discovers Diffusion/VAE models)
-2. Enter a prompt (and optional negative prompt)
-3. Adjust parameters: resolution, steps, CFG scale, seed
-4. Click **Generate Image**
+1. Select a model (SD 1.5, SDXL, SD 3, or Flux)
+2. Enter your prompt (e.g., "a sunset over mountains")
+3. Optionally enter a negative prompt
+4. Configure parameters:
+   - **Resolution**: 512x512, 768x768, 1024x1024, 1280x720
+   - **Steps**: Number of denoising steps (1–50)
+   - **CFG Scale**: Classifier-free guidance scale (1.0–20.0)
+   - **Seed**: Fixed seed for reproducibility (or use 🎲 for random)
+5. Click **Generate Image**
 
-The pipeline runs: **CLIP Text Encoding → UNet Denoising (CFG) → VAE Decoding** end-to-end.
+### Advanced Features
 
-## Context Window
+- **Negative Prompt** — Describe what you don't want in the output
+- **Batch Generation** — Generate multiple images at once
+- **LoRA Adapters** — Apply style LoRAs for consistent aesthetics
 
-The Context tab shows:
+## Context Management
 
-- **Token Budget** — Visual bar with color-coded zones (green > 20% remaining, orange 5-20%, red < 5%)
-- **Compression Strategy** — Choose None / Light / Medium / Aggressive per chat
-- **Pinned Segments** — Messages that will not be compressed
-- **Suppressed Segments** — Messages that are excluded from context
+### Understanding Context Budget
 
-## Settings
+The context budget shows how much of your model's context window is used:
 
-### Server Settings
-- **Port** — HTTP port for the local server (default: 8080)
-- **HTTPS Certificate** — Path to custom certificate, or auto-generate
-- **API Key** — Optional API key for endpoint authentication
-- **Rate Limit** — Sliding window rate limit (requests per minute)
+- 🟢 **Green** — Healthy, no compression needed
+- 🟡 **Yellow** — Approaching limit, compression will begin
+- 🔴 **Red** — Critical, lowest-relevance segments will be evicted
 
-### Model Settings
-- **Default Model** — Primary model for chat completions
-- **Model Directory** — Path where models are stored
-- **Default Max Tokens** — Max generation tokens (0 = no limit)
-- **Context Compression** — Default compression strategy and token budget
+### Pin & Suppress Controls
 
-### Image Generation Defaults
-- **Resolution** — Default resolution (512x512, 768x768, 1024x1024)
-- **Steps** — Number of denoising steps (1-100)
-- **CFG Scale** — Classifier-free guidance scale (1.0-20.0)
+Each message in the chat can be controlled individually:
 
-### Agent Settings
-- **Max Iterations** — Maximum agent task iterations (default: 50)
-- **Auto-Commit Threshold** — File size below which changes are auto-committed (KB)
-- **Require Plan Approval** — Enforce plan phase approval before risky operations
+- **📌 Pin** — Prevents the message from being compressed or evicted
+- **👁️/🚫 Suppress/Reveal** — Hides a message from the AI's context
 
-### Plugin & MCP Settings
-- **Plugin Registry URL** — Remote registry for plugin discovery
-- **Auto-Update Check Interval** — Minutes between plugin update checks (0 = disabled)
-- **Default Plugin Sandbox Policy** — Strict / Restricted / Full
-- **MCP Client Timeout** — Seconds before MCP tool calls timeout
-- **Max Tools per MCP Server** — Maximum tools loaded from each MCP server
+### Adding Custom Context
 
-### Data Privacy
-- **Encrypt Conversations at Rest** — AES-256 with HMAC-SHA256 encrypted storage
-- **Export Format** — Default conversation export format
+Add custom context that's always included:
+
+1. Click **+ Add Custom Context** in the Context panel
+2. Select the injection type (System Prompt, File Contents, or Raw Context)
+3. Enter the content
+4. Click **Inject Context**
+
+## Agent Harness
+
+### Executing Tasks
+
+The agent harness allows autonomous task completion with plan/act cycles:
+
+1. **Planning Phase** — The agent analyzes the task and proposes a plan
+2. **Acting Phase** — The agent executes actions using available tools
+3. **Reviewing Phase** — The agent verifies completion
+
+### Available Tools
+
+- **File Read/Write/Patch** — Safe file operations
+- **Command Execute** — Sandboxed command execution
+- **Search Files** — Regex search across project files
+- **Git Operations** — Diff, blame, branch listing, history
+- **Project Explorer** — Real-time file tree with changes
+- **MCP Tools** — Tools from connected MCP servers
+
+## Plugin Management
+
+### Installing Plugins
+
+1. Open the **Plugin** tab in settings
+2. Configure the registry URL (optional)
+3. Search for available plugins
+4. Install plugins with one click
+5. Enable/disable plugins as needed
+
+### Security
+
+Plugins run in a sandbox (cgroups v2 on Linux/macOS, Job Objects on Windows) to isolate them from the main application.
 
 ## Troubleshooting
 
 ### Server Won't Start
-- Check that port 8080 is not in use (`netstat -ano | findstr :8080`)
-- Try a different port in Server Settings
-- Check the application logs in the appdata/logs directory
 
-### No Models Discovered
-- Ensure GGUF (.gguf) or safetensors (.safetensors) files are in the model directory
-- The repository auto-discovers models on startup and when the Models tab is opened
-- Check that model files are not corrupted (SafetensorParser validates headers before loading)
+- Check that port 8080 is not in use
+- Verify HTTPS certificate permissions
+- Review the log output in the developer console
 
-### Streaming Not Working
-- The server must be running for streaming responses
-- If the server disconnects, the app automatically retries once after a 1-second delay
-- Check that the HTTPS certificate is trusted
+### Model Loading Fails
 
-### GPU Not Detected
-- GPU detection depends on the system's Vulkan/NVIDIA drivers
-- On Windows, ensure the latest GPU drivers are installed
-- The app falls back to CPU inference if no GPU is available
+- Ensure the model file is not corrupted (verify SHA256 hash)
+- Check available GPU VRAM (models larger than VRAM fall back to CPU)
+- Verify the model format (GGUF for text, Safetensors for image)
+
+### Images Not Generating
+
+- Ensure an image generation model is loaded
+- Check the Image Gen tab for error messages
+- Verify the ONNX Runtime is properly installed
+
+## Keyboard Shortcuts
+
+| Shortcut | Action |
+|----------|--------|
+| Enter | Send message |
+| Ctrl+New | New chat |
+| Ctrl+S | Start/Stop server |
+
+## Data Privacy
+
+Conversations can be encrypted at rest using AES-256 encryption. Enable this in Settings → Privacy.
+
+## Export & Import
+
+Chats can be exported/imported in JSON format:
+- **Export**: Save conversation history for archival
+- **Import**: Restore from a previous export

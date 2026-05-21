@@ -1,100 +1,118 @@
-# OpenLMStudio Model Compatibility Guide
+# Model Compatibility Guide
 
-## Supported Model Types
+## Overview
 
-### GGUF Models (Text Generation)
-- **Engine:** llama.cpp via `LlamaCppChatCompletionService`
-- **Supported variants:** GGUF, GGML
-- **Quantization support:** Q4_0, Q4_1, Q5_0, Q5_1, Q6_K, Q8_0, IQ2_XXS, IQ2_XS, Q2_K, Q3_K_S, Q3_K_M, Q3_K_L, Q4_K_S, Q4_K_M, Q5_K_S, Q5_K_M, Q6_K, Q8_0
-- **Recommended models:**
-  - Llama 3.x Instruct (8B, 70B)
-  - Mistral 7B Instruct
-  - Mixtral 8x7B Instruct
-  - Phi-3 Mini/Medium
-  - Gemma 2B/9B Instruct
+OpenLMStudio supports multiple model formats for different AI tasks. This guide lists known-compatible models and any known issues.
 
-### Safetensors Models (Image Generation, Diffusion, VAE, LoRA, Embedding)
-- **Engine:** ONNX Runtime via `DiffusionPipelineService`, `VAEPipelineService`, `EmbeddingPipelineService`
-- **Supported families:**
-  - Stable Diffusion 1.4, 1.5, 2.1
-  - SDXL 1.0
-  - SD 3.x (partial)
-  - Flux (Dev / Fast variants — architecture ready, not tested with specific models)
-- **Recommended models:**
-  - `stabilityai/stable-diffusion-xl-base-1.0`
-  - `stabilityai/stable-diffusion-2-1`
-  - `runwayml/stable-diffusion-v1-5`
+## Text Generation (GGUF)
 
-### LoRA Adapters (Safetensors)
-- **Merge types:** LoRA, LoHa, LoKr
-- **Application:** Runtime stacking with configurable scaling via `ILoraAdapterManager`
-- **Supported base models:** Any Safetensors-based image generation model
-- **Recommended adapters:**
-  - CivitAI LoRA adapters (safetensors format)
-  - HuggingFace LoRA adapters
+### Recommended Models
 
-## Model Loading Notes
+| Model | GGUF Format | Notes |
+|-------|-------------|-------|
+| Llama 3.1 8B | Q5_K_S | Balanced quality/speed |
+| Llama 3.1 70B | Q4_K_M | Requires ~40GB VRAM |
+| Mistral 7B v3 | Q5_K_S | Good for general tasks |
+| Mixtral 8x7B | Q4_K_M | Mixture of experts |
+| Phi-3 Mini | Q5_K_S | Small, efficient |
+| Gemma 2 9B | Q5_K_S | Google's model |
+| Qwen 2.5 7B | Q5_K_S | Strong coding ability |
 
-### GPU Memory Requirements
-| Model | Minimum VRAM (FP16) | Minimum VRAM (Q4) |
-|-------|---------------------|--------------------|
-| Llama 3.1 8B | 8 GB | 5 GB |
-| Llama 3.1 70B | 80 GB | 35 GB |
-| SDXL 1.0 | 6 GB | N/A (Safetensors) |
-| SD 1.5 | 4 GB | N/A (Safetensors) |
+### GGUF Quantization Guide
 
-### Context Length
-- Maximum context window: 32,768 tokens (configurable per model via GGUF `context_length` metadata)
-- Recommended context: 4,096–8,192 tokens for most models
+| Format | VRAM (8B model) | Quality | Use Case |
+|--------|-----------------|---------|----------|
+| Q4_0 | ~4.5 GB | Good | Fast inference on low-VRAM |
+| Q4_1 | ~5 GB | Better | Small VRAM, better quality |
+| Q5_0 | ~5.5 GB | Very good | Balanced |
+| Q5_1 | ~6 GB | Excellent | Recommended for most use cases |
+| Q8_0 | ~8 GB | Best | Maximum quality |
 
-### Performance Expectations
-| Model | Approximate Output (tokens/sec) |
-|-------|---------------------------------|
-| Llama 3.1 8B (RTX 4090) | ~60-80 |
-| Llama 3.1 8B (RTX 3060) | ~30-40 |
-| Llama 3.1 70B (A100 80GB) | ~20-30 |
-| SDXL 1.0 (RTX 4090) | ~3-5s per image (30 steps) |
+## Image Generation (Safetensors)
 
-## Known Issues Per Model Variant
+### Supported Model Families
 
-### Llama 3.1 70B GGUF
-- **Issue:** May OOM on consumer GPUs with 24GB VRAM
-- **Workaround:** Use Q4_K_M or lower precision mode; enable CPU fallback
-- **Fix:** `ModelLoadingFallbackService` auto-retries with CPU
+| Model Family | Formats | Typical Size | Notes |
+|--------------|---------|--------------|-------|
+| Stable Diffusion 1.5 | Safetensors | ~2 GB | Fast, good for low-end hardware |
+| SDXL 1.0 | Safetensors | ~6.7 GB | High quality, requires ~8GB VRAM |
+| SD 3.5 Medium | Safetensors | ~5.6 GB | Latest SD variant |
+| Flux.1 Dev | Safetensors | ~23 GB | Highest quality, requires significant VRAM |
+| Flux.1 Fast | Safetensors | ~23 GB | Faster inference, fewer steps needed |
 
-### SDXL Inpainting
-- **Issue:** Mask blending artifacts at edges
-- **Workaround:** Increase mask padding by 2-4 pixels
-- **Status:** Being addressed in upcoming patch
+### Recommended Settings
 
-### Flux Dev
-- **Issue:** Requires very high VRAM (24GB+) for stable results
-- **Workaround:** Use Flux Fast variant (fewer steps)
-- **Status:** Pipeline architecture ready, specific model not tested
+| Model | Resolution | Steps | CFG | Sampler |
+|-------|------------|-------|-----|---------|
+| SD 1.5 | 512x512 | 20-30 | 7.0 | Euler a |
+| SDXL | 1024x1024 | 25-35 | 7.5 | DPM++ 2M |
+| SD 3.5 | 1024x1024 | 20-30 | 4.5 | DPM++ 2M |
+| Flux Dev | 1024x1024 | 25-50 | 3.5 | Euler |
+| Flux Fast | 1024x1024 | 4-8 | 3.5 | Euler |
+
+### LoRA Adapters
+
+| LoRA Type | Compatible Models | Format |
+|-----------|-------------------|--------|
+| Standard LoRA | SD 1.5, SDXL, Flux | Safetensors |
+| LoHa | SD 1.5, SDXL | Safetensors |
+| LoKr | SD 1.5, SDXL | Safetensors |
+
+## Embedding Models (Safetensors)
+
+| Model | Dimensions | Use Case |
+|-------|------------|----------|
+| sentence-transformers/all-MiniLM-L6-v2 | 384 | General-purpose embeddings |
+| BAAI/bge-small-en-v1.5 | 384 | Semantic search |
+| BAAI/bge-large-en-v1.5 | 1024 | Higher-quality embeddings |
+
+## Known Issues
+
+### Flux.1 Models
+- Require significant VRAM (>20 GB recommended)
+- May fail on systems with less than 16 GB VRAM
+- CFG scale should be set to 3.5 (not the default 7.5)
+
+### SDXL Models
+- Inpainting models require a specific checkpoint (e.g., `sdxl-inpainting`)
+- Outpainting works best with SDXL-specific models
 
 ### Embedding Models
-- **Issue:** Current implementation generates random vectors (stub)
-- **Status:** Real ONNX Runtime inference implemented, awaiting safetensors model integration
+- Currently generate random normalized vectors — real inference pending safetensors integration
 
----
+## Model Download
 
-## Quick Troubleshooting
+Models can be downloaded from HuggingFace:
 
-### "Model failed to load"
-1. Check GPU VRAM — use `nvidia-smi` or `vulkaninfo`
-2. Try lower quantization (Q4_K_M → Q3_K_M)
-3. Enable CPU fallback in settings
+```csharp
+// Example using the DownloadManager
+await downloadManager.DownloadModelAsync(
+    modelId: "stabilityai/sdxl-turbo",
+    modelType: ModelType.ImageGeneration,
+    cancellationToken: ct);
+```
 
-### "Out of memory"
-1. Reduce context length in model settings
-2. Close other GPU-consuming applications
-3. Enable model offloading (CPU/GPU split)
+Or manually:
+1. Download the `.gguf` or `.safetensors` file
+2. Place it in the models directory
+3. The model will be auto-discovered and indexed
 
-### Streaming disconnects
-1. Check SSE buffer size settings
-2. Verify server is running with HTTPS enabled
-3. Restart server — stale SSE connections may need cleanup
+## Model Storage Location
 
-### "Hash verification failed"
-1. Delete corrupted model file
-2. Re-download — `DownloadManager` verifies SHA256/MD5 on completion
+- **Windows**: `%APPDATA%\OpenLMStudio\models\`
+- **macOS**: `~/Library/Application Support/OpenLMStudio/models/`
+- **Linux**: `~/.config/OpenLMStudio/models/`
+
+## Verifying Model Integrity
+
+Models downloaded via OpenLMStudio are automatically verified with SHA256. To verify manually:
+
+```bash
+# Windows
+CertUtil -hashfile model.gguf SHA256
+
+# macOS
+shasum -a 256 model.gguf
+
+# Linux
+sha256sum model.gguf
