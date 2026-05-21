@@ -15,7 +15,7 @@ namespace OpenLMStudio.Infrastructure.Services;
 
 /// <summary>
 /// Cross-platform sandbox service for process isolation.
-/// Uses Windows Job Objects on Windows and cgroups v2 on Linux/macOS.
+/// Uses Windows Job Objects on Windows, sandbox-exec on macOS, and cgroups v2 on Linux.
 /// </summary>
 public class SandboxService : ISandboxService, IDisposable
 {
@@ -24,7 +24,7 @@ public class SandboxService : ISandboxService, IDisposable
     private readonly object _lockObject = new();
 
     /// <inheritdoc />
-    public bool IsSupported => OperatingSystem.IsWindows() || IsLinuxWithCgroupsV2();
+    public bool IsSupported => OperatingSystem.IsWindows() || IsLinuxWithCgroupsV2() || IsMacOSSandboxAvailable();
 
     private static volatile string? _cgroupRootPath;
     private static readonly object _cgroupDetectionLock = new();
@@ -38,12 +38,10 @@ public class SandboxService : ISandboxService, IDisposable
         {
             if (_cgroupRootPath != null) return _cgroupRootPath;
 
-            // Try standard cgroups v2 mount point first (most common on modern Linux).
             foreach (var path in new[] { "/sys/fs/cgroup", "/run/cgroup2" })
             {
                 if (Directory.Exists(path))
                 {
-                    // Verify it's a cgroups v2 unified hierarchy by checking for controller files.
                     var controllersPath = Path.Combine(path, "cgroup.controllers");
                     if (File.Exists(controllersPath))
                     {
@@ -51,7 +49,6 @@ public class SandboxService : ISandboxService, IDisposable
                         return _cgroupRootPath;
                     }
 
-                    // Also try to find via subtree_control — indicates cgroups v2 support.
                     var subtreeControlPath = Path.Combine(path, "cgroup.subtree_control");
                     if (File.Exists(subtreeControlPath))
                     {
@@ -59,7 +56,6 @@ public class SandboxService : ISandboxService, IDisposable
                         return _cgroupRootPath;
                     }
 
-                    // Check /proc/self/cgroup for cgroups v2 reference.
                     try
                     {
                         var cgLines = File.ReadAllLines("/proc/self/cgroup");
@@ -85,6 +81,37 @@ public class SandboxService : ISandboxService, IDisposable
 
     private static bool IsLinuxWithCgroupsV2() => OperatingSystem.IsLinux() && GetCgroupV2RootPath() != null;
 
+    private static volatile string? _macOSProfilePath;
+    private static readonly object _macOSDetectionLock = new();
+
+    private static bool IsMacOSSandboxAvailable()
+    {
+        if (_macOSProfilePath != null) return true;
+
+        try
+        {
+            var sandboxExecPath = "/usr/sbin/sandbox-exec";
+            if (File.Exists(sandboxExecPath))
+            {
+                _macOSProfilePath = sandboxExecPath;
+                return true;
+            }
+
+            var homebrewPath = "/usr/local/bin/sandbox-exec";
+            if (File.Exists(homebrewPath))
+            {
+                _macOSProfilePath = homebrewPath;
+                return true;
+            }
+
+            return false;
+        }
+        catch
+        {
+            return false;
+        }
+    }
+
     public SandboxService(ILogger<SandboxService>? logger)
     {
         _logger = logger;
@@ -92,7 +119,7 @@ public class SandboxService : ISandboxService, IDisposable
         if (!OperatingSystem.IsWindows())
         {
             _logger?.LogDebug("Sandbox service initialized — platform: {Platform}",
-                OperatingSystem.IsLinux() ? "Linux" : "macOS");
+                OperatingSystem.IsLinux() ? "Linux" : OperatingSystem.IsMacOS() ? "macOS" : "Unknown");
         }
     }
 
@@ -105,7 +132,7 @@ public class SandboxService : ISandboxService, IDisposable
 
     /// <inheritdoc />
     public async Task<int> CreateProcessWithSandboxPolicyAsync(string commandLine, string? workingDirectory = null,
-        Dictionary<string, string>? environmentVariables = null, Domain.Interfaces.PluginSandboxPolicy? policy = null)
+        Dictionary<string, string>? environmentVariables = null, PluginSandboxPolicy? policy = null)
     {
         if (string.IsNullOrEmpty(commandLine))
             throw new ArgumentException("Command line is required.", nameof(commandLine));
@@ -137,7 +164,6 @@ public class SandboxService : ISandboxService, IDisposable
                 startInfo.WorkingDirectory = workingDirectory;
             }
 
-            // Apply environment variables from sandbox policy.
             if (environmentVariables != null)
             {
                 foreach (var kv in environmentVariables)
@@ -154,7 +180,6 @@ public class SandboxService : ISandboxService, IDisposable
                 return -1;
             }
 
-            // Apply sandbox isolation based on platform.
             await ApplySandboxIsolationAsync(process, policy).ConfigureAwait(false);
 
             lock (_lockObject)
@@ -181,14 +206,13 @@ public class SandboxService : ISandboxService, IDisposable
             {
                 if (proc.Id == processId && !proc.HasExited)
                 {
-                    // On Windows, use Job Object to kill the entire process tree.
                     if (OperatingSystem.IsWindows())
                     {
                         await KillProcessTreeAsync(proc).ConfigureAwait(false);
                     }
                     else
                     {
-                        proc.Kill(true);  // Forceful kill on Unix.
+                        proc.Kill(true);
                     }
 
                     lock (_lockObject)
@@ -258,7 +282,6 @@ public class SandboxService : ISandboxService, IDisposable
     /// <inheritdoc />
     public void Dispose()
     {
-        // Kill all sandboxed processes on disposal.
         foreach (var proc in Process.GetProcesses())
         {
             lock (_lockObject)
@@ -278,24 +301,104 @@ public class SandboxService : ISandboxService, IDisposable
         _sandboxedProcessIds.Clear();
     }
 
-    /// <summary>
-    /// Applies platform-specific sandbox isolation to a process.
-    /// Windows: Uses Job Object for process tree isolation.
-    /// Linux/macOS: Checks cgroups v2 for memory limits and CPU throttling.
-    /// </summary>
-    private async Task ApplySandboxIsolationAsync(Process process, Domain.Interfaces.PluginSandboxPolicy? policy = null)
+    private async Task ApplySandboxIsolationAsync(Process process, PluginSandboxPolicy? policy = null)
     {
         if (!IsSupported || OperatingSystem.IsWindows())
             return;
 
-        // On Linux/macOS with cgroups v2: assign the process to a sandboxed cgroup.
-        await ApplyCgroupsV2IsolationAsync(process, policy).ConfigureAwait(false);
+        if (OperatingSystem.IsMacOS() && IsMacOSSandboxAvailable())
+        {
+            await ApplyMacOSSandboxAsync(process, policy).ConfigureAwait(false);
+            return;
+        }
+
+        if (OperatingSystem.IsLinux() && GetCgroupV2RootPath() != null)
+        {
+            await ApplyCgroupsV2IsolationAsync(process, policy).ConfigureAwait(false);
+        }
     }
 
-    /// <summary>
-    /// Assigns a process and its child processes to a Windows Job Object.
-    /// This provides memory limits, process tree management, and security boundaries.
-    /// </summary>
+    private async Task ApplyMacOSSandboxAsync(Process process, PluginSandboxPolicy? policy = null)
+    {
+        try
+        {
+            var sandboxPolicy = policy ?? PluginSandboxPolicyDefaults.Default;
+            var allowedPaths = string.Join(",", sandboxPolicy.AllowedPaths ?? new HashSet<string>(StringComparer.OrdinalIgnoreCase) { "/tmp", "/var/tmp" });
+            var blockedCommands = string.Join(",", sandboxPolicy.BlockedCommands ?? new HashSet<string>(StringComparer.OrdinalIgnoreCase) { "sudo", "su", "chmod", "chown" });
+
+            var profile = GenerateMacOSSandboxProfile(allowedPaths, blockedCommands);
+            var profilePath = Path.Combine(Path.GetTempPath(), $"openlmstudio-sandbox-{process.Id}.plist");
+            await File.WriteAllTextAsync(profilePath, profile);
+
+            process.WaitForExit();
+
+            var sandboxExec = _macOSProfilePath ?? "/usr/sbin/sandbox-exec";
+            var originalCmd = process.StartInfo.FileName;
+            var originalArgs = process.StartInfo.Arguments;
+            var sandboxArgs = $"-f \"{profilePath}\" bash -c \"{originalArgs}\"";
+
+            var sandboxStartInfo = new ProcessStartInfo
+            {
+                FileName = sandboxExec,
+                Arguments = sandboxArgs,
+                UseShellExecute = false,
+                RedirectStandardOutput = true,
+                RedirectStandardError = true,
+                CreateNoWindow = true
+            };
+
+            using var sandboxProcess = Process.Start(sandboxStartInfo);
+            sandboxProcess?.WaitForExit();
+
+            _logger?.LogDebug("Applied macOS sandbox-exec isolation to process {ProcessId}", process.Id);
+
+            if (File.Exists(profilePath))
+                File.Delete(profilePath);
+        }
+        catch (Exception ex)
+        {
+            _logger?.LogWarning(ex, "Failed to apply macOS sandbox-exec isolation — process will run without limits");
+        }
+    }
+
+    private static string GenerateMacOSSandboxProfile(string allowedPaths, string blockedCommands)
+    {
+        var sb = new StringBuilder();
+        sb.AppendLine("<?xml version=\"1.0\" encoding=\"UTF-8\"?>");
+        sb.AppendLine("<!DOCTYPE plist PUBLIC \"-//Apple//DTD PLIST 1.0//EN\" \"http://www.apple.com/DTDs/PropertyList-1.0.dtd\">");
+        sb.AppendLine("<plist version=\"1.0\">");
+        sb.AppendLine("<dict>");
+
+        sb.AppendLine("\t<key>network</key>");
+        sb.AppendLine("\t<dict>");
+        sb.AppendLine("\t\t<key>rule</key>");
+        sb.AppendLine("\t\t<string>deny</string>");
+        sb.AppendLine("\t</dict>");
+
+        sb.AppendLine("\t<key>file-read</key>");
+        sb.AppendLine("\t<dict>");
+        sb.AppendLine("\t\t<key>rule</key>");
+        sb.AppendLine("\t\t<string>allow</string>");
+        sb.AppendLine("\t</dict>");
+
+        sb.AppendLine("\t<key>file-write</key>");
+        sb.AppendLine("\t<dict>");
+        sb.AppendLine("\t\t<key>rule</key>");
+        sb.AppendLine("\t\t<string>allow</string>");
+        sb.AppendLine("\t</dict>");
+
+        sb.AppendLine("\t<key>syscall</key>");
+        sb.AppendLine("\t<dict>");
+        sb.AppendLine("\t\t<key>rule</key>");
+        sb.AppendLine("\t\t<string>allow</string>");
+        sb.AppendLine("\t</dict>");
+
+        sb.AppendLine("</dict>");
+        sb.AppendLine("</plist>");
+
+        return sb.ToString();
+    }
+
     private async Task AssignToJobObjectAsync(Process process)
     {
         try
@@ -305,7 +408,7 @@ public class SandboxService : ISandboxService, IDisposable
             if (jobHandle == IntPtr.Zero)
                 return;
 
-            const int maxProcessMemoryBytes = 256 * 1024 * 1024; // 256 MB per process.
+            const int maxProcessMemoryBytes = 256 * 1024 * 1024;
             var jobLimitInfo = new JOBOBJECT_EXTENDED_LIMIT_INFORMATION();
             jobLimitInfo.BasicLimitInformation.LimitFlags |= JOB_OBJECT_LIMIT_WORKINGSET;
             jobLimitInfo.ProcessMemoryLimitInBytes = (ulong)maxProcessMemoryBytes;
@@ -317,25 +420,22 @@ public class SandboxService : ISandboxService, IDisposable
             {
                 Marshal.StructureToPtr(jobLimitInfo, ptr, true);
 
-                if (!SetInformationJobObject(jobHandle, 9 /* ExtendedLimitInformation */, ptr, (uint)size))
+                if (!SetInformationJobObject(jobHandle, 9, ptr, (uint)size))
                     return;
 
-                // Assign the process to the job object — this will also capture child processes.
                 if (!AssignProcessToJobObject(jobHandle, process.Handle))
                 {
                     _logger?.LogDebug("Failed to assign process to job object. Error: {ErrorCode}", Marshal.GetLastWin32Error());
                 }
 
-                // Set job object termination on limit exceeded — kills the entire tree when memory limit is hit.
                 var jobTermInfo = new JOBOBJECT_LIMIT_VIOLATION_INFORMATION();
                 ptr = Marshal.AllocHGlobal(Marshal.SizeOf(jobTermInfo));
 
                 try
                 {
-                    // JOB_OBJECT_LIMIT_DIE_ON_UNHANDLED_EXCEPTION — terminate entire tree on limit violation.
                     jobTermInfo.ViolationFlags = (int)JOB_OBJECT_LIMIT_DIE_ON_UNHANDLED_EXCEPTION;
                     Marshal.StructureToPtr(jobTermInfo, ptr, true);
-                    SetInformationJobObject(jobHandle, 25 /* LimitViolationTerminationOnFirst */, ptr, (uint)size);
+                    SetInformationJobObject(jobHandle, 25, ptr, (uint)size);
                 }
                 finally
                 {
@@ -355,29 +455,20 @@ public class SandboxService : ISandboxService, IDisposable
         }
     }
 
-    /// <summary>
-    /// Applies cgroups v2 sandbox isolation to a Linux/macOS process.
-    /// Creates a cgroup with memory and CPU limits, then assigns the process to it via /proc/cgroup.
-    /// </summary>
-    private async Task ApplyCgroupsV2IsolationAsync(Process process, Domain.Interfaces.PluginSandboxPolicy? policy = null)
+    private async Task ApplyCgroupsV2IsolationAsync(Process process, PluginSandboxPolicy? policy = null)
     {
         var rootPath = GetCgroupV2RootPath();
         if (string.IsNullOrEmpty(rootPath)) return;
 
         try
         {
-            // Create a unique cgroup name for this sandboxed process group.
             var cgroupName = $"openlmstudio_{process.Id}";
-
-            // Determine the base path for creating the new cgroup.
             var sliceDir = Path.Combine(rootPath, "system.slice");
             if (!Directory.Exists(sliceDir))
             {
-                // For containers without system.slice — use openlmstudio-slice as top-level.
                 sliceDir = Path.Combine(rootPath, "openlmstudio-slice");
                 Directory.CreateDirectory(sliceDir);
 
-                // Write cgroup.subtree_control to enable memory and CPU controllers.
                 var subtreeControlPath = Path.Combine(sliceDir, "cgroup.subtree_control");
                 if (!File.Exists(subtreeControlPath))
                 {
@@ -387,7 +478,6 @@ public class SandboxService : ISandboxService, IDisposable
                     }
                     catch
                     {
-                        // Try enabling controllers at root level.
                         var rootSubtreeControl = Path.Combine(rootPath, "cgroup.subtree_control");
                         if (File.Exists(rootSubtreeControl))
                         {
@@ -395,10 +485,7 @@ public class SandboxService : ISandboxService, IDisposable
                             {
                                 await File.WriteAllTextAsync(rootSubtreeControl, "+memory +cpu").ConfigureAwait(false);
                             }
-                            catch
-                            {
-                                // Controllers not available — continue without them.
-                            }
+                            catch { /* Controllers not available */ }
                         }
                     }
                 }
@@ -409,10 +496,8 @@ public class SandboxService : ISandboxService, IDisposable
 
             if (OperatingSystem.IsLinux())
             {
-                // On Linux: write the process ID and its thread group leader IDs to the cgroup.
                 await WriteProcsFileAsync(process.Id).ConfigureAwait(false);
 
-                // Also add all threads from /proc/[pid]/task/ for proper isolation of multi-threaded processes.
                 try
                 {
                     var taskDir = Path.Combine("/proc", process.Id.ToString(), "task");
@@ -429,11 +514,8 @@ public class SandboxService : ISandboxService, IDisposable
                     // Ignore — not all systems have /proc/[pid]/task.
                 }
 
-                // Apply memory limit if configured.
                 var maxMemoryBytes = (policy?.MaxMemoryMb ?? 256) * 1024L * 1024;
                 await SetMemoryLimitAsync(cgroupPath, maxMemoryBytes).ConfigureAwait(false);
-
-                // Apply CPU quota — allow 80% of one CPU core per second.
                 await SetCpuQuotaAsync(cgroupPath, 80_000, 100_000).ConfigureAwait(false);
             }
 
@@ -446,9 +528,6 @@ public class SandboxService : ISandboxService, IDisposable
         }
     }
 
-    /// <summary>
-    /// Writes a PID to the cgroup.procs file atomically.
-    /// </summary>
     private async Task WriteProcsFileAsync(int pid)
     {
         var rootPath = GetCgroupV2RootPath();
@@ -456,7 +535,6 @@ public class SandboxService : ISandboxService, IDisposable
 
         try
         {
-            // Find the openlmstudio-slice directory.
             var sliceDir = Path.Combine(rootPath, "system.slice");
             if (!Directory.Exists(sliceDir))
                 sliceDir = Path.Combine(rootPath, "openlmstudio-slice");
@@ -464,7 +542,6 @@ public class SandboxService : ISandboxService, IDisposable
             var tasksFilePath = Path.Combine(sliceDir, "cgroup.procs");
             try
             {
-                // Read existing PIDs first (they may have been added by parent processes).
                 var existingPids = new HashSet<int>();
                 if (File.Exists(tasksFilePath))
                 {
@@ -474,13 +551,11 @@ public class SandboxService : ISandboxService, IDisposable
                     }
                 }
 
-                // Add new PID only if not already present.
                 if (!existingPids.Contains(pid))
                     await File.AppendAllTextAsync(tasksFilePath, $"{pid}\n").ConfigureAwait(false);
             }
             catch (IOException) when (!File.Exists(tasksFilePath))
             {
-                // File doesn't exist — try to append anyway.
                 await File.AppendAllTextAsync(tasksFilePath, $"{pid}\n").ConfigureAwait(false);
             }
         }
@@ -490,17 +565,12 @@ public class SandboxService : ISandboxService, IDisposable
         }
     }
 
-    /// <summary>
-    /// Sets a memory limit for a cgroup via the memory.max file.
-    /// </summary>
     private static async Task SetMemoryLimitAsync(string cgroupPath, long maxBytes)
     {
         var memoryMaxPath = Path.Combine(cgroupPath, "memory.max");
         try
         {
             await File.WriteAllTextAsync(memoryMaxPath, maxBytes.ToString()).ConfigureAwait(false);
-
-            // Also set the OOM kill threshold so processes are killed when they exceed the limit.
             var oomKillPath = Path.Combine(cgroupPath, "memory.oom.group");
             await File.WriteAllTextAsync(oomKillPath, "1").ConfigureAwait(false);
         }
@@ -510,9 +580,6 @@ public class SandboxService : ISandboxService, IDisposable
         }
     }
 
-    /// <summary>
-    /// Sets CPU quota for a cgroup via the cpu.max file.
-    /// </summary>
     private static async Task SetCpuQuotaAsync(string cgroupPath, long quotaUs, long periodUs = 100_000)
     {
         var cpuMaxPath = Path.Combine(cgroupPath, "cpu.max");
@@ -526,9 +593,6 @@ public class SandboxService : ISandboxService, IDisposable
         }
     }
 
-    /// <summary>
-    /// Kills a sandboxed process group via its cgroup on Linux/macOS.
-    /// </summary>
     private async Task KillCgroupAsync(string cgroupName)
     {
         var rootPath = GetCgroupV2RootPath();
@@ -543,7 +607,6 @@ public class SandboxService : ISandboxService, IDisposable
             var cgroupPath = Path.Combine(sliceDir, cgroupName);
             if (string.IsNullOrEmpty(cgroupName) || !Directory.Exists(cgroupPath)) return;
 
-            // Read all PIDs from the tasks file and send SIGKILL to each.
             var tasksFilePath = Path.Combine(cgroupPath, "cgroup.procs");
             if (File.Exists(tasksFilePath))
             {
@@ -558,11 +621,10 @@ public class SandboxService : ISandboxService, IDisposable
                     }
                     catch (Exception ex) when (ex is ArgumentOutOfRangeException || ex is InvalidOperationException)
                     {
-                        // Process already exited — skip it.
+                        // Process already exited
                     }
                 }
 
-                // Write empty list to cgroup.procs to clean up the group.
                 await File.WriteAllTextAsync(tasksFilePath, string.Empty).ConfigureAwait(false);
             }
 
@@ -574,9 +636,6 @@ public class SandboxService : ISandboxService, IDisposable
         }
     }
 
-    /// <summary>
-    /// Kills an entire process tree on Windows by enumerating child processes via ToolHelp32 API.
-    /// </summary>
     private async Task KillProcessTreeAsync(Process parent)
     {
         if (parent.HasExited || OperatingSystem.IsWindows() == false)
@@ -591,21 +650,19 @@ public class SandboxService : ISandboxService, IDisposable
                 childPids.Add(pid);
             }
 
-            // Kill all processes in the tree, starting from children to parents.
             foreach (var pid in childPids)
             {
                 try
                 {
                     using var proc = Process.GetProcessById(pid);
-
                     if (!proc.HasExited)
                     {
-                        proc.Kill(true);  // Forceful kill on Windows.
+                        proc.Kill(true);
                     }
                 }
                 catch (ArgumentException)
                 {
-                    // Process already exited — skip it.
+                    // Process already exited
                 }
             }
 
@@ -617,9 +674,6 @@ public class SandboxService : ISandboxService, IDisposable
         }
     }
 
-    /// <summary>
-    /// Enumerates child processes of a given parent process on Windows using ToolHelp32 API.
-    /// </summary>
     private async IAsyncEnumerable<int> EnumChildProcessIds(int parentId)
     {
         var snapshotHandle = CreateToolhelp32Snapshot(TH32CS_SNAPPROCESS, 0);
@@ -640,7 +694,6 @@ public class SandboxService : ISandboxService, IDisposable
                     {
                         yield return entry.th32ProcessID;
 
-                        // Recursively enumerate grandchildren.
                         await foreach (var childPid in EnumChildProcessIds(entry.th32ProcessID))
                             yield return childPid;
                     }
@@ -656,8 +709,6 @@ public class SandboxService : ISandboxService, IDisposable
     [DllImport("kernel32.dll")]
     private static extern bool CloseHandle(IntPtr hObject);
 
-    // ===== Windows API P/Invoke declarations for Job Objects =====
-
     [DllImport("kernel32.dll", CharSet = CharSet.Unicode)]
     private static extern IntPtr CreateJobObject(IntPtr lpSecurityAttributes, string? lpName);
 
@@ -668,8 +719,6 @@ public class SandboxService : ISandboxService, IDisposable
     [DllImport("kernel32.dll", SetLastError = true)]
     [return: MarshalAs(UnmanagedType.Bool)]
     private static extern bool AssignProcessToJobObject(IntPtr hJob, IntPtr ProcessHandle);
-
-    // ===== Windows API P/Invoke declarations for ToolHelp32 (process tree enumeration) =====
 
     [DllImport("kernel32.dll", CharSet = CharSet.Unicode)]
     private static extern IntPtr CreateToolhelp32Snapshot(uint dwFlags, int th32ProcessID);
@@ -685,33 +734,26 @@ public class SandboxService : ISandboxService, IDisposable
     [DllImport("kernel32.dll", CharSet = CharSet.Unicode)]
     private static extern uint OpenProcess(uint dwDesiredAccess, bool bInheritHandle, int dwProcessId);
 
-    // ===== Windows Job Object constants =====
-
     private const uint JOB_OBJECT_LIMIT_WORKINGSET = 0x00000080;
     private const uint JOB_OBJECT_LIMIT_BREAKAWAY_OK = 0x00000800;
     private const uint JOB_OBJECT_LIMIT_DIE_ON_UNHANDLED_EXCEPTION = 0x00001000;
-
-    // ===== Windows Job Object structures =====
 
     [StructLayout(LayoutKind.Sequential)]
     private struct JOBOBJECT_EXTENDED_LIMIT_INFORMATION
     {
         public JOB_OBJECT_BASIC_LIMIT_INFORMATION BasicLimitInformation;
-        public IO_COUNTERS IoInfo;           // Process I/O counters — not used in sandbox.
-        public ulong ProcessMemoryLimitInBytes;     // Max working set size per process (4KB pages).
-        public ulong JobMemoryLimitInBytes;         // Job group memory limit — not used in sandbox.
-        public ulong PeakProcessMemoryUsedByJob;    // Read-only — max process mem used by job.
-        public ulong PeakJobMemoryUsedByJob;        // Read-only — max job mem used.
+        public IO_COUNTERS IoInfo;
+        public ulong ProcessMemoryLimitInBytes;
+        public ulong JobMemoryLimitInBytes;
+        public ulong PeakProcessMemoryUsedByJob;
+        public ulong PeakJobMemoryUsedByJob;
 
         [MarshalAs(UnmanagedType.ByValArray, SizeConst = 64)]
-        public int[] Information;       // Information array — not used in sandbox.
+        public int[] Information;
 
         [MarshalAs(UnmanagedType.ByValArray, SizeConst = 8)]
-        public long[] Reserved;         // Reserved — must be zero.
+        public long[] Reserved;
 
-        /// <summary>
-        /// Initializes the JOBOBJECT_EXTENDED_LIMIT_INFORMATION struct with properly sized arrays.
-        /// </summary>
         public JOBOBJECT_EXTENDED_LIMIT_INFORMATION()
         {
             BasicLimitInformation = new JOB_OBJECT_BASIC_LIMIT_INFORMATION();
@@ -728,37 +770,35 @@ public class SandboxService : ISandboxService, IDisposable
     [StructLayout(LayoutKind.Sequential)]
     private struct JOB_OBJECT_BASIC_LIMIT_INFORMATION
     {
-        public long PerProcessUserTimeLimit;  // Not used in sandbox.
-        public long PerJobUserTimeLimit;      // Not used in sandbox.
-        public uint LimitFlags;               // Flags for active limits (e.g., JOB_OBJECT_LIMIT_WORKINGSET).
+        public long PerProcessUserTimeLimit;
+        public long PerJobUserTimeLimit;
+        public uint LimitFlags;
         public ulong MinimumWorkingSetSizeInBytes;
-        public ulong MaximumWorkingSetSizeInBytes;  // Set to memory limit — enforced via LimitFlags.
-        public uint ActiveProcesses;           // Read-only — not set by us.
-        public uint DeactiveProcesses;         // Read-only — not set by us.
-        public long Affinity;                  // Job object affinity — not used in sandbox.
-        public uint PriorityClass;             // Not used in sandbox.
-        public uint SchedulingClass;           // Not used in sandbox.
+        public ulong MaximumWorkingSetSizeInBytes;
+        public uint ActiveProcesses;
+        public uint DeactiveProcesses;
+        public long Affinity;
+        public uint PriorityClass;
+        public uint SchedulingClass;
     }
 
     [StructLayout(LayoutKind.Sequential)]
     private struct IO_COUNTERS
     {
-        public ulong ReadOperationCount;   // I/O read operations — not used in sandbox.
-        public ulong WriteOperationCount;  // I/O write operations — not used in sandbox.
-        public ulong OtherOperationCount;  // Other I/O operations — not used in sandbox.
-        public ulong ReadTransferCount;    // Bytes transferred for reads — not used in sandbox.
-        public ulong WriteTransferCount;   // Bytes transferred for writes — not used in sandbox.
-        public ulong OtherTransferCount;   // Bytes transferred for other ops — not used in sandbox.
+        public ulong ReadOperationCount;
+        public ulong WriteOperationCount;
+        public ulong OtherOperationCount;
+        public ulong ReadTransferCount;
+        public ulong WriteTransferCount;
+        public ulong OtherTransferCount;
     }
 
     [StructLayout(LayoutKind.Sequential)]
     private struct JOBOBJECT_LIMIT_VIOLATION_INFORMATION
     {
-        public int ViolationFlags;         // Flags indicating which limit was violated.
-        public IntPtr PageFaulteAddress;   // Address of the fault — set by OS, not used in sandbox.
+        public int ViolationFlags;
+        public IntPtr PageFaulteAddress;
     }
-
-    // ===== Windows ToolHelp32 structures (for process tree enumeration) =====
 
     [StructLayout(LayoutKind.Sequential)]
     private struct PROCESSENTRY32
@@ -769,15 +809,13 @@ public class SandboxService : ISandboxService, IDisposable
         public IntPtr th32DefaultHeapID;
         public int th32ModuleID;
         public uint cntThreads;
-        public int th32ParentProcessID;  // Parent process ID — used for tree enumeration.
+        public int th32ParentProcessID;
         public long pcPriClassBase;
         public uint dwFlags;
 
         [MarshalAs(UnmanagedType.ByValTStr, SizeConst = 260)]
         public string szExeFile;
     }
-
-    // ===== ToolHelp32 constants (for process tree enumeration) =====
 
     private const uint TH32CS_SNAPPROCESS = 0x00000002;
 }
