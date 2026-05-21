@@ -361,20 +361,8 @@ OpenLMStudio/
 ### 5.10 Context Pruning on Task Completion
 - [x] Implement `TaskContextPruner` service: archive/compress-and-archive/discard strategies — delegates to store for archive logic
 
-#### Phase 5 Summary — **All interface/service layer complete, but UI controls NOT functional**
-> NOTE: All 10 service interfaces and implementations are complete (SQLite-backed). However, the Phase 6 UI controls for per-message pin/suppress in MainWindow.axaml.cs (lines ~590-630) are marked as "not yet implemented" with TODO comments — they log a debug message but do nothing. This is deferred to Phase 7 when proper context segment tracking is implemented.
-| Category | Items Complete | Items Remaining |
-|----------|---------------|-----------------|
-| ChatContextManager Service | 1 / 1 | ✓ Complete (SQLite-backed) |
-| Context Compression Engine | 1 / 1 | ✓ ConversationContextCompressor implements all strategies |
-| Context Relevance Engine | 1 / 1 | ✓ Recency + semantics + entity matching scoring |
-| Context Manipulation Service | 1 / 1 | ✓ User-driven pin/suppress/custom injection control (service layer only; UI binding incomplete) |
-| Context Window Budgeting | 1 / 1 | ✓ Auto-eviction, budget indicator with color zones |
-| TaskContextSnapshot Model | 1 / 1 | ✓ AiAnalysis field added via AiAnalysisResult property |
-| TaskContextStore Service | 1 / 1 | ✓ CRUD + upsert + archive/discard/ListArchived (SQLite-backed) |
-| Context Inheritance System | 1 / 1 | ✓ Budget-aware parent→child context propagation |
-| Fast Re-Injection Pipeline | 1 / 1 | ✓ Fast reinject via pre-compressed snapshot <100ms |
-| Context Pruning on Completion | 1 / 1 | ✓ Archive/compress-and-archive/discard strategies |
+#### Phase 5 Summary — **ALL COMPLETE** (10/10 items)
+> NOTE: All 10 service interfaces and implementations are complete (SQLite-backed). Phase 6 UI controls for per-message pin/suppress in MainWindow.axaml.cs (OnMessagePinClicked, OnMessageSuppressClicked) are now functional — wired to IChatContextManager PinSegmentAsync/UnpinSegmentAsync/SuppressSegmentAsync/RevealSegmentAsync.
 
 ---
 
@@ -429,15 +417,15 @@ OpenLMStudio/
 - [ ] Version comparison and update notifications
 - [ ] Plugin sandbox policy configuration
 
-#### Phase 6 Summary — **~4 of 28 items partially functional**
-> NOTE: Server start/stop working, chat streaming via SSE endpoint works, context panel with budget indicator exists. Many elements are stubs. Per-message pin/suppress controls NOT functional (deferred to Phase 7). Model list display partially functional but not populated.
+#### Phase 6 Summary — **~8 of 28 items partially functional**
+> NOTE: Server start/stop working, chat streaming via SSE endpoint works, context panel with budget indicator exists. Per-message pin/suppress controls now functional (OnMessagePinClicked, OnMessageSuppressClicked handlers wired to IChatContextManager). PluginManagementWindow with search/install/enable/disable/policy controls implemented. SettingsWindow with tabbed UI (Server/Model/Agent/Plugin/Privacy) and persistent JSON storage.
 | Category | Items Complete | Items Remaining |
 |----------|---------------|-----------------|
-| Main Window & Chat Interface | ~4 / 14 | Server start/stop working, chat streaming via SSE works; context panel with budget indicator exists — many elements remain stubs |
-| Settings/Preferences Panel | 0 / 5 | Not started |
+| Main Window & Chat Interface | ~5 / 14 | Server start/stop working, chat streaming via SSE works, context panel with budget indicator, per-message pin/suppress controls functional |
+| Settings/Preferences Panel | 1 / 5 | SettingsWindow with tabbed UI and persistent JSON storage |
 | Image Generation & Device Monitoring | 0 / 8 | Not started |
-| Context Manipulation UI Controls | 0 / 7 | Not started |
-| Plugin Management Panel | 0 / 4 | Not started |
+| Context Manipulation UI Controls | 3 / 7 | Pin/suppress per-message controls wired to IChatContextManager; visual tree, custom context, budget bar remaining |
+| Plugin Management Panel | 1 / 4 | PluginManagementWindow with search/install/enable/disable/update/policy controls |
 
 ---
 
@@ -652,6 +640,6 @@ OpenLMStudio/
 | 8: Plugin & MCP System | **8 of 8** | **~96%** | MCP stdio + SSE transport (McpSseClient.cs) both complete. Prompt support via McpPromptAccessor + McpPromptListTool, resource accessor exists — all MCP features implemented. PluginRegistry: remote registry integration complete with download URL support, manifest creation, sandbox policy enforcement on install; **path traversal attack prevention added** to ZIP extraction (target path must be within installPath); **remote registry download with hash verification** added. |
 | 9: Resilience, Security & Operations | 8 of 14 | ~57% | Model file detection via SafetensorParser; download recovery verified via SHA256/MD5; model loading fallback chain implemented; streaming SSE reconstruction exists for chat completions only. **Sandbox isolation expanded: cgroups v2 support added for Linux/macOS process sandboxing** — full ISandboxService interface extended with CreateProcessWithSandboxPolicyAsync method. SelfSignedCertificateGenerator cross-platform implementation works on Windows; certificate auto-trust only available on Windows. RateLimitMiddleware + ApiKeyAuthMiddleware + IRateLimitService complete. **Auto-update system added: IUpdateManager/UpdateManager with GitHub Releases integration.** **ConversationEncryption (AES-256+HMAC) added for encrypted conversation data at rest.** |
 | 10: Testing & Release | ~8 of 16 | ~50% | **Unit test strategy started**: SafetensorParser null-return edge cases, ModelType enum completeness, SandboxService platform detection + dispose idempotency — 3 test classes (37 tests total) committed. CI/CD basics via GitHub Actions workflow for Windows builds on push/PR. **Infrastructure test suite**: 26 tests across 9 test classes — GgufParser, ModelManager, ContextCompressor, ServerService, ModelType, SandboxService, SafetensorParser, UpdateManager, ModelCacheCleanup. **ConversationEncryptionTests** — 7 tests added (encrypt/decrypt roundtrip, wrong password, tampered ciphertext, unicode). **New tests**: CommandExecutionServiceTests (7), ActivityTracerTests (5), ContextWindowBudgeterTests (4), SandboxServiceTests (2) — 18 additional tests. **Build**: 0 warnings, 0 errors. **dotnet format**: clean. **Tests**: passing. |
-| 10.5: Observability & Diagnostics | **4 of 4** | **~75%** | **StructuredLoggerExtensions** — typed log methods for model loading, context compression, agent events, downloads, server, device monitoring. **ModelLifecycleTracer** — per-model load/unload timing, VRAM allocation tracking, recent trace history. |
+| 10.5: Observability & Diagnostics | **3 of 4** | **~75%** | **StructuredLoggerExtensions** — typed log methods for model loading, context compression, agent events, downloads, server, device monitoring. **ActivityTracer** — agent tool call tracing (duration, success/failure, resource consumption per call). **ModelLifecycleTracer** — per-model load/unload timing, VRAM allocation tracking, recent trace history. |
 
 ### Overall Progress: ~64 of 223 items (~29%). **Dead code cleanup completed**: removed placeholder Class1.cs files from all projects, removed LlamaCppChatService legacy wrapper class, fixed GgufParser.ParseAsync magic number comparison to use binary little-endian (was inconsistent with ParseHeaderAsync). **Recent work**: Phase 9 sandbox isolation expanded — cgroups v2 support for Linux/macOS added; Phase 3 diffusion pipeline RunTextEncoder + CFG conditioning implemented; Phase 10 unit test strategy started (SafetensorParser, ModelType, SandboxService) + CI/CD GitHub Actions workflow. **Key findings**: Phase 5 Context Management System service layer complete; Phase 8 MCP Protocol Implementation complete (stdio + SSE transport); Phase 9 Error Recovery mostly complete via SafetensorParser + DownloadManager hash verification. **Latest work (5/19/2026):** Phase 6 SettingsWindow persistence + ImageGen tab handler with diffusion pipeline + event wiring completed; Agent.cs error recovery (resume, auto-commit, loop detection) + DI registration updated; Infrastructure test suite expanded to 66 tests (AgentTests, CommandExecutionService, ActivityTracer, ContextWindowBudgeter, SandboxService, GgufParser, ModelManager, ContextCompressor, ServerService, ModelType, SandboxService, SafetensorParser, UpdateManager, ModelCacheCleanup, ConversationEncryption) — all passing, 0 warnings/0 errors. Phase 10.5 Observability already implemented (StructuredLoggerExtensions + ModelLifecycleTracer + IActivityTracer). **Newest: Keyboard shortcuts (Ctrl+N/M/S/K/L), SSE reconnection retry, USER_GUIDE.md documentation added.** | EmbeddingPipelineService real ONNX inference implemented (replaced stub random vectors) + LoRA delta injection infrastructure added to DiffusionInferenceEngine + **ModelManager.cs with concurrent loading/eviction policy** + **Infrastructure test suite (19 tests)** + **Structured logging and model lifecycle tracing** | **Newest: PluginRegistry path traversal attack prevention added, Agent.cs ResumeAsync improved, MainWindow RefreshModelListAsync completes model display with proper null-safety and ModelMetadata property access, build clean 0 warnings/0 errors, dotnet format verified.** | Agent tools added (GitDiffTool, GitHistoryTool, GitBlameTool, GitBranchesTool, CodeDefinitionExtractorTool) with DI registrations. ConversationEncryption (AES-256+HMAC) for encrypted conversation data at rest. ConversationEncryptionTests (7 tests). DEVELOPMENT_PLAN.md updated with Phase 7 progress.
