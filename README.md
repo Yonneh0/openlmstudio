@@ -80,7 +80,7 @@ By default, `dotnet publish` builds for **Windows x64**. To target other platfor
 # Windows x64 (default)
 dotnet publish src/Desktop/OpenLMStudio.Desktop.csproj -c Publish -o publish/win-x64
 
-# Windows ARM64
+# Windows ARM64 (Surface Pro X, etc.)
 dotnet publish src/Desktop/OpenLMStudio.Desktop.csproj -c Publish -r win-arm64 -o publish/win-arm64
 
 # macOS (Apple Silicon — M1/M2/M3)

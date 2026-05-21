@@ -123,7 +123,14 @@ public class ServerService : IServerService, IDisposable
                 if (!File.Exists(httpsCertPath))
                 {
                     _logger?.LogInformation("HTTPS certificate not found at '{CertPath}', attempting to generate...", httpsCertPath);
-                    TryGenerateCertificate(httpsCertPath, keyPath).GetAwaiter().GetResult();
+                    try
+                    {
+                        TryGenerateCertificate(httpsCertPath, keyPath).GetAwaiter().GetResult();
+                    }
+                    catch
+                    {
+                        _logger?.LogWarning("Failed to auto-generate HTTPS certificate, falling back to HTTP");
+                    }
 
                     // Check again after generation attempt
                     if (!File.Exists(httpsCertPath))
