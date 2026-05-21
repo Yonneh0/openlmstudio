@@ -47,25 +47,7 @@ public class ContextSegment : IDisposable
     public void Dispose() { /* No unmanaged resources */ }
 }
 
-/// <summary>Represents an agentic task state (Idle, Planning, Acting, etc.).</summary>
-public enum AgentState
-{
-    /// <summary>Agent is idle and ready to start a new task. Set when the agent has completed its work and no further actions are pending.</summary>
-    Idle = 0,
-
-    /// <summary>Agent has not yet begun working on this task. This is the initial state before any processing occurs.</summary>
-    NotStarted = 1,
-    /// <summary>Agent is planning the approach for this task.</summary>
-    Planning,
-    /// <summary>Agent is actively executing actions.</summary>
-    Acting,
-    /// <summary>Agent is paused awaiting user input/approval.</summary>
-    Paused,
-    /// <summary>Task completed successfully.</summary>
-    Completed,
-    /// <summary>Task failed with an error.</summary>
-    Failed
-}
+// NOTE: AgentState is now defined in AgentState.cs
 
 /// <summary>The level of context compression applied to segments.</summary>
 public enum CompressionLevel
