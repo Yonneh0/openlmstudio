@@ -1408,16 +1408,21 @@ public static class ServerServiceEndpointExtensions
                         role = "assistant",
                         content = new[] { new {
                             type = "text",
-                            text = responseChoice.Message.Content ?? "[No response]"
+                            text = responseChoice.Message.Content ?? "[No response]",
+                            cache_control = responseChoice.Message.TokenCount > 0 ? new { type = "ephemeral" } : null
                         } },
                         model = anthropicRequest.Model,
                         stop_reason = string.IsNullOrEmpty(responseChoice.FinishReason) ? "end_turn" : responseChoice.FinishReason.ToLowerInvariant(),
+                        stop_sequence = responseChoice.Message.Content?.EndsWith("\n\n") == true ? null : (string?)null,
                         usage = new
                         {
                             input_tokens = inputTokenCount,
                             output_tokens = outputTokenCount,
-                            total_tokens = inputTokenCount + outputTokenCount
-                        }
+                            cache_creation_input_tokens = 0,
+                            cache_read_input_tokens = 0
+                        },
+                        thinking = (string?)null,
+                        redacted_thinking = (string?)null
                     };
 
                     context.Response.ContentType = "application/json";
@@ -1447,7 +1452,12 @@ public static class ServerServiceEndpointExtensions
                         } },
                         model = anthropicRequest.Model,
                         stop_reason = "end_turn",
-                        usage = new { input_tokens = 0, output_tokens = 0 },
+                        usage = new {
+                            input_tokens = 0,
+                            output_tokens = 0,
+                            cache_creation_input_tokens = 0,
+                            cache_read_input_tokens = 0
+                        },
                         models_available = modelIds
                     };
 
