@@ -21,7 +21,7 @@ public class TaskValidationService : ITaskValidationService
     }
 
     public async Task<TaskValidationResult> ValidateTaskCompletionAsync(
-        Task task,
+        AgenticTask task,
         string result,
         CancellationToken cancellationToken = default)
     {
@@ -53,7 +53,7 @@ public class TaskValidationService : ITaskValidationService
 
         try
         {
-            var response = await _systemAIClient.SendCompletionAsync(prompt, cancellationToken);
+            var response = await _systemAIClient.SendMessageAsync(prompt);
 
             var passed = ParseValidationResponse(response, out var message, out var failedReason);
 
@@ -73,7 +73,7 @@ public class TaskValidationService : ITaskValidationService
     }
 
     public async Task<TaskValidationResult> ValidateStructuredOutputAsync(
-        Task task,
+        AgenticTask task,
         string output,
         CancellationToken cancellationToken = default)
     {
@@ -99,7 +99,7 @@ public class TaskValidationService : ITaskValidationService
 
         try
         {
-            var response = await _systemAIClient.SendCompletionAsync(prompt, cancellationToken);
+            var response = await _systemAIClient.SendMessageAsync(prompt);
             var passed = ParseValidationResponse(response, out var message, out var failedReason);
 
             return new TaskValidationResult(passed, message, failedReason);

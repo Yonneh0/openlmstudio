@@ -2,6 +2,8 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using Microsoft.Extensions.Logging;
+using OpenLMStudio.Application.Interfaces;
+using OpenLMStudio.Domain.Models;
 
 namespace OpenLMStudio.Infrastructure.Services;
 

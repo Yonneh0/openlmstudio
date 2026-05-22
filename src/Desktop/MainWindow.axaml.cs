@@ -226,6 +226,13 @@ public partial class MainWindow : Window
         if (AgentMaxIterationsSlider != null)
             AgentMaxIterationsSlider.ValueChanged += OnAgentMaxIterationsValueChanged;
 
+        // Task tab handlers
+        if (CreateTaskButton != null)
+            CreateTaskButton.Click += OnCreateTaskClicked;
+
+        if (TasksTabTitle != null)
+            TasksTabTitle.PointerPressed += OnTasksTabPointerPressed;
+
         // Image generation generate button
         if (ImageGenGenerateBtn != null)
             ImageGenGenerateBtn.Click += OnImageGenGenerateClicked;
@@ -341,6 +348,109 @@ public partial class MainWindow : Window
     {
         if (AgentMaxIterationsText != null)
             AgentMaxIterationsText.Text = ((int)(AgentMaxIterationsSlider?.Value ?? 50)).ToString();
+    }
+
+    // =========================================================================
+    // Task tab handlers
+    // =========================================================================
+
+    private void OnTasksTabPointerPressed(object? sender, PointerPressedEventArgs e)
+    {
+        ShowTab("Tasks");
+    }
+
+    private void OnCreateTaskClicked(object? sender, RoutedEventArgs e)
+    {
+        var description = NewTaskDescriptionInput?.Text;
+        if (string.IsNullOrWhiteSpace(description))
+        {
+            _logger?.LogWarning("Task description is empty");
+            return;
+        }
+
+        var priorityText = TaskPrioritySelector?.SelectedItem as TextBlock;
+        var priority = priorityText?.Text switch
+        {
+            "Low" => TaskPriority.Low,
+            "High" => TaskPriority.High,
+            "Critical" => TaskPriority.Critical,
+            _ => TaskPriority.Normal
+        };
+
+        _logger?.LogInformation("Creating task: {Description}, priority: {Priority}", description, priority);
+
+        // Use TaskService to create the task
+        var sp = GetAppServiceProvider();
+        var taskService = sp?.GetService<OpenLMStudio.Application.Interfaces.ITaskService>();
+        if (taskService != null)
+        {
+            _ = Task.Run(async () =>
+            {
+                var task = await taskService.CreateTaskAsync(description, priority: priority);
+                // Refresh task list on the UI thread
+                await Dispatcher.UIThread.InvokeAsync(() => RefreshTaskListAsync());
+            });
+        }
+    }
+
+    private void RefreshTaskListAsync()
+    {
+        var sp = GetAppServiceProvider();
+        var taskService = sp?.GetService<OpenLMStudio.Application.Interfaces.ITaskService>();
+        if (taskService == null || TaskListPanel == null)
+            return;
+
+        TaskListPanel.Children.Clear();
+
+        var tasks = taskService.GetTasks();
+        if (!tasks.Any())
+        {
+            TaskListPanel.Children.Add(new TextBlock
+            {
+                Text = "No tasks created",
+                Foreground = (SolidColorBrush)(this.FindResource("TextMuted") ?? Avalonia.Media.Brushes.Gray),
+                Padding = new Thickness(12, 8),
+                FontSize = 12
+            });
+            return;
+        }
+
+        foreach (var task in tasks)
+        {
+            var statusColor = task.Status switch
+            {
+                Domain.Models.TaskStatus.Completed => "#4CAF50",
+                Domain.Models.TaskStatus.Running => "#FF9800",
+                Domain.Models.TaskStatus.Failed => "#FF6B6B",
+                Domain.Models.TaskStatus.Cancelled => "#888888",
+                _ => "#888888"
+            };
+
+            var statusText = task.Summary ?? task.Status.ToString();
+
+            var stack = new StackPanel
+            {
+                Margin = new Thickness(0, 0, 0, 6)
+            };
+
+            stack.Children.Add(new TextBlock
+            {
+                Text = task.Description,
+                Foreground = (SolidColorBrush)(this.FindResource("TextPrimary") ?? Avalonia.Media.Brushes.White),
+                FontSize = 12,
+                FontWeight = Avalonia.Media.FontWeight.SemiBold
+            });
+
+            stack.Children.Add(new TextBlock
+            {
+                Text = $"[{task.Priority}] {statusText}",
+                Foreground = new Avalonia.Media.SolidColorBrush(Avalonia.Media.Color.Parse(statusColor)),
+                FontSize = 10,
+                Margin = new Thickness(0, 2, 0, 0)
+            });
+
+            TaskListPanel.Children.Add(stack);
+        }
     }
 
     /// <summary>

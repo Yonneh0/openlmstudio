@@ -39,11 +39,11 @@ public class ChatContextManager : IChatContextManager, IDisposable
 
         // Fire-and-forget initialization — errors are logged and don't prevent construction
         var initTask = InitializeDatabasesAsync();
-        initTask.ContinueWith((t, _) =>
+        initTask.ContinueWith(t =>
         {
             if (t.Exception != null)
                 _logger?.LogError(t.Exception.GetBaseException(), "Failed to initialize databases");
-        }, (object?)null, CancellationToken.None, TaskContinuationOptions.OnlyOnFaulted, TaskScheduler.Default);
+        }, TaskContinuationOptions.OnlyOnFaulted);
 
         // Ensure all appdata subdirectories are created on first run
         _resolver.InitializeSubdirectories();

@@ -603,55 +603,6 @@
                         </Border>
                     </StackPanel>
 
-                    <!-- Tasks tab content -->
-                    <StackPanel x:Name="TasksTabContent" DockPanel.Dock="Top" IsVisible="False">
-                        <TextBlock x:Name="TasksTabTitle" Text="Tasks" FontWeight="SemiBold" Foreground="#4FC3F7" Padding="8,6" PointerPressed="OnTasksTabPointerPressed"/>
-                        
-                        <!-- Task list -->
-                        <Border Background="{StaticResource BgSecondary}" CornerRadius="4" Margin="0,8,0,0">
-                            <ScrollViewer HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Auto">
-                                <StackPanel x:Name="TaskListPanel">
-                                    <TextBlock Text="No tasks created" Foreground="{StaticResource TextMuted}" Padding="12,8" FontSize="12"/>
-                                </StackPanel>
-                            </ScrollViewer>
-                        </Border>
-
-                        <!-- Create task -->
-                        <Border Background="{StaticResource BgSecondary}" CornerRadius="4" Margin="0,8,0,0">
-                            <StackPanel>
-                                <TextBlock Text="New Task:" Foreground="{StaticResource TextPrimary}" Padding="12,4"/>
-                                <TextBox x:Name="NewTaskDescriptionInput" 
-                                         Foreground="{StaticResource TextPrimary}"
-                                         Background="{StaticResource BgTertiary}"
-                                         BorderThickness="0"
-                                         Margin="8,4,8,8"
-                                         Height="60"
-                                         AcceptsReturn="True"/>
-                                
-                                <!-- Priority selector -->
-                                <TextBlock Text="Priority:" Foreground="{StaticResource TextPrimary}" Padding="12,4,12,2"/>
-                                <ComboBox x:Name="TaskPrioritySelector" 
-                                          Foreground="{StaticResource TextPrimary}"
-                                          Background="{StaticResource BgTertiary}"
-                                          Margin="8,0,8,8"
-                                          Height="28">
-                                    <TextBlock Text="Low"/>
-                                    <TextBlock Text="Normal" Foreground="{StaticResource TextPrimary}"/>
-                                    <TextBlock Text="High"/>
-                                    <TextBlock Text="Critical"/>
-                                </ComboBox>
-                                
-                                <Button x:Name="CreateTaskButton"
-                                        Content="+ Create Task" 
-                                        Background="#0E639C"
-                                        Foreground="White"
-                                        Padding="12,4"
-                                        HorizontalAlignment="Stretch"
-                                        Height="36"/>
-                            </StackPanel>
-                        </Border>
-                    </StackPanel>
-
                     <!-- Agent tab content -->
                     <StackPanel x:Name="AgentTabContent" DockPanel.Dock="Top" IsVisible="False">
                         <TextBlock x:Name="AgentTabTitle" Text="Agent" FontWeight="SemiBold" Foreground="#4FC3F7" Padding="8,6" PointerPressed="OnAgentTabPointerPressed"/>

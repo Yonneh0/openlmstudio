@@ -19,19 +19,8 @@ public record AgentTaskRequest(
 public record AgentTaskResult(
     Guid TaskId,
     AgentState FinalState,
-    IReadOnlyList<AgentToolCallRecord> ToolCalls,
+    IReadOnlyList<Domain.Models.AgentToolCallRecord> ToolCalls,
     string Summary);
-
-/// <summary>
-/// Records a tool call made during agent execution.
-/// </summary>
-public record AgentToolCallRecord(
-    string ToolName,
-    Dictionary<string, object> Parameters,
-    string Result,
-    bool Success,
-    double DurationMs,
-    DateTime Timestamp);
 
 /// <summary>
 /// Represents an agent plan/act message exchange.

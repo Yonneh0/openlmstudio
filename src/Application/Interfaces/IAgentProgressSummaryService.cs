@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using OpenLMStudio.Domain.Models;
 
 namespace OpenLMStudio.Application.Interfaces;
 

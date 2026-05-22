@@ -13,7 +13,7 @@ public class TaskScheduler : ITaskScheduler
     private readonly ITaskService _taskService;
     private readonly ITaskBranchStore? _branchStore;
     private readonly ILogger<TaskScheduler>? _logger;
-    private readonly Dictionary<Guid, List<Task>> _branchTasks = new();
+    private readonly Dictionary<Guid, List<AgenticTask>> _branchTasks = new();
     private readonly object _lock = new();
 
     public TaskScheduler(
@@ -26,16 +26,16 @@ public class TaskScheduler : ITaskScheduler
         _logger = logger;
     }
 
-    public Task<Task?> GetNextTaskAsync(Guid branchId, CancellationToken cancellationToken = default)
+    public Task<AgenticTask?> GetNextTaskAsync(Guid branchId, CancellationToken cancellationToken = default)
     {
         lock (_lock)
         {
             if (!_branchTasks.TryGetValue(branchId, out var tasks))
-                return Task.FromResult<Task?>(null);
+                return Task.FromResult<AgenticTask?>(null);
 
             var readyTasks = tasks
-                .Where(t => t.Status == TaskStatus.Pending)
-                .Where(t => t.Dependencies.All(d => tasks.Any(tt => tt.Id == d && tt.Status == TaskStatus.Completed)))
+                .Where(t => t.Status == Domain.Models.TaskStatus.Pending)
+                .Where(t => t.Dependencies.All(d => tasks.Any(tt => tt.Id == d && tt.Status == Domain.Models.TaskStatus.Completed)))
                 .OrderByDescending(t => t.Priority)
                 .ThenBy(t => t.CreatedAt)
                 .ToList();
@@ -44,7 +44,7 @@ public class TaskScheduler : ITaskScheduler
         }
     }
 
-    public Task<List<Task>> GetAllOrderedTasksAsync(CancellationToken cancellationToken = default)
+    public Task<List<AgenticTask>> GetAllOrderedTasksAsync(CancellationToken cancellationToken = default)
     {
         lock (_lock)
         {
@@ -56,12 +56,12 @@ public class TaskScheduler : ITaskScheduler
         }
     }
 
-    public Task<List<Task>> InjectTasksAsync(Guid branchId, IEnumerable<Task> tasks, CancellationToken cancellationToken = default)
+    public Task<List<AgenticTask>> InjectTasksAsync(Guid branchId, IEnumerable<AgenticTask> tasks, CancellationToken cancellationToken = default)
     {
         lock (_lock)
         {
             if (!_branchTasks.ContainsKey(branchId))
-                _branchTasks[branchId] = new List<Task>();
+                _branchTasks[branchId] = new List<AgenticTask>();
 
             var added = tasks.ToList();
             _branchTasks[branchId].AddRange(added);
@@ -74,16 +74,16 @@ public class TaskScheduler : ITaskScheduler
         }
     }
 
-    public Task OnTaskCompletedAsync(Task task, CancellationToken cancellationToken = default)
+    public Task OnTaskCompletedAsync(AgenticTask task, CancellationToken cancellationToken = default)
     {
         lock (_lock)
         {
             // Find and unblock dependent tasks
             foreach (var branch in _branchTasks.Values)
             {
-                foreach (var dependentTask in branch.Where(t => t.Dependencies.Contains(task.Id) && t.Status == TaskStatus.Pending))
+                foreach (var dependentTask in branch.Where(t => t.Dependencies.Contains(task.Id) && t.Status == Domain.Models.TaskStatus.Pending))
                 {
-                    var depsSatisfied = dependentTask.Dependencies.All(d => branch.Any(tt => tt.Id == d && tt.Status == TaskStatus.Completed));
+                    var depsSatisfied = dependentTask.Dependencies.All(d => branch.Any(tt => tt.Id == d && tt.Status == Domain.Models.TaskStatus.Completed));
                     if (depsSatisfied)
                     {
                         _logger?.LogDebug("Unblocked dependent task {TaskId}", dependentTask.Id);
@@ -97,15 +97,15 @@ public class TaskScheduler : ITaskScheduler
         return Task.CompletedTask;
     }
 
-    public Task OnTaskFailedAsync(Task task, string errorMessage, CancellationToken cancellationToken = default)
+    public Task OnTaskFailedAsync(AgenticTask task, string errorMessage, CancellationToken cancellationToken = default)
     {
         lock (_lock)
         {
             foreach (var branch in _branchTasks.Values)
             {
-                foreach (var dependentTask in branch.Where(t => t.Dependencies.Contains(task.Id) && t.Status == TaskStatus.Pending))
+                foreach (var dependentTask in branch.Where(t => t.Dependencies.Contains(task.Id) && t.Status == Domain.Models.TaskStatus.Pending))
                 {
-                    dependentTask.Status = TaskStatus.Failed;
+                    dependentTask.Status = Domain.Models.TaskStatus.Failed;
                     dependentTask.ErrorMessage = $"Dependency {task.Id} failed: {errorMessage}";
                     _logger?.LogWarning("Failed dependent task {TaskId} due to dependency failure", dependentTask.Id);
                 }
@@ -116,31 +116,31 @@ public class TaskScheduler : ITaskScheduler
         return Task.CompletedTask;
     }
 
-    public Task<List<Task>> GetReadyTasksAsync(Guid branchId, CancellationToken cancellationToken = default)
+    public Task<List<AgenticTask>> GetReadyTasksAsync(Guid branchId, CancellationToken cancellationToken = default)
     {
         lock (_lock)
         {
             if (!_branchTasks.TryGetValue(branchId, out var tasks))
-                return Task.FromResult(new List<Task>());
+                return Task.FromResult(new List<AgenticTask>());
 
             return Task.FromResult(tasks
-                .Where(t => t.Status == TaskStatus.Pending)
-                .Where(t => t.Dependencies.All(d => tasks.Any(tt => tt.Id == d && tt.Status == TaskStatus.Completed)))
+                .Where(t => t.Status == Domain.Models.TaskStatus.Pending)
+                .Where(t => t.Dependencies.All(d => tasks.Any(tt => tt.Id == d && tt.Status == Domain.Models.TaskStatus.Completed)))
                 .OrderByDescending(t => t.Priority)
                 .ToList());
         }
     }
 
-    public Task<List<Task>> GetBlockedTasksAsync(Guid branchId, CancellationToken cancellationToken = default)
+    public Task<List<AgenticTask>> GetBlockedTasksAsync(Guid branchId, CancellationToken cancellationToken = default)
     {
         lock (_lock)
         {
             if (!_branchTasks.TryGetValue(branchId, out var tasks))
-                return Task.FromResult(new List<Task>());
+                return Task.FromResult(new List<AgenticTask>());
 
             return Task.FromResult(tasks
-                .Where(t => t.Status == TaskStatus.Pending)
-                .Where(t => t.Dependencies.Any(d => !tasks.Any(tt => tt.Id == d && tt.Status == TaskStatus.Completed)))
+                .Where(t => t.Status == Domain.Models.TaskStatus.Pending)
+                .Where(t => t.Dependencies.Any(d => !tasks.Any(tt => tt.Id == d && tt.Status == Domain.Models.TaskStatus.Completed)))
                 .OrderByDescending(t => t.Priority)
                 .ToList());
         }
@@ -152,8 +152,8 @@ public class TaskScheduler : ITaskScheduler
         {
             if (_branchTasks.TryGetValue(branchId, out var tasks))
             {
-                foreach (var task in tasks.Where(t => t.Status == TaskStatus.Running))
-                    task.Status = TaskStatus.Paused;
+                foreach (var task in tasks.Where(t => t.Status == Domain.Models.TaskStatus.Running))
+                    task.Status = Domain.Models.TaskStatus.Paused;
             }
         }
         return Task.CompletedTask;
@@ -165,8 +165,8 @@ public class TaskScheduler : ITaskScheduler
         {
             if (_branchTasks.TryGetValue(branchId, out var tasks))
             {
-                foreach (var task in tasks.Where(t => t.Status == TaskStatus.Paused))
-                    task.Status = TaskStatus.Running;
+                foreach (var task in tasks.Where(t => t.Status == Domain.Models.TaskStatus.Paused))
+                    task.Status = Domain.Models.TaskStatus.Running;
             }
         }
         return Task.CompletedTask;
@@ -180,8 +180,8 @@ public class TaskScheduler : ITaskScheduler
             {
                 foreach (var task in tasks)
                 {
-                    if (task.Status == TaskStatus.Running || task.Status == TaskStatus.Pending)
-                        task.Status = TaskStatus.Cancelled;
+                    if (task.Status == Domain.Models.TaskStatus.Running || task.Status == Domain.Models.TaskStatus.Pending)
+                        task.Status = Domain.Models.TaskStatus.Cancelled;
                 }
             }
             _branchTasks.Remove(branchId);
@@ -192,7 +192,7 @@ public class TaskScheduler : ITaskScheduler
     /// <summary>
     /// Registers tasks from a branch for scheduling.
     /// </summary>
-    public void RegisterBranch(Guid branchId, List<Task> tasks)
+    public void RegisterBranch(Guid branchId, List<AgenticTask> tasks)
     {
         lock (_lock)
         {
@@ -205,15 +205,15 @@ public class TaskScheduler : ITaskScheduler
         if (_branchStore == null || !_branchTasks.TryGetValue(branchId, out var tasks))
             return;
 
-        if (tasks.Any(t => t.Status is TaskStatus.Running or TaskStatus.Pending))
+        if (tasks.Any(t => t.Status is Domain.Models.TaskStatus.Running or Domain.Models.TaskStatus.Pending))
         {
             _branchStore.UpdateBranchStatusAsync(branchId, TaskBranchStatus.Active).Wait();
         }
-        else if (tasks.All(t => t.Status == TaskStatus.Completed))
+        else if (tasks.All(t => t.Status == Domain.Models.TaskStatus.Completed))
         {
             _branchStore.UpdateBranchStatusAsync(branchId, TaskBranchStatus.Completed).Wait();
         }
-        else if (tasks.Any(t => t.Status == TaskStatus.Failed))
+        else if (tasks.Any(t => t.Status == Domain.Models.TaskStatus.Failed))
         {
             _branchStore.UpdateBranchStatusAsync(branchId, TaskBranchStatus.Abandoned).Wait();
         }

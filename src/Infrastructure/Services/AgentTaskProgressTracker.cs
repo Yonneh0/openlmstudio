@@ -1,5 +1,6 @@
 using Microsoft.Extensions.Logging;
 using OpenLMStudio.Application.Interfaces;
+using OpenLMStudio.Domain.Models;
 
 namespace OpenLMStudio.Infrastructure.Services;
 

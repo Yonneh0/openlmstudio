@@ -10,12 +10,12 @@ public interface ITaskService : IDisposable
     /// <summary>
     /// Gets all tasks, optionally filtered by status.
     /// </summary>
-    IReadOnlyList<Task> GetTasks();
+    IReadOnlyList<AgenticTask> GetTasks();
 
     /// <summary>
     /// Creates a new task with the given description and optional dependencies.
     /// </summary>
-    Task<Task> CreateTaskAsync(string description, List<Guid>? dependencies = null, TaskPriority priority = TaskPriority.Normal);
+    Task<AgenticTask> CreateTaskAsync(string description, List<Guid>? dependencies = null, TaskPriority priority = TaskPriority.Normal);
 
     /// <summary>
     /// Starts execution of a task by launching the agent with the appropriate context.
@@ -53,6 +53,6 @@ public interface ITaskService : IDisposable
 /// </summary>
 public record TaskStateChangedEventArgs(
     Guid TaskId,
-    TaskStatus OldStatus,
-    TaskStatus NewStatus,
+    Domain.Models.TaskStatus OldStatus,
+    Domain.Models.TaskStatus NewStatus,
     string? Message = null);

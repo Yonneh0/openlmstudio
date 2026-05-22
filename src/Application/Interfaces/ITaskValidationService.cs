@@ -24,7 +24,7 @@ public interface ITaskValidationService
     /// <param name="cancellationToken">Cancellation token.</param>
     /// <returns>Validation result indicating pass/fail with reason.</returns>
     Task<TaskValidationResult> ValidateTaskCompletionAsync(
-        Task task,
+        AgenticTask task,
         string result,
         CancellationToken cancellationToken = default);
 
@@ -36,7 +36,7 @@ public interface ITaskValidationService
     /// <param name="cancellationToken">Cancellation token.</param>
     /// <returns>Validation result indicating pass/fail with reason.</returns>
     Task<TaskValidationResult> ValidateStructuredOutputAsync(
-        Task task,
+        AgenticTask task,
         string output,
         CancellationToken cancellationToken = default);
 }

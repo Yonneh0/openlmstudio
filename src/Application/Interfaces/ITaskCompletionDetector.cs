@@ -1,5 +1,6 @@
 using System.Collections.Generic;
 using System.Threading.Tasks;
+using OpenLMStudio.Domain.Models;
 
 namespace OpenLMStudio.Application.Interfaces;
 
@@ -12,11 +13,11 @@ public interface ITaskCompletionDetector
     /// <summary>
     /// Detects task completion using keyword-based analysis.
     /// </summary>
-    Task<bool> DetectAsync(string taskDescription, IReadOnlyList<AgentToolCallRecord> toolCalls);
+    System.Threading.Tasks.Task<bool> DetectAsync(string taskDescription, IReadOnlyList<AgentToolCallRecord> toolCalls);
 
     /// <summary>
     /// Detects task completion using an LLM to compare the goal against tool results.
     /// Falls back to keyword detection if the LLM call fails.
     /// </summary>
-    Task<bool> DetectAsync(string taskDescription, IReadOnlyList<AgentToolCallRecord> toolCalls, bool useLlmFallback);
+    System.Threading.Tasks.Task<bool> DetectAsync(string taskDescription, IReadOnlyList<AgentToolCallRecord> toolCalls, bool useLlmFallback);
 }
