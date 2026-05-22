@@ -17,7 +17,9 @@ public class OomRecoveryServiceTests
         var deviceMonitor = new MockDeviceMonitor();
         var service = new OomRecoveryService(modelManager, deviceMonitor);
 
+        #pragma warning disable xUnit1031
         var status = service.GetMemoryUsageStatusAsync(CancellationToken.None).Result;
+        #pragma warning restore xUnit1031
         Assert.Equal(MemoryStatus.Normal, status.Status);
     }
 
@@ -28,7 +30,9 @@ public class OomRecoveryServiceTests
         var deviceMonitor = new MockDeviceMonitor();
         var service = new OomRecoveryService(modelManager, deviceMonitor);
 
+        #pragma warning disable xUnit1031
         var result = service.CheckAndRecoverAsync(CancellationToken.None).Result;
+        #pragma warning restore xUnit1031
         Assert.True(result);
     }
 
@@ -81,6 +85,16 @@ internal class MockModelManager : IModelManager
     public void RegisterLoader(IModelLoader loader) { }
 
     public void Dispose() { }
+
+    public long AllocateVram(string modelId, long bytes) => bytes;
+    public void DeallocateVram(string modelId) { }
+    public (bool CanLoad, long EstimatedVram) CanAllocateVram(string modelId, long bytes, CancellationToken cancellationToken = default) => (true, bytes);
+    public IReadOnlyList<ModelMemoryReport> GetMemoryReports() => new List<ModelMemoryReport>();
+    public IReadOnlyList<string> GetEvictionPriority() => new List<string>();
+    public Task EvictModelsToFreeVramAsync(long targetBytes, CancellationToken cancellationToken = default) => Task.CompletedTask;
+    public void TouchModelAccess(string modelId) { }
+    public long TotalVramUsedBytes => 0;
+    public long TotalCpuMemoryUsedBytes => 0;
 }
 
 /// <summary>
