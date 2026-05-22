@@ -705,3 +705,21 @@ Located in Grid.Row=1, spanning all 3 columns. Uses a DockPanel with:
 | 10.5: Observability | ✓ Complete — structured logging, event tracing, activity tracer, model lifecycle tracer |
 
 ### Overall Progress: ~155 of 223 items (~69%)
+
+---
+
+## Verification Summary (2026-05-22)
+
+| Item | Status | Evidence |
+|------|--------|----------|
+| Phase 3.2: Model type parameter routing | ✓ Complete | `DetectModelTypeAsync` in `ServerService.cs` routes by `ModelType` enum |
+| Phase 3.7: LoRA runtime tensor injection | ✓ Complete | `ApplyLoraDeltas` in `DiffusionInferenceEngine.cs`, `ApplyAdapterAsync` in `LoraAdapterManager.cs` |
+| Phase 6.1: Code block syntax highlighting | ✓ Complete | `IMarkdownRenderer` + `AvaloniaMarkdownRenderer` wired into streaming and non-streaming chat responses |
+| Phase 7.1b: Pingu tools wiring | ✓ Complete | `PinguGameIntegrationTool`, `PinguModelTool`, `PinguGameTool`, `PinguModelLoadTool`, `PinguPanelToggleTool` all registered in DI |
+| Phase 7.7: Dynamic system prompt assembly | ✓ Complete | `AgentSystemPromptGenerator` with `GeneratePlanningPrompt` and `GenerateActingPrompt` methods |
+| Phase 8.2: Plugin registry integration | ✓ Complete | `SearchRegistryAsync`, `InstallPluginAsync`, `SetRegistryUrl`, `GetAvailableUpdatesAsync` all implemented |
+| Phase 9.2: Conversation encryption at rest | ✓ Complete | `ConversationEncryptionService` with AES-256-GCM + PBKDF2 key derivation |
+| Phase 9.3: VRAM allocation and model eviction | ✓ Complete | `ModelManager.AllocateVram`, `GetEvictionPriority`, `GetMemoryReports`, `TotalVramUsedBytes` |
+| Build | ✓ Clean | 0 errors, 0 warnings |
+| Format | ✓ Clean | `dotnet format --verify-no-changes` passes |
+| Tests | ✓ Passing | All tests pass |
