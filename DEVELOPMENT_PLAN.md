@@ -386,7 +386,7 @@ All service interfaces and implementations complete (SQLite-backed). UI controls
 - [x] Conversation list with token count display — Avalonia ListView/DataGrid
 - [x] Active chat selection highlighting
 - [x] Message rendering (user/AI alternating) — Avalonia DataTemplate per role type
-- [ ] Markdown support in responses (placeholder for future enhancement)
+- [ ] Markdown support in responses — **IMPLEMENTS EXIST** (IMarkdownRenderer, MarkdownRenderer, AvaloniaMarkdownRenderer via Markdig) but NOT wired into chat response rendering
 - [ ] Code block syntax highlighting — consider AvalonEdit or similar Avalonia control
 - [x] Input area with send button
 - [x] Tool tabs at bottom of input (Code Interpreter, Project Management)
@@ -431,10 +431,10 @@ All service interfaces and implementations complete (SQLite-backed). UI controls
 - [x] Port configuration in SettingsWindow — SettingsWindow with JSON persistence
 - [x] HTTPS certificate management — SelfSignedCertificateGenerator + dotnet dev-certs fallback
 
-#### Phase 6 Summary — **COMPLETE** (28 of 28 items)
+#### Phase 6 Summary — **~27 of 29 items functional**
 | Category | Status |
 |----------|--------|
-| Main Window & Chat Interface | ✓ Complete |
+| Main Window & Chat Interface | ✓ Functional — markdown rendering service exists but not wired into UI |
 | Settings/Preferences Panel | ✓ Complete |
 | Image Generation & Device Monitoring | ✓ Complete |
 | Context Manipulation UI Controls | ✓ Complete |
@@ -443,7 +443,7 @@ All service interfaces and implementations complete (SQLite-backed). UI controls
 
 ---
 
-## Phase 7: Agent Harness — **COMPLETE**
+## Phase 7: Agent Harness — **~26 of 32 items**
 
 ### 7.1 Core Agent Architecture
 - [x] Define `IAgent` interface with plan/act cycle support — IAgent.cs with full interface (ExecuteAsync, PauseAsync, ResumeAsync, AbortAsync, GetToolCalls, GetConversationHistory)
@@ -508,18 +508,18 @@ All service interfaces and implementations complete (SQLite-backed). UI controls
 - [x] Agent session persistence: save agent state to disk so it survives app crash
 - [x] Tool call fallback chain: try alternate tools or degraded parameters when primary fails
 
-#### Phase 7 Summary — **28 of 32 items complete**
+#### Phase 7 Summary — **26 of 32 items complete**
 | Category | Status |
 |----------|--------|
-| Core Agent Architecture | ✓ Complete — Agent class with plan/act cycle, IAgent interface, AgentState, AgentTaskProgressTracker |
+| Core Agent Architecture | ✓ Complete — Agent class (684 lines) with plan/act cycle, IAgent interface, AgentState, AgentTaskProgressTracker, AgentCheckpoint |
 | Agent Communication Protocol | ✓ Complete — IAgentProtocolService + AgentCommunicationProtocol with phase transitions |
 | Tooling System | ✓ Complete — all built-in tools registered (11+ tools) |
 | Task Progression System | ✓ Complete — Task model, AgentTaskProgressTracker with stage transitions, loop detection, tool call tracking |
 | Active Project Tree | ✓ Complete — ActiveProjectWatcher + FilePreviewService |
 | Deep Git Integration | ✓ Complete — GitRepositoryService with full CLI |
 | AI Analysis Context Panel | ✓ Complete — wired in RefreshAnalysisContextAsync |
-| System Prompt Generator | Partial — PinguPromptGenerator complete, dynamic assembly not complete |
-| Agent Error Recovery | ✓ Complete — loop detection, timeout guard, session persistence |
+| System Prompt Generator | Partial — PinguPromptGenerator complete (dynamic prompts), AgentSystemPromptGenerator (tool descriptions injected), but dynamic assembly/context-aware suggestions not done |
+| Agent Error Recovery | ✓ Complete — loop detection (Queue-based, 10-window), timeout guard (30 min), session persistence (AgentSessionPersister), tool fallback chain |
 
 ---
 
@@ -545,7 +545,7 @@ All service interfaces and implementations complete (SQLite-backed). UI controls
 
 ---
 
-## Phase 9: Resilience, Security & Operational Concerns — **COMPLETE**
+## Phase 9: Resilience, Security & Operational Concerns — **~14 of 16 items**
 
 ### 9.1 Error Recovery System
 - [x] Corrupted model file detection and recovery — SafetensorParser validates headers before loading; DownloadManager verifies hashes on completion via SHA256/MD5
@@ -568,17 +568,17 @@ All service interfaces and implementations complete (SQLite-backed). UI controls
 - [x] Plugin auto-update mechanism — **DONE**: PluginRegistry.GetAvailableUpdatesAsync + auto-update logic
 - [x] Model cache cleanup — configurable retention policies, automated orphan removal — **DONE**: DownloadManager has disk space monitoring with 80%/90%/95% threshold events
 
-#### Phase 9 Summary — **COMPLETE** (16 of 16 items)
+#### Phase 9 Summary — **~14 of 16 items**
 | Category | Status |
 |----------|--------|
 | Error Recovery System | ✓ Complete — model detection, download recovery, streaming SSE reconstruction |
 | Security Model | ✓ Complete — sandbox isolation (SandboxService with cgroups/Job Objects), command blocking, env sanitization |
-| Memory Management System | ✓ Complete — OOM recovery (OomRecoveryService), IModelManager with eviction policy, ModelLoadingFallbackService |
+| Memory Management System | Partial — OOM recovery done (OomRecoveryService), but VRAM allocation and model eviction policy NOT implemented |
 | Application Lifecycle Management | ✓ Complete — auto-update, plugin auto-update, disk space monitoring |
 
 ---
 
-## Phase 10: Testing & Release — **COMPLETE**
+## Phase 10: Testing & Release — **~10 of 16 items**
 
 ### 10.1 Comprehensive Testing Strategy
 - [x] Unit test suite with mock services for inference engines — **DONE**: 66+ tests across 3 test projects
@@ -697,11 +697,11 @@ Located in Grid.Row=1, spanning all 3 columns. Uses a DockPanel with:
 | 3: Inference Engines & Server API | Partial — HTTP server and text endpoints working; image/embedding pipelines connected |
 | 4: Chat & Conversation System | ✓ Complete |
 | 5: Context Management System | ✓ Complete |
-| 6: UI Implementation | ✓ Complete |
-| 7: Agent Harness | ✓ Complete |
+| 6: UI Implementation | Partial — markdown rendering service exists but not wired into UI |
+| 7: Agent Harness | ~26/32 items — agent core complete, Pingu UI tools not wired, system prompt dynamic assembly incomplete |
 | 8: Plugin & MCP System | Partial — MCP complete; plugin manager remote registry integration missing |
-| 9: Resilience & Security | ✓ Complete |
-| 10: Testing & Release | Partial — 66+ tests with CI/CD; UX refinements not started |
+| 9: Resilience & Security | Partial — memory management needs VRAM allocation and eviction policy |
+| 10: Testing & Release | ~10/16 items — 66+ tests with CI/CD; UX refinements not started |
 | 10.5: Observability | ✓ Complete |
 
 ### Overall Progress: ~115 of 223 items (~52%)
