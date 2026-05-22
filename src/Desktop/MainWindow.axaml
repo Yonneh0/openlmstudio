@@ -1177,19 +1177,85 @@
         <!-- Status bar at the bottom (spans full grid width) -->
         <Border Grid.Row="1" Grid.ColumnSpan="3" Background="{StaticResource BgSecondary}">
             <DockPanel>
-                <!-- Git version info (clickable to expand log) -->
-                <Border DockPanel.Dock="Left"
-                        x:Name="GitStatusBorder"
-                        Background="Transparent"
-                        Padding="12,0"
-                        Cursor="Hand">
-                    <TextBlock x:Name="GitStatusText"
-                               Text="OpenLMStudio"
+                <!-- Left side: status indicators -->
+                <DockPanel DockPanel.Dock="Left">
+                    <!-- Git version info (clickable to expand log) -->
+                    <Border DockPanel.Dock="Left"
+                            x:Name="GitStatusBorder"
+                            Background="Transparent"
+                            Padding="12,0"
+                            Cursor="Hand">
+                        <TextBlock x:Name="GitStatusText"
+                                   Text="OpenLMStudio"
+                                   Foreground="{StaticResource TextMuted}"
+                                   FontSize="11"
+                                   VerticalAlignment="Center"
+                                   IsHitTestVisible="True"/>
+                    </Border>
+
+                    <!-- CPU indicator -->
+                    <Border DockPanel.Dock="Left"
+                            x:Name="CpuStatusBorder"
+                            Background="Transparent"
+                            Padding="8,0">
+                        <TextBlock x:Name="CpuStatusText"
+                                   Text="CPU: --"
+                                   Foreground="{StaticResource TextMuted}"
+                                   FontSize="11"
+                                   VerticalAlignment="Center"/>
+                    </Border>
+
+                    <!-- GPU indicator -->
+                    <Border DockPanel.Dock="Left"
+                            x:Name="GpuStatusBorder"
+                            Background="Transparent"
+                            Padding="8,0">
+                        <TextBlock x:Name="GpuStatusText"
+                                   Text="GPU: --"
+                                   Foreground="{StaticResource TextMuted}"
+                                   FontSize="11"
+                                   VerticalAlignment="Center"/>
+                    </Border>
+
+                    <!-- Memory indicator -->
+                    <Border DockPanel.Dock="Left"
+                            x:Name="MemStatusBorder"
+                            Background="Transparent"
+                            Padding="8,0">
+                        <TextBlock x:Name="MemStatusText"
+                                   Text="RAM: --"
+                                   Foreground="{StaticResource TextMuted}"
+                                   FontSize="11"
+                                   VerticalAlignment="Center"/>
+                    </Border>
+
+                    <!-- Model loaded indicator -->
+                    <Border DockPanel.Dock="Left"
+                            x:Name="ModelStatusBorder"
+                            Background="Transparent"
+                            Padding="8,0">
+                        <TextBlock x:Name="ModelStatusText"
+                                   Text="Model: --"
+                                   Foreground="{StaticResource TextMuted}"
+                                   FontSize="11"
+                                   VerticalAlignment="Center"/>
+                    </Border>
+                </DockPanel>
+
+                <!-- Right side: server status -->
+                <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" HorizontalAlignment="Right">
+                    <!-- Server status dot -->
+                    <Border x:Name="ServerStatusDot"
+                            Background="#FF6B6B"
+                            Width="8" Height="8"
+                            CornerRadius="4"
+                            Margin="0,0,6,0"/>
+                    <TextBlock x:Name="ServerStatusText"
+                               Text="Server: Stopped"
                                Foreground="{StaticResource TextMuted}"
                                FontSize="11"
-                               VerticalAlignment="Center"
-                               IsHitTestVisible="True"/>
-                </Border>
+                               VerticalAlignment="Center"/>
+                </StackPanel>
             </DockPanel>
         </Border>
 

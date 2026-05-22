@@ -89,10 +89,10 @@
 - Commonly used as a visual container.
 
 ### Popup
-- **NOT available as `Avalonia.Controls.Popup`**.
-- Use `Border` with `IsVisible` property for showing/hiding overlays.
-- For true popup semantics (outside parent bounds), use `Popup` from a third-party library or position a `Border` absolutely.
-- Pattern: `<Border IsVisible="False">` + code-behind toggle with `SetValue(Border.IsVisibleProperty, ...)`.
+- Use `Avalonia.Controls.Primitives.Popup` for true popup semantics (outside parent bounds, renders above window clipping).
+- Pattern: `<Popup x:Name="..." PlacementTarget="{Binding ElementName=Target}" Placement="Bottom" IsLightDismissEnabled="True">` + code-behind toggle with `SetValue(Popup.IsOpenProperty, ...)`.
+- **DO NOT use `Avalonia.Controls.Popup`** — it doesn't exist. The correct namespace is `Avalonia.Controls.Primitives`.
+- For simple overlays within bounds, use `Border` with `IsVisible` property + `SetValue(Border.IsVisibleProperty, ...)`.
 
 ### Canvas overlay
 - Place a `Canvas` inside a Grid cell to position children absolutely relative to that cell.

@@ -651,10 +651,22 @@ This project uses **git commit hash** as its sole version identifier. There are 
 
 ### Avalonia UI Guide
 A comprehensive guide for working with Avalonia UI is available at `docs/AVALONIA_UI_GUIDE.md`. Key points:
-- **No `Avalonia.Controls.Popup`** — use `Border` with `IsVisible` property
+- **No `Avalonia.Controls.Popup`** — use `Avalonia.Controls.Primitives.Popup` for true popup semantics (outside parent bounds)
 - **DockPanel.Fill issue** — explicitly set `DockPanel.Dock="Fill"` on content containers
 - **Canvas overlay** — position absolute children relative to Grid cell, but Canvas children don't respect `Grid.ColumnSpan`
 - **Window has ONE child** — wrap all content in a single panel
+
+### Status Bar
+Located in Grid.Row=1, spanning all 3 columns. Uses a DockPanel with:
+- **Left side** (DockPanel.Dock="Left"): Status indicators in order from left to right:
+  - Git commit hash (clickable, opens popup via `Avalonia.Controls.Primitives.Popup`)
+  - CPU usage (placeholder)
+  - GPU usage (placeholder)
+  - RAM usage (placeholder)
+  - Model loaded indicator (placeholder)
+- **Right side** (StackPanel with ServerStatusDot + ServerStatusText): Server on/off dot and status text
+- Popup anchored to `GitStatusBorder` via `PlacementTarget="{Binding ElementName=GitStatusBorder}" Placement="Bottom"`
+- **To update status indicators**, wire up to `IChatContextManager`, `IDeviceMonitor`, `IModelManager`, or `IServerService` services — refresh via `RefreshStatusBars()` in MainWindow
 
 ---
 
