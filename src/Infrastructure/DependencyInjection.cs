@@ -410,6 +410,9 @@ public static class DependencyInjection
                 resolver.GetService<AppDataDirectoryResolver>() ?? new AppDataDirectoryResolver(),
                 resolver.GetService<Domain.Interfaces.IPluginRegistry>()));
 
+        // InteractiveHelpService provides in-app interactive help with topic search and keyboard navigation
+        services.AddSingleton<IInteractiveHelpService, InteractiveHelpService>();
+
         return services;
     }
 
