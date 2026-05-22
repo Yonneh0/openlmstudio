@@ -1173,11 +1173,11 @@
     </DockPanel>
 
     <!-- Status bar at the bottom (outside Grid, spans full window width) -->
-    <DockPanel DockPanel.Dock="Bottom" Background="{StaticResource BgSecondary}" Height="24" LastChildFill="False">
+    <DockPanel DockPanel.Dock="Bottom" Background="{StaticResource BgSecondary}" Height="24">
         <!-- Git version info (clickable to expand log) -->
         <Border DockPanel.Dock="Left"
-                Background="Transparent"
                 x:Name="GitStatusBorder"
+                Background="Transparent"
                 Padding="12,0"
                 Cursor="Hand">
             <TextBlock x:Name="GitStatusText"
