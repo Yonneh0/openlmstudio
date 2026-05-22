@@ -28,7 +28,7 @@
     <AssemblyName>OpenLMStudio</AssemblyName>
 
     <!-- Suppress Avalonia AVLN3001: known false positive when using DI constructor -->
-    <NoWarn>AVLN3001;$(NoWarn)</NoWarn>
+    <NoWarn>AVLN3001;NU1701;$(NoWarn)</NoWarn>
   </PropertyGroup>
 
   <!-- Git commit metadata — resolved at build time -->
