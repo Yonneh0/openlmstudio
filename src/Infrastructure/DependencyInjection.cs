@@ -276,6 +276,9 @@ public static class DependencyInjection
         // AgentSystemPromptGenerator dynamically assembles system prompts based on available tools and context
         services.AddSingleton<AgentSystemPromptGenerator>();
 
+        // AgentProtocolService manages plan/act phase transitions with user approval gating
+        services.AddSingleton<IAgentProtocolService, Services.AgentProtocolService>();
+
         // AgentSessionPersister persists and restores agent session state to disk for crash recovery
         services.AddSingleton<AgentSessionPersister>(resolver =>
         {
