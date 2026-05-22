@@ -75,7 +75,7 @@ public class McpStdioClient : IMcpClient, IDisposable
                 Params = new Dictionary<string, object>
                 {
                     ["protocolVersion"] = 20260101,
-                    ["clientInfo"] = new { name = "OpenLMStudio", version = "0.1.0" }
+                    ["clientInfo"] = new { name = "OpenLMStudio", commit = GetGitCommitShort() }
                 }
             };
 
@@ -95,6 +95,29 @@ public class McpStdioClient : IMcpClient, IDisposable
         catch (Exception ex)
         {
             _logger.LogError(ex, "Failed to connect to MCP server");
+        }
+    }
+
+    private static string GetGitCommitShort()
+    {
+        try
+        {
+            var startInfo = new ProcessStartInfo
+            {
+                FileName = "git",
+                Arguments = "rev-parse --short HEAD",
+                UseShellExecute = false,
+                RedirectStandardOutput = true,
+                CreateNoWindow = true
+            };
+            using var proc = Process.Start(startInfo) ?? throw new InvalidOperationException();
+            var result = proc.StandardOutput.ReadToEnd().Trim();
+            proc.WaitForExit();
+            return result.Length > 0 ? result : "unknown";
+        }
+        catch
+        {
+            return "unknown";
         }
     }
 

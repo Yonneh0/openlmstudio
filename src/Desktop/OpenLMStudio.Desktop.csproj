@@ -31,6 +31,25 @@
     <NoWarn>AVLN3001;$(NoWarn)</NoWarn>
   </PropertyGroup>
 
+  <!-- Git commit metadata — resolved at build time -->
+  <Target Name="GitInfo" BeforeTargets="CoreCompile" Outputs="GeneratedGitInfo.cs">
+    <Exec Command="git rev-parse --short HEAD" ConsoleToMSBuild="true" StandardOutputImportance="low">
+      <Output PropertyName="GitCommit" TaskParameter="ConsoleOutput" />
+    </Exec>
+    <Exec Command="git rev-parse --abbrev-ref HEAD" ConsoleToMSBuild="true" StandardOutputImportance="low">
+      <Output PropertyName="GitBranch" TaskParameter="ConsoleOutput" />
+    </Exec>
+    <Exec Command="git diff --quiet 2&gt;NUL" ConsoleToMSBuild="true" StandardOutputImportance="low" IgnoreExitCode="true">
+      <Output PropertyName="GitDirty" TaskParameter="ConsoleOutput" />
+      <Output PropertyName="GitHasChanges" TaskParameter="ExitCode" />
+    </Exec>
+    <PropertyGroup>
+      <GitCommit>$([System.String]::new($(GitCommit)).Trim())</GitCommit>
+      <GitBranch>$([System.String]::new($(GitBranch)).Trim())</GitBranch>
+      <GitDirty>$([System.String]::new($(GitDirty)).Trim())</GitDirty>
+    </PropertyGroup>
+  </Target>
+
   <!-- Avalonia UI packages for cross-platform support -->
   <ItemGroup>
     <PackageReference Include="Avalonia" Version="11.2.5" />

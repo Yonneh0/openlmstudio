@@ -1170,5 +1170,19 @@
             </DockPanel>
         </Panel>
         </Grid>
+
+        <!-- Git log watermark — bottom-left corner -->
+        <Border Grid.Column="0" Grid.ColumnSpan="3"
+                VerticalAlignment="Bottom" HorizontalAlignment="Left"
+                Background="Transparent"
+                Padding="8">
+            <StackPanel x:Name="GitWatermarkPanel" IsVisible="False">
+                <TextBlock x:Name="GitWatermarkText"
+                           Foreground="{StaticResource TextMuted}"
+                           FontSize="10"
+                           FontWeight="SemiBold"
+                           TextWrapping="NoWrap"/>
+            </StackPanel>
+        </Border>
     </DockPanel>
 </Window>

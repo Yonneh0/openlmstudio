@@ -4,6 +4,7 @@
 using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.IO;
 using System.Linq;
 using System.Net.Http;
@@ -118,6 +119,9 @@ public partial class MainWindow : Window
 
         // Defer chat list loading until after window is shown to avoid freezing the UI
         this.Opened += OnMainWindowOpened;
+
+        // Initialize git watermark
+        RefreshGitWatermark();
     }
 
     private void OnMainWindowOpened(object? sender, EventArgs e)
@@ -333,5 +337,63 @@ public partial class MainWindow : Window
     {
         if (AgentMaxIterationsText != null)
             AgentMaxIterationsText.Text = ((int)(AgentMaxIterationsSlider?.Value ?? 50)).ToString();
+    }
+
+    /// <summary>
+    /// Fetches recent git log entries and displays them as a watermark in the bottom-left corner.
+    /// </summary>
+    private void RefreshGitWatermark()
+    {
+        if (GitWatermarkText == null) return;
+
+        try
+        {
+            var log = GetGitLog(7);
+            if (log.Length == 0) return;
+
+            GitWatermarkPanel!.IsVisible = true;
+
+            var sb = new StringBuilder();
+            sb.Append($"OpenLMStudio {GitInfo.FullName}");
+
+            if (!string.Equals(GitInfo.Dirty, "true", StringComparison.OrdinalIgnoreCase))
+                sb.Append(" (clean)");
+
+            sb.AppendLine();
+            sb.AppendLine("Recent commits:");
+
+            foreach (var line in log.Split('\n').Where(l => l.Trim().Length > 0))
+                sb.AppendLine(line.Trim());
+
+            GitWatermarkText.Text = sb.ToString();
+        }
+        catch (Exception ex)
+        {
+            _logger?.LogWarning(ex, "Failed to load git watermark");
+        }
+    }
+
+    private static string GetGitLog(int count)
+    {
+        try
+        {
+            var startInfo = new ProcessStartInfo
+            {
+                FileName = "git",
+                Arguments = $"log -{count} --oneline --date=short --format=\"%h %ad %s\"",
+                UseShellExecute = false,
+                RedirectStandardOutput = true,
+                CreateNoWindow = true,
+                StandardOutputEncoding = System.Text.Encoding.UTF8
+            };
+            using var proc = Process.Start(startInfo) ?? throw new InvalidOperationException();
+            var output = proc.StandardOutput.ReadToEnd().Trim();
+            proc.WaitForExit();
+            return output;
+        }
+        catch
+        {
+            return "";
+        }
     }
 }

@@ -931,7 +931,7 @@ public class DownloadManager : IDownloadManager, IDisposable
             Timeout = TimeSpan.FromHours(3),
             DefaultRequestHeaders =
             {
-                UserAgent = { new System.Net.Http.Headers.ProductInfoHeaderValue("OpenLMStudio", "0.1.0") }
+                UserAgent = { new System.Net.Http.Headers.ProductInfoHeaderValue("OpenLMStudio", "dev") }
             }
         };
 
