@@ -1,26 +1,29 @@
 using System;
 using System.Collections.Generic;
+using System.Threading;
+using System.Threading.Tasks;
 using Microsoft.Extensions.Logging;
 using OpenLMStudio.Application.Interfaces;
 
 namespace OpenLMStudio.Infrastructure.Services;
 
 /// <summary>
-/// UI control tool for toggling panels (sidebar, context panel, etc.) in the Pingu context.
+/// UI control tool for toggling panels in the Pingu context.
+/// Allows Pingu to open/close sidebar panels, settings, and other UI sections.
 /// </summary>
 public class PinguPanelToggleTool : ITool, IDisposable
 {
     private readonly ILogger<PinguPanelToggleTool>? _logger;
-    private readonly IPanelService? _panelService;
+    private readonly ITabService? _tabService;
     private bool _disposed;
 
     public string Name => "PinguPanelToggle";
-    public string Description => "Toggles the visibility of a UI panel (e.g., 'LeftSidebar', 'RightSidebar', 'Context', 'Status', 'BottomPane').";
+    public string Description => "Toggles the visibility of a UI panel (e.g., 'context', 'server', 'models', 'devices', 'agent'). Useful for showing/hiding information panels.";
 
-    public PinguPanelToggleTool(ILogger<PinguPanelToggleTool>? logger, IPanelService? panelService = null)
+    public PinguPanelToggleTool(ILogger<PinguPanelToggleTool>? logger, ITabService? tabService = null)
     {
         _logger = logger;
-        _panelService = panelService;
+        _tabService = tabService;
     }
 
     public async Task<bool> ExecuteAsync(Dictionary<string, object> parameters)
@@ -28,17 +31,19 @@ public class PinguPanelToggleTool : ITool, IDisposable
         if (_disposed) return false;
 
         var panelName = TryGetString(parameters, "Panel");
+        var action = TryGetString(parameters, "Action");
+
         if (string.IsNullOrEmpty(panelName))
         {
             _logger?.LogWarning("PinguPanelToggle called without Panel parameter.");
             return false;
         }
 
-        _logger?.LogInformation("Pingu toggling panel: {Panel}", panelName);
+        _logger?.LogInformation("Pingu toggling panel '{Panel}' with action {Action}", panelName, action ?? "toggle");
 
-        if (_panelService != null)
+        if (_tabService != null)
         {
-            return await _panelService.TogglePanelAsync(panelName);
+            return await _tabService.SwitchTabAsync(panelName);
         }
 
         return true;
@@ -47,6 +52,7 @@ public class PinguPanelToggleTool : ITool, IDisposable
     public Dictionary<string, ToolParameterSchema> GetParameterSchema() => new()
     {
         ["Panel"] = new ToolParameterSchema("string", true),
+        ["Action"] = new ToolParameterSchema("string", false),
     };
 
     public void Dispose()
@@ -54,7 +60,7 @@ public class PinguPanelToggleTool : ITool, IDisposable
         if (!_disposed)
         {
             _disposed = true;
-            _panelService?.Dispose();
+            _tabService?.Dispose();
         }
     }
 

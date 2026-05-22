@@ -173,6 +173,74 @@ public interface IModelManager : IDisposable
     /// Returns true if successful.
     /// </summary>
     Task<bool> MoveModelToDeviceAsync(string modelId, string targetDevice, CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Gets the total VRAM currently allocated across all loaded models.
+    /// </summary>
+    long TotalVramUsedBytes { get; }
+
+    /// <summary>
+    /// Gets the total CPU memory currently used by loaded models.
+    /// </summary>
+    long TotalCpuMemoryUsedBytes { get; }
+
+    /// <summary>
+    /// Allocates VRAM for a model after successful loading.
+    /// Returns the VRAM allocated, or 0 if allocation failed.
+    /// </summary>
+    long AllocateVram(string modelId, long bytes);
+
+    /// <summary>
+    /// Deallocates VRAM for a model when it is unloaded.
+    /// </summary>
+    void DeallocateVram(string modelId);
+
+    /// <summary>
+    /// Checks if a model can be loaded given current VRAM budget and available memory.
+    /// Returns (canLoad, estimatedVram) or (false, 0) if insufficient resources.
+    /// </summary>
+    (bool CanLoad, long EstimatedVram) CanAllocateVram(string modelId, long estimatedVram, CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Gets a per-model memory usage report.
+    /// </summary>
+    IReadOnlyList<ModelMemoryReport> GetMemoryReports();
+
+    /// <summary>
+    /// Returns models sorted by last accessed time (least recently used first),
+    /// for eviction priority decisions.
+    /// </summary>
+    IReadOnlyList<string> GetEvictionPriority();
+
+    /// <summary>
+    /// Evicts models to free VRAM when OOM is detected.
+    /// Eviction priority: VAE → Embedding → ImageGeneration → TextGeneration.
+    /// </summary>
+    Task EvictModelsToFreeVramAsync(long targetFreeBytes, CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Updates the last-accessed timestamp for a loaded model.
+    /// </summary>
+    void TouchModelAccess(string modelId);
+}
+
+/// <summary>
+/// Memory usage report for a loaded model instance.
+/// </summary>
+public class ModelMemoryReport
+{
+    public ModelMemoryReport(string modelId, long gpuVramBytes, long cpuBytes, string device)
+    {
+        ModelId = modelId;
+        GpuVramBytes = gpuVramBytes;
+        CpuBytes = cpuBytes;
+        Device = device;
+    }
+
+    public string ModelId { get; }
+    public long GpuVramBytes { get; }
+    public long CpuBytes { get; }
+    public string Device { get; }
 }
 
 /// <summary>

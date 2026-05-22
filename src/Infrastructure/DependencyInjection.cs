@@ -201,6 +201,18 @@ public static class DependencyInjection
         // PinguWandering tool for autonomous exploratory behavior
         services.AddSingleton<ITool, Services.PinguWanderingTool>();
 
+        // PinguModel tool for model management (load/unload/switch/list/status)
+        services.AddSingleton<ITool>(resolver =>
+        {
+            var logger = resolver.GetService<Microsoft.Extensions.Logging.ILogger<Services.PinguModelTool>>();
+            var modelRepo = resolver.GetService<IModelRepository>();
+            var modelManager = resolver.GetService<Services.ModelManager>();
+            return new Services.PinguModelTool(logger, modelRepo, modelManager);
+        });
+
+        // PinguGameIntegration tool for launching/stopping built-in games
+        services.AddSingleton<ITool, Services.PinguGameIntegrationTool>();
+
         // IGamesPanel — implemented by the Avalonia GamesPanel, registered in Desktop layer
 
         // ---- Phase 2: Model Management — IModelManager + Loader Registration ----

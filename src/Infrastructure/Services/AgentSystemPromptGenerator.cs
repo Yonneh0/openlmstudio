@@ -99,18 +99,22 @@ If the task is complete, state so explicitly.
     }
 
     /// <summary>
-    /// Generates context-aware suggestions for the next action based on available tools and current state.
+    /// Generates context-aware suggestions for the next action based on available tools,
+    /// current state, project state, and task description.
     /// </summary>
     public List<string> GenerateNextActionSuggestions(
         string taskDescription,
-        IReadOnlyList<string> completedActions)
+        IReadOnlyList<string> completedActions,
+        string? projectState = null,
+        string? currentPhase = null)
     {
         var suggestions = new List<string>();
 
         // Suggest reading if nothing done
-        if (!completedActions.Any() && taskDescription.Contains("read", StringComparison.OrdinalIgnoreCase)
+        if (!completedActions.Any() && (
+            taskDescription.Contains("read", StringComparison.OrdinalIgnoreCase)
             || taskDescription.Contains("find", StringComparison.OrdinalIgnoreCase)
-            || taskDescription.Contains("list", StringComparison.OrdinalIgnoreCase))
+            || taskDescription.Contains("list", StringComparison.OrdinalIgnoreCase)))
         {
             suggestions.Add("Start by reading the relevant files to understand the current state.");
         }
@@ -129,6 +133,29 @@ If the task is complete, state so explicitly.
             || taskDescription.Contains("diff", StringComparison.OrdinalIgnoreCase))
         {
             suggestions.Add("Use git commands to review and commit changes.");
+        }
+
+        // Suggest testing if task involves code changes
+        if (taskDescription.Contains("test", StringComparison.OrdinalIgnoreCase)
+            || taskDescription.Contains("fix", StringComparison.OrdinalIgnoreCase)
+            || taskDescription.Contains("bug", StringComparison.OrdinalIgnoreCase))
+        {
+            suggestions.Add("After making changes, run tests to verify correctness.");
+        }
+
+        // Phase-aware suggestions
+        if (currentPhase == "Planning")
+        {
+            suggestions.Add("Review the project state before proposing a plan.");
+            suggestions.Add("Consider the dependencies and priority of related tasks.");
+        }
+        else if (currentPhase == "Acting")
+        {
+            suggestions.Add("Execute the plan step by step. Verify each step before moving on.");
+            if (projectState != null && projectState.Contains("modified", StringComparison.OrdinalIgnoreCase))
+            {
+                suggestions.Add("The project has modified files — verify they haven't been changed externally.");
+            }
         }
 
         return suggestions;
