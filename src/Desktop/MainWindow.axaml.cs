@@ -373,7 +373,7 @@ public partial class MainWindow : Window
 
     private void OnGitStatusClicked(object? sender, PointerPressedEventArgs e)
     {
-        GitLogPopup?.SetValue(Border.IsVisibleProperty, !GitLogPopup.IsVisible);
+        GitLogPopup?.SetValue(Avalonia.Controls.Primitives.Popup.IsOpenProperty, !GitLogPopup.IsOpen);
     }
 
     private static string GetGitCommitShort()

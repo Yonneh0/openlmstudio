@@ -1193,18 +1193,21 @@
             </DockPanel>
         </Border>
 
-        <!-- Git log popup (overlay above status bar, positioned via Canvas) -->
-        <Canvas Grid.Row="1" HorizontalAlignment="Left" Margin="0,0,0,24">
-            <Border x:Name="GitLogPopup"
-                    Background="{StaticResource BgTertiary}"
+        <!-- Git log popup (true popup, renders above window clipping) -->
+        <Popup x:Name="GitLogPopup"
+               PlacementTarget="{Binding ElementName=GitStatusBorder}"
+               Placement="Bottom"
+               HorizontalOffset="0"
+               VerticalOffset="2"
+               MinWidth="600"
+               MaxWidth="600"
+               MaxHeight="300"
+               IsLightDismissEnabled="True">
+            <Border Background="{StaticResource BgTertiary}"
                     BorderBrush="#3A3A3E"
                     BorderThickness="1"
                     CornerRadius="4"
-                    Padding="12"
-                    IsVisible="False"
-                    MinWidth="600"
-                    MaxWidth="600"
-                    MaxHeight="300">
+                    Padding="12">
                 <Grid>
                     <Grid.RowDefinitions>
                         <RowDefinition Height="Auto"/>
@@ -1229,7 +1232,7 @@
                     </ScrollViewer>
                 </Grid>
             </Border>
-        </Canvas>
+        </Popup>
         </Grid>
     </DockPanel>
 </Window>
