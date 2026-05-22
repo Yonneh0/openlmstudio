@@ -120,8 +120,8 @@ public partial class MainWindow : Window
         // Defer chat list loading until after window is shown to avoid freezing the UI
         this.Opened += OnMainWindowOpened;
 
-        // Initialize git watermark
-        RefreshGitWatermark();
+        // Initialize git status bar
+        RefreshGitStatusBar();
     }
 
     private void OnMainWindowOpened(object? sender, EventArgs e)
@@ -242,6 +242,10 @@ public partial class MainWindow : Window
         if (RightRefreshDevicesBtn != null)
             RightRefreshDevicesBtn.Click += OnRefreshDevicesClicked;
 
+        // Git status bar
+        if (GitStatusBorder != null)
+            GitStatusBorder.PointerPressed += OnGitStatusClicked;
+
         // Menu bar buttons
         if (MenuOpenModel != null)
             MenuOpenModel.Click += OnOpenModelClicked;
@@ -340,36 +344,59 @@ public partial class MainWindow : Window
     }
 
     /// <summary>
-    /// Fetches recent git log entries and displays them as a watermark in the bottom-left corner.
+    /// Initializes the status bar with the current git commit hash and wires up click handler.
     /// </summary>
-    private void RefreshGitWatermark()
+    private void RefreshGitStatusBar()
     {
-        if (GitWatermarkText == null) return;
-
         try
         {
+            var shortHash = GetGitCommitShort();
+            GitStatusText!.Text = $"OpenLMStudio {shortHash}";
+
+            // Load full log for popup
             var log = GetGitLog(7);
-            if (log.Length == 0) return;
-
-            GitWatermarkPanel!.IsVisible = true;
-
             var sb = new StringBuilder();
             sb.Append($"OpenLMStudio {GitInfo.FullName}");
-
             if (!string.Equals(GitInfo.Dirty, "true", StringComparison.OrdinalIgnoreCase))
                 sb.Append(" (clean)");
-
             sb.AppendLine();
             sb.AppendLine("Recent commits:");
-
             foreach (var line in log.Split('\n').Where(l => l.Trim().Length > 0))
                 sb.AppendLine(line.Trim());
-
-            GitWatermarkText.Text = sb.ToString();
+            GitLogContent!.Text = sb.ToString();
         }
         catch (Exception ex)
         {
-            _logger?.LogWarning(ex, "Failed to load git watermark");
+            _logger?.LogWarning(ex, "Failed to load git status");
+        }
+    }
+
+    private void OnGitStatusClicked(object? sender, PointerPressedEventArgs e)
+    {
+        var visible = GitLogPopup?.IsVisible == true;
+        GitLogPopup!.IsVisible = !visible;
+    }
+
+    private static string GetGitCommitShort()
+    {
+        try
+        {
+            var startInfo = new ProcessStartInfo
+            {
+                FileName = "git",
+                Arguments = "rev-parse --short HEAD",
+                UseShellExecute = false,
+                RedirectStandardOutput = true,
+                CreateNoWindow = true
+            };
+            using var proc = Process.Start(startInfo) ?? throw new InvalidOperationException();
+            var result = proc.StandardOutput.ReadToEnd().Trim();
+            proc.WaitForExit();
+            return result.Length > 0 ? result : "unknown";
+        }
+        catch
+        {
+            return "unknown";
         }
     }
 

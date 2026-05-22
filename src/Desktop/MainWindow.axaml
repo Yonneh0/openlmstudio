@@ -1171,18 +1171,60 @@
         </Panel>
         </Grid>
 
-        <!-- Git log watermark — bottom-left corner -->
-        <Border Grid.Column="0" Grid.ColumnSpan="3"
-                VerticalAlignment="Bottom" HorizontalAlignment="Left"
-                Background="Transparent"
-                Padding="8">
-            <StackPanel x:Name="GitWatermarkPanel" IsVisible="False">
-                <TextBlock x:Name="GitWatermarkText"
+        <!-- Status bar at the bottom -->
+        <DockPanel DockPanel.Dock="Bottom" Background="{StaticResource BgSecondary}" Height="24" LastChildFill="False">
+            <!-- Git version info (clickable to expand log) -->
+            <Border DockPanel.Dock="Left"
+                    Background="Transparent"
+                    x:Name="GitStatusBorder"
+                    Padding="12,0"
+                    Cursor="Hand">
+                <TextBlock x:Name="GitStatusText"
+                           Text="OpenLMStudio"
                            Foreground="{StaticResource TextMuted}"
-                           FontSize="10"
-                           FontWeight="SemiBold"
-                           TextWrapping="NoWrap"/>
-            </StackPanel>
-        </Border>
+                           FontSize="11"
+                           VerticalAlignment="Center"
+                           IsHitTestVisible="True"/>
+            </Border>
+
+            <!-- Git log popup (shown when status bar is clicked) -->
+            <Border x:Name="GitLogPopup"
+                    VerticalAlignment="Bottom"
+                    HorizontalAlignment="Left"
+                    Background="{StaticResource BgTertiary}"
+                    BorderBrush="#3A3A3E"
+                    BorderThickness="1"
+                    CornerRadius="4"
+                    Padding="12"
+                    IsVisible="False"
+                    Margin="0,0,0,24"
+                    MinWidth="600"
+                    MaxWidth="600"
+                    MaxHeight="300">
+                <Grid>
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="Auto"/>
+                    </Grid.RowDefinitions>
+                    <TextBlock x:Name="GitLogTitle"
+                               Grid.Row="0"
+                               Text="OpenLMStudio"
+                               Foreground="{StaticResource AccentBlue}"
+                               FontSize="11"
+                               FontWeight="SemiBold"
+                               Padding="0,0,0,4"/>
+                    <ScrollViewer Grid.Row="1"
+                                  VerticalScrollBarVisibility="Auto"
+                                  MaxHeight="250">
+                        <TextBlock x:Name="GitLogContent"
+                                   Text=""
+                                   Foreground="{StaticResource TextSecondary}"
+                                   FontSize="10"
+                                   FontFamily="Consolas, Courier New"
+                                   TextWrapping="NoWrap"/>
+                    </ScrollViewer>
+                </Grid>
+            </Border>
+        </DockPanel>
     </DockPanel>
 </Window>
