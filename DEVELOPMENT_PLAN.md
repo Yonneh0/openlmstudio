@@ -386,7 +386,7 @@ All service interfaces and implementations complete (SQLite-backed). UI controls
 - [x] Conversation list with token count display — Avalonia ListView/DataGrid
 - [x] Active chat selection highlighting
 - [x] Message rendering (user/AI alternating) — Avalonia DataTemplate per role type
-- [ ] Markdown support in responses — **IMPLEMENTS EXIST** (IMarkdownRenderer, MarkdownRenderer, AvaloniaMarkdownRenderer via Markdig) but NOT wired into chat response rendering
+- [x] Markdown support in responses — **WIRING COMPLETE**: IMarkdownRenderer/AvaloniaMarkdownRenderer wired into both streaming (MainWindow.Streaming.cs) and non-streaming (MainWindow.ChatMessages.cs) chat responses
 - [ ] Code block syntax highlighting — consider AvalonEdit or similar Avalonia control
 - [x] Input area with send button
 - [x] Tool tabs at bottom of input (Code Interpreter, Project Management)
