@@ -1,10 +1,14 @@
-using NUnit.Framework;
+using Microsoft.Extensions.Logging;
 using OpenLMStudio.Application.Interfaces;
+using OpenLMStudio.Domain.Models;
 using OpenLMStudio.Infrastructure.Services;
+using NUnit.Framework;
 
 namespace OpenLMStudio.Infrastructure.Tests;
 
-[TestFixture]
+/// <summary>
+/// Tests for <see cref="TaskCompletionDetector"/>.
+/// </summary>
 public class TaskCompletionDetectorTests
 {
     private TaskCompletionDetector _detector = null!;
@@ -12,89 +16,59 @@ public class TaskCompletionDetectorTests
     [SetUp]
     public void SetUp()
     {
-        _detector = new TaskCompletionDetector();
-    }
-
-    [TearDown]
-    public void TearDown()
-    {
-        _detector?.Dispose();
+        var logger = new TestLogger<TaskCompletionDetector>();
+        var validator = new MockValidationService();
+        _detector = new TaskCompletionDetector(logger, validator);
     }
 
     [Test]
-    public void DetectAsync_ReturnsTrue_WhenToolOutputContainsCompletionSignal()
+    public void QuickHeuristicCheck_ReturnsCompleted_WhenTaskAlreadyCompleted()
     {
-        var toolCalls = new List<AgentToolCallRecord>
+        var task = new AgenticTask
         {
-            new("FileWriteTool", new Dictionary<string, object>(), "File written successfully.", true, 10, DateTime.UtcNow)
+            Id = Guid.NewGuid(),
+            Description = "Test task",
+            Status = Domain.Models.TaskStatus.Completed,
+            Priority = TaskPriority.Normal,
+            MaxIterations = 5
         };
-
-        var result = _detector.DetectAsync("Create a file", toolCalls).Result;
-        Assert.That(result, Is.True);
+        var result = TaskCompletionDetector.QuickHeuristicCheck(task, Array.Empty<AgentToolCallRecord>());
+        Assert.That(result.Passed, Is.True);
     }
 
     [Test]
-    public void DetectAsync_ReturnsTrue_WhenGitOperationsComplete()
+    public void QuickHeuristicCheck_ReturnsFailed_WhenMaxIterationsReached()
     {
-        var toolCalls = new List<AgentToolCallRecord>
+        var task = new AgenticTask
         {
-            new("GitHistoryTool", new Dictionary<string, object>(), "Git operations completed successfully.", true, 10, DateTime.UtcNow)
+            Id = Guid.NewGuid(),
+            Description = "Test task",
+            Status = Domain.Models.TaskStatus.Running,
+            Priority = TaskPriority.Normal,
+            MaxIterations = 5
         };
-
-        var result = _detector.DetectAsync("Check git history", toolCalls).Result;
-        Assert.That(result, Is.True);
-    }
-
-    [Test]
-    public void DetectAsync_ReturnsTrue_WhenReadOnlyTaskFewCalls()
-    {
-        var toolCalls = new List<AgentToolCallRecord>
+        var toolCalls = new[]
         {
-            new("FileReadTool", new Dictionary<string, object>(), "File content", true, 5, DateTime.UtcNow),
-            new("ProjectExplorerTool", new Dictionary<string, object>(), "Directory listing", true, 5, DateTime.UtcNow)
+            new AgentToolCallRecord
+            {
+                TaskId = task.Id,
+                ToolName = "Tool1",
+                Parameters = new Dictionary<string, object>(),
+                Result = "result",
+                Success = true,
+                DurationMs = 10,
+                Timestamp = DateTime.UtcNow
+            }
         };
-
-        var result = _detector.DetectAsync("Read project files", toolCalls).Result;
-        Assert.That(result, Is.True);
+        var result = TaskCompletionDetector.QuickHeuristicCheck(task, toolCalls);
+        Assert.That(result.Passed, Is.False);
     }
 
-    [Test]
-    public void DetectAsync_ReturnsFalse_WhenNoCompletionSignals()
+    private class MockValidationService : ITaskValidationService
     {
-        // Use tools that are NOT FileWriteTool or GitHistoryTool, and contain
-        // no completion keywords, so the detector returns false.
-        var toolCalls = new List<AgentToolCallRecord>
-        {
-            new("CommandExecuteTool", new Dictionary<string, object>(), "Some partial output without completion signals", true, 10, DateTime.UtcNow),
-            new("CommandExecuteTool", new Dictionary<string, object>(), "More output without completion signals", true, 10, DateTime.UtcNow)
-        };
-
-        var result = _detector.DetectAsync("Run some commands", toolCalls).Result;
-        Assert.That(result, Is.False);
-    }
-
-    [Test]
-    public void DetectAsync_FallsBackToKeywordDetection_WhenLlmIsNull()
-    {
-        var detector = new TaskCompletionDetector(
-            logger: null,
-            chatService: null);
-
-        var toolCalls = new List<AgentToolCallRecord>
-        {
-            new("FileWriteTool", new Dictionary<string, object>(), "File written successfully.", true, 10, DateTime.UtcNow)
-        };
-
-        var result = detector.DetectAsync("Create a file", toolCalls, useLlmFallback: true).Result;
-        Assert.That(result, Is.True);
-        detector.Dispose();
-    }
-
-    [Test]
-    public void Dispose_CanBeCalledMultipleTimes()
-    {
-        _detector.Dispose();
-        _detector.Dispose();
-        // Should not throw
+        public Task<TaskValidationResult> ValidateTaskCompletionAsync(AgenticTask task, string summary, CancellationToken ct = default)
+            => Task.FromResult(new TaskValidationResult(false, "Mock: not validated"));
+        public Task<TaskValidationResult> ValidateStructuredOutputAsync(AgenticTask task, Dictionary<string, object> output, CancellationToken ct = default)
+            => Task.FromResult(new TaskValidationResult(true, "Mock: validated"));
     }
 }

@@ -1,8 +1,10 @@
 using NUnit.Framework;
 using OpenLMStudio.Infrastructure.Services;
 using OpenLMStudio.Application.Interfaces;
+using OpenLMStudio.Domain.Models;
 using System;
 using System.Collections.Generic;
+using AgentToolCallRecord = OpenLMStudio.Domain.Models.AgentToolCallRecord;
 
 namespace OpenLMStudio.Infrastructure.Tests;
 
@@ -74,8 +76,8 @@ public class AgentCommunicationProtocolTests
             5,
             new List<AgentToolCallRecord>
             {
-                new("FileReadTool", new Dictionary<string, object>(), "File read", true, 10, DateTime.UtcNow),
-                new("FileWriteTool", new Dictionary<string, object>(), "File written", true, 15, DateTime.UtcNow)
+                new AgentToolCallRecord { TaskId = Guid.NewGuid(), ToolName = "FileReadTool", Parameters = new Dictionary<string, object>(), Result = "File read", Success = true, DurationMs = 10, Timestamp = DateTime.UtcNow },
+                new AgentToolCallRecord { TaskId = Guid.NewGuid(), ToolName = "FileWriteTool", Parameters = new Dictionary<string, object>(), Result = "File written", Success = true, DurationMs = 15, Timestamp = DateTime.UtcNow }
             });
 
         Assert.That(message.Phase, Is.EqualTo(AgentCommunicationPhase.Completed));

@@ -38,7 +38,7 @@ public class TestTaskProgressTracker : ITaskProgressTracker
 
     public Task RecordToolCallAsync(string toolName, Dictionary<string, object> parameters, string result, bool success, double durationMs)
     {
-        _toolCalls.Add(new AgentToolCallRecord(toolName, parameters, result, success, durationMs, DateTime.UtcNow));
+        _toolCalls.Add(new AgentToolCallRecord { ToolName = toolName, Parameters = parameters, Result = result, Success = success, DurationMs = durationMs, Timestamp = DateTime.UtcNow });
         return Task.CompletedTask;
     }
 

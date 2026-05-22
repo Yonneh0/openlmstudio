@@ -136,13 +136,15 @@ public class AgentTests
     [Test]
     public void AgentToolCallRecord_CanBeCreated()
     {
-        var record = new AgentToolCallRecord(
-            "TestTool",
-            new Dictionary<string, object> { { "param", "value" } },
-            "success",
-            true,
-            100.0,
-            DateTime.UtcNow);
+        var record = new AgentToolCallRecord
+        {
+            ToolName = "TestTool",
+            Parameters = new Dictionary<string, object> { { "param", "value" } },
+            Result = "success",
+            Success = true,
+            DurationMs = 100.0,
+            Timestamp = DateTime.UtcNow
+        };
 
         Assert.That(record.ToolName, Is.EqualTo("TestTool"));
         Assert.That(record.Success, Is.True);
