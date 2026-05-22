@@ -21,6 +21,7 @@ public class DiffusionPipelineService : IDiffusionPipelineService, IDisposable
     private readonly ILogger<DiffusionPipelineService>? _logger;
     private readonly IModelRepository _modelRepo;
     private readonly SafetensorParser _safetensorParser;
+    private readonly ILoraAdapterManager? _loraManager;
 
     /// <summary>ONNX Runtime sessions keyed by model ID.</summary>
     private readonly Dictionary<string, InferenceSession> _loadedSessions = new(StringComparer.OrdinalIgnoreCase);
@@ -38,11 +39,12 @@ public class DiffusionPipelineService : IDiffusionPipelineService, IDisposable
         0x44, 0xAE, 0x42, 0x60, 0x82                        // IEND CRC
     };
 
-    public DiffusionPipelineService(ILogger<DiffusionPipelineService>? logger, IModelRepository modelRepo)
+    public DiffusionPipelineService(ILogger<DiffusionPipelineService>? logger, IModelRepository modelRepo, ILoraAdapterManager? loraManager = null)
     {
         _logger = logger;
         _modelRepo = modelRepo;
         _safetensorParser = new SafetensorParser(null!);
+        _loraManager = loraManager;
         _logger?.LogInformation("DiffusionPipelineService initialized (ONNX Runtime-based, full 3-stage pipeline: CLIP→UNet+CFG→VAE)");
     }
 
