@@ -607,7 +607,7 @@ All service interfaces and implementations complete (SQLite-backed). UI controls
 | UX Refinements | Partial — keyboard shortcuts done, onboarding flow done (Phase 10.6), accessibility service implemented |
 | Documentation & Release | Partial — user docs and compatibility guides complete |
 
-### Overall Progress: ~158 of 223 items (~71%)
+### Overall Progress: ~180 of 223 items (~81%)
 
 ---
 
@@ -704,7 +704,7 @@ Located in Grid.Row=1, spanning all 3 columns. Uses a DockPanel with:
 | 10: Testing & Release | ~15/16 items — 70+ tests with CI/CD via GitHub Actions; UX refinements (keyboard shortcuts, accessibility, onboarding) complete; performance benchmarking (ChatCompletionBenchmark) and server load testing (ServerLoadTest) implemented |
 | 10.5: Observability | ✓ Complete — structured logging, event tracing, activity tracer, model lifecycle tracer |
 
-### Overall Progress: ~158 of 223 items (~71%)
+### Overall Progress: ~180 of 223 items (~81%)
 
 ---
 
