@@ -827,18 +827,18 @@ Located in Grid.Row=1, spanning all 3 columns. Uses a DockPanel with:
 - [x] Agent session persistence: save agent state to disk so it survives app crash
 - [x] Tool call fallback chain: try alternate tools or degraded parameters when primary fails
 
-#### Phase 7 Summary — **~22 of 32 items complete**
+#### Phase 7 Summary — **~25 of 32 items complete**
 | Category | Status |
 |----------|--------|
-| Core Agent Architecture | ✓ Complete — Agent class implemented with plan/act cycle, AgentState enum |
-| Agent Communication Protocol | ✓ Complete — IAgentProtocolService + AgentCommunicationProtocol |
-| Tooling System | ✓ Complete — all built-in tools registered |
-| Task Progression System | Partial — Task model + ActiveProjectWatcher + SqliteTaskRepository implemented |
+| Core Agent Architecture | ✓ Complete — Agent class implemented with plan/act cycle, AgentState enum, AgentTaskProgressTracker |
+| Agent Communication Protocol | ✓ Complete — IAgentProtocolService + AgentCommunicationProtocol with phase transitions |
+| Tooling System | ✓ Complete — all built-in tools registered (11+ tools) |
+| Task Progression System | ✓ Complete — Task model, AgentTaskProgressTracker with stage transitions, loop detection, tool call tracking |
 | Active Project Tree | ✓ Complete — ActiveProjectWatcher + FilePreviewService |
 | Deep Git Integration | ✓ Complete — GitRepositoryService with full CLI |
 | AI Analysis Context Panel | Partial — AiAnalysisResult model exists, UI not built |
-| System Prompt Generator | Partial |
-| Agent Error Recovery | ✓ Complete |
+| System Prompt Generator | Partial — tool descriptions injected, dynamic assembly not complete |
+| Agent Error Recovery | ✓ Complete — loop detection, timeout guard, session persistence |
 
 ---
 
@@ -911,4 +911,4 @@ Located in Grid.Row=1, spanning all 3 columns. Uses a DockPanel with:
 
 ---
 
-### Overall Progress: ~87 of 223 items (~39%)
+### Overall Progress: ~89 of 223 items (~40%)
