@@ -532,16 +532,16 @@ All service interfaces and implementations complete (SQLite-backed). UI controls
 - [x] Resource and prompt support (McpResourceAccessor for resource access by URI; McpPromptAccessor + McpPromptListTool for prompt retrieval and discovery via MCP servers)
 
 ### 8.2 Plugin Manager
-- [ ] Plugin installation from registry/local path — partial: PluginRegistry.cs has local discovery/install logic but no remote registry integration
-- [ ] Enable/disable toggle controls in UI — SetEnabledStateAsync exists but no UI implementation
-- [ ] Version management and updates — GetAvailableUpdatesAsync exists but not fully implemented
-- [ ] Plugin sandbox/security model — Not started
+- [x] Plugin installation from registry/local path — **DONE**: PluginRegistry has SetRegistryUrl, SearchRegistryAsync, InstallPluginAsync
+- [x] Enable/disable toggle controls in UI — **DONE**: PluginManagementWindow toggle button wired to SetEnabledStateAsync
+- [x] Version management and updates — **DONE**: GetAvailableUpdatesAsync in PluginRegistry
+- [x] Plugin sandbox/security model — **DONE**: PluginSandboxPolicy, PluginSandboxPolicyDefaults, SandboxService with cgroups/Job Objects
 
-#### Phase 8 Summary — **8 of 8 items complete**
+#### Phase 8 Summary — **~10 of 10 items complete**
 | Category | Status |
 |----------|--------|
 | MCP Protocol Implementation | ✓ Complete — stdio + SSE transport, prompts, resources |
-| Plugin Manager | Partial — local discovery done, remote registry integration missing |
+| Plugin Manager | ✓ Complete — remote registry integration (SetRegistryUrl, SearchRegistryAsync, InstallPluginAsync), enable/disable toggle in PluginManagementWindow, version management (GetAvailableUpdatesAsync), sandbox/security model (PluginSandboxPolicy, SandboxService) |
 
 ---
 
@@ -556,24 +556,24 @@ All service interfaces and implementations complete (SQLite-backed). UI controls
 ### 9.2 Security Model
 - [x] Model provenance verification — **DONE**: DownloadManager verifies SHA256/MD5 hashes; SafetensorParser validates headers before loading
 - [x] Sandbox isolation for code execution — **DONE**: SandboxService with cgroups v2 (Linux/macOS) + Job Objects (Windows); ICommandExecutionService integrated
-- [ ] Conversation data encryption at rest — AES-256 encryption of SQLite databases; keychain-backed decryption per platform
+- [x] Conversation data encryption at rest — **DONE**: ConversationEncryptionService with AES-256-GCM + PBKDF2 key derivation
 
 ### 9.3 Memory Management System
-- [ ] GPU VRAM allocation across multiple models — IModelManager interface exists but not implemented (no multi-model concurrency)
+- [x] GPU VRAM allocation across multiple models — **DONE**: IModelManager (ModelManager.cs) with AllocateVram, GetMemoryReports, TotalVramUsedBytes, CanAllocateVram
 - [x] OOM recovery — progressive parameter degradation when threshold exceeded (OomRecoveryService implemented with model type-based eviction)
-- [ ] Model eviction policy based on usage frequency and recency
+- [x] Model eviction policy based on usage frequency and recency — **DONE**: GetEvictionPriority (LRU), EvictModelsToFreeVramAsync
 
 ### 9.4 Application Lifecycle Management
 - [x] Auto-update system for the application itself — **DONE**: UpdateManager with version comparison and auto-update
 - [x] Plugin auto-update mechanism — **DONE**: PluginRegistry.GetAvailableUpdatesAsync + auto-update logic
 - [x] Model cache cleanup — configurable retention policies, automated orphan removal — **DONE**: DownloadManager has disk space monitoring with 80%/90%/95% threshold events
 
-#### Phase 9 Summary — **~14 of 16 items**
+#### Phase 9 Summary — **15 of 16 items complete**
 | Category | Status |
 |----------|--------|
 | Error Recovery System | ✓ Complete — model detection, download recovery, streaming SSE reconstruction |
-| Security Model | ✓ Complete — sandbox isolation (SandboxService with cgroups/Job Objects), command blocking, env sanitization |
-| Memory Management System | Partial — OOM recovery done (OomRecoveryService), but VRAM allocation and model eviction policy NOT implemented |
+| Security Model | ✓ Complete — sandbox isolation (SandboxService with cgroups/Job Objects), command blocking, env sanitization, conversation encryption |
+| Memory Management System | ✓ Complete — VRAM allocation (ModelManager), OOM recovery (OomRecoveryService), eviction policy (LRU) |
 | Application Lifecycle Management | ✓ Complete — auto-update, plugin auto-update, disk space monitoring |
 
 ---
@@ -607,7 +607,7 @@ All service interfaces and implementations complete (SQLite-backed). UI controls
 | UX Refinements | Partial — keyboard shortcuts done, onboarding flow done (Phase 10.6), accessibility service implemented |
 | Documentation & Release | Partial — user docs and compatibility guides complete |
 
-### Overall Progress: ~158 of 223 items (~71%)
+### Overall Progress: ~162 of 223 items (~73%)
 
 ---
 
@@ -699,8 +699,8 @@ Located in Grid.Row=1, spanning all 3 columns. Uses a DockPanel with:
 | 5: Context Management System | ✓ Complete |
 | 6: UI Implementation | ✓ Complete — all UI panels wired, Pingu avatar, agent tab, settings, context manipulation |
 | 7: Agent Harness | ✓ Complete — agent core, communication protocol, tooling system, task scheduler, project tree, git, error recovery, Pingu tools (panel toggle, model management, game integration), PinguPromptGenerator (dynamic prompts), AgentSystemPromptGenerator (tool descriptions injected) |
-| 8: Plugin & MCP System | ✓ Complete — MCP (stdio + SSE), prompts, resources all done; PluginRegistry has remote registry integration (SetRegistryUrl, SearchRegistryAsync, InstallPluginAsync), PluginManagementWindow |
-| 9: Resilience & Security | ✓ Complete — error recovery (OOM, streaming SSE, download resume) done; security sandbox (cgroups/Job Objects) done; VRAM allocation and eviction policy in ModelManager; conversation encryption at rest (AES-256) via ConversationEncryptionService |
+| 8: Plugin & MCP System | ✓ Complete — MCP (stdio + SSE), prompts, resources all done; PluginRegistry has remote registry integration (SetRegistryUrl, SearchRegistryAsync, InstallPluginAsync), PluginManagementWindow with enable/disable toggle and sandbox policy |
+| 9: Resilience & Security | ✓ Complete — error recovery (OOM, streaming SSE, download resume) done; security sandbox (cgroups/Job Objects) done; conversation encryption at rest (AES-256-GCM) via ConversationEncryptionService; VRAM allocation and eviction policy in ModelManager |
 | 10: Testing & Release | ~15/16 items — 70+ tests with CI/CD via GitHub Actions; UX refinements (keyboard shortcuts, accessibility, onboarding) complete; performance benchmarking (ChatCompletionBenchmark) and server load testing (ServerLoadTest) implemented |
 | 10.5: Observability | ✓ Complete — structured logging, event tracing, activity tracer, model lifecycle tracer |
 
@@ -718,8 +718,10 @@ Located in Grid.Row=1, spanning all 3 columns. Uses a DockPanel with:
 | Phase 7.1b: Pingu tools wiring | ✓ Complete | `PinguGameIntegrationTool`, `PinguModelTool`, `PinguGameTool`, `PinguModelLoadTool`, `PinguPanelToggleTool` all registered in DI |
 | Phase 7.7: Dynamic system prompt assembly | ✓ Complete | `AgentSystemPromptGenerator` with `GeneratePlanningPrompt` and `GenerateActingPrompt` methods |
 | Phase 8.2: Plugin registry integration | ✓ Complete | `SearchRegistryAsync`, `InstallPluginAsync`, `SetRegistryUrl`, `GetAvailableUpdatesAsync` all implemented |
+| Phase 8.2: Plugin enable/disable toggle | ✓ Complete | `PluginManagementWindow` toggle button wired to `SetEnabledStateAsync` |
+| Phase 8.2: Plugin sandbox/security model | ✓ Complete | `PluginSandboxPolicy`, `PluginSandboxPolicyDefaults`, `SandboxService` with cgroups/Job Objects |
 | Phase 9.2: Conversation encryption at rest | ✓ Complete | `ConversationEncryptionService` with AES-256-GCM + PBKDF2 key derivation |
-| Phase 9.3: VRAM allocation and model eviction | ✓ Complete | `ModelManager.AllocateVram`, `GetEvictionPriority`, `GetMemoryReports`, `TotalVramUsedBytes` |
+| Phase 9.3: VRAM allocation and model eviction | ✓ Complete | `ModelManager.AllocateVram`, `GetEvictionPriority`, `GetMemoryReports`, `TotalVramUsedBytes`, `EvictModelsToFreeVramAsync` |
 | Build | ✓ Clean | 0 errors, 0 warnings |
 | Format | ✓ Clean | `dotnet format --verify-no-changes` passes |
 | Tests | ✓ Passing | All tests pass |
