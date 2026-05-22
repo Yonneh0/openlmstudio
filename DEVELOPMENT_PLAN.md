@@ -693,15 +693,15 @@ Located in Grid.Row=1, spanning all 3 columns. Uses a DockPanel with:
 | Phase | Status |
 |-------|--------|
 | 1: Foundation & Architecture | ✓ Complete |
-| 2: Model Management System | ✓ Complete — repository, download manager, unified loading engine with VRAM management |
-| 3: Inference Engines & Server API | ✓ Complete — HTTP server, text/image/embedding pipelines, LoRA adapters, VAE, post-processing |
+| 2: Model Management System | ✓ Complete — repository, download manager, unified loading engine with VRAM management, ModelManager |
+| 3: Inference Engines & Server API | ✓ Complete — HTTP server, text/image/embedding pipelines, LoRA adapters (LoraAdapterManager), VAE, post-processing, ImagePostProcessingService |
 | 4: Chat & Conversation System | ✓ Complete |
 | 5: Context Management System | ✓ Complete |
 | 6: UI Implementation | ✓ Complete — all UI panels wired, Pingu avatar, agent tab, settings, context manipulation |
-| 7: Agent Harness | ~29/32 items — agent core, communication protocol, tooling system, task scheduler, project tree, git, error recovery, Pingu tools (panel toggle, model management, game integration) complete; dynamic system prompt assembly and Pingu wandering behavior pending |
-| 8: Plugin & MCP System | ✓ Complete — MCP (stdio + SSE), prompts, resources all done; PluginRegistry has remote registry integration (SetRegistryUrl, SearchRegistryAsync, InstallPluginAsync) |
-| 9: Resilience & Security | ✓ Complete — error recovery (OOM, streaming SSE, download resume) done; security sandbox (cgroups/Job Objects) done; VRAM allocation and eviction policy in ModelManager |
-| 10: Testing & Release | ~12/16 items — 66+ tests with CI/CD via GitHub Actions; UX refinements (keyboard shortcuts, accessibility, onboarding) complete |
+| 7: Agent Harness | ✓ Complete — agent core, communication protocol, tooling system, task scheduler, project tree, git, error recovery, Pingu tools (panel toggle, model management, game integration), PinguPromptGenerator (dynamic prompts), AgentSystemPromptGenerator (tool descriptions injected) |
+| 8: Plugin & MCP System | ✓ Complete — MCP (stdio + SSE), prompts, resources all done; PluginRegistry has remote registry integration (SetRegistryUrl, SearchRegistryAsync, InstallPluginAsync), PluginManagementWindow |
+| 9: Resilience & Security | ✓ Complete — error recovery (OOM, streaming SSE, download resume) done; security sandbox (cgroups/Job Objects) done; VRAM allocation and eviction policy in ModelManager; conversation encryption at rest (AES-256) via ConversationEncryptionService |
+| 10: Testing & Release | ~13/16 items — 70+ tests with CI/CD via GitHub Actions; UX refinements (keyboard shortcuts, accessibility, onboarding) complete; performance benchmarking and load testing pending |
 | 10.5: Observability | ✓ Complete — structured logging, event tracing, activity tracer, model lifecycle tracer |
 
-### Overall Progress: ~129 of 223 items (~58%)
+### Overall Progress: ~145 of 223 items (~65%)
