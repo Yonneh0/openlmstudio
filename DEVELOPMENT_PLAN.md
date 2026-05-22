@@ -588,9 +588,9 @@ All service interfaces and implementations complete (SQLite-backed). UI controls
 - [ ] Load testing for server endpoints under concurrent request scenarios
 
 ### 10.2 User Experience Refinements
-- [ ] Keyboard shortcuts for common actions
-- [ ] Accessibility improvements (keyboard navigation, screen reader support)
-- [ ] Onboarding flow for first-time users
+- [x] Keyboard shortcuts for common actions — GlobalKeyboardShortcutService registered in DI
+- [x] Accessibility improvements (keyboard navigation, screen reader support) — IAccessibilityService implemented
+- [x] Onboarding flow for first-time users — OnboardingService with step tracking, IOnboardingService.DefaultSteps
 
 ### 10.3 Documentation & Release
 - [x] User documentation and help system — comprehensive USER_GUIDE.md
