@@ -107,6 +107,9 @@ public partial class App : Avalonia.Application
             System.Diagnostics.Debug.WriteLine("[App] Calling AddInfrastructureServices");
             serviceCollection.AddInfrastructureServices();
 
+            System.Diagnostics.Debug.WriteLine("[App] Calling AddDesktopServices");
+            serviceCollection.AddDesktopServices();
+
             ApplicationServices = serviceCollection.BuildServiceProvider();
             System.Diagnostics.Debug.WriteLine("[App] DI container built successfully");
         }
