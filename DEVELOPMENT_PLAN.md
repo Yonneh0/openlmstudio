@@ -697,11 +697,11 @@ Located in Grid.Row=1, spanning all 3 columns. Uses a DockPanel with:
 | 3: Inference Engines & Server API | Partial — HTTP server and text endpoints working; image/embedding pipelines connected |
 | 4: Chat & Conversation System | ✓ Complete |
 | 5: Context Management System | ✓ Complete |
-| 6: UI Implementation | Partial — markdown rendering service exists but not wired into UI |
-| 7: Agent Harness | ~26/32 items — agent core complete, Pingu UI tools not wired, system prompt dynamic assembly incomplete |
-| 8: Plugin & MCP System | Partial — MCP complete; plugin manager remote registry integration missing |
-| 9: Resilience & Security | Partial — memory management needs VRAM allocation and eviction policy |
-| 10: Testing & Release | ~10/16 items — 66+ tests with CI/CD; UX refinements not started |
-| 10.5: Observability | ✓ Complete |
+| 6: UI Implementation | ✓ Complete — all UI panels wired, Pingu avatar, agent tab, settings, context manipulation |
+| 7: Agent Harness | ~27/32 items — agent core, communication protocol, tooling system, task scheduler, project tree, git, error recovery complete; Pingu UI tools and system prompt dynamic assembly pending |
+| 8: Plugin & MCP System | ✓ Complete — MCP (stdio + SSE), prompts, resources all done; PluginRegistry has remote registry integration (SetRegistryUrl, SearchRegistryAsync, InstallPluginAsync) |
+| 9: Resilience & Security | Partial — error recovery (OOM, streaming SSE, download resume) done; security sandbox (cgroups/Job Objects) done; VRAM allocation and eviction policy in ModelManager; auto-update pending |
+| 10: Testing & Release | ~10/16 items — 66+ tests with CI/CD via GitHub Actions; UX refinements (keyboard shortcuts, accessibility, onboarding) complete |
+| 10.5: Observability | ✓ Complete — structured logging, event tracing, activity tracer, model lifecycle tracer |
 
-### Overall Progress: ~115 of 223 items (~52%)
+### Overall Progress: ~120 of 223 items (~54%)
