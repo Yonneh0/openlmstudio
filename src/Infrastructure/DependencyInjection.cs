@@ -134,6 +134,9 @@ public static class DependencyInjection
         // AgentTaskProgressTracker tracks agentic task progress through stages (NotStarted → InProgress → Reviewing → Completed/Failed)
         services.AddSingleton<ITaskProgressTracker, Services.AgentTaskProgressTracker>();
 
+        // TaskService manages agentic tasks — creation, execution via IAgent, dependency tracking, and persistence
+        services.AddSingleton<ITaskService, Services.TaskService>();
+
         // ---- Phase 7: Built-in Tool Registration ----
 
         // FileRead tool for reading file contents within the agent sandbox
@@ -295,6 +298,12 @@ public static class DependencyInjection
 
         // AgentProgressSummaryService generates human-readable progress summaries and completion reports
         services.AddSingleton<Application.Interfaces.IAgentProgressSummaryService, Services.AgentProgressSummaryService>();
+
+        // TaskScheduler manages ordered task queue across branches with priority-aware scheduling
+        services.AddSingleton<Application.Interfaces.ITaskScheduler, Services.TaskScheduler>();
+
+        // TaskValidationService provides AI-powered task completion verification using System AI
+        services.AddSingleton<Application.Interfaces.ITaskValidationService, Services.TaskValidationService>();
 
         // ---- Phase 10.5: Observability & Diagnostics ----
 

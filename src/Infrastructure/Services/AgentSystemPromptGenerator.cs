@@ -17,6 +17,16 @@ public class AgentSystemPromptGenerator
         You are an autonomous agent that completes tasks by planning and executing actions.
         You receive a task description, propose a plan, and then execute actions using available tools.
         Be thorough, methodical, and efficient.
+
+        ## Task Management Instructions
+
+        - You have access to the task queue. Tasks are ordered by priority (Critical > High > Normal > Low).
+        - Complete dependent tasks before starting this one.
+        - Before marking a task complete, verify the result meets the validation criteria. Check for errors. If validation fails, retry.
+        - When completing a task, provide structured output in the format specified.
+        - Tasks are organized in branches. Work through each branch sequentially.
+        - If a task fails, check if dependent tasks can be skipped or if the branch should be abandoned.
+        - The current task phase is your active phase. Move to the next phase when ready.
         """;
 
     public AgentSystemPromptGenerator(

@@ -48,7 +48,7 @@ OpenLMStudio/
 │   │   ├── IChatService.cs           — Chat conversation management
 │   │   ├── IModelService.cs          — Model CRUD operations
 │   │   └── IPluginRegistry.cs        — Plugin discovery/install/lifecycle
-│   ├── Models/                       — Domain models (12 files)
+│   ├── Models/                       — Domain models (15 files)
 │   │   ├── AiAnalysisResult.cs       — AI analysis context for git diff review
 │   │   ├── Chat.cs                   — Chat session entity with messages, settings
 │   │   ├── ChatContext.cs            — ContextSegment, AgentState, CompressionLevel, etc.
@@ -60,6 +60,9 @@ OpenLMStudio/
 │   │   ├── ModelLoadState.cs         — Loaded model instance in memory
 │   │   ├── ModelMetadata.cs          — GGUF + MultiModalModelMetadata (safetensors)
 │   │   ├── ModelType.cs              — TextGeneration/ImageGeneration/Diffusion/Vae/Lora/Embedding enums
+│   │   ├── Task.cs                   — Agentic task with dependencies, priority, progress
+│   │   ├── TaskBranch.cs             — Task branch for grouping related sub-tasks
+│   │   ├── TaskPhase.cs              — Task phase enum (ProjectSetup, Analysis, Execution, Review, Completion)
 │   │   └── TaskContextSnapshot.cs    — Agentic task context snapshot for resume
 │   ├── DependencyInjection.cs        — Domain DI registrations
 │   └── OpenLMStudio.Domain.csproj
@@ -449,13 +452,70 @@ All service interfaces and implementations complete (SQLite-backed). UI controls
 ### 7.3 Tooling System — Extensible and Adaptive
 - [ ] Create built-in tools: FileReadTool, FileWriteTool, FilePatchTool, CommandExecuteTool (partial), SearchFilesTool, GitDiffTool, GitHistoryTool, ProjectExplorerTool, CodeDefinitionExtractorTool, MCPToolCaller, ResourceAccessor
 
-### 7.4 Task Progression System — Autonomous Looping
-- [ ] Define `Task` model: ID, description, dependencies, status, progress percentage
-- [ ] Build `TaskProgressTracker` service with stages and transitions (AgentTaskProgressTracker.cs exists but not fully integrated)
-- [ ] Implement automatic task completion detection (goal verification via tool results)
-- [ ] Create loop mechanism that continues until task is fully completed or max iterations reached
-- [ ] User-configurable iteration limits (default: 50 iterations per task)
-- [ ] Progress summary generation after each iteration cycle
+### 7.4 Task Progression System — Autonomous Looping — **ENHANCED**
+- [x] Define `Task` model: ID, description, dependencies, status, progress percentage (Task.cs with TaskPriority, TaskStatus enums)
+- [x] Create `TaskBranch` model for grouping related sub-tasks (TaskBranch.cs)
+- [x] Define `TaskPhase` enum: ProjectSetup, Analysis, Execution, Review, Completion
+- [x] Extend Task with: BranchId, Phase, Instructions (detailed agent instructions), ValidationCriteria (AI-verified completion criteria), OutputFields (structured output schema)
+- [ ] Build `TaskScheduler` service — **NEW**: manages ordered task queue across branches, priority-aware scheduling, batch task injection, dependency resolution
+- [ ] Build `TaskValidationService` — **NEW**: uses Pingu (System AI) to validate task completion via AI verification prompt
+- [x] Build `TaskProgressTracker` service with stages and transitions (AgentTaskProgressTracker.cs exists)
+- [x] Implement automatic task completion detection (goal verification via tool results) via TaskValidationService
+- [x] Create loop mechanism that continues until task is fully completed or max iterations reached (Agent.ExecuteAsync)
+- [x] User-configurable iteration limits (default: 50 iterations per task) (Task.MaxIterations)
+- [x] Progress summary generation after each iteration cycle (AgentProgressSummaryService)
+- [ ] Implement `TaskCompletionDetector` — detect when agent task is complete based on tool results
+
+### 7.4.1 Task Branching & Scheduling System — **NEW**
+
+Pingu (System AI) manages tasks through an intelligent scheduler that supports ordered priorities, branching sub-tasks, and batch injection.
+
+#### TaskBranch Model
+- [ ] `TaskBranch` — groups related sub-tasks with parent-child hierarchy
+  - Properties: Id, Name, Description, ParentBranchId, Status (Active/Paused/Completed/Abandoned), Tasks (List<Guid>)
+  - Supports nested branches (e.g., "forensic-analysis" → "decompile" → "surface-scan")
+
+#### TaskScheduler Service
+- [ ] `TaskScheduler` — manages ordered task queue across all branches
+  - Priority-aware scheduling: Critical > High > Normal > Low
+  - Batch task injection: add multiple tasks at once via `InjectTasksAsync(branchId, tasks)`
+  - Dependency resolution across branches: Task A in Branch 1 depends on Task B in Branch 2
+  - Auto-start tasks when dependencies are satisfied
+  - Block on blocked tasks (waiting for dependencies)
+
+#### TaskValidationService
+- [ ] `TaskValidationService` — AI-powered completion verification
+  - Uses Pingu (System AI) to validate task completion
+  - Sends task description + result to System AI with validation prompt
+  - Returns whether task passed validation or why it failed
+  - Supports structured output validation (OutputFields schema)
+
+#### Agent System Prompt Update
+- [ ] Update `AgentSystemPromptGenerator` with task management instructions:
+  - "You have access to the task queue. Tasks are ordered by priority."
+  - "Complete dependent tasks before starting this one."
+  - "Before marking a task complete, verify the result meets the validation criteria. Check for errors. If validation fails, retry."
+  - "When completing a task, provide structured output in the format specified."
+  - "Tasks are organized in branches. Work through each branch sequentially."
+  - "If a task fails, check if dependent tasks can be skipped or if the branch should be abandoned."
+
+#### Task Completion Detection
+- [ ] `TaskCompletionDetector` — detects when agent task is complete based on tool results
+  - Uses TaskValidationService to verify completion criteria
+  - Returns validation result (passed/failed/retry)
+
+#### UI Updates
+- [ ] Tasks tab: Show task tree organized by branches
+  - Color-coded by priority (Critical=red, High=orange, Normal=blue, Low=gray)
+  - Status indicators (pending, running, completed, failed)
+  - Click to expand branch/subtasks
+  - "Inject Multiple Tasks" button for batch injection
+  - Validation status shown for each task
+
+#### Persistence
+- [ ] TaskScheduler state persisted to SQLite
+- [ ] Branch hierarchy restored on app restart
+- [ ] Running tasks tracked with cancellation tokens
 
 ### 7.5 Active Project Tree — Real-Time Project Exploration
 - [ ] Define `ProjectTree` model with file/folder nodes and metadata

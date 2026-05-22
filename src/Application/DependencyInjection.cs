@@ -1,5 +1,7 @@
 using Microsoft.Extensions.DependencyInjection;
+using OpenLMStudio.Application.Interfaces;
 using OpenLMStudio.Application.Types;
+using OpenLMStudio.Domain.Models;
 
 namespace OpenLMStudio.Application;
 
@@ -26,6 +28,13 @@ public static class DependencyInjection
 
         // Streaming event handler for real-time token delivery
         services.AddTransient<StreamingEventHandler>();
+
+        // Agent types
+        services.AddTransient<AgentTaskRequest>();
+        services.AddTransient<AgentTaskResult>();
+        services.AddTransient<AgentToolCallRecord>();
+        services.AddTransient<AgentMessageExchange>();
+        services.AddTransient<AgentPlan>();
 
         return services;
     }
