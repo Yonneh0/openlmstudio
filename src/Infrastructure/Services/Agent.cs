@@ -509,16 +509,78 @@ Propose a simpler, more reliable plan that focuses on completing the essential p
 
     /// <summary>
     /// Performs auto-commit for safe operations that modified files.
+    /// Creates a branch named agent-{taskId} and commits changes.
     /// </summary>
     private async Task AutoCommitChangesAsync(Guid taskId)
     {
         try
         {
-            // In a full implementation, this would:
-            // 1. Check if git is available
-            // 2. Stage and commit the changes
-            // 3. Create a branch if needed
-            _logger?.LogDebug("Auto-commit triggered for task {TaskId}", taskId);
+            // Determine working directory from environment
+            var root = Environment.CurrentDirectory;
+            if (string.IsNullOrEmpty(root))
+            {
+                _logger?.LogDebug("No working directory available for auto-commit");
+                return;
+            }
+
+            // Check if git is available
+            var gitProcess = Process.Start(new ProcessStartInfo
+            {
+                FileName = "git",
+                Arguments = "-C " + root + " rev-parse --git-dir",
+                UseShellExecute = false,
+                RedirectStandardOutput = true,
+                RedirectStandardError = true,
+                CreateNoWindow = true
+            });
+
+            if (gitProcess == null) return;
+            gitProcess.WaitForExit();
+
+            if (gitProcess.ExitCode != 0)
+            {
+                _logger?.LogDebug("Git not available in working directory {Directory}", root);
+                return;
+            }
+
+            // Create a branch for this agent task
+            var branchName = $"agent-{taskId:D8}";
+
+            // Create the agent branch
+            Process.Start(new ProcessStartInfo
+            {
+                FileName = "git",
+                Arguments = "-C " + root + " checkout -b " + branchName,
+                UseShellExecute = false,
+                RedirectStandardOutput = true,
+                RedirectStandardError = true,
+                CreateNoWindow = true
+            })?.WaitForExit();
+
+            // Stage all changes
+            Process.Start(new ProcessStartInfo
+            {
+                FileName = "git",
+                Arguments = "-C " + root + " add -A",
+                UseShellExecute = false,
+                RedirectStandardOutput = true,
+                RedirectStandardError = true,
+                CreateNoWindow = true
+            })?.WaitForExit();
+
+            // Commit with a descriptive message
+            var commitMessage = $"agent({branchName}): {_currentRequest?.Description?.Substring(0, Math.Min(50, _currentRequest?.Description?.Length ?? 0)) ?? "Task"}";
+            Process.Start(new ProcessStartInfo
+            {
+                FileName = "git",
+                Arguments = "-C " + root + " commit -m " + '"' + commitMessage + '"',
+                UseShellExecute = false,
+                RedirectStandardOutput = true,
+                RedirectStandardError = true,
+                CreateNoWindow = true
+            })?.WaitForExit();
+
+            _logger?.LogInformation("Auto-committed on branch {Branch}", branchName);
         }
         catch (Exception ex)
         {

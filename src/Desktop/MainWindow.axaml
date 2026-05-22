@@ -1250,7 +1250,7 @@
                             Width="8" Height="8"
                             CornerRadius="4"
                             Margin="0,0,6,0"/>
-                    <TextBlock x:Name="ServerStatusText"
+                    <TextBlock x:Name="ServerStatusTextStatusBar"
                                Text="Server: Stopped"
                                Foreground="{StaticResource TextMuted}"
                                FontSize="11"

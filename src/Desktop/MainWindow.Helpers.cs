@@ -101,6 +101,7 @@ public partial class MainWindow
                 if (LeftServerStartStopButton != null) LeftServerStartStopButton.Content = "Start Server";
                 if (RightServerStartStopButton != null) RightServerStartStopButton.Content = "Start Server";
                 ServerStatusText.Text = "Server: Stopped";
+                ServerStatusTextStatusBar.Text = "Server: Stopped";
                 ServerStatusText.Foreground = new SolidColorBrush(Color.FromRgb(255, 107, 107));
                 ServerStatusRight.Text = "Server: Stopped";
                 ServerStatusRight.Foreground = new SolidColorBrush(Color.FromRgb(255, 107, 107));
@@ -115,6 +116,7 @@ public partial class MainWindow
                 if (LeftServerStartStopButton != null) LeftServerStartStopButton.Content = "Stop Server";
                 if (RightServerStartStopButton != null) RightServerStartStopButton.Content = "Stop Server";
                 ServerStatusText.Text = $"Server: Running (Port {configuration.Port})";
+                ServerStatusTextStatusBar.Text = $"Server: Running (Port {configuration.Port})";
                 ServerStatusText.Foreground = new SolidColorBrush(Color.FromRgb(76, 175, 80));
                 ServerStatusRight.Text = $"Server: Running (Port {configuration.Port})";
                 ServerStatusRight.Foreground = new SolidColorBrush(Color.FromRgb(76, 175, 80));
@@ -137,6 +139,7 @@ public partial class MainWindow
 
         // Update server status display across all UI elements (both buttons + both text blocks)
         ServerStatusText.Text = $"Server: {(isRunning ? "Running" : "Stopped")}";
+        ServerStatusTextStatusBar.Text = $"Server: {(isRunning ? "Running" : "Stopped")}";
         ServerStatusRight.Text = $"Server: {(isRunning ? "Running" : "Stopped")}";
 
         if (LeftServerStartStopButton != null) LeftServerStartStopButton.Content = isRunning ? "Stop Server" : "Start Server";
@@ -145,6 +148,7 @@ public partial class MainWindow
         if (isRunning)
         {
             ServerStatusText.Foreground = new SolidColorBrush(Color.FromRgb(76, 175, 80)); // Green
+            ServerStatusTextStatusBar.Foreground = new SolidColorBrush(Color.FromRgb(76, 175, 80)); // Green
             ServerStatusRight.Foreground = new SolidColorBrush(Color.FromRgb(76, 175, 80)); // Green
 
             // Try to get port from the server service's configuration
@@ -159,6 +163,7 @@ public partial class MainWindow
         else
         {
             ServerStatusText.Foreground = new SolidColorBrush(Color.FromRgb(255, 107, 107)); // Red
+            ServerStatusTextStatusBar.Foreground = new SolidColorBrush(Color.FromRgb(255, 107, 107)); // Red
             ServerStatusRight.Foreground = new SolidColorBrush(Color.FromRgb(255, 107, 107)); // Red
             ServerPortRightText.Text = "Port: 8080 (default)";
             ServerPortText.Text = "Port: 8080 (default)";
