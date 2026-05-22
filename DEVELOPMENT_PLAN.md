@@ -456,10 +456,15 @@ All service interfaces and implementations complete (SQLite-backed). UI controls
 - [x] Convert `PinguSystemPrompts` from static strings to a dynamic prompt generator (`PinguPromptGenerator`) — **DONE**: PinguPromptGenerator.cs generates context-aware prompts based on assigned tasks and project state
 - [x] Define `PinguTask` types: UIControl, ModelLoad, ModelRun, GamePlay, Wandering, TaskOrchestration, UserAssistant — **DONE**: PinguTask.cs with all task types defined
 - [x] Generate context-aware system prompts based on assigned tasks — **DONE**: GenerateFullPrompt and GenerateCompressedPrompt in PinguPromptGenerator
-- [ ] Wire Pingu with UI control tools (tab switching, panel toggling, button triggering)
-- [ ] Wire Pingu with model management tools (load/unload/switch models)
-- [ ] Wire Pingu with game integration tools (Minesweeper, Tetris, Snake, Jezzball, Solitaire)
-- [ ] Wire Pingu with context-aware wandering behavior
+- [x] Wire Pingu with UI control tools (tab switching, panel toggling, button triggering) — **DONE**: PinguPanelToggleTool, PinguTabSwitchTool wired in DI
+- [x] Wire Pingu with model management tools (load/unload/switch models) — **DONE**: PinguModelLoadTool, PinguModelTool wired in DI
+- [x] Wire Pingu with game integration tools (Minesweeper, Tetris, Snake, Jezzball, Solitaire) — **DONE**: PinguGameTool, PinguGameIntegrationTool wired in DI; GamesPanel + individual game controls (MinesweeperGame, TetrisGame, SnakeGame, JezzballGame, SolitaireGame) implemented
+- [x] Wire Pingu with context-aware wandering behavior — **DONE**: PinguWanderingTool wired in DI
+
+### 7.7 Agent System Prompt Generator
+- [ ] Dynamic system prompt assembly based on current task context and available tools list
+- [x] Tool descriptions injected into system prompt dynamically
+- [ ] Context-aware suggestions for next action
 
 ### 7.2 Agent Communication Protocol — Plan/Act Switches
 - [x] Define plan phase messages (agent proposes approach) — AgentCommunicationPhase enum + AgentCommunicationProtocol
@@ -508,7 +513,7 @@ All service interfaces and implementations complete (SQLite-backed). UI controls
 - [x] Agent session persistence: save agent state to disk so it survives app crash
 - [x] Tool call fallback chain: try alternate tools or degraded parameters when primary fails
 
-#### Phase 7 Summary — **26 of 32 items complete**
+#### Phase 7 Summary — **30 of 32 items complete**
 | Category | Status |
 |----------|--------|
 | Core Agent Architecture | ✓ Complete — Agent class (684 lines) with plan/act cycle, IAgent interface, AgentState, AgentTaskProgressTracker, AgentCheckpoint |
@@ -556,24 +561,24 @@ All service interfaces and implementations complete (SQLite-backed). UI controls
 ### 9.2 Security Model
 - [x] Model provenance verification — **DONE**: DownloadManager verifies SHA256/MD5 hashes; SafetensorParser validates headers before loading
 - [x] Sandbox isolation for code execution — **DONE**: SandboxService with cgroups v2 (Linux/macOS) + Job Objects (Windows); ICommandExecutionService integrated
-- [ ] Conversation data encryption at rest — AES-256 encryption of SQLite databases; keychain-backed decryption per platform
+- [x] Conversation data encryption at rest — **DONE**: ConversationEncryptionService with AES-256-GCM + PBKDF2 key derivation; keychain-backed decryption per platform (DPAPI/Keychain/Keyring)
 
 ### 9.3 Memory Management System
-- [ ] GPU VRAM allocation across multiple models — IModelManager interface exists but not implemented (no multi-model concurrency)
+- [x] GPU VRAM allocation across multiple models — **DONE**: ModelManager.AllocateVram/DeallocateVram/CanAllocateVram with per-model VRAM tracking and multi-model concurrency
 - [x] OOM recovery — progressive parameter degradation when threshold exceeded (OomRecoveryService implemented with model type-based eviction)
-- [ ] Model eviction policy based on usage frequency and recency
+- [x] Model eviction policy based on usage frequency and recency — **DONE**: ModelManager.GetEvictionPriority() sorts by LastAccessed; EvictModelsToFreeVramAsync() evicts LRU first
 
 ### 9.4 Application Lifecycle Management
 - [x] Auto-update system for the application itself — **DONE**: UpdateManager with version comparison and auto-update
 - [x] Plugin auto-update mechanism — **DONE**: PluginRegistry.GetAvailableUpdatesAsync + auto-update logic
 - [x] Model cache cleanup — configurable retention policies, automated orphan removal — **DONE**: DownloadManager has disk space monitoring with 80%/90%/95% threshold events
 
-#### Phase 9 Summary — **~14 of 16 items**
+#### Phase 9 Summary — **16 of 16 items complete**
 | Category | Status |
 |----------|--------|
 | Error Recovery System | ✓ Complete — model detection, download recovery, streaming SSE reconstruction |
-| Security Model | ✓ Complete — sandbox isolation (SandboxService with cgroups/Job Objects), command blocking, env sanitization |
-| Memory Management System | Partial — OOM recovery done (OomRecoveryService), but VRAM allocation and model eviction policy NOT implemented |
+| Security Model | ✓ Complete — sandbox isolation, command blocking, env sanitization, conversation encryption |
+| Memory Management System | ✓ Complete — VRAM allocation, OOM recovery, eviction policy |
 | Application Lifecycle Management | ✓ Complete — auto-update, plugin auto-update, disk space monitoring |
 
 ---
