@@ -442,6 +442,15 @@ All service interfaces and implementations complete (SQLite-backed). UI controls
 - [ ] Build task queue system with priority levels and dependency tracking
 - [ ] Implement `TaskProgressTracker` with stages: NotStarted → InProgress → Reviewing → Completed
 
+### 7.1b Pingu System AI — Task Orchestrator & Prompt Generator
+- [ ] Convert `PinguSystemPrompts` from static strings to a dynamic prompt generator (`PinguPromptGenerator`)
+- [ ] Define `PinguTask` types: UIControl, ModelLoad, ModelRun, GamePlay, Wandering, TaskOrchestration, UserAssistant
+- [ ] Generate context-aware system prompts based on assigned tasks
+- [ ] Wire Pingu with UI control tools (tab switching, panel toggling, button triggering)
+- [ ] Wire Pingu with model management tools (load/unload/switch models)
+- [ ] Wire Pingu with game integration tools (Minesweeper, Tetris, Snake, Jezzball, Solitaire)
+- [ ] Wire Pingu with context-aware wandering behavior
+
 ### 7.2 Agent Communication Protocol — Plan/Act Switches
 - [ ] Define plan phase messages (agent proposes approach)
 - [ ] Define act phase messages (agent executes actions)

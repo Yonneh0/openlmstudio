@@ -324,6 +324,9 @@ public static class DependencyInjection
         // PinguStore manages reactive Pingu state machine (mood, awakening, blink, animation)
         services.AddSingleton<IPinguStore, PinguStore>();
 
+        // PinguPromptGenerator generates context-aware system prompts for Pingu based on assigned tasks and current state
+        services.AddSingleton<IPinguPromptGenerator, PinguPromptGenerator>();
+
         // SystemAIClient provides llama.cpp inference via HTTP POST streaming
         services.AddSingleton<ISystemAIClient, SystemAIClient>();
 
