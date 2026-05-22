@@ -52,7 +52,7 @@ public class EngineBinaryDownloader : IDisposable
 
     public EngineBinaryDownloader(ILogger<EngineBinaryDownloader>? logger = null, string? cacheDirectory = null)
     {
-        _logger = logger;
+        _logger = logger ?? throw new ArgumentNullException(nameof(logger));
         _cacheDirectory = cacheDirectory ?? Path.Combine(
             Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
             "OpenLMStudio", "engines");
@@ -273,7 +273,7 @@ public class EngineBinaryDownloader : IDisposable
         return BitConverter.ToString(hash).Replace("-", "").ToLowerInvariant();
     }
 
-    private static bool ValidateBinaryLocally(string path, BackendType backend)
+    private bool ValidateBinaryLocally(string path, BackendType backend)
     {
         try
         {
@@ -298,7 +298,7 @@ public class EngineBinaryDownloader : IDisposable
             if (!success)
             {
                 var stderr = process.StandardError.ReadToEnd();
-                _logger.LogWarning("Binary validation failed for {Backend}: exit code {Code}, stderr: {StdErr}",
+                _logger?.LogWarning("Binary validation failed for {Backend}: exit code {Code}, stderr: {StdErr}",
                     backend, process.ExitCode, stderr);
             }
 
@@ -306,12 +306,12 @@ public class EngineBinaryDownloader : IDisposable
         }
         catch (Exception ex)
         {
-            _logger.LogWarning(ex, "Binary validation threw exception for {Backend}", backend);
+            _logger?.LogWarning(ex, "Binary validation threw exception for {Backend}", backend);
             return false;
         }
     }
 
-    private static void SetExecutablePermission(string path)
+    private void SetExecutablePermission(string path)
     {
         try
         {
@@ -331,7 +331,7 @@ public class EngineBinaryDownloader : IDisposable
         catch (Exception ex)
         {
             // Non-fatal — the binary may still work
-            // _logger?.LogWarning(ex, "Failed to set executable permission on {Path}", path);
+            _logger?.LogWarning(ex, "Failed to set executable permission on {Path}", path);
         }
     }
 
