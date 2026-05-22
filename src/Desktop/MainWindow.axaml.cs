@@ -84,6 +84,10 @@ public partial class MainWindow : Window
         InitializeComponent();
         _logger = logger;
 
+        // Register this window with static services (TabService, PanelService)
+        TabService.SetWindow(this);
+        PanelService.SetWindow(this);
+
         // Set window title programmatically to avoid XAML entity reference issues with "&" character
         this.Title = "OpenLMStudio - Local LLM Server & Chat Client";
 

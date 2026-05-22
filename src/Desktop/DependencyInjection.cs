@@ -1,4 +1,5 @@
 using Microsoft.Extensions.DependencyInjection;
+using OpenLMStudio.Application.Interfaces;
 using OpenLMStudio.Application.Services;
 using OpenLMStudio.Desktop.Services;
 
@@ -17,6 +18,11 @@ public static class DependencyInjection
 
         // Accessibility service: manages accessibility settings and control properties
         services.AddSingleton<IAccessibilityService, AccessibilityService>();
+
+        // Pingu UI service implementations — window reference set after construction
+        services.AddSingleton<ITabService, TabService>();
+        services.AddSingleton<IPanelService, PanelService>();
+        services.AddSingleton<IGamesPanel, GamesPanelService>();
 
         return services;
     }
