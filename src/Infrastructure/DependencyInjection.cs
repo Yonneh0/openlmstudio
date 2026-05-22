@@ -181,6 +181,17 @@ public static class DependencyInjection
         // CodeDefinitionExtractor tool for extracting class/function/method definitions from a project
         services.AddSingleton<ITool, Services.CodeDefinitionExtractorTool>();
 
+        // ---- Phase 7: Pingu Tools (System AI Mascot) ----
+
+        // PinguTabSwitch tool for switching tabs in the UI
+        services.AddSingleton<ITool, Services.PinguTabSwitchTool>();
+
+        // PinguPanelToggle tool for toggling UI panels
+        services.AddSingleton<ITool, Services.PinguPanelToggleTool>();
+
+        // PinguModelLoad tool for loading/unloading models
+        services.AddSingleton<ITool, Services.PinguModelLoadTool>();
+
         // ---- Phase 2: Model Management — IModelManager + Loader Registration ----
 
         // ModelManager coordinates concurrent multi-model loading across all engine types with eviction policy.
