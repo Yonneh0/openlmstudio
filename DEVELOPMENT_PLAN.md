@@ -555,17 +555,17 @@ Pingu (System AI) manages tasks through an intelligent scheduler that supports o
 - [ ] Agent session persistence: save agent state to disk so it survives app crash
 - [ ] Tool call fallback chain: try alternate tools or degraded parameters when primary fails
 
-#### Phase 7 Summary — **~17 of 32 items complete**
+#### Phase 7 Summary — **~24 of 32 items complete**
 | Category | Status |
 |----------|--------|
-| Core Agent Architecture | Partial — Agent class implemented with plan/act cycle |
-| Agent Communication Protocol | Not started |
-| Tooling System | Partial — some tools exist as stubs |
-| Task Progression System | Partial — tracker exists but not integrated |
-| Active Project Tree | Not started |
-| Deep Git Integration | Partial — interface + CLI service exist |
-| AI Analysis Context Panel | Not started |
-| System Prompt Generator | Not started |
+| Core Agent Architecture | ✓ Complete — Agent class with plan/act cycle |
+| Agent Communication Protocol | ✓ Complete — IAgentProtocolService + AgentCommunicationProtocol |
+| Tooling System | ✓ Complete — all built-in tools registered |
+| Task Progression System | ✓ Complete — scheduler, tracker, validation, summary |
+| Active Project Tree | ✓ Complete — ActiveProjectWatcher + FilePreviewService |
+| Deep Git Integration | ✓ Complete — GitRepositoryService with full CLI |
+| AI Analysis Context Panel | Partial — model exists, UI not built |
+| System Prompt Generator | Partial |
 | Agent Error Recovery | ✓ Complete |
 
 ---
@@ -743,7 +743,7 @@ Located in Grid.Row=1, spanning all 3 columns. Uses a DockPanel with:
 | 4: Chat & Conversation System | Partial — data models and persistence done; streaming needs work |
 | 5: Context Management System | ✓ Complete |
 | 6: UI Implementation | Partial — core UI wired; agent tab added; settings panel complete |
-| 7: Agent Harness | Partial — agent class with error recovery done; tooling and task progression need work |
+| 7: Agent Harness | ✓ Major progress — scheduler, tracker, validation, summary, project tree, git, error recovery complete |
 | 8: Plugin & MCP System | Partial — MCP complete; plugin manager remote registry integration missing |
 | 9: Resilience & Security | Partial — error recovery done; security, memory management, and lifecycle not started |
 | 10: Testing & Release | Partial — 66+ tests with CI/CD; UX refinements not started |
@@ -790,12 +790,12 @@ Located in Grid.Row=1, spanning all 3 columns. Uses a DockPanel with:
 - [x] Create built-in tools: FileReadTool, FileWriteTool, FilePatchTool, CommandExecuteTool, SearchFilesTool, GitDiffTool, GitHistoryTool, ProjectExplorerTool, CodeDefinitionExtractorTool, MCPToolCaller, ResourceAccessor — all registered in DI
 
 ### 7.4 Task Progression System — Autonomous Looping
-- [ ] Define `Task` model: ID, description, dependencies, status, progress percentage
-- [ ] Build `TaskProgressTracker` service with stages and transitions (AgentTaskProgressTracker.cs exists but not fully integrated)
-- [ ] Implement automatic task completion detection (goal verification via tool results)
-- [ ] Create loop mechanism that continues until task is fully completed or max iterations reached
-- [ ] User-configurable iteration limits (default: 50 iterations per task)
-- [ ] Progress summary generation after each iteration cycle
+- [x] Define `Task` model: ID, description, dependencies, status, progress percentage — `AgenticTask.cs` with full fields
+- [x] Build `TaskProgressTracker` service with stages and transitions — `AgentTaskProgressTracker.cs` with full stage transitions
+- [x] Implement automatic task completion detection (goal verification via tool results) — `TaskCompletionDetector.cs` with Pingu-based AI validation
+- [x] Create loop mechanism that continues until task is fully completed or max iterations reached — `TaskSchedulerService.cs` with SQLite persistence
+- [x] User-configurable iteration limits (default: 50 iterations per task) — `MaxIterations` field on `AgenticTask`
+- [x] Progress summary generation after each iteration cycle — `AgentProgressSummaryService.cs`
 
 ### 7.5 Active Project Tree — Real-Time Project Exploration
 - [x] Define `ProjectTree` model with file/folder nodes and metadata
@@ -910,4 +910,4 @@ Located in Grid.Row=1, spanning all 3 columns. Uses a DockPanel with:
 
 ---
 
-### Overall Progress: ~73 of 223 items (~33%)
+### Overall Progress: ~85 of 223 items (~38%)
