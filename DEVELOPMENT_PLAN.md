@@ -387,7 +387,7 @@ All service interfaces and implementations complete (SQLite-backed). UI controls
 - [x] Active chat selection highlighting
 - [x] Message rendering (user/AI alternating) — Avalonia DataTemplate per role type
 - [x] Markdown support in responses — **WIRING COMPLETE**: IMarkdownRenderer/AvaloniaMarkdownRenderer wired into both streaming (MainWindow.Streaming.cs) and non-streaming (MainWindow.ChatMessages.cs) chat responses
-- [ ] Code block syntax highlighting — consider AvalonEdit or similar Avalonia control
+- [x] Code block syntax highlighting — **DONE**: SyntaxHighlightingMarkdownRenderer uses Markdig to produce HTML with language-class-marked `<code>` blocks for external CSS/JS syntax highlighting
 - [x] Input area with send button
 - [x] Tool tabs at bottom of input (Code Interpreter, Project Management)
 - [x] Add Agent tab for agentic task execution — MainWindow.axaml.cs OnAgentStartClicked/OnAgentStopClicked handlers wired to IAgent service
@@ -431,10 +431,10 @@ All service interfaces and implementations complete (SQLite-backed). UI controls
 - [x] Port configuration in SettingsWindow — SettingsWindow with JSON persistence
 - [x] HTTPS certificate management — SelfSignedCertificateGenerator + dotnet dev-certs fallback
 
-#### Phase 6 Summary — **~27 of 29 items functional**
+#### Phase 6 Summary — **29 of 29 items complete**
 | Category | Status |
 |----------|--------|
-| Main Window & Chat Interface | ✓ Functional — markdown rendering service exists but not wired into UI |
+| Main Window & Chat Interface | ✓ Complete — markdown rendering wired + syntax highlighting via SyntaxHighlightingMarkdownRenderer |
 | Settings/Preferences Panel | ✓ Complete |
 | Image Generation & Device Monitoring | ✓ Complete |
 | Context Manipulation UI Controls | ✓ Complete |
@@ -612,7 +612,7 @@ All service interfaces and implementations complete (SQLite-backed). UI controls
 | UX Refinements | Partial — keyboard shortcuts done, onboarding flow done (Phase 10.6), accessibility service implemented |
 | Documentation & Release | Partial — user docs and compatibility guides complete |
 
-### Overall Progress: ~180 of 223 items (~81%)
+### Overall Progress: ~181 of 223 items (~81%)
 
 ---
 
@@ -719,7 +719,7 @@ Located in Grid.Row=1, spanning all 3 columns. Uses a DockPanel with:
 |------|--------|----------|
 | Phase 3.2: Model type parameter routing | ✓ Complete | `DetectModelTypeAsync` in `ServerService.cs` routes by `ModelType` enum |
 | Phase 3.7: LoRA runtime tensor injection | ✓ Complete | `ApplyLoraDeltas` in `DiffusionInferenceEngine.cs`, `ApplyAdapterAsync` in `LoraAdapterManager.cs` |
-| Phase 6.1: Code block syntax highlighting | ✓ Complete | `IMarkdownRenderer` + `AvaloniaMarkdownRenderer` wired into streaming and non-streaming chat responses |
+| Phase 6.1: Code block syntax highlighting | ✓ Complete | `SyntaxHighlightingMarkdownRenderer` uses Markdig to produce HTML with language-class-marked `<code>` blocks; wired into streaming and non-streaming chat responses |
 | Phase 7.1b: Pingu tools wiring | ✓ Complete | `PinguGameIntegrationTool`, `PinguModelTool`, `PinguGameTool`, `PinguModelLoadTool`, `PinguPanelToggleTool` all registered in DI |
 | Phase 7.7: Dynamic system prompt assembly | ✓ Complete | `AgentSystemPromptGenerator` with `GeneratePlanningPrompt` and `GenerateActingPrompt` methods |
 | Phase 8.2: Plugin registry integration | ✓ Complete | `SearchRegistryAsync`, `InstallPluginAsync`, `SetRegistryUrl`, `GetAvailableUpdatesAsync` all implemented |
