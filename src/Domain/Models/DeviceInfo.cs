@@ -60,6 +60,11 @@ public record GpuDevice
         => TotalMemoryBytes > 0 ? (UsedMemoryBytes / (float)TotalMemoryBytes) * 100 : 0;
 
     /// <summary>
+    /// Free VRAM available on the GPU in bytes (TotalVRAM - UsedVRAM).
+    /// </summary>
+    public long FreeVramBytes => TotalMemoryBytes - UsedMemoryBytes;
+
+    /// <summary>
     /// Creates a new GPU device instance.
     /// </summary>
     public GpuDevice(int id, string name, string vendor, long totalMemoryBytes)

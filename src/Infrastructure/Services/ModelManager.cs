@@ -115,7 +115,7 @@ public class ModelManager : IModelManager, IDisposable
 
         var currentFree = _deviceMonitor.CurrentDeviceInformation.Gpus.Sum(g => g.FreeVramBytes);
         var totalUsed = TotalVramUsedBytes;
-        var totalVram = _deviceMonitor.CurrentDeviceInformation.Gpus.Sum(g => g.TotalVramBytes);
+        var totalVram = _deviceMonitor.CurrentDeviceInformation.Gpus.Sum(g => g.TotalMemoryBytes);
 
         // Require at least 512MB free as a safety margin
         const long SafetyMargin = 512L * 1024 * 1024;
