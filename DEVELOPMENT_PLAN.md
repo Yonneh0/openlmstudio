@@ -880,4 +880,4 @@ Located in Grid.Row=1, spanning all 3 columns. Uses a DockPanel with:
 | UX Refinements | Not started |
 | Documentation & Release | Partial — user docs and compatibility guides complete |
 
-### Overall Progress: ~97 of 223 items (~43%)
+### Overall Progress: ~110 of 223 items (~49%)
