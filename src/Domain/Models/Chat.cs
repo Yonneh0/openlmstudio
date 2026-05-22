@@ -81,6 +81,16 @@ public class Chat
     public List<Message>? Messages { get; set; } = new();
 
     /// <summary>
+    /// Generated images associated with this chat session (image generation outputs).
+    /// </summary>
+    public List<ImageOutput> ImageOutputs { get; set; } = new();
+
+    /// <summary>
+    /// Generated embeddings associated with this chat session.
+    /// </summary>
+    public List<byte[]> EmbeddingOutputs { get; set; } = new();
+
+    /// <summary>
     /// Tags for organizing and categorizing chats.
     /// </summary>
     public List<string> Tags { get; set; } = new();
