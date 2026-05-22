@@ -28,7 +28,7 @@ public class UpdateManager : IUpdateManager, IDisposable
         _httpClient = new HttpClient { BaseAddress = new Uri("https://api.github.com/") };
         _appDataResolver = appDataResolver;
         _pluginRegistry = pluginRegistry;
-        _currentVersion = typeof(UpdateManager).Assembly.GetName().Version?.ToString() ?? "0.0.1";
+        _currentVersion = "dev";
         _status = UpdateStatus.Current;
     }
 
