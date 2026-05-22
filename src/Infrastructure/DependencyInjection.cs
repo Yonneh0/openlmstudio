@@ -302,6 +302,9 @@ public static class DependencyInjection
         // TaskScheduler manages ordered task queue across branches with priority-aware scheduling
         services.AddSingleton<Application.Interfaces.ITaskScheduler, Services.TaskScheduler>();
 
+        // TaskSchedulerService manages the shared task tree with access control (Pingu=admin, User=write, AIs=read-only)
+        services.AddSingleton<Services.ITaskSchedulerService, Services.TaskSchedulerService>();
+
         // TaskValidationService provides AI-powered task completion verification using System AI
         services.AddSingleton<Application.Interfaces.ITaskValidationService, Services.TaskValidationService>();
 

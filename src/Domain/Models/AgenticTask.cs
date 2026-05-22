@@ -21,7 +21,7 @@ public record AgenticTask
     public List<Guid> Dependencies { get; init; } = new();
     public TaskStatus Status { get; set; } = TaskStatus.Pending;
     public int Progress { get; init; }
-    public TaskPriority Priority { get; init; } = TaskPriority.Normal;
+    public TaskPriority Priority { get; set; } = TaskPriority.Normal;
     public int MaxIterations { get; init; } = 50;
     public string? Summary { get; set; }
     public string? ErrorMessage { get; set; }
