@@ -388,6 +388,9 @@ public static class DependencyInjection
         // SystemAICoordinator orchestrates System AI with QEMU VMs for cross-architecture workflows
         services.AddSingleton<ISystemAICoordinator, SystemAICoordinator>();
 
+        // ConversationEncryptionService provides AES-256-GCM encryption for conversation data at rest
+        services.AddSingleton<ConversationEncryptionService>();
+
         // EngineBinaryDownloader downloads and caches llama.cpp engine binaries from GitHub releases
         services.AddSingleton<EngineBinaryDownloader>();
 
