@@ -413,6 +413,11 @@ public static class DependencyInjection
         // InteractiveHelpService provides in-app interactive help with topic search and keyboard navigation
         services.AddSingleton<IInteractiveHelpService, InteractiveHelpService>();
 
+        // UX Services: Keyboard shortcuts, accessibility, and onboarding
+        services.AddSingleton<IKeyboardShortcuts, KeyboardShortcutsService>();
+        services.AddSingleton<IAccessibilityService, AccessibilityService>();
+        services.AddSingleton<IKeyboardNavigationService, KeyboardNavigationService>();
+
         return services;
     }
 
