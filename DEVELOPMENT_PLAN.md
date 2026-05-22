@@ -543,10 +543,10 @@ Pingu (System AI) manages tasks through an intelligent scheduler that supports o
 - [ ] Blame annotation for line-level file analysis
 
 ### 7.6.1 AI Analysis Context Panel for Git Diff Review
-- [ ] Show AI Context panel alongside the diff viewer — display AiAnalysisHistory field from TaskContextSnapshot (model exists but UI not built)
-- [ ] Compressed conversation history active during analysis
-- [ ] Project state at time of analysis (file tree, git status, open documents)
-- [ ] Links back to original agent task for context inheritance
+- [x] Show AI Context panel alongside the diff viewer — display AiAnalysisHistory field from TaskContextSnapshot (model exists but UI not built) — fully wired in `RefreshAnalysisContextAsync()` in MainWindow.Helpers.cs
+- [x] Compressed conversation history active during analysis — `analysis.AnalyzedChatHistory` displayed
+- [x] Project state at time of analysis (file tree, git status, open documents) — `analysis.ProjectStateAtTimeOfAnalysis` displayed
+- [x] Links back to original agent task for context inheritance — displayed via `analysis.RelevantContextSegmentIds`
 
 ### 7.7 Agent System Prompt Generator
 - [ ] Dynamic system prompt assembly based on current task context and available tools list
