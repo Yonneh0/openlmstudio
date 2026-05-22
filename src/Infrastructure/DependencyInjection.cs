@@ -430,6 +430,9 @@ public static class DependencyInjection
         services.AddSingleton<IAccessibilityService, AccessibilityService>();
         services.AddSingleton<IKeyboardNavigationService, KeyboardNavigationService>();
 
+        // Context-aware suggestion service: generates next-action suggestions based on conversation/task/project state
+        services.AddSingleton<IContextAwareSuggestionService, ContextAwareSuggestionService>();
+
         return services;
     }
 
