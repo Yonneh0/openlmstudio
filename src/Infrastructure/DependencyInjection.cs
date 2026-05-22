@@ -437,8 +437,8 @@ public static class DependencyInjection
         // Context-aware suggestion service: generates next-action suggestions based on conversation/task/project state
         services.AddSingleton<IContextAwareSuggestionService, ContextAwareSuggestionService>();
 
-        // Markdown renderer: converts Markdown to HTML for chat display
-        services.AddSingleton<IMarkdownRenderer, Services.AvaloniaMarkdownRenderer>();
+        // Markdown renderer: converts Markdown to HTML with code block syntax highlighting (C#, Python, JS, etc.)
+        services.AddSingleton<IMarkdownRenderer, Services.SyntaxHighlightingMarkdownRenderer>();
 
         return services;
     }
