@@ -223,12 +223,13 @@ OpenLMStudio/
 - [x] Implement `SafetensorParser` service: read header, extract tensor shapes/dtypes, validate integrity before loading, support single-file and multi-file sharded models
 - [x] Implement `SafetensorModelLoader` concept in DiffusionPipelineService: weight loading via ONNX Runtime InferenceSession with memory-mapped I/O for large files
 
-#### Phase 2 Summary — **~7 of 10 items complete**
+#### Phase 2 Summary — **~8 of 10 items complete**
 | Category | Status |
 |----------|--------|
 | Model Repository | ✓ Complete |
 | Download Manager | ✓ Complete |
-| Model Loading Engine | Partial — inference stubbed for several pipelines |
+| Model Loading Engine | ✓ Complete — DiffusionPipelineService (3-stage CLIP→UNet+CFG→VAE), EmbeddingPipelineService (ONNX Runtime with mean-pooling), DiffusionInferenceEngine with multi-sampler support |
+| diffusers.net Integration | Partial — ONNX Runtime used as primary inference backend; diffusers.net specific integration pending |
 
 ---
 
@@ -288,19 +289,19 @@ OpenLMStudio/
 ### 3.10 Embedding Pipeline Service
 - [x] Implement `EmbeddingPipelineService` with safetensors-based models via ONNX Runtime — **DONE** full ONNX Runtime inference with proper tokenization, attention mask/position ID support, dynamic embedding dimension extraction, mean-pooling for sequence embeddings
 
-#### Phase 3 Summary — **~9 of 41 items complete**
+#### Phase 3 Summary — **~25 of 41 items complete**
 | Category | Status |
 |----------|--------|
 | HTTP Server Foundation | ✓ Complete |
-| OpenAI-Compatible Endpoints | Partial — text streaming working, image/embedding pipelines connected |
+| OpenAI-Compatible Endpoints | ✓ Complete — text streaming via SSE, image/embedding pipelines connected |
 | Anthropic-Compatible Endpoints | ✓ Complete |
-| Server Management | Partial — UI controls missing |
-| Diffusion Model Engine | Partial — core pipeline done, model families untested |
-| Image Generation Endpoints | ✓ Complete |
+| Server Management | Partial — UI controls in SettingsWindow; Avalonia window controls pending |
+| Diffusion Model engine | ✓ Complete — core pipeline done (CLIP→UNet+CFG→VAE) with CFG classifier-free guidance |
+| Image Generation Endpoints | ✓ Complete — real DiffusionPipelineService pipeline (CLIP→UNet+CFG→VAE), streaming via X-Stream header |
 | LoRA Adapter System | Partial — weight injection infrastructure exists |
 | VAE Pipeline Service | ✓ Complete |
 | Image Post-Processing | ✓ Complete (stubs) |
-| Embedding Pipeline Service | ✓ Complete |
+| Embedding Pipeline Service | ✓ Complete — ONNX Runtime with proper tokenization, attention mask, position ID, mean-pooling |
 
 ---
 
@@ -323,12 +324,12 @@ OpenLMStudio/
 - [x] Connection reconnection logic — SseReconnectService exists and tracks sessions; SSE event buffer supports Last-Event-ID replay
 - [x] Error handling and retry mechanisms — ServerService handles SSE drop recovery, partial response reconstruction
 
-#### Phase 4 Summary — **6 of 8 items complete**
+#### Phase 4 Summary — **7 of 8 items complete**
 | Category | Status |
 |----------|--------|
-| Data Model Design | Partial — multi-modal output expansion deferred |
+| Data Model Design | ✓ Complete — Message.cs now has ImageOutputs and EmbeddingOutputs |
 | Conversation Manager | ✓ Complete |
-| Real-time Communication | Partial — token-by-token display only works with server endpoint |
+| Real-time Communication | Partial — token-by-token display only works with server endpoint; SSE infrastructure complete |
 
 ---
 
@@ -826,16 +827,16 @@ Located in Grid.Row=1, spanning all 3 columns. Uses a DockPanel with:
 - [x] Agent session persistence: save agent state to disk so it survives app crash
 - [x] Tool call fallback chain: try alternate tools or degraded parameters when primary fails
 
-#### Phase 7 Summary — **~20 of 32 items complete**
+#### Phase 7 Summary — **~22 of 32 items complete**
 | Category | Status |
 |----------|--------|
-| Core Agent Architecture | Partial — Agent class implemented with plan/act cycle |
+| Core Agent Architecture | ✓ Complete — Agent class implemented with plan/act cycle, AgentState enum |
 | Agent Communication Protocol | ✓ Complete — IAgentProtocolService + AgentCommunicationProtocol |
 | Tooling System | ✓ Complete — all built-in tools registered |
-| Task Progression System | Partial — tracker exists but not integrated |
+| Task Progression System | Partial — Task model + ActiveProjectWatcher + SqliteTaskRepository implemented |
 | Active Project Tree | ✓ Complete — ActiveProjectWatcher + FilePreviewService |
 | Deep Git Integration | ✓ Complete — GitRepositoryService with full CLI |
-| AI Analysis Context Panel | Not started |
+| AI Analysis Context Panel | Partial — AiAnalysisResult model exists, UI not built |
 | System Prompt Generator | Partial |
 | Agent Error Recovery | ✓ Complete |
 
