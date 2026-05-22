@@ -192,6 +192,14 @@ public static class DependencyInjection
         // PinguModelLoad tool for loading/unloading models
         services.AddSingleton<ITool, Services.PinguModelLoadTool>();
 
+        // PinguGame tool for launching/stopping built-in games
+        services.AddSingleton<ITool, Services.PinguGameTool>();
+
+        // PinguWandering tool for autonomous exploratory behavior
+        services.AddSingleton<ITool, Services.PinguWanderingTool>();
+
+        // IGamesPanel — implemented by the Avalonia GamesPanel, registered in Desktop layer
+
         // ---- Phase 2: Model Management — IModelManager + Loader Registration ----
 
         // ModelManager coordinates concurrent multi-model loading across all engine types with eviction policy.

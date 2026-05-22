@@ -581,25 +581,52 @@ public static class KeyboardService
             return;
         }
 
-        // Ctrl+1/2/3/4: Switch tabs
-        if (e.KeyModifiers.HasFlag(KeyModifiers.Control))
+        // Ctrl+Tab / Ctrl+Shift+Tab: Cycle tabs
+        if (e.KeyModifiers.HasFlag(KeyModifiers.Control) && e.Key == Key.Tab)
         {
-            switch (e.Key)
-            {
-                case Key.D1: _mainWindow?.SwitchToTab(0); e.Handled = true; break;
-                case Key.D2: _mainWindow?.SwitchToTab(1); e.Handled = true; break;
-                case Key.D3: _mainWindow?.SwitchToTab(2); e.Handled = true; break;
-                case Key.D4: _mainWindow?.SwitchToTab(3); e.Handled = true; break;
-            }
+            var direction = e.KeyModifiers.HasFlag(KeyModifiers.Shift) ? -1 : 1;
+            KeyboardService.CycleTab(direction);
+            e.Handled = true;
             return;
         }
 
-        // Escape: Close popups
+        // Escape: Close popups and reset focus
         if (e.Key == Key.Escape)
         {
             _mainWindow?.GitLogPopup?.SetValue(Avalonia.Controls.Primitives.Popup.IsOpenProperty, false);
             e.Handled = true;
             return;
+        }
+    }
+
+    /// <summary>
+    /// Cycles the active tab by the given direction (+1 for forward, -1 for backward).
+    /// Uses Avalonia visual tree to find TabControls.
+    /// </summary>
+    public static void CycleTab(int direction)
+    {
+        if (_mainWindow == null) return;
+
+        // Search all TabControls in the visual tree
+        var allTabs = _mainWindow.GetVisualDescendants()
+            .OfType<TabControl>()
+            .SelectMany(tc => tc.Items.Cast<TabItem>())
+            .Where(t => t.IsSelected)
+            .ToList();
+
+        if (allTabs.Count == 1)
+        {
+            // Find the TabControl that contains the selected item
+            var selected = allTabs[0];
+            var parent = selected.GetVisualParent<TabControl>();
+            if (parent == null) return;
+
+            var items = parent.Items.Cast<TabItem>().ToList();
+            var index = items.IndexOf(selected);
+            if (index < 0) return;
+
+            var nextIndex = (index + direction + items.Count) % items.Count;
+            items[nextIndex].IsSelected = true;
         }
     }
 }
