@@ -373,8 +373,7 @@ public partial class MainWindow : Window
 
     private void OnGitStatusClicked(object? sender, PointerPressedEventArgs e)
     {
-        var visible = GitLogPopup?.IsVisible == true;
-        GitLogPopup!.IsVisible = !visible;
+        GitLogPopup?.SetValue(Border.IsVisibleProperty, !GitLogPopup.IsVisible);
     }
 
     private static string GetGitCommitShort()
