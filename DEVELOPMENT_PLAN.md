@@ -713,7 +713,7 @@ Located in Grid.Row=1, spanning all 3 columns. Uses a DockPanel with:
 
 ---
 
-## Verification Summary (2026-05-22 10:26 AM)
+## Verification Summary (2026-05-22 10:40 AM)
 
 | Check | Result | Evidence |
 |-------|--------|----------|
@@ -721,7 +721,7 @@ Located in Grid.Row=1, spanning all 3 columns. Uses a DockPanel with:
 | `dotnet format --verify-no-changes` | ✓ Clean | Format is consistent |
 | `dotnet test` | ✓ Passing | All tests pass |
 | Phase 3.2: Model type parameter routing | ✓ Complete | `DetectModelTypeAsync` in `ServerService.cs` routes by `ModelType` enum |
-| Phase 3.7: LoRA runtime tensor injection | ✓ Complete | `ApplyLoraDeltas` in `DiffusionInferenceEngine.cs`, `ApplyAdapterAsync` in `LoraAdapterManager.cs` |
+| Phase 3.7: LoRA weight extraction | ✓ Complete | `LoraAdapterManager` extracts delta tensors from safetensors and caches them |
 | Phase 6.1: Code block syntax highlighting | ✓ Complete | `SyntaxHighlightingMarkdownRenderer` uses Markdig to produce HTML with language-class-marked `<code>` blocks; wired into streaming and non-streaming chat responses |
 | Phase 7.1b: Pingu tools wiring | ✓ Complete | `PinguGameIntegrationTool`, `PinguModelTool`, `PinguGameTool`, `PinguModelLoadTool`, `PinguPanelToggleTool` all registered in DI |
 | Phase 7.7: Dynamic system prompt assembly | ✓ Complete | `AgentSystemPromptGenerator` with `GeneratePlanningPrompt` and `GenerateActingPrompt` methods |
@@ -735,4 +735,6 @@ Located in Grid.Row=1, spanning all 3 columns. Uses a DockPanel with:
 | UI automation testing | Not started | No Avalonia UI test framework configured; low priority |
 | Load testing (concurrent requests) | Stubbed | `ServerLoadTest` exists but not fully tested against real server |
 | Diffusion model family testing | Stubbed | SD 1.x/SDXL/SD3/Flux pipeline ready but not tested with specific models |
-| LoRA runtime tensor injection | Stubbed | Weight injection infrastructure exists; needs ONNX tensor manipulation |
+| LoRA runtime tensor injection | Stubbed | Weight extraction works; `LoraAdapterManager.ApplyDeltasToSessionAsync` returns true without modifying ONNX tensors — requires ONNX Runtime weight manipulation API not available in .NET bindings |
+| ImagePostProcessingService.DecodeLatentsToPng | Stubbed | Returns placeholder PNG; real VAE decode requires ONNX tensor manipulation |
+| Streaming image generation | Stubbed | `DiffusionPipelineService` streaming stubbed; real SSE requires ONNX streaming |

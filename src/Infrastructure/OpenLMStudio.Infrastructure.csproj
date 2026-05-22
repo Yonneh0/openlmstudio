@@ -5,7 +5,7 @@
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
     <EnableWindowsTargeting>true</EnableWindowsTargeting>
-    <NoWarn>$(NoWarn);CA1416</NoWarn>
+    <NoWarn>$(NoWarn);CA1416;NU1701</NoWarn>
     <RootNamespace>OpenLMStudio.Infrastructure</RootNamespace>
   </PropertyGroup>
 
