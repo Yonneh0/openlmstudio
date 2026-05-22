@@ -375,6 +375,9 @@ public static class DependencyInjection
         // AppUpdateChecker checks for application updates via GitHub Releases API
         services.AddSingleton<IAppUpdateChecker, AppUpdateChecker>();
 
+        // OnboardingService tracks first-run onboarding completion state
+        services.AddSingleton<IOnboardingService, OnboardingService>();
+
         // UpdateManager provides application-level update checking via GitHub Releases API.
         services.AddSingleton<IUpdateManager>(resolver =>
             new UpdateManager(
