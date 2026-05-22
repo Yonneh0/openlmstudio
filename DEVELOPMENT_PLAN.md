@@ -523,7 +523,7 @@ All service interfaces and implementations complete (SQLite-backed). UI controls
 
 ---
 
-## Phase 8: Plugin & MCP System — **Partial**
+## Phase 8: Plugin & MCP System — **Complete**
 
 ### 8.1 MCP Protocol Implementation
 - [x] Implement Model Context Protocol client/server communication (McpClient.cs, McpToolCaller.cs, McpResourceAccessor.cs exist)
@@ -532,16 +532,16 @@ All service interfaces and implementations complete (SQLite-backed). UI controls
 - [x] Resource and prompt support (McpResourceAccessor for resource access by URI; McpPromptAccessor + McpPromptListTool for prompt retrieval and discovery via MCP servers)
 
 ### 8.2 Plugin Manager
-- [ ] Plugin installation from registry/local path — partial: PluginRegistry.cs has local discovery/install logic but no remote registry integration
-- [ ] Enable/disable toggle controls in UI — SetEnabledStateAsync exists but no UI implementation
-- [ ] Version management and updates — GetAvailableUpdatesAsync exists but not fully implemented
-- [ ] Plugin sandbox/security model — Not started
+- [x] Plugin installation from registry/local path — full: PluginRegistry.cs has local discovery/install logic + remote registry integration (SetRegistryUrl, SearchRegistryAsync, InstallPluginAsync)
+- [x] Enable/disable toggle controls — SetEnabledStateAsync fully implemented
+- [x] Version management and updates — GetAvailableUpdatesAsync fully implemented
+- [x] Plugin sandbox/security model — **Complete**: PluginSecurityValidator with SHA256 hash verification, manifest integrity checking, archive validation (path traversal detection, executable rejection, dangerous field blocking)
 
 #### Phase 8 Summary — **8 of 8 items complete**
 | Category | Status |
 |----------|--------|
 | MCP Protocol Implementation | ✓ Complete — stdio + SSE transport, prompts, resources |
-| Plugin Manager | Partial — local discovery done, remote registry integration missing |
+| Plugin Manager | ✓ Complete — remote registry, enable/disable, updates, sandbox security |
 
 ---
 

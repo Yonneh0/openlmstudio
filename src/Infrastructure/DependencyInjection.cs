@@ -1,6 +1,7 @@
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging.Abstractions;
 using OpenLMStudio.Application.Interfaces;
+using OpenLMStudio.Application.Services;
 using OpenLMStudio.Infrastructure.Services;
 using OpenLMStudio.Infrastructure.Services.QEMU;
 
@@ -280,6 +281,9 @@ public static class DependencyInjection
         services.AddSingleton<Domain.Interfaces.IPluginRegistry>(resolver =>
             new Services.PluginRegistry(resolver.GetService<Microsoft.Extensions.Logging.ILogger<Services.PluginRegistry>>(), pluginDir));
 
+        // PluginSecurityValidator verifies plugin provenance (hash) and manifest integrity
+        services.AddSingleton<IPluginSecurityValidator, Services.PluginSecurityValidator>();
+
         // ---- Phase 9: Resilience & Security System ----
 
         // SandboxService provides cross-platform process isolation (Job Objects on Windows, cgroups v2 on Linux/macOS)
@@ -432,6 +436,9 @@ public static class DependencyInjection
 
         // Context-aware suggestion service: generates next-action suggestions based on conversation/task/project state
         services.AddSingleton<IContextAwareSuggestionService, ContextAwareSuggestionService>();
+
+        // Markdown renderer: converts Markdown to HTML for chat display
+        services.AddSingleton<IMarkdownRenderer, Services.AvaloniaMarkdownRenderer>();
 
         return services;
     }
