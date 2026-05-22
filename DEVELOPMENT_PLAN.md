@@ -604,7 +604,7 @@ All service interfaces and implementations complete (SQLite-backed). UI controls
 | Category | Status |
 |----------|--------|
 | Testing Strategy | Partial — 66+ tests across 3 projects, CI/CD via GitHub Actions |
-| UX Refinements | Partial — keyboard shortcuts done, onboarding flow done (Phase 10.6), accessibility pending |
+| UX Refinements | Partial — keyboard shortcuts done, onboarding flow done (Phase 10.6), accessibility service implemented |
 | Documentation & Release | Partial — user docs and compatibility guides complete |
 
 ### Overall Progress: ~117 of 223 items (~52%)

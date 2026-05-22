@@ -15,6 +15,9 @@ public static class DependencyInjection
         // Markdown renderer: converts markdown (via Markdig) to Avalonia-compatible markup
         services.AddSingleton<IMarkdownRenderer, AvaloniaMarkdownRenderer>();
 
+        // Accessibility service: manages accessibility settings and control properties
+        services.AddSingleton<IAccessibilityService, AccessibilityService>();
+
         return services;
     }
 }
