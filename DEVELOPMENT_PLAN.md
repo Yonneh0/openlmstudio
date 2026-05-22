@@ -206,6 +206,8 @@ OpenLMStudio/
 
 ### 2.3 Model Loading Engine with Multi-Engine Support
 - [x] Integrate with llama.cpp or equivalent inference engine via native bindings — cross-platform: `LlamaCppChatCompletionService.cs` implements IChatCompletionService for text generation
+- [x] Engine binary downloader with version pinning, checksum verification, GPU backend selection (CPU/CUDA/Metal/Vulkan) — `EngineBinaryDownloader.cs`
+- [x] SystemAIClient now uses EngineBinaryDownloader for binary path resolution + GPU backend selection (GpuLayers config)
 - [ ] Add diffusers.net integration for diffusion/image models
 - [ ] Add ONNX Runtime integration as alternative inference backend — .NET packages available on Linux/macOS/Windows (partial: ONNX Runtime used in DiffusionPipeline/VaEPipeline)
 - [ ] Implement unified model loading interface with type-specific pipelines (stub implementations exist but not complete):
