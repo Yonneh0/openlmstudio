@@ -600,14 +600,14 @@ All service interfaces and implementations complete (SQLite-backed). UI controls
 - [x] Developer documentation for plugin creation — docs/DEVELOPER_PLUGINS.md
 - [x] Interactive help system within the app — InteractiveHelpService + IInteractiveHelpService
 
-#### Phase 10 Summary — **12 of 16 items complete**
+#### Phase 10 Summary — **13 of 16 items complete**
 | Category | Status |
 |----------|--------|
-| Testing Strategy | Partial — 66+ tests across 3 projects, CI/CD via GitHub Actions |
+| Testing Strategy | Partial — 66+ tests across 3 projects, CI/CD via GitHub Actions; performance benchmarking (ChatCompletionBenchmark) and server load testing (ServerLoadTest) implemented |
 | UX Refinements | Partial — keyboard shortcuts done, onboarding flow done (Phase 10.6), accessibility service implemented |
 | Documentation & Release | Partial — user docs and compatibility guides complete |
 
-### Overall Progress: ~117 of 223 items (~52%)
+### Overall Progress: ~158 of 223 items (~71%)
 
 ---
 
@@ -701,10 +701,10 @@ Located in Grid.Row=1, spanning all 3 columns. Uses a DockPanel with:
 | 7: Agent Harness | ✓ Complete — agent core, communication protocol, tooling system, task scheduler, project tree, git, error recovery, Pingu tools (panel toggle, model management, game integration), PinguPromptGenerator (dynamic prompts), AgentSystemPromptGenerator (tool descriptions injected) |
 | 8: Plugin & MCP System | ✓ Complete — MCP (stdio + SSE), prompts, resources all done; PluginRegistry has remote registry integration (SetRegistryUrl, SearchRegistryAsync, InstallPluginAsync), PluginManagementWindow |
 | 9: Resilience & Security | ✓ Complete — error recovery (OOM, streaming SSE, download resume) done; security sandbox (cgroups/Job Objects) done; VRAM allocation and eviction policy in ModelManager; conversation encryption at rest (AES-256) via ConversationEncryptionService |
-| 10: Testing & Release | ~13/16 items — 70+ tests with CI/CD via GitHub Actions; UX refinements (keyboard shortcuts, accessibility, onboarding) complete; performance benchmarking and load testing pending |
+| 10: Testing & Release | ~15/16 items — 70+ tests with CI/CD via GitHub Actions; UX refinements (keyboard shortcuts, accessibility, onboarding) complete; performance benchmarking (ChatCompletionBenchmark) and server load testing (ServerLoadTest) implemented |
 | 10.5: Observability | ✓ Complete — structured logging, event tracing, activity tracer, model lifecycle tracer |
 
-### Overall Progress: ~155 of 223 items (~69%)
+### Overall Progress: ~158 of 223 items (~71%)
 
 ---
 
