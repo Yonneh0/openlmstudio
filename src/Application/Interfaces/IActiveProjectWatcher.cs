@@ -1,95 +1,66 @@
-using System;
+// Brought to you by Carls' Jr.
 using System.Collections.Generic;
-using System.Threading.Tasks;
-using OpenLMStudio.Application.Types;
+using OpenLMStudio.Domain.Models;
 
 namespace OpenLMStudio.Application.Interfaces;
 
 /// <summary>
-/// Event type for filesystem changes detected by the active project watcher.
+/// Represents a node in the active project tree.
 /// </summary>
-public enum FileWatchEventType
+public record ProjectTreeNode(
+    string Path,
+    string Name,
+    bool IsDirectory,
+    IReadOnlyList<ProjectTreeNode> Children = null!,
+    long? Size = null,
+    DateTime? LastModified = null);
+
+/// <summary>
+/// Represents a change event in the project tree.
+/// </summary>
+public record ProjectTreeChange(
+    string Path,
+    ProjectTreeChangeType ChangeType,
+    string? OldPath = null);
+
+/// <summary>
+/// Type of change detected in the project tree.
+/// </summary>
+public enum ProjectTreeChangeType
 {
     Added,
-    Deleted,
     Modified,
+    Deleted,
     Renamed
 }
 
 /// <summary>
-/// Notification containing details of a filesystem change.
+/// Interface for monitoring real-time changes to the active project tree.
 /// </summary>
-public record FileSystemChangeNotification(
-    FileWatchEventType ChangeType,
-    string Path,
-    System.DateTimeOffset ChangedAt);
-
-/// <summary>
-/// Event arguments for filesystem change notifications.
-/// </summary>
-public class FileSystemChangeEventArgs : EventArgs
-{
-    public FileSystemChangeNotification Notification { get; }
-
-    public FileSystemChangeEventArgs(FileSystemChangeNotification notification)
-    {
-        Notification = notification;
-    }
-}
-
-/// <summary>
-/// Service for monitoring a directory and emitting filesystem change events.
-/// Used by the agent harness to keep the project tree in sync with real-time changes.
-/// </summary>
-public interface IActiveProjectWatcher
+public interface IActiveProjectWatcher : IDisposable
 {
     /// <summary>
-    /// Root path being watched.
+    /// Gets the current root of the project tree.
     /// </summary>
-    string RootPath { get; }
+    ProjectTreeNode? CurrentTree { get; }
 
     /// <summary>
-    /// Whether the watcher is currently active.
+    /// Raised when the project tree changes.
     /// </summary>
-    bool IsWatching { get; }
+    event System.EventHandler<ProjectTreeChange>? TreeChanged;
 
     /// <summary>
-    /// Starts monitoring the root path.
+    /// Starts watching the specified directory for changes.
     /// </summary>
-    Task StartAsync();
+    Task StartAsync(string directoryPath, CancellationToken ct = default);
 
     /// <summary>
-    /// Stops monitoring.
+    /// Stops watching the current directory.
     /// </summary>
-    Task StopAsync();
+    Task StopAsync(CancellationToken ct = default);
 
     /// <summary>
-    /// Refreshes the project tree from disk.
+    /// Refreshes the current tree snapshot.
     /// </summary>
-    Task RefreshTreeAsync();
-
-    /// <summary>
-    /// Gets the current project tree.
-    /// </summary>
-    Task<IReadOnlyList<ProjectNode>> GetProjectTreeAsync(string? rootPath = null);
-
-    /// <summary>
-    /// Gets a file preview.
-    /// </summary>
-    Task<FilePreviewResult?> GetFilePreviewAsync(string filePath, int maxLines = 100);
-
-    /// <summary>
-    /// Checks if a file is binary.
-    /// </summary>
-    bool IsBinaryFile(string filePath);
-
-    /// <summary>
-    /// Gets git status for files in the watched directory.
-    /// </summary>
-    Task<IReadOnlyDictionary<string, string?>> GetGitStatusAsync();
-
-    /// <summary>
-    /// Event raised when filesystem changes are detected.
-    /// </summary>
-    event EventHandler<FileSystemChangeEventArgs> FileSystemChanged;
+    Task<ProjectTreeNode> RefreshAsync(CancellationToken ct = default);
 }

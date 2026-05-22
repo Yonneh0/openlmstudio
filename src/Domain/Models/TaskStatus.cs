@@ -14,12 +14,16 @@ public enum TaskStatus
     /// <summary>Task is paused.</summary>
     Paused = 2,
 
+    /// <summary>Task is queued and waiting for dependencies.</summary>
+    Queued = 3,
+
     /// <summary>Task has failed.</summary>
-    Failed = 3,
+    Failed = 4,
 
     /// <summary>Task has been cancelled.</summary>
-    Cancelled = 4,
+    Cancelled = 5,
 
     /// <summary>Task has completed successfully.</summary>
-    Completed = 5,
+    Completed = 6,
+
 }

@@ -1,3 +1,4 @@
+// Brought to you by Carls' Jr.
 using System;
 using System.Collections.Generic;
 using System.IO;
@@ -5,127 +6,153 @@ using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Extensions.Logging;
-using OpenLMStudio.Application.Interfaces;
-using OpenLMStudio.Application.Types;
 
 namespace OpenLMStudio.Infrastructure.Services;
 
 /// <summary>
-/// Real-time filesystem watcher for project tree updates.
-/// Monitors a directory for file additions, modifications, and deletions.
+/// Monitors real-time changes to the active project tree using FileSystemWatcher.
 /// </summary>
 public class ActiveProjectWatcher : IActiveProjectWatcher
 {
     private readonly ILogger<ActiveProjectWatcher>? _logger;
-    private readonly IProjectExplorer _projectExplorer;
-    private readonly string _rootPath;
+    private readonly string _watchPath;
+    private readonly IProjectExplorer? _projectExplorer;
     private FileSystemWatcher? _watcher;
-    private readonly object _lock = new();
+    private Application.Interfaces.ProjectTreeNode? _currentTree;
+    private string? _currentDirectory;
     private bool _disposed;
-    private bool _isWatching;
 
-    public ActiveProjectWatcher(ILogger<ActiveProjectWatcher>? logger, string rootPath, IProjectExplorer projectExplorer)
+    public ActiveProjectWatcher(ILogger<ActiveProjectWatcher>? logger = null, string? watchPath = null, IProjectExplorer? projectExplorer = null)
     {
         _logger = logger;
-        _rootPath = rootPath;
+        _watchPath = watchPath ?? Directory.GetCurrentDirectory();
         _projectExplorer = projectExplorer;
     }
 
-    public string RootPath => _rootPath;
-    public bool IsWatching => _isWatching;
+    public Application.Interfaces.ProjectTreeNode? CurrentTree => _currentTree;
 
-    public async Task StartAsync()
+    public event System.EventHandler<Application.Interfaces.ProjectTreeChange>? TreeChanged;
+
+    public async Task StartAsync(string directoryPath, CancellationToken ct = default)
     {
-        if (_disposed || _isWatching) return;
+        StopAsync(ct).GetAwaiter().GetResult();
 
-        _watcher = new FileSystemWatcher(_rootPath)
+        _currentDirectory = directoryPath;
+        _currentTree = await BuildTreeAsync(directoryPath, ct).ConfigureAwait(false);
+
+        _watcher = new FileSystemWatcher(directoryPath)
         {
             IncludeSubdirectories = true,
-            NotifyFilter = NotifyFilters.FileName | NotifyFilters.DirectoryName | NotifyFilters.LastWrite | NotifyFilters.Size
+            NotifyFilter = NotifyFilters.FileName | NotifyFilters.DirectoryName |
+                           NotifyFilters.LastWrite | NotifyFilters.Size
         };
 
-        _watcher.Created += OnFileChanged;
-        _watcher.Deleted += OnFileChanged;
-        _watcher.Changed += OnFileChanged;
-        _watcher.Renamed += OnFileRenamed;
+        _watcher.Created += OnChanged;
+        _watcher.Deleted += OnChanged;
+        _watcher.Changed += OnChanged;
+        _watcher.Renamed += OnRenamed;
+
         _watcher.EnableRaisingEvents = true;
-        _isWatching = true;
-        _logger?.LogInformation("ActiveProjectWatcher started for directory: {Directory}", _rootPath);
+        _logger?.LogInformation("Started watching directory: {Directory}", directoryPath);
     }
 
-    public async Task StopAsync()
+    public async Task StopAsync(CancellationToken ct = default)
     {
-        lock (_lock)
+        if (_watcher != null)
         {
-            _watcher?.Dispose();
+            _watcher.EnableRaisingEvents = false;
+            _watcher.Created -= OnChanged;
+            _watcher.Deleted -= OnChanged;
+            _watcher.Changed -= OnChanged;
+            _watcher.Renamed -= OnRenamed;
+            _watcher.Dispose();
             _watcher = null;
-            _isWatching = false;
         }
-        _logger?.LogInformation("ActiveProjectWatcher stopped for {Directory}", _rootPath);
-        await Task.CompletedTask;
+
+        _logger?.LogInformation("Stopped watching directory: {Directory}", _currentDirectory);
     }
 
-    public async Task RefreshTreeAsync()
+    public async Task<Application.Interfaces.ProjectTreeNode> RefreshAsync(CancellationToken ct = default)
     {
-        await Task.CompletedTask;
+        if (string.IsNullOrEmpty(_currentDirectory))
+            throw new InvalidOperationException("Watcher not started. Call StartAsync first.");
+
+        _currentTree = await BuildTreeAsync(_currentDirectory, ct).ConfigureAwait(false);
+        return _currentTree;
     }
 
-    public async Task<IReadOnlyList<ProjectNode>> GetProjectTreeAsync(string? rootPath = null)
+    private void OnChanged(object sender, FileSystemEventArgs e)
     {
-        return await _projectExplorer.GetProjectTreeAsync(rootPath ?? _rootPath);
-    }
-
-    public async Task<FilePreviewResult?> GetFilePreviewAsync(string filePath, int maxLines = 100)
-    {
-        return await _projectExplorer.GetFilePreviewAsync(filePath, maxLines);
-    }
-
-    public bool IsBinaryFile(string filePath)
-    {
-        return _projectExplorer.IsBinaryFile(filePath);
-    }
-
-    public async Task<IReadOnlyDictionary<string, string?>> GetGitStatusAsync()
-    {
-        return await _projectExplorer.GetGitStatusAsync(_rootPath);
-    }
-
-    public event EventHandler<FileSystemChangeEventArgs>? FileSystemChanged;
-
-    private void OnFileChanged(object sender, FileSystemEventArgs e)
-    {
-        var eventType = e.ChangeType switch
+        var changeType = e.ChangeType switch
         {
-            WatcherChangeTypes.Created => FileWatchEventType.Added,
-            WatcherChangeTypes.Deleted => FileWatchEventType.Deleted,
-            WatcherChangeTypes.Changed => FileWatchEventType.Modified,
-            _ => FileWatchEventType.Modified
+            WatcherChangeTypes.Created => Application.Interfaces.ProjectTreeChangeType.Added,
+            WatcherChangeTypes.Deleted => Application.Interfaces.ProjectTreeChangeType.Deleted,
+            _ => Application.Interfaces.ProjectTreeChangeType.Modified
         };
 
-        var notification = new FileSystemChangeNotification(eventType, e.FullPath, DateTime.UtcNow);
-
-        _logger?.LogDebug("File change detected: {EventType} - {FullPath}", eventType, e.FullPath);
-        FileSystemChanged?.Invoke(this, new FileSystemChangeEventArgs(notification));
+        var change = new Application.Interfaces.ProjectTreeChange(e.FullPath, changeType);
+        TreeChanged?.Invoke(this, change);
     }
 
-    private void OnFileRenamed(object sender, RenamedEventArgs e)
+    private void OnRenamed(object sender, RenamedEventArgs e)
     {
-        var eventType = string.IsNullOrEmpty(e.OldName)
-            ? FileWatchEventType.Added
-            : FileWatchEventType.Modified;
+        var change = new Application.Interfaces.ProjectTreeChange(e.FullPath, Application.Interfaces.ProjectTreeChangeType.Renamed, e.OldFullPath);
+        TreeChanged?.Invoke(this, change);
+    }
 
-        var notification = new FileSystemChangeNotification(eventType, e.FullPath, DateTime.UtcNow);
+    private async Task<Application.Interfaces.ProjectTreeNode> BuildTreeAsync(string directoryPath, CancellationToken ct)
+    {
+        var entries = new List<Application.Interfaces.ProjectTreeNode>();
 
-        _logger?.LogDebug("File renamed: {OldPath} -> {NewPath}", e.FullPath, e.Name);
-        FileSystemChanged?.Invoke(this, new FileSystemChangeEventArgs(notification));
+        try
+        {
+            var dirs = Directory.EnumerateDirectories(directoryPath, "*", SearchOption.TopDirectoryOnly)
+                .OrderBy(d => Path.GetFileName(d));
+            var files = Directory.EnumerateFiles(directoryPath, "*", SearchOption.TopDirectoryOnly)
+                .OrderBy(f => Path.GetFileName(f));
+
+            foreach (var dir in dirs)
+            {
+                if (ct.IsCancellationRequested) break;
+                var dirInfo = new DirectoryInfo(dir);
+                var childTree = await BuildTreeAsync(dir, ct).ConfigureAwait(false);
+                entries.Add(new Application.Interfaces.ProjectTreeNode(
+                    dir,
+                    dirInfo.Name,
+                    true,
+                    new List<Application.Interfaces.ProjectTreeNode> { childTree },
+                    null,
+                    dirInfo.LastWriteTime));
+            }
+
+            foreach (var file in files)
+            {
+                if (ct.IsCancellationRequested) break;
+                var fileInfo = new FileInfo(file);
+                entries.Add(new Application.Interfaces.ProjectTreeNode(
+                    file,
+                    fileInfo.Name,
+                    false,
+                    Array.Empty<Application.Interfaces.ProjectTreeNode>(),
+                    fileInfo.Length,
+                    fileInfo.LastWriteTime));
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger?.LogWarning(ex, "Failed to build project tree for: {Directory}", directoryPath);
+            entries.Add(new Application.Interfaces.ProjectTreeNode(directoryPath, "Error loading", false, Array.Empty<Application.Interfaces.ProjectTreeNode>()));
+        }
+
+        return new Application.Interfaces.ProjectTreeNode(directoryPath, Path.GetFileName(directoryPath), true, entries);
     }
 
     public void Dispose()
     {
         if (!_disposed)
         {
-            _disposed = true;
             StopAsync().GetAwaiter().GetResult();
+            _disposed = true;
         }
     }
 }

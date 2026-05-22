@@ -67,6 +67,11 @@ public class Message
     public List<ImageOutput> ImageOutputs { get; set; } = new();
 
     /// <summary>
+    /// Generated embedding outputs (for embedding generation responses).
+    /// </summary>
+    public List<float[]> EmbeddingOutputs { get; set; } = new();
+
+    /// <summary>
     /// Number of tokens consumed by this message (approximate count).
     /// </summary>
     public int TokenCount { get; set; }

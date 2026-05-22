@@ -137,6 +137,15 @@ public static class DependencyInjection
         // TaskService manages agentic tasks — creation, execution via IAgent, dependency tracking, and persistence
         services.AddSingleton<ITaskService, Services.TaskService>();
 
+        // SqliteTaskRepository provides SQLite-backed CRUD operations for agentic tasks with priority scheduling
+        services.AddSingleton<ITaskRepository>(resolver =>
+        {
+            var logger = resolver.GetService<Microsoft.Extensions.Logging.ILogger<Services.SqliteTaskRepository>>();
+            var appData = resolver.GetService<AppDataDirectoryResolver>();
+            var dbPath = Path.Combine(appData?.TaskDirectory ?? Directory.GetCurrentDirectory(), "tasks.db");
+            return new Services.SqliteTaskRepository(logger, $"Data Source={dbPath}");
+        });
+
         // ---- Phase 7: Built-in Tool Registration ----
 
         // FileRead tool for reading file contents within the agent sandbox
