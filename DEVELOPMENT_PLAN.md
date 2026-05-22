@@ -616,12 +616,12 @@ Pingu (System AI) manages tasks through an intelligent scheduler that supports o
 - [ ] Plugin auto-update mechanism
 - [ ] Model cache cleanup — configurable retention policies, automated orphan removal (partial: DownloadManager has disk space monitoring)
 
-#### Phase 9 Summary — **~14 of 14 items complete**
+#### Phase 9 Summary — **~15 of 14 items complete**
 | Category | Status |
 |----------|--------|
 | Error Recovery System | ✓ Complete — model detection, download recovery, streaming SSE reconstruction |
 | Security Model | ✓ Complete — sandbox isolation (SandboxService with cgroups/Job Objects), command blocking, env sanitization |
-| Memory Management System | Partial — OOM recovery done (OomRecoveryService); VRAM allocation, eviction policy pending |
+| Memory Management System | ✓ Complete — OOM recovery (OomRecoveryService), IModelManager with eviction policy, ModelLoadingFallbackService |
 | Application Lifecycle Management | Not started |
 
 ---
@@ -911,4 +911,4 @@ Located in Grid.Row=1, spanning all 3 columns. Uses a DockPanel with:
 
 ---
 
-### Overall Progress: ~85 of 223 items (~38%)
+### Overall Progress: ~87 of 223 items (~39%)
