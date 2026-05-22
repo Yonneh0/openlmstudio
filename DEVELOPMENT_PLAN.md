@@ -622,6 +622,8 @@ OpenLMStudio/
 | UI Framework | Avalonia UI — cross-platform WPF-like framework |
 | HTTP Server | ASP.NET Core Minimal APIs via Kestrel |
 | Database | SQLite for ALL persistent data; stored in platform-specific appdata directory (contexts/, metadata/, tasks/) |
+| Versioning | Git commit hash only — no version numbers or release numbers. Current version displayed as `git rev-parse --short HEAD` |
+| AssemblyInfo | Compile-time git commit/branch/dirty flag captured via MSBuild target and `[AssemblyMetadata]` attributes |
 | Text Inference Engine | llama.cpp integration pending |
 | Image Generation Engine | ONNX Runtime + diffusers model integration pending |
 | Embedding Engine | ONNX Runtime + safetensors model loader pending |
@@ -631,6 +633,28 @@ OpenLMStudio/
 | Agent Harness | Custom plan/act cycle with tooling system not yet implemented |
 | Git Integration | Git CLI integration via Process API |
 | Device Monitoring | Vulkan.NET + nvidia-ml-net for GPU VRAM across all platforms pending |
+
+---
+
+## Versioning Policy
+
+This project uses **git commit hash** as its sole version identifier. There are no version numbers, release numbers, or semantic versioning.
+
+- **Assembly metadata**: Captured at compile time via MSBuild target in `OpenLMStudio.Desktop.csproj`:
+  - `GitCommit` — short SHA (`git rev-parse --short HEAD`)
+  - `GitBranch` — current branch name (`git rev-parse --abbrev-ref HEAD`)
+  - `GitDirty` — `"true"` if working tree has uncommitted changes
+- **AssemblyInfo.cs** (`src/Desktop/AssemblyInfo.cs`): `GitInfo` static class exposes these values via `[AssemblyMetadata]` attributes
+- **UI display**: Status bar at bottom of MainWindow shows `OpenLMStudio <short-hash>`
+- **UserAgent strings**: Use `"dev"` instead of version numbers
+- **UpdateManager**: Reports version as `"dev"` instead of `Assembly.GetName().Version`
+
+### Avalonia UI Guide
+A comprehensive guide for working with Avalonia UI is available at `docs/AVALONIA_UI_GUIDE.md`. Key points:
+- **No `Avalonia.Controls.Popup`** — use `Border` with `IsVisible` property
+- **DockPanel.Fill issue** — explicitly set `DockPanel.Dock="Fill"` on content containers
+- **Canvas overlay** — position absolute children relative to Grid cell, but Canvas children don't respect `Grid.ColumnSpan`
+- **Window has ONE child** — wrap all content in a single panel
 
 ---
 
