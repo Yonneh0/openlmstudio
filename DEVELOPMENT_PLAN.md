@@ -581,24 +581,24 @@ All service interfaces and implementations complete (SQLite-backed). UI controls
 ## Phase 10: Testing & Release — **~10 of 16 items**
 
 ### 10.1 Comprehensive Testing Strategy
-- [x] Unit test suite with mock services for inference engines — **DONE**: 66+ tests across 3 test projects
-- [x] Integration test infrastructure (in-memory SQLite, mocked HTTP server) — **DONE**: TestHelpers.cs
+- [x] Unit test suite with mock services for inference engines — 70+ tests across 4 test projects
+- [x] Integration test infrastructure (in-memory SQLite, mocked HTTP server) — TestHelpers.cs
 - [ ] UI automation testing via Avalonia-compatible framework
 - [ ] Performance benchmarking — model loading time, token generation throughput
 - [ ] Load testing for server endpoints under concurrent request scenarios
 
 ### 10.2 User Experience Refinements
-- [x] Keyboard shortcuts for common actions — **DONE**: Ctrl+N, Ctrl+S, Ctrl+R, Ctrl+Shift+R, Ctrl+D, Ctrl+F, Ctrl+P, Ctrl+W, Ctrl+T, Ctrl+1-8, Escape, F5, F12 (MainWindow.axaml.cs)
+- [ ] Keyboard shortcuts for common actions
 - [ ] Accessibility improvements (keyboard navigation, screen reader support)
-- [x] Onboarding flow for first-time users — **DONE**: IOnboardingService + OnboardingService with disk-based state persistence (Phase 10.6)
+- [ ] Onboarding flow for first-time users
 
 ### 10.3 Documentation & Release
 - [x] User documentation and help system — comprehensive USER_GUIDE.md
 - [x] API compatibility matrix — docs/API_COMPATIBILITY.md
 - [x] Model compatibility guide — docs/MODEL_COMPATIBILITY.md
 - [x] Troubleshooting guide — docs/TROUBLESHOOTING.md
-- [ ] Developer documentation for plugin creation
-- [ ] Interactive help system within the app
+- [x] Developer documentation for plugin creation — docs/DEVELOPER_PLUGINS.md
+- [x] Interactive help system within the app — InteractiveHelpService + IInteractiveHelpService
 
 #### Phase 10 Summary — **12 of 16 items complete**
 | Category | Status |
