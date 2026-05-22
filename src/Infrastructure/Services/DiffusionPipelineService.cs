@@ -56,6 +56,37 @@ public class DiffusionPipelineService : IDiffusionPipelineService, IDisposable
     /// </summary>
     public async Task<ImageGenerationResult> GenerateImageAsync(ImageGenerationRequest request, CancellationToken ct = default)
     {
+        // Resolve LoRA adapters if specified in request
+        IReadOnlyList<LoraDeltaTensor>? resolvedLoraDeltas = null;
+        if (_loraManager != null && request.LoraAdapters != null && request.LoraAdapters.Any())
+        {
+            try
+            {
+                resolvedLoraDeltas = new List<LoraDeltaTensor>();
+                foreach (var loraRef in request.LoraAdapters)
+                {
+                    var adapterDeltas = await _loraManager.ExtractDeltaTensorsAsync(loraRef.ModelId, ct);
+                    if (adapterDeltas != null && adapterDeltas.Any())
+                    {
+                        // Scale each delta by the adapter's weight
+                        foreach (var delta in adapterDeltas)
+                        {
+                            resolvedLoraDeltas.Add(new LoraDeltaTensor(
+                                delta.TensorName,
+                                delta.DeltaData,
+                                delta.Shape,
+                                delta.Weight * loraRef.Weight));
+                        }
+                    }
+                }
+                _logger?.LogInformation("Resolved {Count} LoRA adapters for pipeline", resolvedLoraDeltas.Count);
+            }
+            catch (Exception ex)
+            {
+                _logger?.LogWarning(ex, "Failed to resolve LoRA adapters, continuing without them");
+            }
+        }
+
         // Ensure model is loaded; load it if not already present in _loadedSessions
         var wasAlreadyLoaded = _loadedSessions.ContainsKey(request.ModelId);
         if (!wasAlreadyLoaded)
@@ -114,8 +145,8 @@ public class DiffusionPipelineService : IDiffusionPipelineService, IDisposable
 
         _logger?.LogInformation("Starting full 3-stage diffusion pipeline for '{ModelId}' (CLIP→UNet+CFG→VAE)", request.ModelId);
 
-        // Run the full denoising loop with CFG
-        var resultBytes = await RunDenoisingLoop(engine, pipelineType, multimodalMeta, request, ct);
+        // Run the full denoising loop with CFG, passing LoRA deltas
+        var resultBytes = await RunDenoisingLoop(engine, pipelineType, multimodalMeta, request, resolvedLoraDeltas, ct);
 
         if (resultBytes == null)
             throw new InvalidOperationException($"Diffusion inference failed for model '{request.ModelId}'.");
@@ -140,7 +171,7 @@ public class DiffusionPipelineService : IDiffusionPipelineService, IDisposable
     /// 3. Iteratively denoise using UNet with CFG blending
     /// </summary>
     private async Task<byte[]?> RunDenoisingLoop(
-        DiffusionInferenceEngine engine, string pipelineType, MultiModalModelMetadata? modelMetadata, ImageGenerationRequest request, CancellationToken ct)
+        DiffusionInferenceEngine engine, string pipelineType, MultiModalModelMetadata? modelMetadata, ImageGenerationRequest request, IReadOnlyList<LoraDeltaTensor>? loraDeltas, CancellationToken ct)
     {
         // Step 1: Encode both positive and negative prompts using CLIP text encoder to get text embeddings.
         // For CFG (classifier-free guidance), we need two conditions: the positive prompt and an unconditional condition.
@@ -236,9 +267,10 @@ public class DiffusionPipelineService : IDiffusionPipelineService, IDisposable
                 latents = AddTensors(latents, noiseToAdd);
             }
 
-            // Run UNet denoising with CFG — this is the core inference step
+            // Run UNet denoising with CFG and LoRA delta application — this is the core inference step
             // CFG blends: ε_pred = ε_uncond + cfg_scale * (ε_cond - ε_uncond)
-            var denoised = engine.RunUnetDenoise(pipelineType, latents, textEmbedding!, request.GuidanceScale, stepIndex, request.Steps);
+            var denoised = engine.RunUnetDenoise(
+                pipelineType, latents, textEmbedding!, request.GuidanceScale, stepIndex, request.Steps, loraDeltas);
 
             if (denoised == null)
                 return null;
