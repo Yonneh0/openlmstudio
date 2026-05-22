@@ -5,14 +5,18 @@ namespace OpenLMStudio.Domain.Models;
 /// </summary>
 public enum TaskPhase
 {
-    /// <summary>Setting up project environment and dependencies.</summary>
-    ProjectSetup,
-    /// <summary>Analyzing the problem and planning the approach.</summary>
-    Analysis,
+    /// <summary>Planning the approach and strategy.</summary>
+    Planning = 1,
+
     /// <summary>Executing the planned actions.</summary>
-    Execution,
+    Acting = 2,
+
     /// <summary>Reviewing results and validating correctness.</summary>
-    Review,
+    Reviewing = 3,
+
     /// <summary>Task is complete and finalizing.</summary>
-    Completion
+    Completed = 4,
+
+    /// <summary>Task has failed.</summary>
+    Failed = 5,
 }

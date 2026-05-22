@@ -71,7 +71,15 @@ public class AgentTaskProgressTracker : ITaskProgressTracker
 
     public async Task RecordToolCallAsync(string toolName, Dictionary<string, object> parameters, string result, bool success, double durationMs)
     {
-        var record = new AgentToolCallRecord(toolName, parameters, result, success, durationMs, DateTime.UtcNow);
+        var record = new AgentToolCallRecord
+        {
+            ToolName = toolName,
+            Parameters = parameters,
+            Result = result,
+            Success = success,
+            DurationMs = durationMs,
+            Timestamp = DateTime.UtcNow
+        };
         _toolCalls.Add(record);
 
         // Check if the tool call took too long (>5 minutes is likely a stuck operation)

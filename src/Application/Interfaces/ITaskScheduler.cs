@@ -1,60 +1,73 @@
 using OpenLMStudio.Domain.Models;
+using TaskStatus = OpenLMStudio.Domain.Models.TaskStatus;
 
 namespace OpenLMStudio.Application.Interfaces;
 
 /// <summary>
-/// Manages ordered task queue across branches with priority-aware scheduling,
-/// batch task injection, and dependency resolution.
+/// Manages an ordered task queue across all branches with priority-aware scheduling,
+/// batch task injection, dependency resolution, and auto-start on dependency satisfaction.
 /// </summary>
 public interface ITaskScheduler
 {
     /// <summary>
-    /// Gets the next task to execute based on priority and dependency satisfaction.
+    /// Injects a batch of tasks into a branch, resolving cross-branch dependencies.
+    /// Auto-starts tasks whose dependencies are all satisfied.
     /// </summary>
-    Task<AgenticTask?> GetNextTaskAsync(Guid branchId, CancellationToken cancellationToken = default);
+    Task InjectTasksAsync(Guid branchId, IEnumerable<AgenticTask> tasks, CancellationToken ct = default);
 
     /// <summary>
-    /// Gets all tasks across all branches, ordered by priority and dependency satisfaction.
+    /// Gets the current ordered task queue, sorted by priority then creation time.
     /// </summary>
-    Task<List<AgenticTask>> GetAllOrderedTasksAsync(CancellationToken cancellationToken = default);
+    Task<List<AgenticTask>> GetScheduledTasksAsync(Guid branchId, CancellationToken ct = default);
 
     /// <summary>
-    /// Injects multiple tasks at once into a branch, respecting dependency ordering.
+    /// Gets the full task queue across all branches.
     /// </summary>
-    Task<List<AgenticTask>> InjectTasksAsync(Guid branchId, IEnumerable<AgenticTask> tasks, CancellationToken cancellationToken = default);
+    Task<List<AgenticTask>> GetAllScheduledTasksAsync(CancellationToken ct = default);
 
     /// <summary>
-    /// Marks a task as complete and starts any tasks whose dependencies are now satisfied.
+    /// Updates task status and optionally marks it complete.
     /// </summary>
-    Task OnTaskCompletedAsync(AgenticTask task, CancellationToken cancellationToken = default);
+    Task UpdateTaskStatusAsync(Guid taskId, TaskStatus newStatus, string? errorMessage = null, CancellationToken ct = default);
 
     /// <summary>
-    /// Marks a task as failed and handles dependent task updates.
+    /// Registers tasks from a branch for in-memory caching by a scheduler wrapper.
     /// </summary>
-    Task OnTaskFailedAsync(AgenticTask task, string errorMessage, CancellationToken cancellationToken = default);
+    void RegisterBranch(Guid branchId, List<AgenticTask> tasks);
 
     /// <summary>
-    /// Gets all pending tasks for a branch that are ready to start (dependencies satisfied).
+    /// Updates task progress percentage.
     /// </summary>
-    Task<List<AgenticTask>> GetReadyTasksAsync(Guid branchId, CancellationToken cancellationToken = default);
+    Task UpdateTaskProgressAsync(Guid taskId, int progress, CancellationToken ct = default);
 
     /// <summary>
-    /// Gets blocked tasks in a branch (waiting for dependencies).
+    /// Registers a tool call result for a task.
     /// </summary>
-    Task<List<AgenticTask>> GetBlockedTasksAsync(Guid branchId, CancellationToken cancellationToken = default);
+    Task RegisterToolCallAsync(Guid taskId, AgentToolCallRecord record, CancellationToken ct = default);
 
     /// <summary>
-    /// Pauses all tasks in a branch.
+    /// Gets tasks that are ready to run (pending with all dependencies satisfied).
     /// </summary>
-    Task PauseBranchAsync(Guid branchId, CancellationToken cancellationToken = default);
+    Task<List<AgenticTask>> GetReadyTasksAsync(CancellationToken ct = default);
 
     /// <summary>
-    /// Resumes all tasks in a branch.
+    /// Checks and auto-starts tasks whose dependencies just completed.
+    /// Should be called after a task completes.
     /// </summary>
-    Task ResumeBranchAsync(Guid branchId, CancellationToken cancellationToken = default);
+    Task CheckAndStartDependentTasksAsync(Guid completedTaskId, CancellationToken ct = default);
 
     /// <summary>
-    /// Abandons a branch and all its tasks.
+    /// Abandons a branch and all its pending tasks.
     /// </summary>
-    Task AbandonBranchAsync(Guid branchId, CancellationToken cancellationToken = default);
+    Task AbandonBranchAsync(Guid branchId, CancellationToken ct = default);
+
+    /// <summary>
+    /// Pauses a branch (all tasks in it).
+    /// </summary>
+    Task PauseBranchAsync(Guid branchId, CancellationToken ct = default);
+
+    /// <summary>
+    /// Resumes a paused branch.
+    /// </summary>
+    Task ResumeBranchAsync(Guid branchId, CancellationToken ct = default);
 }

@@ -3,40 +3,32 @@ using OpenLMStudio.Domain.Models;
 namespace OpenLMStudio.Application.Interfaces;
 
 /// <summary>
-/// AI-powered task completion verification using the System AI (Pingu).
+/// Result of an AI-powered task validation check.
 /// </summary>
 public record TaskValidationResult(
     bool Passed,
     string Message,
-    string? FailedReason);
+    string? RetrySuggestion = null);
 
 /// <summary>
-/// Validates task completion criteria using the System AI.
+/// Uses Pingu (System AI) to validate whether a task has been completed successfully.
+/// Sends task description, result summary, and validation criteria to the System AI.
 /// </summary>
 public interface ITaskValidationService
 {
     /// <summary>
-    /// Validates whether a task has been completed successfully based on its validation criteria.
-    /// Uses System AI (Pingu) to evaluate the result against the criteria.
+    /// Validates whether a task's result meets its validation criteria using the System AI.
     /// </summary>
-    /// <param name="task">The task to validate.</param>
-    /// <param name="result">The result/output from the task.</param>
-    /// <param name="cancellationToken">Cancellation token.</param>
-    /// <returns>Validation result indicating pass/fail with reason.</returns>
     Task<TaskValidationResult> ValidateTaskCompletionAsync(
         AgenticTask task,
-        string result,
-        CancellationToken cancellationToken = default);
+        string resultSummary,
+        CancellationToken ct = default);
 
     /// <summary>
-    /// Validates structured output against a JSON schema using the System AI.
+    /// Validates structured output against expected schema using the System AI.
     /// </summary>
-    /// <param name="task">The task with OutputFields schema.</param>
-    /// <param name="output">The structured output to validate.</param>
-    /// <param name="cancellationToken">Cancellation token.</param>
-    /// <returns>Validation result indicating pass/fail with reason.</returns>
     Task<TaskValidationResult> ValidateStructuredOutputAsync(
         AgenticTask task,
-        string output,
-        CancellationToken cancellationToken = default);
+        Dictionary<string, object> outputFields,
+        CancellationToken ct = default);
 }

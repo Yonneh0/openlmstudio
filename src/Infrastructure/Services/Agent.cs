@@ -325,8 +325,15 @@ Propose a detailed plan for completing this task. Be specific about which tools 
             sw.Stop();
 
             var resultText = success ? "Completed" : "Failed";
-            var record = new AgentToolCallRecord(
-                tool.Name, parameters, resultText, success, sw.ElapsedMilliseconds, DateTime.UtcNow);
+            var record = new AgentToolCallRecord
+            {
+                ToolName = tool.Name,
+                Parameters = parameters,
+                Result = resultText,
+                Success = success,
+                DurationMs = sw.ElapsedMilliseconds,
+                Timestamp = DateTime.UtcNow
+            };
 
             _toolCalls.Add(record);
             await _progressTracker.RecordToolCallAsync(tool.Name, parameters, resultText, success, sw.ElapsedMilliseconds);

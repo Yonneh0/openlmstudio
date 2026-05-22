@@ -1,130 +1,71 @@
-using System.Collections.Generic;
-using System.Linq;
-using System.Threading.Tasks;
 using Microsoft.Extensions.Logging;
 using OpenLMStudio.Application.Interfaces;
 using OpenLMStudio.Domain.Models;
+using TaskStatus = OpenLMStudio.Domain.Models.TaskStatus;
 
 namespace OpenLMStudio.Infrastructure.Services;
 
 /// <summary>
-/// Detects whether a task has been completed based on tool results and goal verification.
-/// Supports keyword-based detection and LLM-assisted detection with fallback.
+/// Detects when an agent task is complete based on tool results and task state.
+/// Delegates to TaskValidationService for AI-powered completion checks.
 /// </summary>
-public class TaskCompletionDetector : ITaskCompletionDetector, IDisposable
+public class TaskCompletionDetector : ITaskCompletionDetector
 {
-    private readonly ILogger<TaskCompletionDetector>? _logger;
-    private readonly IChatCompletionService? _chatService;
-    private readonly bool _usesLlm;
-    private bool _disposed;
+    private readonly ILogger<TaskCompletionDetector> _logger;
+    private readonly ITaskValidationService _validationService;
 
     public TaskCompletionDetector(
-        ILogger<TaskCompletionDetector>? logger = null,
-        IChatCompletionService? chatService = null)
+        ILogger<TaskCompletionDetector> logger,
+        ITaskValidationService validationService)
     {
         _logger = logger;
-        _chatService = chatService;
-        _usesLlm = chatService != null;
+        _validationService = validationService;
+    }
+
+    public async Task<TaskValidationResult> DetectCompletionAsync(
+        AgenticTask task,
+        IReadOnlyList<AgentToolCallRecord> toolCalls,
+        CancellationToken ct = default)
+    {
+        if (toolCalls.Count == 0)
+        {
+            _logger.LogDebug("No tool calls to evaluate for task {TaskId}", task.Id);
+            return new TaskValidationResult(false, "No tool calls made — task may not have executed.");
+        }
+
+        // Build a summary from the tool call history
+        var lastFew = toolCalls.TakeLast(10).ToList();
+        var summaryLines = new List<string>();
+        foreach (var call in lastFew)
+        {
+            summaryLines.Add($"- {call.ToolName}: {(call.Success ? "OK" : $"FAILED ({call.Result})")} [{call.DurationMs:F0}ms]");
+        }
+        var summary = string.Join("\n", summaryLines);
+
+        // Use AI-powered validation
+        return await _validationService.ValidateTaskCompletionAsync(task, summary, ct);
     }
 
     /// <summary>
-    /// Simple keyword-based completion detection that works without an LLM.
+    /// Quick heuristic check for obvious completion signals.
+    /// Used as a pre-filter before calling the AI-powered validator.
     /// </summary>
-    public Task<bool> DetectAsync(string taskDescription, IReadOnlyList<AgentToolCallRecord> toolCalls)
+    public static TaskValidationResult QuickHeuristicCheck(AgenticTask task, IReadOnlyList<AgentToolCallRecord> toolCalls)
     {
-        var completed = false;
-        var reason = string.Empty;
+        if (task.Status == TaskStatus.Completed)
+            return new TaskValidationResult(true, "Task already marked as completed.");
 
-        foreach (var call in toolCalls.Reverse())
-        {
-            var text = call?.Result ?? string.Empty;
+        if (task.Status == TaskStatus.Failed)
+            return new TaskValidationResult(false, $"Task failed: {task.ErrorMessage}");
 
-            if (text.IndexOf("task completed", StringComparison.OrdinalIgnoreCase) >= 0
-                || text.IndexOf("done.", StringComparison.OrdinalIgnoreCase) >= 0
-                || text.IndexOf("successfully", StringComparison.OrdinalIgnoreCase) >= 0)
-            {
-                completed = true;
-                reason = "Tool output contains completion signal.";
-                break;
-            }
+        if (toolCalls.Count >= task.MaxIterations)
+            return new TaskValidationResult(false, $"Max iterations ({task.MaxIterations}) reached without completion.");
 
-            if (call?.ToolName == "FileWriteTool" && call.Success)
-            {
-                completed = true;
-                reason = "FileWriteTool completed successfully.";
-                break;
-            }
+        // Check for obvious error patterns in recent tool calls
+        var recentErrors = toolCalls.TakeLast(5).Count(c => !c.Success);
+        if (recentErrors >= 3)
+            return new TaskValidationResult(false, $"Too many recent errors ({recentErrors} failures in last 5 calls).");
 
-            if (call?.ToolName == "GitHistoryTool" && call.Success)
-            {
-                completed = true;
-                reason = "Git operations completed successfully.";
-                break;
-            }
-        }
-
-        if (toolCalls.Count <= 3 && toolCalls.All(c => c?.ToolName == "FileReadTool" || c?.ToolName == "ProjectExplorerTool"))
-        {
-            completed = true;
-            reason = "Read-only task completed (few tool calls).";
-        }
-
-        _logger?.LogDebug("Task completion check: Completed={Completed} - {Reason}", completed, reason);
-        return Task.FromResult(completed);
-    }
-
-    /// <summary>
-    /// LLM-assisted completion detection that sends the task goal and tool results to the model.
-    /// Falls back to keyword detection if the LLM call fails.
-    /// </summary>
-    public async Task<bool> DetectAsync(string taskDescription, IReadOnlyList<AgentToolCallRecord> toolCalls, bool useLlmFallback)
-    {
-        if (!_usesLlm || !useLlmFallback)
-        {
-            return await DetectAsync(taskDescription, toolCalls);
-        }
-
-        var lastResult = toolCalls.LastOrDefault() is { Result: { } result }
-            ? result
-            : "No results available.";
-        var prompt = $"""
-            Task goal: {taskDescription}
-            
-            Tool call results (last):
-            {lastResult}
-            
-            Has the task goal been achieved? Answer with only "yes" or "no".
-            """;
-
-        try
-        {
-            if (_chatService == null)
-                return await DetectAsync(taskDescription, toolCalls);
-
-            var response = await _chatService.GetCompletionAsync(new ChatRequest(
-                ModelId: "default",
-                Messages: new List<Message>
-                {
-                    new() { Role = MessageRole.User, Content = prompt }
-                },
-                Stream: false));
-
-            var answer = response.Message.Content?.Trim().ToLowerInvariant() ?? "no";
-            var completed = answer.StartsWith("yes");
-            _logger?.LogDebug("LLM completion detection: {Answer}", answer);
-            return completed;
-        }
-        catch
-        {
-            return await DetectAsync(taskDescription, toolCalls);
-        }
-    }
-
-    public void Dispose()
-    {
-        if (!_disposed)
-        {
-            _disposed = true;
-        }
+        return new TaskValidationResult(false, "No completion signal detected — continue executing.");
     }
 }

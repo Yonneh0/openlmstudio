@@ -1,196 +1,146 @@
 using Microsoft.Extensions.Logging;
 using OpenLMStudio.Application.Interfaces;
-using OpenLMStudio.Domain.Models;
+using AgenticTask = OpenLMStudio.Domain.Models.AgenticTask;
+using AgentToolCallRecord = OpenLMStudio.Domain.Models.AgentToolCallRecord;
+using TaskPriority = OpenLMStudio.Domain.Models.TaskPriority;
+using TaskStatus = OpenLMStudio.Domain.Models.TaskStatus;
+using TaskPhase = OpenLMStudio.Domain.Models.TaskPhase;
 
 namespace OpenLMStudio.Infrastructure.Services;
 
 /// <summary>
 /// Manages ordered task queue across branches with priority-aware scheduling,
-/// batch task injection, and dependency resolution.
+/// batch task injection, dependency resolution, and auto-start on dependency satisfaction.
+/// Delegates to TaskSchedulerService for SQLite persistence.
 /// </summary>
 public class TaskScheduler : ITaskScheduler
 {
-    private readonly ITaskService _taskService;
-    private readonly ITaskBranchStore? _branchStore;
+    private readonly TaskSchedulerService _persistenceService;
     private readonly ILogger<TaskScheduler>? _logger;
     private readonly Dictionary<Guid, List<AgenticTask>> _branchTasks = new();
     private readonly object _lock = new();
 
     public TaskScheduler(
-        ITaskService taskService,
-        ITaskBranchStore? branchStore,
+        TaskSchedulerService persistenceService,
         ILogger<TaskScheduler>? logger)
     {
-        _taskService = taskService;
-        _branchStore = branchStore;
+        _persistenceService = persistenceService;
         _logger = logger;
     }
 
-    public Task<AgenticTask?> GetNextTaskAsync(Guid branchId, CancellationToken cancellationToken = default)
+    public async Task InjectTasksAsync(Guid branchId, IEnumerable<AgenticTask> tasks, CancellationToken ct = default)
     {
+        // Persist to SQLite
+        await _persistenceService.InjectTasksAsync(branchId, tasks, ct);
+
+        // Update in-memory cache
         lock (_lock)
         {
-            if (!_branchTasks.TryGetValue(branchId, out var tasks))
-                return Task.FromResult<AgenticTask?>(null);
-
-            var readyTasks = tasks
-                .Where(t => t.Status == Domain.Models.TaskStatus.Pending)
-                .Where(t => t.Dependencies.All(d => tasks.Any(tt => tt.Id == d && tt.Status == Domain.Models.TaskStatus.Completed)))
-                .OrderByDescending(t => t.Priority)
-                .ThenBy(t => t.CreatedAt)
-                .ToList();
-
-            return Task.FromResult(readyTasks.FirstOrDefault());
-        }
-    }
-
-    public Task<List<AgenticTask>> GetAllOrderedTasksAsync(CancellationToken cancellationToken = default)
-    {
-        lock (_lock)
-        {
-            var allTasks = _branchTasks.Values.SelectMany(t => t).ToList();
-            return Task.FromResult(allTasks
-                .OrderByDescending(t => t.Priority)
-                .ThenBy(t => t.CreatedAt)
-                .ToList());
-        }
-    }
-
-    public Task<List<AgenticTask>> InjectTasksAsync(Guid branchId, IEnumerable<AgenticTask> tasks, CancellationToken cancellationToken = default)
-    {
-        lock (_lock)
-        {
+            var added = tasks.ToList();
             if (!_branchTasks.ContainsKey(branchId))
                 _branchTasks[branchId] = new List<AgenticTask>();
 
-            var added = tasks.ToList();
             _branchTasks[branchId].AddRange(added);
-
-            // Update branch if store exists
-            _branchStore?.UpdateBranchTasksAsync(branchId, _branchTasks[branchId].Select(t => t.Id).ToList()).ConfigureAwait(false);
-
             _logger?.LogInformation("Injected {Count} tasks into branch {BranchId}", added.Count, branchId);
-            return Task.FromResult(added);
         }
     }
 
-    public Task OnTaskCompletedAsync(AgenticTask task, CancellationToken cancellationToken = default)
+    public async Task<List<AgenticTask>> GetScheduledTasksAsync(Guid branchId, CancellationToken ct = default)
     {
-        lock (_lock)
-        {
-            // Find and unblock dependent tasks
-            foreach (var branch in _branchTasks.Values)
-            {
-                foreach (var dependentTask in branch.Where(t => t.Dependencies.Contains(task.Id) && t.Status == Domain.Models.TaskStatus.Pending))
-                {
-                    var depsSatisfied = dependentTask.Dependencies.All(d => branch.Any(tt => tt.Id == d && tt.Status == Domain.Models.TaskStatus.Completed));
-                    if (depsSatisfied)
-                    {
-                        _logger?.LogDebug("Unblocked dependent task {TaskId}", dependentTask.Id);
-                    }
-                }
-            }
-
-            // Update branch status
-            UpdateBranchStatus(task.BranchId);
-        }
-        return Task.CompletedTask;
+        return await _persistenceService.GetScheduledTasksAsync(branchId, ct);
     }
 
-    public Task OnTaskFailedAsync(AgenticTask task, string errorMessage, CancellationToken cancellationToken = default)
+    public async Task<List<AgenticTask>> GetAllScheduledTasksAsync(CancellationToken ct = default)
     {
+        return await _persistenceService.GetAllScheduledTasksAsync(ct);
+    }
+
+    public async Task UpdateTaskStatusAsync(Guid taskId, TaskStatus newStatus, string? errorMessage = null, CancellationToken ct = default)
+    {
+        await _persistenceService.UpdateTaskStatusAsync(taskId, newStatus, errorMessage, ct);
+
         lock (_lock)
         {
             foreach (var branch in _branchTasks.Values)
             {
-                foreach (var dependentTask in branch.Where(t => t.Dependencies.Contains(task.Id) && t.Status == Domain.Models.TaskStatus.Pending))
+                foreach (var task in branch.Where(t => t.Id == taskId))
                 {
-                    dependentTask.Status = Domain.Models.TaskStatus.Failed;
-                    dependentTask.ErrorMessage = $"Dependency {task.Id} failed: {errorMessage}";
-                    _logger?.LogWarning("Failed dependent task {TaskId} due to dependency failure", dependentTask.Id);
+                    task.Status = (TaskStatus)newStatus;
+                    if (errorMessage != null)
+                        task.ErrorMessage = errorMessage;
                 }
             }
-
-            UpdateBranchStatus(task.BranchId);
-        }
-        return Task.CompletedTask;
-    }
-
-    public Task<List<AgenticTask>> GetReadyTasksAsync(Guid branchId, CancellationToken cancellationToken = default)
-    {
-        lock (_lock)
-        {
-            if (!_branchTasks.TryGetValue(branchId, out var tasks))
-                return Task.FromResult(new List<AgenticTask>());
-
-            return Task.FromResult(tasks
-                .Where(t => t.Status == Domain.Models.TaskStatus.Pending)
-                .Where(t => t.Dependencies.All(d => tasks.Any(tt => tt.Id == d && tt.Status == Domain.Models.TaskStatus.Completed)))
-                .OrderByDescending(t => t.Priority)
-                .ToList());
         }
     }
 
-    public Task<List<AgenticTask>> GetBlockedTasksAsync(Guid branchId, CancellationToken cancellationToken = default)
+    public async Task UpdateTaskProgressAsync(Guid taskId, int progress, CancellationToken ct = default)
     {
-        lock (_lock)
-        {
-            if (!_branchTasks.TryGetValue(branchId, out var tasks))
-                return Task.FromResult(new List<AgenticTask>());
-
-            return Task.FromResult(tasks
-                .Where(t => t.Status == Domain.Models.TaskStatus.Pending)
-                .Where(t => t.Dependencies.Any(d => !tasks.Any(tt => tt.Id == d && tt.Status == Domain.Models.TaskStatus.Completed)))
-                .OrderByDescending(t => t.Priority)
-                .ToList());
-        }
+        await _persistenceService.UpdateTaskProgressAsync(taskId, progress, ct);
     }
 
-    public Task PauseBranchAsync(Guid branchId, CancellationToken cancellationToken = default)
+    public async Task RegisterToolCallAsync(Guid taskId, AgentToolCallRecord record, CancellationToken ct = default)
     {
-        lock (_lock)
-        {
-            if (_branchTasks.TryGetValue(branchId, out var tasks))
-            {
-                foreach (var task in tasks.Where(t => t.Status == Domain.Models.TaskStatus.Running))
-                    task.Status = Domain.Models.TaskStatus.Paused;
-            }
-        }
-        return Task.CompletedTask;
+        await _persistenceService.RegisterToolCallAsync(taskId, record, ct);
     }
 
-    public Task ResumeBranchAsync(Guid branchId, CancellationToken cancellationToken = default)
+    public async Task<List<AgenticTask>> GetReadyTasksAsync(CancellationToken ct = default)
     {
-        lock (_lock)
-        {
-            if (_branchTasks.TryGetValue(branchId, out var tasks))
-            {
-                foreach (var task in tasks.Where(t => t.Status == Domain.Models.TaskStatus.Paused))
-                    task.Status = Domain.Models.TaskStatus.Running;
-            }
-        }
-        return Task.CompletedTask;
+        return await _persistenceService.GetReadyTasksAsync(ct);
     }
 
-    public Task AbandonBranchAsync(Guid branchId, CancellationToken cancellationToken = default)
+    public async Task CheckAndStartDependentTasksAsync(Guid completedTaskId, CancellationToken ct = default)
     {
+        await _persistenceService.CheckAndStartDependentTasksAsync(completedTaskId, ct);
+    }
+
+    public async Task AbandonBranchAsync(Guid branchId, CancellationToken ct = default)
+    {
+        await _persistenceService.AbandonBranchAsync(branchId, ct);
+
         lock (_lock)
         {
             if (_branchTasks.TryGetValue(branchId, out var tasks))
             {
                 foreach (var task in tasks)
                 {
-                    if (task.Status == Domain.Models.TaskStatus.Running || task.Status == Domain.Models.TaskStatus.Pending)
-                        task.Status = Domain.Models.TaskStatus.Cancelled;
+                    if (task.Status is TaskStatus.Running or TaskStatus.Pending)
+                        task.Status = TaskStatus.Cancelled;
                 }
             }
             _branchTasks.Remove(branchId);
         }
-        return Task.CompletedTask;
+    }
+
+    public async Task PauseBranchAsync(Guid branchId, CancellationToken ct = default)
+    {
+        await _persistenceService.PauseBranchAsync(branchId, ct);
+
+        lock (_lock)
+        {
+            if (_branchTasks.TryGetValue(branchId, out var tasks))
+            {
+                foreach (var task in tasks.Where(t => t.Status == TaskStatus.Running))
+                    task.Status = TaskStatus.Paused;
+            }
+        }
+    }
+
+    public async Task ResumeBranchAsync(Guid branchId, CancellationToken ct = default)
+    {
+        await _persistenceService.ResumeBranchAsync(branchId, ct);
+
+        lock (_lock)
+        {
+            if (_branchTasks.TryGetValue(branchId, out var tasks))
+            {
+                foreach (var task in tasks.Where(t => t.Status == TaskStatus.Paused))
+                    task.Status = TaskStatus.Running;
+            }
+        }
     }
 
     /// <summary>
-    /// Registers tasks from a branch for scheduling.
+    /// Registers tasks from a branch for in-memory caching.
     /// </summary>
     public void RegisterBranch(Guid branchId, List<AgenticTask> tasks)
     {
@@ -199,36 +149,4 @@ public class TaskScheduler : ITaskScheduler
             _branchTasks[branchId] = tasks;
         }
     }
-
-    private void UpdateBranchStatus(Guid branchId)
-    {
-        if (_branchStore == null || !_branchTasks.TryGetValue(branchId, out var tasks))
-            return;
-
-        if (tasks.Any(t => t.Status is Domain.Models.TaskStatus.Running or Domain.Models.TaskStatus.Pending))
-        {
-            _branchStore.UpdateBranchStatusAsync(branchId, TaskBranchStatus.Active).Wait();
-        }
-        else if (tasks.All(t => t.Status == Domain.Models.TaskStatus.Completed))
-        {
-            _branchStore.UpdateBranchStatusAsync(branchId, TaskBranchStatus.Completed).Wait();
-        }
-        else if (tasks.Any(t => t.Status == Domain.Models.TaskStatus.Failed))
-        {
-            _branchStore.UpdateBranchStatusAsync(branchId, TaskBranchStatus.Abandoned).Wait();
-        }
-    }
-}
-
-/// <summary>
-/// Storage interface for task branches.
-/// </summary>
-public interface ITaskBranchStore
-{
-    Task CreateBranchAsync(TaskBranch branch, CancellationToken cancellationToken = default);
-    Task UpdateBranchStatusAsync(Guid branchId, TaskBranchStatus status, CancellationToken cancellationToken = default);
-    Task UpdateBranchTasksAsync(Guid branchId, List<Guid> taskIds, CancellationToken cancellationToken = default);
-    Task<TaskBranch?> GetBranchAsync(Guid branchId, CancellationToken cancellationToken = default);
-    Task<List<TaskBranch>> GetAllBranchesAsync(CancellationToken cancellationToken = default);
-    Task DeleteBranchAsync(Guid branchId, CancellationToken cancellationToken = default);
 }

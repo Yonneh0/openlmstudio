@@ -1,23 +1,18 @@
-using System.Collections.Generic;
-using System.Threading.Tasks;
 using OpenLMStudio.Domain.Models;
 
 namespace OpenLMStudio.Application.Interfaces;
 
 /// <summary>
-/// Detects whether an agent task has been completed based on tool results and goal verification.
-/// Supports both keyword-based detection (no LLM needed) and LLM-assisted detection.
+/// Detects when an agent task is complete based on tool results and task state.
+/// Delegates to TaskValidationService for AI-powered completion checks.
 /// </summary>
 public interface ITaskCompletionDetector
 {
     /// <summary>
-    /// Detects task completion using keyword-based analysis.
+    /// Evaluates whether a task should be marked complete based on current tool call history.
     /// </summary>
-    System.Threading.Tasks.Task<bool> DetectAsync(string taskDescription, IReadOnlyList<AgentToolCallRecord> toolCalls);
-
-    /// <summary>
-    /// Detects task completion using an LLM to compare the goal against tool results.
-    /// Falls back to keyword detection if the LLM call fails.
-    /// </summary>
-    System.Threading.Tasks.Task<bool> DetectAsync(string taskDescription, IReadOnlyList<AgentToolCallRecord> toolCalls, bool useLlmFallback);
+    Task<TaskValidationResult> DetectCompletionAsync(
+        AgenticTask task,
+        IReadOnlyList<AgentToolCallRecord> toolCalls,
+        CancellationToken ct = default);
 }

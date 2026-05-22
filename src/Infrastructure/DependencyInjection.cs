@@ -299,14 +299,11 @@ public static class DependencyInjection
         // AgentProgressSummaryService generates human-readable progress summaries and completion reports
         services.AddSingleton<Application.Interfaces.IAgentProgressSummaryService, Services.AgentProgressSummaryService>();
 
-        // TaskScheduler manages ordered task queue across branches with priority-aware scheduling
-        services.AddSingleton<Application.Interfaces.ITaskScheduler, Services.TaskScheduler>();
-
-        // TaskSchedulerService manages the shared task tree with access control (Pingu=admin, User=write, AIs=read-only)
-        services.AddSingleton<Services.ITaskSchedulerService, Services.TaskSchedulerService>();
-
         // TaskValidationService provides AI-powered task completion verification using System AI
         services.AddSingleton<Application.Interfaces.ITaskValidationService, Services.TaskValidationService>();
+
+        // TaskSchedulerService manages the shared task tree with access control (Pingu=admin, User=write, AIs=read-only)
+        services.AddSingleton<Application.Interfaces.ITaskScheduler, Services.TaskSchedulerService>();
 
         // ---- Phase 10.5: Observability & Diagnostics ----
 
