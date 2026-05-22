@@ -53,7 +53,7 @@ public class TaskValidationService : ITaskValidationService
 
         try
         {
-            var response = await _systemAIClient.SendMessageAsync(prompt);
+            var response = (await _systemAIClient.SendMessageAsync(prompt)!) ?? string.Empty;
 
             var passed = ParseValidationResponse(response, out var message, out var failedReason);
 
@@ -99,7 +99,7 @@ public class TaskValidationService : ITaskValidationService
 
         try
         {
-            var response = await _systemAIClient.SendMessageAsync(prompt);
+            var response = (await _systemAIClient.SendMessageAsync(prompt)!) ?? string.Empty;
             var passed = ParseValidationResponse(response, out var message, out var failedReason);
 
             return new TaskValidationResult(passed, message, failedReason);
