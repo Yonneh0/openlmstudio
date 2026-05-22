@@ -129,6 +129,9 @@ public partial class MainWindow : Window
         // Unsubscribe to avoid re-running
         this.Opened -= OnMainWindowOpened;
         RefreshChatListAsync();
+
+        // Wire up keyboard shortcuts
+        KeyboardService.Initialize(this);
     }
 
     /// <summary>
@@ -530,6 +533,73 @@ public partial class MainWindow : Window
         catch
         {
             return "";
+        }
+    }
+}
+
+// =========================================================================
+// Keyboard shortcuts service
+// =========================================================================
+/// <summary>
+/// Global keyboard shortcuts for the main window.
+/// </summary>
+public static class KeyboardService
+{
+    private static MainWindow? _mainWindow;
+
+    public static void Initialize(MainWindow window)
+    {
+        _mainWindow = window;
+        window.KeyDown += OnMainWindowKeyDown;
+    }
+
+    private static void OnMainWindowKeyDown(object? sender, KeyEventArgs e)
+    {
+        // Ctrl+N: New Chat
+        if (e.KeyModifiers.HasFlag(KeyModifiers.Control) && e.Key == Key.N)
+        {
+            _mainWindow?.NewChatButton?.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+            e.Handled = true;
+            return;
+        }
+
+        // Ctrl+Shift+S: Toggle Server
+        if (e.KeyModifiers.HasFlag(KeyModifiers.Control) &&
+            e.KeyModifiers.HasFlag(KeyModifiers.Shift) &&
+            e.Key == Key.S)
+        {
+            _mainWindow?.LeftServerStartStopButton?.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+            e.Handled = true;
+            return;
+        }
+
+        // Ctrl+Enter: Send message (also handled by MessageInputBox.KeyDown, but also global)
+        if (e.KeyModifiers.HasFlag(KeyModifiers.Control) && e.Key == Key.Return)
+        {
+            _mainWindow?.SendButton?.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+            e.Handled = true;
+            return;
+        }
+
+        // Ctrl+1/2/3/4: Switch tabs
+        if (e.KeyModifiers.HasFlag(KeyModifiers.Control))
+        {
+            switch (e.Key)
+            {
+                case Key.D1: _mainWindow?.SwitchToTab(0); e.Handled = true; break;
+                case Key.D2: _mainWindow?.SwitchToTab(1); e.Handled = true; break;
+                case Key.D3: _mainWindow?.SwitchToTab(2); e.Handled = true; break;
+                case Key.D4: _mainWindow?.SwitchToTab(3); e.Handled = true; break;
+            }
+            return;
+        }
+
+        // Escape: Close popups
+        if (e.Key == Key.Escape)
+        {
+            _mainWindow?.GitLogPopup?.SetValue(Avalonia.Controls.Primitives.Popup.IsOpenProperty, false);
+            e.Handled = true;
+            return;
         }
     }
 }

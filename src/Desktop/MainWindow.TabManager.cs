@@ -15,6 +15,16 @@ public partial class MainWindow
     /// <summary>
     /// Shows the specified tab and hides all others.
     /// </summary>
+    /// <summary>
+    /// Switches to the tab at the given zero-based index.
+    /// </summary>
+    public void SwitchToTab(int index)
+    {
+        var tabs = new[] { "Chat", "Server", "Models", "Context" };
+        if (index >= 0 && index < tabs.Length)
+            ShowTab(tabs[index]);
+    }
+
     private void ShowTab(string tabName)
     {
         _activeTab = tabName;
