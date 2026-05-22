@@ -34,4 +34,16 @@ public class SystemAIConfig
     /// Whether to use memory lock (mlock) for the model.
     /// </summary>
     public bool MemoryLock { get; set; } = true;
+
+    /// <summary>
+    /// Recommended backend for the llama-server process (cpu, cuda, metal, vulkan).
+    /// Used by SystemAIClient to select the appropriate engine binary and GPU layer settings.
+    /// </summary>
+    public string? RecommendedBackend { get; set; }
+
+    /// <summary>
+    /// Number of GPU layers to offload (0 = CPU only, 99 = all layers).
+    /// Only applies when using a GPU backend.
+    /// </summary>
+    public int GpuLayers { get; set; } = 35;
 }

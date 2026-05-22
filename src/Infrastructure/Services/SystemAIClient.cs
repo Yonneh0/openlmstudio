@@ -53,6 +53,7 @@ public class StreamingResponse
 
 /// <summary>
 /// Client for the System AI (llama.cpp) inference engine.
+/// Uses EngineBinaryDownloader to locate the correct binary path and supports GPU backend selection.
 /// Spawns llama-server process and communicates via HTTP POST streaming.
 /// </summary>
 public class SystemAIClient : ISystemAIClient
@@ -60,6 +61,8 @@ public class SystemAIClient : ISystemAIClient
     private readonly HttpClient _httpClient;
     private readonly ILogger<SystemAIClient> _logger;
     private readonly SystemAIConfig _config;
+    private readonly EngineBinaryDownloader? _binaryDownloader;
+    private readonly BackendType _backend;
     private Process? _process;
     private readonly object _lock = new();
     private bool _disposed;
@@ -68,11 +71,28 @@ public class SystemAIClient : ISystemAIClient
     public event EventHandler<SseDone>? OnDone;
     public event EventHandler<string>? OnError;
 
-    public SystemAIClient(ILogger<SystemAIClient> logger, SystemAIConfig? config = null)
+    public SystemAIClient(
+        ILogger<SystemAIClient> logger,
+        SystemAIConfig? config = null,
+        EngineBinaryDownloader? binaryDownloader = null)
     {
         _logger = logger;
         _config = config ?? new SystemAIConfig();
+        _binaryDownloader = binaryDownloader;
+        _backend = InferBackendFromConfig();
         _httpClient = new HttpClient { Timeout = TimeSpan.FromMinutes(5) };
+    }
+
+    private BackendType InferBackendFromConfig()
+    {
+        var recommended = _config.RecommendedBackend?.ToLowerInvariant() ?? "";
+        return recommended switch
+        {
+            "cuda" => BackendType.Cuda,
+            "metal" => BackendType.Metal,
+            "vulkan" => BackendType.Vulkan,
+            _ => BackendType.Cpu
+        };
     }
 
     public async Task<bool> StartAsync()
@@ -83,20 +103,28 @@ public class SystemAIClient : ISystemAIClient
                 return true;
         }
 
-        var args = $"--mlock -m \"{_config.ModelPath}\" --port {_config.Port}";
+        // Determine binary path — prefer downloaded binary, fall back to PATH lookup
+        var binaryPath = await GetBinaryPathAsync().ConfigureAwait(false);
+        if (string.IsNullOrEmpty(binaryPath))
+        {
+            binaryPath = "llama-server"; // fallback: expect in PATH
+        }
+
+        var args = BuildServerArgs(binaryPath);
         try
         {
             var proc = Process.Start(new ProcessStartInfo
             {
-                FileName = "llama-server",
+                FileName = binaryPath,
                 Arguments = args,
                 UseShellExecute = false,
                 RedirectStandardInput = true,
                 RedirectStandardOutput = true,
                 RedirectStandardError = true,
+                CreateNoWindow = true
             });
             _process = proc;
-            _logger.LogInformation("Started llama-server on port {Port} for System AI", _config.Port);
+            _logger.LogInformation("Started llama-server ({Binary}) on port {Port} for System AI", binaryPath, _config.Port);
             return await WaitForServerReady(_config.Port).ConfigureAwait(false);
         }
         catch (Exception ex)
@@ -104,6 +132,44 @@ public class SystemAIClient : ISystemAIClient
             _logger.LogError(ex, "Failed to start llama-server for System AI");
             return false;
         }
+    }
+
+    private string BuildServerArgs(string binaryPath)
+    {
+        var args = $"--mlock -m \"{_config.ModelPath}\" --port {_config.Port}";
+
+        // Add GPU backend flags
+        switch (_backend)
+        {
+            case BackendType.Cuda:
+                args += $" --gpu-layers {_config.GpuLayers}";
+                break;
+            case BackendType.Metal:
+                args += " --mlock"; // Metal uses unified memory
+                break;
+            case BackendType.Vulkan:
+                args += " --vulkan";
+                break;
+        }
+
+        return args;
+    }
+
+    private async Task<string?> GetBinaryPathAsync()
+    {
+        // If a custom model path is set, try to find the binary for that backend
+        if (_binaryDownloader != null)
+        {
+            try
+            {
+                return await _binaryDownloader.DownloadForBackendAsync(_backend).ConfigureAwait(false);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "Failed to download engine binary, falling back to PATH lookup");
+            }
+        }
+        return null;
     }
 
     public async Task<string?> SendMessageAsync(string message, string? compressedContext = null)
