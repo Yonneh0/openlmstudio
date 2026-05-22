@@ -81,6 +81,9 @@ public static class DependencyInjection
         // SqliteDatabaseFactory provides cross-platform SQLite database connections
         services.AddSingleton<SqliteDatabaseFactory>();
 
+        // MemoryManager tracks GPU VRAM and CPU memory allocations across loaded models, manages eviction by recency/frequency
+        services.AddSingleton<OpenLMStudio.Application.Interfaces.IMemoryManager, MemoryManager>();
+
         // TaskContextStore manages agentic task context snapshots (SQLite-backed)
         services.AddSingleton<ITaskContextStore, Services.SqliteTaskContextStore>();
 
