@@ -14,6 +14,7 @@ using Avalonia.Media;
 using Avalonia.Threading;
 using Microsoft.Extensions.Logging;
 using OpenLMStudio.Application.Interfaces;
+using OpenLMStudio.Application.Services;
 using OpenLMStudio.Application.Types;
 using OpenLMStudio.Domain.Models;
 
@@ -23,9 +24,18 @@ public partial class MainWindow
 {
     // ---- Assistant Response Handling (with streaming token-by-token support) ----
 
+    private IMarkdownRenderer? _markdownRenderer;
+
     private async Task GetAssistantResponseAsync(Guid chatId, string userMessage)
     {
         if (_conversationManager == null || _selectedChatId != chatId) return;
+
+        // Resolve markdown renderer lazily
+        if (_markdownRenderer == null)
+        {
+            var sp = GetAppServiceProvider();
+            _markdownRenderer = sp?.GetService(typeof(IMarkdownRenderer)) as IMarkdownRenderer;
+        }
 
         try
         {
@@ -222,6 +232,13 @@ public partial class MainWindow
                         ScrollToBottomAsync().ConfigureAwait(false).GetAwaiter().GetResult();
                     }
                 });
+
+                // Render accumulated markdown after each token (when renderer is available)
+                if (_markdownRenderer != null && _assistantTextBlock?.Text != null)
+                {
+                    var rendered = _markdownRenderer.Render(_assistantTextBlock.Text);
+                    _assistantTextBlock.Text = rendered;
+                }
             }
             catch (Exception ex)
             {
@@ -282,11 +299,25 @@ public partial class MainWindow
                         ScrollToBottomAsync().ConfigureAwait(false);
                     }
                 });
+
+                // Render accumulated markdown after each token
+                if (_markdownRenderer != null && _assistantTextBlock?.Text != null)
+                {
+                    var rendered = _markdownRenderer.Render(_assistantTextBlock.Text);
+                    _assistantTextBlock.Text = rendered;
+                }
             }
             catch
             {
                 // Ignore non-text events like usage stats, errors, etc.
             }
+        }
+
+        // Final markdown render after stream completes
+        if (_markdownRenderer != null && _assistantTextBlock?.Text != null)
+        {
+            var rendered = _markdownRenderer.Render(_assistantTextBlock.Text);
+            _assistantTextBlock.Text = rendered;
         }
 
         // Note: User message was already added to the conversation in OnSendMessageClicked — do NOT add again
