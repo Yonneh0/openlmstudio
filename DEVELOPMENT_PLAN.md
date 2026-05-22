@@ -588,9 +588,9 @@ All service interfaces and implementations complete (SQLite-backed). UI controls
 - [ ] Load testing for server endpoints under concurrent request scenarios
 
 ### 10.2 User Experience Refinements
-- [ ] Keyboard shortcuts for common actions
+- [x] Keyboard shortcuts for common actions — **DONE**: Ctrl+N, Ctrl+S, Ctrl+R, Ctrl+Shift+R, Ctrl+D, Ctrl+F, Ctrl+P, Ctrl+W, Ctrl+T, Ctrl+1-8, Escape, F5, F12 (MainWindow.axaml.cs)
 - [ ] Accessibility improvements (keyboard navigation, screen reader support)
-- [ ] Onboarding flow for first-time users
+- [x] Onboarding flow for first-time users — **DONE**: IOnboardingService + OnboardingService with disk-based state persistence (Phase 10.6)
 
 ### 10.3 Documentation & Release
 - [x] User documentation and help system — comprehensive USER_GUIDE.md
@@ -600,14 +600,14 @@ All service interfaces and implementations complete (SQLite-backed). UI controls
 - [ ] Developer documentation for plugin creation
 - [ ] Interactive help system within the app
 
-#### Phase 10 Summary — **10 of 16 items complete**
+#### Phase 10 Summary — **12 of 16 items complete**
 | Category | Status |
 |----------|--------|
 | Testing Strategy | Partial — 66+ tests across 3 projects, CI/CD via GitHub Actions |
-| UX Refinements | Not started |
+| UX Refinements | Partial — keyboard shortcuts done, onboarding flow done (Phase 10.6), accessibility pending |
 | Documentation & Release | Partial — user docs and compatibility guides complete |
 
-### Overall Progress: ~115 of 223 items (~52%)
+### Overall Progress: ~117 of 223 items (~52%)
 
 ---
 
