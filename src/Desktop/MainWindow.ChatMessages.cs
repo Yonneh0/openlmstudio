@@ -233,9 +233,25 @@ public partial class MainWindow
             border.Classes.Add("assistantMessage");
         }
 
+        string displayContent = message.Content ?? "";
+
+        // Render markdown for assistant messages when renderer is available
+        if (_markdownRenderer != null && message.Role == MessageRole.Assistant)
+        {
+            try
+            {
+                displayContent = _markdownRenderer.Render(displayContent);
+            }
+            catch (Exception ex)
+            {
+                _logger?.LogDebug("Markdown rendering failed for message {MessageId}: {Message}", message.Id, ex.Message);
+                // Fall through with raw content
+            }
+        }
+
         var textBlock = new TextBlock
         {
-            Text = message.Content ?? "",
+            Text = displayContent,
             Foreground = new SolidColorBrush(Color.FromRgb(204, 204, 204)),
             FontSize = 14,
             Margin = new Thickness(0)
