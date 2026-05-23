@@ -15,61 +15,87 @@ public partial class MainWindow
     /// <summary>
     /// Shows the specified tab and hides all others.
     /// </summary>
-    /// <summary>
-    /// Switches to the tab at the given zero-based index.
-    /// </summary>
-    public void SwitchToTab(int index)
-    {
-        var tabs = new[] { "Chat", "Server", "Models", "Context" };
-        if (index >= 0 && index < tabs.Length)
-            ShowTab(tabs[index]);
-    }
-
-    private void ShowTab(string tabName)
+    public void ShowTab(string tabName)
     {
         _activeTab = tabName;
 
-        // Hide all tab contents first
-        SetTabVisibility(ChatTabContent, false);
-        SetTabVisibility(ServerTabContent, false);
-        SetTabVisibility(ModelsTabContent, false);
-        SetTabVisibility(DevicesTabContent, false);
-        SetTabVisibility(ContextTabContent, false);
-        SetTabVisibility(AgentTabContent, false);
-        SetTabVisibility(ImageGenTabContent, false);
-
-        // Show the selected tab content
+        // Set SelectedItem on the TabControl — the ContentPresenter handles showing/hiding content
         switch (tabName)
         {
             case "Chat":
-                SetTabVisibility(ChatTabContent, true);
+                LeftTabControl.SelectedItem = ChatTabItem;
+                UpdateServerStatus();
                 break;
             case "Server":
-                SetTabVisibility(ServerTabContent, true);
+                LeftTabControl.SelectedItem = ServerTabItem;
                 UpdateServerStatus();
                 break;
             case "Models":
-                SetTabVisibility(ModelsTabContent, true);
+                LeftTabControl.SelectedItem = ModelsTabItem;
                 RefreshModelListAsync();
                 break;
             case "Devices":
-                SetTabVisibility(DevicesTabContent, true);
+                LeftTabControl.SelectedItem = DevicesTabItem;
                 _ = UpdateDeviceStatusAsync();
                 break;
             case "Context":
-                SetTabVisibility(ContextTabContent, true);
+                LeftTabControl.SelectedItem = ContextTabItem;
                 _ = RefreshContextBudgetAsync();
+                UpdateRightSidebarTab("Context");
                 break;
             case "Agent":
-                SetTabVisibility(AgentTabContent, true);
+                LeftTabControl.SelectedItem = AgentTabItem;
                 break;
             case "ImageGen":
-                SetTabVisibility(ImageGenTabContent, true);
+                LeftTabControl.SelectedItem = ImageGenTabItem;
+                break;
+            case "Tasks":
+                LeftTabControl.SelectedItem = TasksTabItem;
                 break;
         }
 
         // Update active tab styling
         UpdateActiveTab(tabName);
+    }
+
+    /// <summary>
+    /// Switches to the tab at the given zero-based index.
+    /// </summary>
+    public void SwitchToTab(int index)
+    {
+        var tabs = new[] { "Chat", "Server", "Models", "Devices", "Context", "Agent", "Tasks", "ImageGen" };
+        if (index >= 0 && index < tabs.Length)
+            ShowTab(tabs[index]);
+    }
+
+    /// <summary>
+    /// Handles TabControl selection changes — updates styling and right sidebar.
+    /// </summary>
+    private void OnLeftTabControlSelectionChanged(object? sender, SelectionChangedEventArgs e)
+    {
+        if (LeftTabControl.SelectedItem is TabItem selectedItem)
+        {
+            // Map TabItem to tab name based on which item is selected
+            if (selectedItem == ChatTabItem)
+                _activeTab = "Chat";
+            else if (selectedItem == ServerTabItem)
+                _activeTab = "Server";
+            else if (selectedItem == ModelsTabItem)
+                _activeTab = "Models";
+            else if (selectedItem == DevicesTabItem)
+                _activeTab = "Devices";
+            else if (selectedItem == ContextTabItem)
+                _activeTab = "Context";
+            else if (selectedItem == AgentTabItem)
+                _activeTab = "Agent";
+            else if (selectedItem == ImageGenTabItem)
+                _activeTab = "ImageGen";
+            else if (selectedItem == TasksTabItem)
+                _activeTab = "Tasks";
+
+            UpdateActiveTab(_activeTab);
+            UpdateRightSidebarTab(_activeTab);
+        }
     }
 
     private void SetTabVisibility(StackPanel? panel, bool visible)
@@ -101,6 +127,12 @@ public partial class MainWindow
         if (AgentTabContent != null)
             tabs.Add(AgentTabContent.Children.OfType<TextBlock>().FirstOrDefault());
 
+        if (ImageGenTabContent != null)
+            tabs.Add(ImageGenTabContent.Children.OfType<TextBlock>().FirstOrDefault());
+
+        if (TasksTabContent != null)
+            tabs.Add(TasksTabContent.Children.OfType<TextBlock>().FirstOrDefault());
+
         foreach (var tb in tabs)
         {
             if (tb == null) continue;
@@ -108,7 +140,7 @@ public partial class MainWindow
             // Only update the first TextBlock of each tab section (the tab title)
             var parent = tb.Parent as Panel;
             if (parent?.Name != null &&
-                new[] { "ChatTabContent", "ServerTabContent", "ModelsTabContent", "DevicesTabContent", "ContextTabContent", "AgentTabContent" }
+                new[] { "ChatTabContent", "ServerTabContent", "ModelsTabContent", "DevicesTabContent", "ContextTabContent", "AgentTabContent", "ImageGenTabContent", "TasksTabContent" }
                     .Contains(parent.Name))
             {
                 if (activeTabName.Equals(tb.Text, StringComparison.OrdinalIgnoreCase) ||
@@ -191,7 +223,7 @@ public partial class MainWindow
     private void AttachTabClickHandlers()
     {
         // Each tab's title TextBlock is inside a StackPanel — attach click to that panel instead for better hit target
-        var tabPanels = new[] { ChatTabContent, ServerTabContent, ModelsTabContent, DevicesTabContent, ContextTabContent, AgentTabContent };
+        var tabPanels = new[] { ChatTabContent, ServerTabContent, ModelsTabContent, DevicesTabContent, ContextTabContent, AgentTabContent, ImageGenTabContent, TasksTabContent };
         foreach (var tab in tabPanels)
         {
             if (tab == null) continue;
@@ -216,6 +248,10 @@ public partial class MainWindow
                             child.PointerPressed += (_, _) => { UpdateRightSidebarTab("Context"); ShowTab("Context"); }; break;
                         case "AgentTabContent":
                             child.PointerPressed += (_, _) => ShowTab("Agent"); break;
+                        case "ImageGenTabContent":
+                            child.PointerPressed += (_, _) => ShowTab("ImageGen"); break;
+                        case "TasksTabContent":
+                            child.PointerPressed += (_, _) => ShowTab("Tasks"); break;
                     }
                 }
                 catch { /* Ignore errors on individual tab attaches */ }
@@ -234,6 +270,9 @@ public partial class MainWindow
 
         var devicesChild = DevicesTabContent?.Children.OfType<Control>().FirstOrDefault();
         devicesChild?.AddHandler(Control.PointerPressedEvent, (_, _) => ShowTab("Devices"));
+
+        var tasksChild = TasksTabContent?.Children.OfType<Control>().FirstOrDefault();
+        tasksChild?.AddHandler(Control.PointerPressedEvent, (_, _) => ShowTab("Tasks"));
 
         // Attach right sidebar tab button click handlers
         if (RightContextTabButton != null)

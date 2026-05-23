@@ -79,11 +79,11 @@
                 <TextBox x:Name="SearchText" Foreground="{StaticResource TextPrimary}" Background="Transparent" BorderThickness="0" Padding="10,6" FontSize="13"/>
             </Border>
 
-            <TabControl Grid.Row="2" Background="Transparent" BorderThickness="0" x:Name="LeftTabControl">
+            <TabControl Grid.Row="2" Background="Transparent" BorderThickness="0" x:Name="LeftTabControl" SelectionChanged="OnLeftTabControlSelectionChanged">
                 <!-- Chat tab -->
                 <TabItem Header="Chats" x:Name="ChatTabItem" Classes="toolTab" Content="{Binding ElementName=ChatTabContent}">
                     <StackPanel x:Name="ChatTabContent">
-                        <TextBlock x:Name="_chatTabTitle" Text="Chats" FontWeight="SemiBold" Foreground="#4FC3F7" Padding="8,6" PointerPressed="OnChatTabPointerPressed"/>
+                        <TextBlock x:Name="_chatTabTitle" Text="Chats" FontWeight="SemiBold" Foreground="#4FC3F7" Padding="8,6"/>
                         <StackPanel x:Name="ChatListPanel" Margin="0,4,0,0">
                             <TextBlock Text="No chats loaded" Foreground="{StaticResource TextMuted}" Padding="12,8" FontSize="12"/>
                         </StackPanel>
@@ -96,7 +96,7 @@
                 <!-- Server tab -->
                 <TabItem Header="Server" x:Name="ServerTabItem" Classes="toolTab" Content="{Binding ElementName=ServerTabContent}">
                     <StackPanel x:Name="ServerTabContent">
-                        <TextBlock x:Name="_serverTabTitle" Text="Server Status" FontWeight="SemiBold" Foreground="#4FC3F7" Padding="8,6" PointerPressed="OnServerTabPointerPressed"/>
+                        <TextBlock x:Name="_serverTabTitle" Text="Server Status" FontWeight="SemiBold" Foreground="#4FC3F7" Padding="8,6"/>
                         <Border Background="{StaticResource BgSecondary}" CornerRadius="4" Margin="0,8,0,0">
                             <StackPanel>
                                 <TextBlock x:Name="ServerStatusText" Text="Server: Stopped" Foreground="{StaticResource AccentRed}" Padding="12,8"/>
@@ -110,7 +110,7 @@
                 <!-- Models tab -->
                 <TabItem Header="Models" x:Name="ModelsTabItem" Classes="toolTab" Content="{Binding ElementName=ModelsTabContent}">
                     <StackPanel x:Name="ModelsTabContent">
-                        <TextBlock x:Name="_modelsTabTitle" Text="Models" FontWeight="SemiBold" Foreground="#4FC3F7" Padding="8,6" PointerPressed="OnModelsTabPointerPressed"/>
+                        <TextBlock x:Name="_modelsTabTitle" Text="Models" FontWeight="SemiBold" Foreground="#4FC3F7" Padding="8,6"/>
                         <StackPanel>
                             <TextBlock Text="No models loaded" Foreground="{StaticResource TextMuted}" Padding="12,8" FontSize="12"/>
                         </StackPanel>
@@ -121,7 +121,7 @@
                 <!-- Devices tab -->
                 <TabItem Header="Devices" x:Name="DevicesTabItem" Classes="toolTab" Content="{Binding ElementName=DevicesTabContent}">
                     <StackPanel x:Name="DevicesTabContent">
-                        <TextBlock x:Name="_devicesTabTitle" Text="Devices" FontWeight="SemiBold" Foreground="#4FC3F7" Padding="8,6" PointerPressed="OnDevicesTabPointerPressed"/>
+                        <TextBlock x:Name="_devicesTabTitle" Text="Devices" FontWeight="SemiBold" Foreground="#4FC3F7" Padding="8,6"/>
                         <Border Background="{StaticResource BgSecondary}" CornerRadius="4" Margin="0,8,0,0">
                             <StackPanel>
                                 <TextBlock Text="GPU: None Detected" Foreground="{StaticResource TextPrimary}" Padding="12,8"/>
@@ -142,7 +142,7 @@
                 <!-- Context tab -->
                 <TabItem Header="Context" x:Name="ContextTabItem" Classes="toolTab" Content="{Binding ElementName=ContextTabContent}">
                     <StackPanel x:Name="ContextTabContent">
-                        <TextBlock Text="Context" FontWeight="SemiBold" Foreground="#4FC3F7" Padding="8,6" PointerPressed="OnContextTabPointerPressed"/>
+                        <TextBlock Text="Context" FontWeight="SemiBold" Foreground="#4FC3F7" Padding="8,6"/>
                         <Border Background="{StaticResource BgSecondary}" CornerRadius="4" Margin="0,8,0,0">
                             <StackPanel>
                                 <TextBlock Text="Context Budget:" Foreground="{StaticResource TextPrimary}" Padding="12,4"/>
@@ -214,7 +214,7 @@
                 <!-- Tasks tab -->
                 <TabItem Header="Tasks" x:Name="TasksTabItem" Classes="toolTab" Content="{Binding ElementName=TasksTabContent}">
                     <StackPanel x:Name="TasksTabContent">
-                        <TextBlock x:Name="TasksTabTitle" Text="Tasks" FontWeight="SemiBold" Foreground="#4FC3F7" Padding="8,6" PointerPressed="OnTasksTabPointerPressed"/>
+                        <TextBlock x:Name="TasksTabTitle" Text="Tasks" FontWeight="SemiBold" Foreground="#4FC3F7" Padding="8,6"/>
                         <Border Background="{StaticResource BgSecondary}" CornerRadius="4" Margin="0,8,0,0">
                             <StackPanel x:Name="TaskListPanel">
                                 <TextBlock Text="No tasks created" Foreground="{StaticResource TextMuted}" Padding="12,8" FontSize="12"/>
@@ -237,7 +237,7 @@
                 <!-- Agent tab -->
                 <TabItem Header="Agent" x:Name="AgentTabItem" Classes="toolTab" Content="{Binding ElementName=AgentTabContent}">
                     <StackPanel x:Name="AgentTabContent">
-                        <TextBlock x:Name="AgentTabTitle" Text="Agent" FontWeight="SemiBold" Foreground="#4FC3F7" Padding="8,6" PointerPressed="OnAgentTabPointerPressed"/>
+                        <TextBlock x:Name="AgentTabTitle" Text="Agent" FontWeight="SemiBold" Foreground="#4FC3F7" Padding="8,6"/>
                         <Border Background="{StaticResource BgSecondary}" CornerRadius="4" Margin="0,8,0,0">
                             <StackPanel>
                                 <TextBlock Text="Task:" Foreground="{StaticResource TextPrimary}" Padding="12,4"/>
@@ -269,7 +269,7 @@
                 <!-- Image Generation tab -->
                 <TabItem Header="ImageGen" x:Name="ImageGenTabItem" Classes="toolTab" Content="{Binding ElementName=ImageGenTabContent}">
                     <StackPanel x:Name="ImageGenTabContent">
-                        <TextBlock Text="Image Generation" FontWeight="SemiBold" Foreground="#4FC3F7" Padding="8,6" PointerPressed="OnImageGenTabPointerPressed"/>
+                        <TextBlock Text="Image Generation" FontWeight="SemiBold" Foreground="#4FC3F7" Padding="8,6"/>
                         <Border Background="{StaticResource BgSecondary}" CornerRadius="4" Margin="0,8,0,0">
                             <StackPanel>
                                 <TextBlock Text="Select Model:" Foreground="{StaticResource TextPrimary}" Padding="12,4"/>
