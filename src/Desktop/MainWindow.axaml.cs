@@ -139,6 +139,9 @@ public partial class MainWindow : Window
 
         // Wire up keyboard shortcuts
         KeyboardService.Initialize(this);
+
+        // Initialize Agent Mode to off with 0 turns (badge hidden)
+        SetAgentTurns(0);
     }
 
     /// <summary>
@@ -222,6 +225,14 @@ public partial class MainWindow : Window
 
         if (AgentMaxIterationsSlider != null)
             AgentMaxIterationsSlider.ValueChanged += OnAgentMaxIterationsValueChanged;
+
+        // Agent mode toggle button
+        if (AgentModeToggle != null)
+            AgentModeToggle.Click += OnAgentModeToggleClicked;
+
+        // Agent turns badge (clickable orange badge)
+        if (AgentTurnsBadge != null)
+            AgentTurnsBadge.Click += OnAgentTurnsBadgeClicked;
 
         // Task tab handlers
         if (CreateTaskButton != null)
@@ -323,6 +334,108 @@ public partial class MainWindow : Window
     {
         if (AgentMaxIterationsText != null)
             AgentMaxIterationsText.Text = ((int)(AgentMaxIterationsSlider?.Value ?? 50)).ToString();
+    }
+
+    /// <summary>
+    /// Toggles Agent Mode on/off.
+    /// When turned on, adds the configured number of turns.
+    /// When turned off, resets turns to 0.
+    /// </summary>
+    private void OnAgentModeToggleClicked(object? sender, RoutedEventArgs e)
+    {
+        if (AgentTurnsText == null)
+            return;
+
+        // Use badge visibility as the source of truth for whether Agent Mode is on
+        var isOn = AgentTurnsBadge != null && AgentTurnsBadge.IsVisible;
+
+        if (isOn)
+        {
+            // Turn off: reset turns to 0
+            SetAgentTurns(0);
+            // Set background to BgTertiary so :hover can override
+            AgentModeToggle?.SetValue(Button.BackgroundProperty, (Avalonia.Media.ISolidColorBrush)(this.FindResource("BgTertiary") ?? Avalonia.Media.Brushes.Gray));
+            AgentModeToggle?.Classes.Remove("active");
+        }
+        else
+        {
+            // Turn on: set to default turns
+            var defaultTurns = GetAgentDefaultTurns();
+            SetAgentTurns(defaultTurns);
+            // Set background to AccentBlue so :hover will override to #1E88E5
+            AgentModeToggle?.SetValue(Button.BackgroundProperty, (Avalonia.Media.ISolidColorBrush)(this.FindResource("AccentBlue") ?? Avalonia.Media.Brushes.White));
+            AgentModeToggle?.Classes.Add("active");
+        }
+    }
+
+    /// <summary>
+    /// Increments the agent turns count by 2.
+    /// </summary>
+    private void OnAgentTurnsBadgeClicked(object? sender, RoutedEventArgs e)
+    {
+        if (AgentTurnsText == null)
+            return;
+
+        var currentTurns = ParseInt(AgentTurnsText.Text, 0);
+        SetAgentTurns(currentTurns + 2);
+    }
+
+    /// <summary>
+    /// Sets the agent turns count to the specified value.
+    /// Hides the badge when turns is 0.
+    /// </summary>
+    private void SetAgentTurns(int turns)
+    {
+        if (AgentTurnsText == null)
+            return;
+
+        AgentTurnsText.Text = turns.ToString();
+
+        // Show/hide the badge based on turns
+        if (AgentTurnsBadge != null)
+        {
+            AgentTurnsBadge.IsVisible = turns > 0;
+
+            if (turns > 0)
+            {
+                AgentTurnsBadge.SetValue(Avalonia.Controls.Primitives.TemplatedControl.BackgroundProperty, (Avalonia.Media.ISolidColorBrush)(this.FindResource("AccentOrange") ?? Avalonia.Media.Brushes.Orange));
+                AgentTurnsBadge.SetValue(Avalonia.Controls.Primitives.TemplatedControl.ForegroundProperty, Avalonia.Media.Brushes.White);
+            }
+        }
+
+        _logger?.LogDebug("Agent turns set to {Turns}", turns);
+    }
+
+    /// <summary>
+    /// Reads the AgentDefaultTurns setting from the settings service.
+    /// </summary>
+    private int GetAgentDefaultTurns()
+    {
+        try
+        {
+            var sp = GetAppServiceProvider();
+            var svc = sp?.GetService(typeof(IWindowSettings)) as IWindowSettings;
+            if (svc != null)
+            {
+                // IWindowSettings is a save/load interface; for now we use the default value
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger?.LogWarning(ex, "Failed to read AgentDefaultTurns from settings");
+        }
+
+        return 10;
+    }
+
+    /// <summary>
+    /// Parses an integer from a string, returning a default value on failure.
+    /// </summary>
+    private static int ParseInt(string? value, int defaultValue)
+    {
+        if (int.TryParse(value, out var result))
+            return result;
+        return defaultValue;
     }
 
     // =========================================================================

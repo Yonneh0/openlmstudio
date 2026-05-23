@@ -29,9 +29,25 @@
         <Style Selector="Ellipse.statusDot"><Setter Property="Fill" Value="{StaticResource AccentRed}"/><Setter Property="Width" Value="10"/><Setter Property="Height" Value="10"/><Setter Property="Margin" Value="0,2,6,0"/></Style>
         <Style Selector="Border.inputArea"><Setter Property="Background" Value="{StaticResource BgSecondary}"/><Setter Property="CornerRadius" Value="4"/><Setter Property="Padding" Value="12"/></Style>
         <Style Selector="Border.searchBar"><Setter Property="Background" Value="{StaticResource BgSecondary}"/><Setter Property="CornerRadius" Value="4"/><Setter Property="Padding" Value="10,6"/></Style>
-        <Style Selector="ToggleButton.toolTab"><Setter Property="Background" Value="{StaticResource BgTertiary}"/><Setter Property="Foreground" Value="{StaticResource TextPrimary}"/><Setter Property="Padding" Value="12,3"/><Setter Property="Margin" Value="2,1"/><Setter Property="BorderThickness" Value="2,0,1,0"/><Setter Property="BorderBrush" Value="Transparent"/><Setter Property="FontSize" Value="11"/><Setter Property="CornerRadius" Value="3"/><Setter Property="Height" Value="22"/></Style>
+        <Style Selector="ToggleButton.toolTab"><Setter Property="Background" Value="{StaticResource BgTertiary}"/><Setter Property="Foreground" Value="{StaticResource TextPrimary}"/><Setter Property="Padding" Value="12,6"/><Setter Property="Margin" Value="2,1"/><Setter Property="BorderThickness" Value="2,0,0,0"/><Setter Property="BorderBrush" Value="Transparent"/><Setter Property="FontSize" Value="11"/><Setter Property="CornerRadius" Value="3"/><Setter Property="MinHeight" Value="24"/></Style>
         <Style Selector="ToggleButton.toolTab:checked"><Setter Property="Background" Value="{StaticResource BgSecondary}"/><Setter Property="Foreground" Value="{StaticResource AccentBlue}"/><Setter Property="BorderBrush" Value="{StaticResource AccentBlue}"/></Style>
         <Style Selector="ToggleButton.toolTab:hover"><Setter Property="Background" Value="#3A3A3E"/></Style>
+        <Style Selector="Button.AgentModeToggle">
+            <Setter Property="Background" Value="#2D2D30"/>
+        </Style>
+        <Style Selector="Button.AgentModeToggle.off">
+            <Setter Property="Background" Value="#2D2D30"/>
+        </Style>
+        <Style Selector="Button.AgentModeToggle.active">
+            <Setter Property="Background" Value="#4FC3F7"/>
+            <Setter Property="Foreground" Value="White"/>
+        </Style>
+        <Style Selector="Button.AgentModeToggle:hover">
+            <Setter Property="Background" Value="#3A3A3E"/>
+        </Style>
+        <Style Selector="Button.AgentModeToggle.active:hover">
+            <Setter Property="Background" Value="#1E88E5"/>
+        </Style>
         <Style Selector="ToggleButton.rightPanelTab"><Setter Property="Background" Value="{StaticResource BgTertiary}"/><Setter Property="Foreground" Value="{StaticResource TextPrimary}"/><Setter Property="Padding" Value="10,6"/><Setter Property="BorderThickness" Value="0"/><Setter Property="FontSize" Value="11"/><Setter Property="CornerRadius" Value="4"/></Style>
         <Style Selector="ToggleButton.rightPanelTab:checked"><Setter Property="Background" Value="{StaticResource AccentBlue}"/><Setter Property="Foreground" Value="White"/></Style>
         <Style Selector="TabItem.toolTab"><Setter Property="Padding" Value="8,4"/><Setter Property="Margin" Value="2,1"/><Setter Property="Background" Value="{StaticResource BgTertiary}"/><Setter Property="Foreground" Value="{StaticResource TextPrimary}"/><Setter Property="FontSize" Value="11"/><Setter Property="BorderThickness" Value="2,0,0,0"/><Setter Property="BorderBrush" Value="Transparent"/><Setter Property="CornerRadius" Value="3"/><Setter Property="Height" Value="24"/><Setter Property="MinHeight" Value="24"/><Setter Property="MaxHeight" Value="24"/><Setter Property="HorizontalContentAlignment" Value="Center"/></Style>
@@ -77,8 +93,10 @@
             <Grid Margin="16,6,16,6">
                 <Grid.ColumnDefinitions>
                     <ColumnDefinition Width="Auto"/>
-                    <ColumnDefinition Width="Auto"/>
                     <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="Auto"/>
+                    <ColumnDefinition Width="Auto"/>
+                    <ColumnDefinition Width="Auto"/>
                     <ColumnDefinition Width="Auto"/>
                     <ColumnDefinition Width="Auto"/>
                 </Grid.ColumnDefinitions>
@@ -86,24 +104,8 @@
                 <!-- OpenLMStudio Title -->
                 <TextBlock Grid.Column="0" Text="OpenLMStudio" FontSize="16" FontWeight="SemiBold" Foreground="#4FC3F7" VerticalAlignment="Center"/>
 
-                <!-- System AI Model -->
-                <StackPanel Grid.Column="1" Orientation="Horizontal" Margin="24,0,0,0" VerticalAlignment="Center">
-                    <TextBlock Text="System AI:" Foreground="{StaticResource TextSecondary}" FontSize="12" VerticalAlignment="Center" Margin="0,0,8,0"/>
-                    <ComboBox x:Name="SystemModelSelector"
-                              Foreground="{StaticResource TextPrimary}"
-                              Background="{StaticResource BgTertiary}"
-                              BorderBrush="#3A3A3E"
-                              BorderThickness="1"
-                              Padding="8,4"
-                              Width="180"
-                              Height="26"
-                              FontSize="11">
-                        <TextBlock Text="None Selected"/>
-                    </ComboBox>
-                </StackPanel>
-
-                <!-- Main AI Model -->
-                <StackPanel Grid.Column="3" Orientation="Horizontal" VerticalAlignment="Center">
+                <!-- Main AI Model (centered) -->
+                <StackPanel Grid.Column="1" Orientation="Horizontal" HorizontalAlignment="Center" VerticalAlignment="Center">
                     <TextBlock Text="Main AI:" Foreground="{StaticResource TextSecondary}" FontSize="12" VerticalAlignment="Center" Margin="0,0,8,0"/>
                     <ComboBox x:Name="MainModelSelector"
                               Foreground="{StaticResource TextPrimary}"
@@ -115,6 +117,25 @@
                               Height="26"
                               FontSize="11">
                         <TextBlock Text="Not Selected"/>
+                    </ComboBox>
+                </StackPanel>
+
+                <!-- Chat Title (for ChatTitleText reference, hidden from view) -->
+                <TextBlock Grid.Column="2" x:Name="ChatTitleText" Text="Chat Session" FontWeight="SemiBold" Foreground="{StaticResource TextPrimary}" VerticalAlignment="Center" Margin="0,0,8,0" IsVisible="False"/>
+
+                <!-- System AI Model (aligned to right) -->
+                <StackPanel Grid.Column="6" Orientation="Horizontal" HorizontalAlignment="Right" VerticalAlignment="Center">
+                    <TextBlock Text="System AI:" Foreground="{StaticResource TextSecondary}" FontSize="12" VerticalAlignment="Center" Margin="0,0,8,0"/>
+                    <ComboBox x:Name="SystemModelSelector"
+                              Foreground="{StaticResource TextPrimary}"
+                              Background="{StaticResource BgTertiary}"
+                              BorderBrush="#3A3A3E"
+                              BorderThickness="1"
+                              Padding="8,4"
+                              Width="180"
+                              Height="26"
+                              FontSize="11">
+                        <TextBlock Text="None Selected"/>
                     </ComboBox>
                 </StackPanel>
             </Grid>
@@ -431,28 +452,23 @@
         </Grid>
 
         <!-- ===== CENTER PANE ===== -->
-        <Grid Grid.RowSpan="2" Grid.Column="1" Background="#1A1A1E">
-            <Grid.RowDefinitions>
-                <RowDefinition Height="Auto"/>
-                <RowDefinition Height="*"/>
-                <RowDefinition Height="Auto"/>
-            </Grid.RowDefinitions>
+        <Grid Grid.Row="1" Grid.Column="1" Background="#1A1A1E">
+            <Grid>
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="*"/>
+                    <RowDefinition Height="Auto"/>
+                </Grid.RowDefinitions>
 
+                <!-- Token Count and Streaming (in chat pane) -->
                 <Border Grid.Row="0" Background="{StaticResource BgSecondary}">
                     <StackPanel Orientation="Horizontal" Margin="16,12">
-                        <TextBlock x:Name="ChatTitleText" Text="Chat Session" FontWeight="SemiBold"/>
-                        <Border Background="#333338" CornerRadius="4" Margin="16,0,0,0">
-                            <StackPanel Orientation="Horizontal">
-                                <TextBlock Text="Model: " Padding="12,6,4,6"/>
-                                <TextBlock x:Name="SelectedModelText" Text="Not Selected" Padding="4,6,12,6"/>
-                            </StackPanel>
+                        <Border Background="#333338" CornerRadius="4">
+                            <TextBlock x:Name="TokenCountText" Text="Tokens: 0" Padding="12,6" FontSize="12"/>
                         </Border>
                         <Border Background="#333338" CornerRadius="4" Margin="16,0,0,0">
-                            <TextBlock x:Name="TokenCountText" Text="Tokens: 0" Padding="12,6"/>
-                        </Border>
-                        <Border Background="#333338" CornerRadius="4" Margin="16,0,0,0">
-                            <StackPanel Orientation="Horizontal" x:Name="StreamingIndicator">
-                                <Ellipse x:Name="StreamingIndicatorDot" Width="10" Height="10" Fill="{StaticResource AccentGreen}" Margin="0,2,6,0"/>
+                            <StackPanel x:Name="StreamingIndicator" Orientation="Horizontal">
+                                <Ellipse Width="10" Height="10" Fill="{StaticResource AccentGreen}" Margin="0,2,6,0"/>
                                 <TextBlock Text="Streaming" Padding="4,6" FontSize="13"/>
                             </StackPanel>
                         </Border>
@@ -476,10 +492,70 @@
                         <Border Grid.Row="0" Background="{StaticResource BgTertiary}" Margin="16,0,16,8">
                             <TextBox x:Name="MessageInputBox" Foreground="{StaticResource TextPrimary}" Background="Transparent" BorderThickness="0" Padding="16,12" FontSize="14" MaxHeight="120" MinHeight="60"/>
                         </Border>
-                        <StackPanel Grid.Row="1" Orientation="Horizontal" Margin="16,0,16,8">
-                            <ToggleButton x:Name="CodeInterpreterToggle" Content="Code Interpreter" Background="#2D2D30" Foreground="{StaticResource TextPrimary}" Padding="12,6"/>
-                            <TextBlock Text="" Foreground="#CCCCCC" FontSize="12" Padding="4,6"/>
-                            <ToggleButton x:Name="ProjectManagementToggle" Content="Project Management" Background="#2D2D30" Foreground="{StaticResource TextPrimary}" Padding="12,6"/>
+                        <!-- Agent Mode and Safety controls (compact row) -->
+                        <StackPanel Grid.Row="1" Orientation="Horizontal" Margin="16,0,16,4" VerticalAlignment="Bottom">
+                            <!-- Agent Mode (clickable emoji with turns badge) -->
+                            <Border Background="{StaticResource BgTertiary}" CornerRadius="6" Padding="8,0" Margin="0,0,8,0">
+                                <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                                    <!-- Agent emoji with floating turns count -->
+                                    <Grid Width="44" Height="44" Margin="0,0,6,0">
+                                        <Button x:Name="AgentModeToggle" Content="&#x1F916;" FontSize="34" Padding="0" Classes="AgentModeToggle" Foreground="{StaticResource AccentBlue}" Cursor="Hand"/>
+                                        <!-- Floating turns count badge - clickable, positioned to the very bottom right -->
+        <Button x:Name="AgentTurnsBadge"
+                Cursor="Hand"
+                CornerRadius="4"
+                Padding="4,1"
+                VerticalAlignment="Bottom"
+                HorizontalAlignment="Right"
+                Margin="0,0,-12,-4"
+                Click="OnAgentTurnsBadgeClicked"
+                IsHitTestVisible="True">
+                                            <TextBlock x:Name="AgentTurnsText" Text="0" Foreground="White" FontSize="12" FontWeight="Bold" TextAlignment="Center"/>
+                                        </Button>
+                                    </Grid>
+                                </StackPanel>
+                            </Border>
+
+                            <!-- Safety Mode -->
+                            <Border Background="{StaticResource BgTertiary}" CornerRadius="6" Padding="8,0" Margin="0,0,8,0">
+                                <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                                    <ToggleButton x:Name="SafetyLocked"
+                                                  Content="&#x1F512;"
+                                                  Width="36" Height="36"
+                                                  Padding="0"
+                                                  FontSize="22"
+                                                  Background="#4CAF50"
+                                                  Foreground="White"
+                                                  Margin="0,0,3,0"
+                                                  VerticalAlignment="Center"/>
+                                    <ToggleButton x:Name="SafetyReadOnly"
+                                                  Content="&#x1F441;"
+                                                  Width="36" Height="36"
+                                                  Padding="0"
+                                                  FontSize="22"
+                                                  Background="#2D2D30"
+                                                  Foreground="{StaticResource TextPrimary}"
+                                                  Margin="0,0,3,0"
+                                                  VerticalAlignment="Center"/>
+                                    <ToggleButton x:Name="SafetyEditing"
+                                                  Content="&#x270E;"
+                                                  Width="36" Height="36"
+                                                  Padding="0"
+                                                  FontSize="22"
+                                                  Background="#2D2D30"
+                                                  Foreground="{StaticResource TextPrimary}"
+                                                  Margin="0,0,3,0"
+                                                  VerticalAlignment="Center"/>
+                                    <ToggleButton x:Name="SafetyRunning"
+                                                  Content="&#x2699;"
+                                                  Width="36" Height="36"
+                                                  Padding="0"
+                                                  FontSize="22"
+                                                  Background="#2D2D30"
+                                                  Foreground="{StaticResource TextPrimary}"
+                                                  VerticalAlignment="Center"/>
+                                </StackPanel>
+                            </Border>
                         </StackPanel>
                         <Button x:Name="SendButton" Content="Send" Grid.RowSpan="3" Width="60" Height="36" HorizontalAlignment="Right" VerticalAlignment="Bottom" Margin="16,0,16,8" Background="{StaticResource AccentBlue}" Foreground="White"/>
                     </Grid>
@@ -490,7 +566,7 @@
         <!-- ===== RIGHT SIDEBAR ===== -->
         <!-- Will be used for active task stuff when implemented -->
         <Grid x:Name="RightSidebarPanel" Grid.Row="1" Grid.Column="2" Background="{StaticResource BgPrimary}">
-            <StackPanel Margin="0,4,0,0">
+            <StackPanel>
                 <TextBlock Text="Active Tasks" FontWeight="SemiBold" Foreground="#4FC3F7" Padding="16,12" FontSize="14"/>
                 <TextBlock Text="No active tasks" Foreground="{StaticResource TextMuted}" Padding="16,8" FontSize="12"/>
             </StackPanel>

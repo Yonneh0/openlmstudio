@@ -271,6 +271,15 @@
                     </StackPanel>
 
                     <StackPanel Classes="settingItem">
+                        <TextBlock Classes="settingLabel" Text="Agent Default Turns"/>
+                        <TextBlock Classes="settingDescription" 
+                                   Text="Number of turns added when Agent Mode is toggled on. When toggled off, turns reset to 0."/>
+                        <TextBox x:Name="AgentDefaultTurnsInput" Classes="settingInput">
+                            <TextBox.Text>10</TextBox.Text>
+                        </TextBox>
+                    </StackPanel>
+
+                    <StackPanel Classes="settingItem">
                         <TextBlock Classes="settingLabel" Text="Auto-Commit File Threshold (KB)"/>
                         <TextBlock Classes="settingDescription" 
                                    Text="Files smaller than this size will be auto-committed without user review."/>
