@@ -265,9 +265,11 @@
 
                 <!-- Games tab -->
                 <TabItem Header="Games" x:Name="GamesTabItem" Classes="toolTab">
-                    <ScrollViewer VerticalScrollBarVisibility="Auto" Margin="0,8,0,0">
-                        <Controls:GamesPanel x:Name="LeftGamesPanel"/>
-                    </ScrollViewer>
+                    <StackPanel x:Name="GamesTabContent" IsVisible="False">
+                        <ScrollViewer VerticalScrollBarVisibility="Auto" Margin="0,8,0,0">
+                            <Controls:GamesPanel x:Name="LeftGamesPanel"/>
+                        </ScrollViewer>
+                    </StackPanel>
                 </TabItem>
 
                 <TabItem Header="Pingu" x:Name="PinguTabItem" Classes="toolTab">
