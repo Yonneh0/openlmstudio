@@ -151,22 +151,29 @@ public partial class App : Avalonia.Application
     {
         try
         {
+            System.Diagnostics.Debug.WriteLine("[App] Creating ILoggerFactory");
             var loggerFactory = serviceProvider.GetRequiredService<ILoggerFactory>();
-
-            // Resolve and pass infrastructure dependencies to MainWindow constructor
+            System.Diagnostics.Debug.WriteLine("[App] Resolving IConversationManager");
             var conversationManager = serviceProvider.GetRequiredService<IConversationManager>();
+            System.Diagnostics.Debug.WriteLine("[App] Resolving IServerService");
             var serverService = serviceProvider.GetRequiredService<IServerService>();
+            System.Diagnostics.Debug.WriteLine("[App] Resolving IModelRepository");
             var modelRepository = serviceProvider.GetRequiredService<IModelRepository>();
 
-            return new MainWindow(
+            System.Diagnostics.Debug.WriteLine("[App] Constructing MainWindow");
+            var window = new MainWindow(
                 loggerFactory.CreateLogger<MainWindow>(),
                 conversationManager,
                 serverService,
                 modelRepository);
+            System.Diagnostics.Debug.WriteLine("[App] MainWindow constructed successfully");
+            return window;
         }
         catch (Exception ex)
         {
-            ShowError($"Failed to create main window:\n{ex.Message}");
+            // Write to console so we can see it
+            Console.Error.WriteLine($"[App] FAILED to create main window:\n{ex}");
+            ShowError($"Failed to create main window:\n{ex.Message}\n\nFull exception:\n{ex}");
             throw; // Re-throw — application cannot start without the main window
         }
     }

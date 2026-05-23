@@ -73,29 +73,35 @@ public partial class MainWindow
     /// </summary>
     private void OnLeftTabControlSelectionChanged(object? sender, SelectionChangedEventArgs e)
     {
-        if (LeftTabControl.SelectedItem is TabItem selectedItem)
-        {
-            // Map TabItem to tab name based on which item is selected
-            if (selectedItem == ChatTabItem)
-                _activeTab = "Chat";
-            else if (selectedItem == ServerTabItem)
-                _activeTab = "Server";
-            else if (selectedItem == ModelsTabItem)
-                _activeTab = "Models";
-            else if (selectedItem == DevicesTabItem)
-                _activeTab = "Devices";
-            else if (selectedItem == ContextTabItem)
-                _activeTab = "Context";
-            else if (selectedItem == AgentTabItem)
-                _activeTab = "Agent";
-            else if (selectedItem == ImageGenTabItem)
-                _activeTab = "ImageGen";
-            else if (selectedItem == TasksTabItem)
-                _activeTab = "Tasks";
+        // Guard: if TabItems are null, we're still in EndInit — skip handling
+        if (LeftTabControl.SelectedItem is not TabItem selectedItem)
+            return;
 
-            UpdateActiveTab(_activeTab);
-            UpdateRightSidebarTab(_activeTab);
-        }
+        if (ChatTabItem == null || ServerTabItem == null || ModelsTabItem == null ||
+            DevicesTabItem == null || ContextTabItem == null || AgentTabItem == null ||
+            ImageGenTabItem == null || TasksTabItem == null)
+            return;
+
+        // Map TabItem to tab name based on which item is selected
+        if (selectedItem == ChatTabItem)
+            _activeTab = "Chat";
+        else if (selectedItem == ServerTabItem)
+            _activeTab = "Server";
+        else if (selectedItem == ModelsTabItem)
+            _activeTab = "Models";
+        else if (selectedItem == DevicesTabItem)
+            _activeTab = "Devices";
+        else if (selectedItem == ContextTabItem)
+            _activeTab = "Context";
+        else if (selectedItem == AgentTabItem)
+            _activeTab = "Agent";
+        else if (selectedItem == ImageGenTabItem)
+            _activeTab = "ImageGen";
+        else if (selectedItem == TasksTabItem)
+            _activeTab = "Tasks";
+
+        UpdateActiveTab(_activeTab);
+        UpdateRightSidebarTab(_activeTab);
     }
 
     private void SetTabVisibility(StackPanel? panel, bool visible)
