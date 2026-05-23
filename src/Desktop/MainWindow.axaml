@@ -431,8 +431,8 @@
         </Grid>
 
         <!-- ===== CENTER PANE ===== -->
-        <Panel Grid.Column="1" Background="#1A1A1E">
-            <Grid>
+        <Grid Grid.Column="1" Background="#1A1A1E">
+            <Grid Margin="0,52,0,0">
                 <Grid.RowDefinitions>
                     <RowDefinition Height="Auto"/>
                     <RowDefinition Height="*"/>
@@ -486,16 +486,16 @@
                     </Grid>
                 </Border>
             </Grid>
-        </Panel>
+        </Grid>
 
         <!-- ===== RIGHT SIDEBAR ===== -->
         <!-- Will be used for active task stuff when implemented -->
-        <Panel x:Name="RightSidebarPanel" Grid.Column="2" Background="{StaticResource BgPrimary}">
-            <StackPanel>
+        <Grid x:Name="RightSidebarPanel" Grid.Column="2" Background="{StaticResource BgPrimary}">
+            <StackPanel Margin="0,52,0,0">
                 <TextBlock Text="Active Tasks" FontWeight="SemiBold" Foreground="#4FC3F7" Padding="16,12" FontSize="14"/>
                 <TextBlock Text="No active tasks" Foreground="{StaticResource TextMuted}" Padding="16,8" FontSize="12"/>
             </StackPanel>
-        </Panel>
+        </Grid>
 
         <!-- Status bar -->
         <Border Grid.Row="1" Grid.ColumnSpan="3" Background="{StaticResource BgSecondary}">
