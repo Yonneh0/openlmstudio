@@ -56,6 +56,9 @@ public partial class MainWindow : Window
     /// <summary>Flag indicating whether a streaming response is in progress.</summary>
     private bool _isStreaming = false;
 
+    /// <summary>Current send target ("MainAI" or "Pingu").</summary>
+    private string _sendTarget = "MainAI";
+
     /// <summary>The current assistant message border being streamed into during an active SSE session.</summary>
     private Border? _currentAssistantBorder;
 
@@ -196,6 +199,7 @@ public partial class MainWindow : Window
         if (SendButton != null)
             SendButton.Click += OnSendMessageClicked;
 
+
         // Server start/stop buttons - both left and right panels need handlers
         if (LeftServerStartStopButton != null)
             LeftServerStartStopButton.Click += OnServerStartStopClicked;
@@ -238,7 +242,7 @@ public partial class MainWindow : Window
         if (PlanActToggle != null)
             PlanActToggle.Click += OnPlanActToggleClicked;
 
-        // Safety toggles
+        // Safety toggles (WWW, Read, Edit, Exec)
         if (SafetyWWW != null)
             SafetyWWW.Click += OnSafetyToggleClicked;
         if (SafetyRead != null)
@@ -412,8 +416,8 @@ public partial class MainWindow : Window
 
             if (turns > 0)
             {
-                AgentTurnsBadge.SetValue(Avalonia.Controls.Primitives.TemplatedControl.BackgroundProperty, (Avalonia.Media.ISolidColorBrush)(this.FindResource("AccentOrange") ?? Avalonia.Media.Brushes.Orange));
-                AgentTurnsBadge.SetValue(Avalonia.Controls.Primitives.TemplatedControl.ForegroundProperty, Avalonia.Media.Brushes.White);
+                AgentTurnsBadge.SetCurrentValue(Avalonia.Controls.Primitives.TemplatedControl.BackgroundProperty, (Avalonia.Media.ISolidColorBrush)(this.FindResource("AccentOrange") ?? Avalonia.Media.Brushes.Orange));
+                AgentTurnsBadge.SetCurrentValue(Avalonia.Controls.Primitives.TemplatedControl.ForegroundProperty, Avalonia.Media.Brushes.White);
             }
         }
 
@@ -668,6 +672,100 @@ public partial class MainWindow : Window
             }
         }
     }
+
+    // =========================================================================
+    // Plan/Act toggle and Safety handlers
+    // =========================================================================
+
+    /// <summary>
+    /// Toggles between Plan and Act modes.
+    /// Plan shows "Plan" in gray; Act shows "Act" in blue.
+    /// Modes are mutually exclusive — enabling one disables the other.
+    /// </summary>
+    private void OnPlanActToggleClicked(object? sender, RoutedEventArgs e)
+    {
+        if (PlanActToggle == null)
+            return;
+
+        var isActive = PlanActToggle.Classes.Contains("active");
+        if (isActive)
+        {
+            PlanActToggle.Classes.Remove("active");
+            PlanActToggle.Content = "Plan";
+        }
+        else
+        {
+            PlanActToggle.Classes.Add("active");
+            PlanActToggle.Content = "Act";
+        }
+
+        _logger?.LogInformation("Plan/Act mode toggled to: {Mode}", !isActive ? "Act" : "Plan");
+    }
+
+    /// <summary>
+    /// Handles clicks on the safety toggles.
+    /// Exec or Edit being enabled enables Read automatically.
+    /// </summary>
+    private void OnSafetyToggleClicked(object? sender, RoutedEventArgs e)
+    {
+        if (sender is ToggleButton clickedButton)
+        {
+            var isChecked = clickedButton.IsChecked == true;
+            var name = clickedButton.Name;
+
+            if (isChecked)
+            {
+                // Exec enables Read
+                if (name == nameof(SafetyExec) && SafetyRead != null)
+                    SafetyRead.IsChecked = true;
+
+                // Edit enables Read
+                if (name == nameof(SafetyEdit) && SafetyRead != null)
+                    SafetyRead.IsChecked = true;
+            }
+            else
+            {
+                // If both Exec and Edit are unchecked, disable Read
+                if (name == nameof(SafetyExec) && SafetyEdit != null)
+                {
+                    if (SafetyEdit.IsChecked != true)
+                        SafetyRead?.SetValue(ToggleButton.IsCheckedProperty, false);
+                }
+                if (name == nameof(SafetyEdit) && SafetyExec != null)
+                {
+                    if (SafetyExec.IsChecked != true)
+                        SafetyRead?.SetValue(ToggleButton.IsCheckedProperty, false);
+                }
+            }
+
+            _logger?.LogDebug("Safety toggle {Name} set to {State}", name, isChecked);
+        }
+    }
+
+    /// <summary>
+    /// Handles clicks on the Send target ContextMenuItem (MainAI / Pingu).
+    /// Updates the Send button content to show the selected target.
+    /// </summary>
+    private void OnSendTargetSelected(object? sender, RoutedEventArgs e)
+    {
+        var target = "MainAI";
+        if (sender is ContentControl item)
+        {
+            // Check Tag property
+            var tag = item.Tag as string;
+            if (!string.IsNullOrEmpty(tag))
+                target = tag;
+
+            // Also check Content if Tag is not set
+            if (string.IsNullOrEmpty(target) && item.Content is string content)
+                target = content;
+        }
+
+        _sendTarget = target;
+        SendButton?.SetValue(ContentControl.ContentProperty, $"Send ({target})");
+        _logger?.LogInformation("Send target changed to: {Target}", target);
+    }
+
 }
 
 // =========================================================================
@@ -760,78 +858,6 @@ public static class KeyboardService
 
             var nextIndex = (index + direction + items.Count) % items.Count;
             items[nextIndex].IsSelected = true;
-        }
-    }
-}
-
-// =========================================================================
-// Plan/Act toggle and Safety handlers (partial class extension)
-// =========================================================================
-
-public partial class MainWindow
-{
-    /// <summary>
-    /// Toggles between Plan and Act modes.
-    /// Plan shows "Plan" in blue; Act shows "Act" in blue.
-    /// Modes are mutually exclusive — enabling one disables the other.
-    /// </summary>
-    private void OnPlanActToggleClicked(object? sender, RoutedEventArgs e)
-    {
-        if (PlanActToggle == null)
-            return;
-
-        var isActive = PlanActToggle.Classes.Contains("active");
-        if (isActive)
-        {
-            PlanActToggle.Classes.Remove("active");
-            PlanActToggle.Content = "Plan";
-        }
-        else
-        {
-            PlanActToggle.Classes.Add("active");
-            PlanActToggle.Content = "Act";
-        }
-
-        _logger?.LogInformation("Plan/Act mode toggled to: {Mode}", !isActive ? "Act" : "Plan");
-    }
-
-    /// <summary>
-    /// Handles clicks on the safety toggles.
-    /// Exec or Edit being enabled enables Read automatically.
-    /// </summary>
-    private void OnSafetyToggleClicked(object? sender, RoutedEventArgs e)
-    {
-        if (sender is ToggleButton clickedButton)
-        {
-            var isChecked = clickedButton.IsChecked == true;
-            var name = clickedButton.Name;
-
-            if (isChecked)
-            {
-                // Exec enables Read
-                if (name == nameof(SafetyExec) && SafetyRead != null)
-                    SafetyRead.IsChecked = true;
-
-                // Edit enables Read
-                if (name == nameof(SafetyEdit) && SafetyRead != null)
-                    SafetyRead.IsChecked = true;
-            }
-            else
-            {
-                // If both Exec and Edit are unchecked, disable Read
-                if (name == nameof(SafetyExec) && SafetyEdit != null)
-                {
-                    if (SafetyEdit.IsChecked != true)
-                        SafetyRead?.SetValue(ToggleButton.IsCheckedProperty, false);
-                }
-                if (name == nameof(SafetyEdit) && SafetyExec != null)
-                {
-                    if (SafetyExec.IsChecked != true)
-                        SafetyRead?.SetValue(ToggleButton.IsCheckedProperty, false);
-                }
-            }
-
-            _logger?.LogDebug("Safety toggle {Name} set to {State}", name, isChecked);
         }
     }
 }
