@@ -31,7 +31,7 @@
         <Style Selector="Border.searchBar"><Setter Property="Background" Value="{StaticResource BgSecondary}"/><Setter Property="CornerRadius" Value="4"/><Setter Property="Padding" Value="10,6"/></Style>
         <Style Selector="ToggleButton.toolTab"><Setter Property="Background" Value="{StaticResource BgTertiary}"/><Setter Property="Foreground" Value="{StaticResource TextPrimary}"/><Setter Property="Padding" Value="12,6"/><Setter Property="Margin" Value="2,1"/><Setter Property="BorderThickness" Value="2,0,0,0"/><Setter Property="BorderBrush" Value="Transparent"/><Setter Property="FontSize" Value="11"/><Setter Property="CornerRadius" Value="3"/><Setter Property="MinHeight" Value="24"/></Style>
         <Style Selector="ToggleButton.toolTab:checked"><Setter Property="Background" Value="{StaticResource BgSecondary}"/><Setter Property="Foreground" Value="{StaticResource AccentBlue}"/><Setter Property="BorderBrush" Value="{StaticResource AccentBlue}"/></Style>
-        <Style Selector="ToggleButton.toolTab:hover"><Setter Property="Background" Value="#3A3A3E"/></Style>
+        <Style Selector="ToggleButton.toolTab:hover"><Setter Property="Background" Value="#454549"/></Style>
         <Style Selector="Button.AgentModeToggle">
             <Setter Property="Background" Value="#2D2D30"/>
         </Style>
@@ -43,16 +43,17 @@
             <Setter Property="Foreground" Value="White"/>
         </Style>
         <Style Selector="Button.AgentModeToggle:hover">
-            <Setter Property="Background" Value="#3A3A3E"/>
+            <Setter Property="Background" Value="#454549"/>
         </Style>
         <Style Selector="Button.AgentModeToggle.active:hover">
-            <Setter Property="Background" Value="#1E88E5"/>
+            <Setter Property="Background" Value="#1976D2"/>
+            <Setter Property="Foreground" Value="White"/>
         </Style>
         <Style Selector="ToggleButton.rightPanelTab"><Setter Property="Background" Value="{StaticResource BgTertiary}"/><Setter Property="Foreground" Value="{StaticResource TextPrimary}"/><Setter Property="Padding" Value="10,6"/><Setter Property="BorderThickness" Value="0"/><Setter Property="FontSize" Value="11"/><Setter Property="CornerRadius" Value="4"/></Style>
         <Style Selector="ToggleButton.rightPanelTab:checked"><Setter Property="Background" Value="{StaticResource AccentBlue}"/><Setter Property="Foreground" Value="White"/></Style>
         <Style Selector="TabItem.toolTab"><Setter Property="Padding" Value="8,4"/><Setter Property="Margin" Value="2,1"/><Setter Property="Background" Value="{StaticResource BgTertiary}"/><Setter Property="Foreground" Value="{StaticResource TextPrimary}"/><Setter Property="FontSize" Value="11"/><Setter Property="BorderThickness" Value="2,0,0,0"/><Setter Property="BorderBrush" Value="Transparent"/><Setter Property="CornerRadius" Value="3"/><Setter Property="Height" Value="24"/><Setter Property="MinHeight" Value="24"/><Setter Property="MaxHeight" Value="24"/><Setter Property="HorizontalContentAlignment" Value="Center"/></Style>
         <Style Selector="TabItem.toolTab:selected"><Setter Property="Background" Value="{StaticResource BgSecondary}"/><Setter Property="BorderBrush" Value="{StaticResource AccentBlue}"/><Setter Property="Foreground" Value="{StaticResource AccentBlue}"/></Style>
-        <Style Selector="TabItem.toolTab:hover"><Setter Property="Background" Value="#3A3A3E"/></Style>
+        <Style Selector="TabItem.toolTab:hover"><Setter Property="Background" Value="#454549"/></Style>
         <Style Selector="RadioButton.settingsTab"><Setter Property="Background" Value="{StaticResource BgTertiary}"/><Setter Property="Foreground" Value="{StaticResource TextPrimary}"/><Setter Property="Padding" Value="16,8"/><Setter Property="BorderThickness" Value="0,0,0,2"/><Setter Property="FontSize" Value="13"/></Style>
         <Style Selector="RadioButton.settingsTab:checked"><Setter Property="Background" Value="{StaticResource BgSecondary}"/><Setter Property="Foreground" Value="{StaticResource AccentBlue}"/><Setter Property="BorderBrush" Value="{StaticResource AccentBlue}"/></Style>
         <Style Selector="StackPanel.settingItem"><Setter Property="Margin" Value="0,4,0,12"/></Style>
@@ -492,35 +493,71 @@
                         <Border Grid.Row="0" Background="{StaticResource BgTertiary}" Margin="16,0,16,8">
                             <TextBox x:Name="MessageInputBox" Foreground="{StaticResource TextPrimary}" Background="Transparent" BorderThickness="0" Padding="16,12" FontSize="14" MaxHeight="120" MinHeight="60"/>
                         </Border>
-                        <!-- Agent Mode and Safety controls (compact row) -->
+                        <!-- Agent Mode, Plan/Act, and Safety controls (compact row) -->
                         <StackPanel Grid.Row="1" Orientation="Horizontal" Margin="16,0,16,4" VerticalAlignment="Bottom">
                             <!-- Agent Mode (clickable emoji with turns badge) -->
                             <Border Background="{StaticResource BgTertiary}" CornerRadius="6" Padding="8,0" Margin="0,0,8,0">
-                                <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                                <StackPanel Orientation="Horizontal" HorizontalAlignment="Center" VerticalAlignment="Center">
                                     <!-- Agent emoji with floating turns count -->
                                     <Grid Width="44" Height="44" Margin="0,0,6,0">
-                                        <Button x:Name="AgentModeToggle" Content="&#x1F916;" FontSize="34" Padding="0" Classes="AgentModeToggle" Foreground="{StaticResource AccentBlue}" Cursor="Hand"/>
+                                        <Button x:Name="AgentModeToggle" Content="&#x1F916;" FontSize="34" Padding="0" Classes="AgentModeToggle" Foreground="{StaticResource AccentBlue}" Cursor="Hand"
+                                                HorizontalAlignment="Center" VerticalAlignment="Center"/>
                                         <!-- Floating turns count badge - clickable, positioned to the very bottom right -->
-        <Button x:Name="AgentTurnsBadge"
-                Cursor="Hand"
-                CornerRadius="4"
-                Padding="4,1"
-                VerticalAlignment="Bottom"
-                HorizontalAlignment="Right"
-                Margin="0,0,-12,-4"
-                Click="OnAgentTurnsBadgeClicked"
-                IsHitTestVisible="True">
+                                        <Button x:Name="AgentTurnsBadge"
+                                                Cursor="Hand"
+                                                CornerRadius="4"
+                                                Padding="4,1"
+                                                VerticalAlignment="Bottom"
+                                                HorizontalAlignment="Right"
+                                                Margin="0,0,-12,-4"
+                                                Click="OnAgentTurnsBadgeClicked"
+                                                IsHitTestVisible="True"
+                                                Background="#4FC3F7">
+                                            <Button.Styles>
+                                                <Style Selector="Button:pointerover">
+                                                    <Setter Property="Background" Value="Transparent"/>
+                                                </Style>
+                                            </Button.Styles>
                                             <TextBlock x:Name="AgentTurnsText" Text="0" Foreground="White" FontSize="12" FontWeight="Bold" TextAlignment="Center"/>
                                         </Button>
                                     </Grid>
                                 </StackPanel>
                             </Border>
 
+                            <!-- Plan/Act Toggle -->
+                            <Button x:Name="PlanActToggle"
+                                    Content="Plan"
+                                    Margin="0,0,8,0"
+                                    Width="60" Height="32"
+                                    Click="OnPlanActToggleClicked"
+                                    HorizontalAlignment="Center"
+                                    VerticalAlignment="Center">
+                                <Button.Styles>
+                                    <Style Selector="Button">
+                                        <Setter Property="Background" Value="#2D2D30"/>
+                                        <Setter Property="Foreground" Value="{StaticResource TextPrimary}"/>
+                                        <Setter Property="Padding" Value="8,4"/>
+                                        <Setter Property="FontSize" Value="11"/>
+                                        <Setter Property="BorderThickness" Value="0"/>
+                                    </Style>
+                                    <Style Selector="Button.active">
+                                        <Setter Property="Background" Value="{StaticResource AccentBlue}"/>
+                                        <Setter Property="Foreground" Value="White"/>
+                                    </Style>
+                                    <Style Selector="Button:pointerover">
+                                        <Setter Property="Background" Value="#454549"/>
+                                    </Style>
+                                    <Style Selector="Button.active:pointerover">
+                                        <Setter Property="Background" Value="#1976D2"/>
+                                    </Style>
+                                </Button.Styles>
+                            </Button>
+
                             <!-- Safety Mode -->
                             <Border Background="{StaticResource BgTertiary}" CornerRadius="6" Padding="8,0" Margin="0,0,8,0">
-                                <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                                <StackPanel Orientation="Horizontal" HorizontalAlignment="Center" VerticalAlignment="Center">
                                     <ToggleButton x:Name="SafetyLocked"
-                                                  Content="&#x1F512;"
+                                                  Content="&#x1F310;"
                                                   Width="36" Height="36"
                                                   Padding="0"
                                                   FontSize="22"
@@ -528,7 +565,16 @@
                                                   Foreground="White"
                                                   Margin="0,0,3,0"
                                                   VerticalAlignment="Center"/>
-                                    <ToggleButton x:Name="SafetyReadOnly"
+                                    <ToggleButton x:Name="SafetyWWW"
+                                                  Content="&#x1F310;"
+                                                  Width="36" Height="36"
+                                                  Padding="0"
+                                                  FontSize="22"
+                                                  Background="#2D2D30"
+                                                  Foreground="{StaticResource TextPrimary}"
+                                                  Margin="0,0,3,0"
+                                                  VerticalAlignment="Center"/>
+                                    <ToggleButton x:Name="SafetyRead"
                                                   Content="&#x1F441;"
                                                   Width="36" Height="36"
                                                   Padding="0"
@@ -537,7 +583,7 @@
                                                   Foreground="{StaticResource TextPrimary}"
                                                   Margin="0,0,3,0"
                                                   VerticalAlignment="Center"/>
-                                    <ToggleButton x:Name="SafetyEditing"
+                                    <ToggleButton x:Name="SafetyEdit"
                                                   Content="&#x270E;"
                                                   Width="36" Height="36"
                                                   Padding="0"
@@ -546,7 +592,7 @@
                                                   Foreground="{StaticResource TextPrimary}"
                                                   Margin="0,0,3,0"
                                                   VerticalAlignment="Center"/>
-                                    <ToggleButton x:Name="SafetyRunning"
+                                    <ToggleButton x:Name="SafetyExec"
                                                   Content="&#x2699;"
                                                   Width="36" Height="36"
                                                   Padding="0"
