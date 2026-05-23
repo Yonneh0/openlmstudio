@@ -944,14 +944,16 @@
             <DockPanel Margin="12">
                 
         <!-- Right sidebar tabs (scrollable) -->
-        <StackPanel DockPanel.Dock="Top" Orientation="Horizontal" Margin="0,0,0,8">
-            <RadioButton x:Name="RightContextTabButton" Content="Context" Classes="settingsTab" IsChecked="True" Margin="0,0,4,0"/>
-            <RadioButton x:Name="RightServerTabButton" Content="Server" Classes="settingsTab" Margin="0,0,4,0"/>
-            <RadioButton x:Name="RightDevicesTabButton" Content="Devices" Classes="settingsTab" Margin="0,0,4,0"/>
-            <RadioButton x:Name="RightAnalysisTabButton" Content="AI Analysis" Classes="settingsTab" Margin="0,0,4,0"/>
-            <RadioButton x:Name="RightGamesTabButton" Content="Games" Classes="settingsTab" Margin="0,0,4,0"/>
-            <RadioButton x:Name="RightPinguTabButton" Content="Pingu" Classes="settingsTab" Margin="0,0,0,0"/>
-        </StackPanel>
+        <ScrollViewer DockPanel.Dock="Top" HorizontalScrollBarVisibility="Auto" Margin="0,0,0,8">
+            <StackPanel Orientation="Horizontal" Margin="0,0,0,0">
+                <RadioButton x:Name="RightContextTabButton" Content="Context" Classes="settingsTab" IsChecked="True" Margin="0,0,4,0"/>
+                <RadioButton x:Name="RightServerTabButton" Content="Server" Classes="settingsTab" Margin="0,0,4,0"/>
+                <RadioButton x:Name="RightDevicesTabButton" Content="Devices" Classes="settingsTab" Margin="0,0,4,0"/>
+                <RadioButton x:Name="RightAnalysisTabButton" Content="AI Analysis" Classes="settingsTab" Margin="0,0,4,0"/>
+                <RadioButton x:Name="RightGamesTabButton" Content="Games" Classes="settingsTab" Margin="0,0,4,0"/>
+                <RadioButton x:Name="RightPinguTabButton" Content="Pingu" Classes="settingsTab" Margin="0,0,0,0"/>
+            </StackPanel>
+        </ScrollViewer>
 
                 <!-- Context tab content (default) -->
                 <StackPanel x:Name="RightContextContent" DockPanel.Dock="Top">
