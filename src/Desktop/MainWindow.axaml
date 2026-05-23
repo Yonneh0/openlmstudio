@@ -444,8 +444,8 @@
                 </ScrollViewer>
             </Grid>
 
-            <!-- Bottom buttons -->
-            <StackPanel Grid.Row="3" Orientation="Horizontal" Margin="8,8,8,8">
+        <!-- Bottom buttons -->
+            <StackPanel Grid.Row="3" Orientation="Horizontal" Margin="8,4,8,8">
                 <Button x:Name="NewChatButton" Content="+ New Chat" Background="#0E639C" Foreground="White" Padding="8,4" Height="36" Margin="0,0,4,0"/>
                 <Button x:Name="SettingsButton" Content="&#x2699;&#xFE0E;" Background="#252529" Foreground="{StaticResource TextPrimary}" Padding="8,4" Height="36"/>
             </StackPanel>
@@ -493,9 +493,9 @@
                             <TextBox x:Name="MessageInputBox" Foreground="{StaticResource TextPrimary}" Background="Transparent" BorderThickness="0" Padding="16,12" FontSize="14" MaxHeight="120" MinHeight="60"/>
                         </Border>
                         <!-- Agent Mode, Plan/Act, and Safety controls (compact row) -->
-                        <StackPanel Grid.Row="1" Orientation="Horizontal" Margin="16,0,16,4" VerticalAlignment="Bottom">
+                        <StackPanel Grid.Row="1" Orientation="Horizontal" Margin="8,0,8,4" VerticalAlignment="Bottom">
                             <!-- Agent Mode (clickable emoji with turns badge) -->
-                            <Border Background="{StaticResource BgTertiary}" CornerRadius="6" Padding="8,0" Margin="0,0,8,0">
+                            <Border Background="{StaticResource BgTertiary}" CornerRadius="6" Padding="8,0" Margin="0,0,4,0">
                                 <StackPanel Orientation="Horizontal" HorizontalAlignment="Center" VerticalAlignment="Center">
                                     <!-- Agent emoji with floating turns count -->
                                     <Grid Width="44" Height="44" Margin="0,0,6,0">
@@ -526,67 +526,72 @@
                             </Border>
 
                             <!-- Plan/Act Toggle -->
-                            <Border Background="{StaticResource BgTertiary}" CornerRadius="6" Padding="8,0" Margin="0,0,8,0">
-                                <StackPanel Orientation="Horizontal" HorizontalAlignment="Center" VerticalAlignment="Center" Width="64">
-                                        <Button x:Name="PlanActToggle"
-                                                Content="Plan"
-                                                Width="64" Height="32"
-                                                Click="OnPlanActToggleClicked"
-                                                HorizontalAlignment="Center"
-                                                VerticalAlignment="Center"
-                                                Padding="0,0"
-                                                HorizontalContentAlignment="Center"
-                                                VerticalContentAlignment="Center">
-                                            <Button.Styles>
-                                                <Style Selector="Button">
-                                                    <Setter Property="Background" Value="#2D2D30"/>
-                                                    <Setter Property="Foreground" Value="{StaticResource TextPrimary}"/>
-                                                    <Setter Property="FontSize" Value="11"/>
-                                                    <Setter Property="FontWeight" Value="SemiBold"/>
-                                                    <Setter Property="BorderThickness" Value="0"/>
-                                                    <Setter Property="Padding" Value="4,2"/>
-                                                </Style>
-                                                <Style Selector="Button.active">
-                                                    <Setter Property="Background" Value="{StaticResource AccentBlue}"/>
-                                                    <Setter Property="Foreground" Value="White"/>
-                                                </Style>
-                                                <Style Selector="Button:pointerover">
-                                                    <Setter Property="Background" Value="{Binding (Button.Background), RelativeSource={RelativeSource Self}}"/>
-                                                </Style>
-                                                <Style Selector="Button.active:pointerover">
-                                                    <Setter Property="Background" Value="{StaticResource AccentBlue}"/>
-                                                </Style>
-                                            </Button.Styles>
-                                        </Button>
+                            <Border Background="{StaticResource BgTertiary}" CornerRadius="6" Padding="8,0" Margin="0,0,4,0">
+                                <StackPanel Orientation="Horizontal" HorizontalAlignment="Center" VerticalAlignment="Center" Height="36">
+                                    <Border Background="{StaticResource BgTertiary}" CornerRadius="6" Padding="6,0" Width="130" Height="36" HorizontalAlignment="Center" VerticalAlignment="Center">
+                                        <StackPanel x:Name="PlanActPanel" Orientation="Horizontal" HorizontalAlignment="Center" VerticalAlignment="Center">
+                                            <Button x:Name="PlanButton"
+                                                    Content="Plan"
+                                                    Width="55" Height="32"
+                                                    Click="OnPlanClicked"
+                                                    Padding="0,0"
+                                                    Classes="active"
+                                                    HorizontalContentAlignment="Center"
+                                                    VerticalContentAlignment="Center">
+                                                <Button.Styles>
+                                                    <Style Selector="Button">
+                                                        <Setter Property="Background" Value="#2D2D30"/>
+                                                        <Setter Property="Foreground" Value="{StaticResource TextPrimary}"/>
+                                                        <Setter Property="FontSize" Value="11"/>
+                                                        <Setter Property="FontWeight" Value="SemiBold"/>
+                                                        <Setter Property="BorderThickness" Value="0"/>
+                                                    </Style>
+                                                    <Style Selector="Button.active">
+                                                        <Setter Property="Background" Value="{StaticResource AccentBlue}"/>
+                                                        <Setter Property="Foreground" Value="White"/>
+                                                    </Style>
+                                                    <Style Selector="Button:pointerover">
+                                                        <Setter Property="Background" Value="{Binding (Button.Background), RelativeSource={RelativeSource Self}}"/>
+                                                    </Style>
+                                                </Button.Styles>
+                                            </Button>
+                                            <Button x:Name="ActButton"
+                                                    Content="Act"
+                                                    Width="55" Height="32"
+                                                    Click="OnActClicked"
+                                                    Padding="0,0"
+                                                    HorizontalContentAlignment="Center"
+                                                    VerticalContentAlignment="Center">
+                                                <Button.Styles>
+                                                    <Style Selector="Button">
+                                                        <Setter Property="Background" Value="#2D2D30"/>
+                                                        <Setter Property="Foreground" Value="{StaticResource TextPrimary}"/>
+                                                        <Setter Property="FontSize" Value="11"/>
+                                                        <Setter Property="FontWeight" Value="SemiBold"/>
+                                                        <Setter Property="BorderThickness" Value="0"/>
+                                                    </Style>
+                                                    <Style Selector="Button.active">
+                                                        <Setter Property="Background" Value="{StaticResource AccentBlue}"/>
+                                                        <Setter Property="Foreground" Value="White"/>
+                                                    </Style>
+                                                    <Style Selector="Button:pointerover">
+                                                        <Setter Property="Background" Value="{Binding (Button.Background), RelativeSource={RelativeSource Self}}"/>
+                                                    </Style>
+                                                </Button.Styles>
+                                            </Button>
+                                        </StackPanel>
+                                    </Border>
                                 </StackPanel>
                             </Border>
 
                             <!-- Safety Mode -->
-                            <Border Background="{StaticResource BgTertiary}" CornerRadius="6" Padding="8,0" Margin="0,0,8,0">
+                            <Border Background="{StaticResource BgTertiary}" CornerRadius="6" Padding="8,0" Margin="0,0,4,0">
                                 <StackPanel Orientation="Horizontal" HorizontalAlignment="Center" VerticalAlignment="Center">
                                     <ToggleButton x:Name="SafetyWWW"
                                                   Content="&#x1F310;"
                                                   Width="36" Height="36"
                                                   Padding="0"
                                                   FontSize="22"
-                                                  Background="#4CAF50"
-                                                  Foreground="White"
-                                                  Margin="0,0,3,0"
-                                                  HorizontalAlignment="Center"
-                                                  VerticalAlignment="Center"
-                                                  HorizontalContentAlignment="Center"
-                                                  VerticalContentAlignment="Center">
-                                        <ToggleButton.Styles>
-                                            <Style Selector="ToggleButton:pointerover">
-                                                <Setter Property="Background" Value="{Binding (ToggleButton.Background), RelativeSource={RelativeSource Self}}"/>
-                                            </Style>
-                                        </ToggleButton.Styles>
-                                    </ToggleButton>
-                                    <ToggleButton x:Name="SafetyRead"
-                                                  Content="&#x1F441;"
-                                                  Width="36" Height="36"
-                                                  Padding="0"
-                                                  FontSize="22"
                                                   Background="#2D2D30"
                                                   Foreground="{StaticResource TextPrimary}"
                                                   Margin="0,0,3,0"
@@ -600,13 +605,13 @@
                                             </Style>
                                         </ToggleButton.Styles>
                                     </ToggleButton>
-                                    <ToggleButton x:Name="SafetyEdit"
-                                                  Content="&#x270E;"
-                                                  Width="36" Height="36"
-                                                  Padding="0"
-                                                  FontSize="22"
-                                                  Background="#2D2D30"
-                                                  Foreground="{StaticResource TextPrimary}"
+                                        <ToggleButton x:Name="SafetyRead"
+                                                      Content="&#x1F441;"
+                                                      Width="36" Height="36"
+                                                      Padding="0"
+                                                      FontSize="22"
+                                                      Background="#2D2D30"
+                                                      Foreground="{StaticResource TextPrimary}"
                                                   Margin="0,0,3,0"
                                                   HorizontalAlignment="Center"
                                                   VerticalAlignment="Center"
@@ -618,13 +623,31 @@
                                             </Style>
                                         </ToggleButton.Styles>
                                     </ToggleButton>
-                                    <ToggleButton x:Name="SafetyExec"
-                                                  Content="&#x2699;"
-                                                  Width="36" Height="36"
-                                                  Padding="0"
-                                                  FontSize="22"
-                                                  Background="#2D2D30"
-                                                  Foreground="{StaticResource TextPrimary}"
+                                        <ToggleButton x:Name="SafetyEdit"
+                                                      Content="&#x270E;"
+                                                      Width="36" Height="36"
+                                                      Padding="0"
+                                                      FontSize="22"
+                                                      Background="#2D2D30"
+                                                      Foreground="{StaticResource TextPrimary}"
+                                                  Margin="0,0,3,0"
+                                                  HorizontalAlignment="Center"
+                                                  VerticalAlignment="Center"
+                                                  HorizontalContentAlignment="Center"
+                                                  VerticalContentAlignment="Center">
+                                        <ToggleButton.Styles>
+                                            <Style Selector="ToggleButton:pointerover">
+                                                <Setter Property="Background" Value="{Binding (ToggleButton.Background), RelativeSource={RelativeSource Self}}"/>
+                                            </Style>
+                                        </ToggleButton.Styles>
+                                    </ToggleButton>
+                                        <ToggleButton x:Name="SafetyExec"
+                                                      Content="&#x2699;"
+                                                      Width="36" Height="36"
+                                                      Padding="0"
+                                                      FontSize="22"
+                                                      Background="#2D2D30"
+                                                      Foreground="{StaticResource TextPrimary}"
                                                   HorizontalAlignment="Center"
                                                   VerticalAlignment="Center"
                                                   HorizontalContentAlignment="Center"
