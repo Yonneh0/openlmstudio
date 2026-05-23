@@ -57,8 +57,7 @@ public class ServerLoadTestService
                                 messages = new[] { new { role = "user", content = "Say something interesting." } },
                                 max_tokens = 256,
                                 temperature = 0.7,
-                            },
-                            ct: ct);
+                            });
 
                         stepSw.Stop();
                         latencies.Add(stepSw.ElapsedMilliseconds);
@@ -132,8 +131,7 @@ public class ServerLoadTestService
                                 height = 512,
                                 steps = 20,
                                 guidance_scale = 7.5,
-                            },
-                            ct: ct);
+                            });
 
                         stepSw.Stop();
                         latencies.Add(stepSw.ElapsedMilliseconds);
@@ -197,8 +195,7 @@ public class ServerLoadTestService
                             new
                             {
                                 messages = new[] { new { role = "user", content = "Hello, world!" } },
-                            },
-                            ct: ct);
+                            });
 
                         stepSw.Stop();
                         latencies.Add(stepSw.ElapsedMilliseconds);

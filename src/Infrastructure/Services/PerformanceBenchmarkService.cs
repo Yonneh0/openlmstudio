@@ -43,8 +43,12 @@ public class PerformanceBenchmarkService
                 await _imagePipeline.LoadModelAsync(modelId);
             }
             sw.Stop();
-            return BenchmarkResult.Create("ModelLoad", sw.ElapsedMilliseconds)
+            return new BenchmarkResult
             {
+                BenchmarkName = "ModelLoad",
+                StartedAt = DateTime.UtcNow,
+                CompletedAt = DateTime.UtcNow,
+                DurationMs = sw.ElapsedMilliseconds,
                 ModelLoadTimeMs = sw.ElapsedMilliseconds,
                 Succeeded = true,
             };
@@ -52,8 +56,12 @@ public class PerformanceBenchmarkService
         catch (Exception ex)
         {
             sw.Stop();
-            return BenchmarkResult.Create("ModelLoad", sw.ElapsedMilliseconds)
+            return new BenchmarkResult
             {
+                BenchmarkName = "ModelLoad",
+                StartedAt = DateTime.UtcNow,
+                CompletedAt = DateTime.UtcNow,
+                DurationMs = sw.ElapsedMilliseconds,
                 ModelLoadTimeMs = sw.ElapsedMilliseconds,
                 Succeeded = false,
                 Error = ex.Message,
@@ -68,8 +76,12 @@ public class PerformanceBenchmarkService
         string modelId, string prompt, int maxTokens, int iterations, CancellationToken ct = default)
     {
         if (_chatCompletion == null)
-            return BenchmarkResult.Create("ChatCompletion", 0)
+            return new BenchmarkResult
             {
+                BenchmarkName = "ChatCompletion",
+                StartedAt = DateTime.UtcNow,
+                CompletedAt = DateTime.UtcNow,
+                DurationMs = 0,
                 Succeeded = false,
                 Error = "IChatCompletionService not registered in DI container.",
             };
@@ -83,7 +95,7 @@ public class PerformanceBenchmarkService
             var stepSw = Stopwatch.StartNew();
             var messages = new List<Message>
             {
-                new(MessageRole.User, prompt),
+                new Message { Role = MessageRole.User, Content = prompt },
             };
 
             var result = await _chatCompletion.GetCompletionAsync(new ChatRequest(modelId, messages, MaxTokens: maxTokens));
@@ -101,8 +113,12 @@ public class PerformanceBenchmarkService
         var p95 = sorted[(int)(sorted.Count * 0.95)];
         var p99 = sorted[Math.Min((int)(sorted.Count * 0.99), sorted.Count - 1)];
 
-        return BenchmarkResult.Create("ChatCompletion", sw.ElapsedMilliseconds)
+        return new BenchmarkResult
         {
+            BenchmarkName = "ChatCompletion",
+            StartedAt = DateTime.UtcNow,
+            CompletedAt = DateTime.UtcNow,
+            DurationMs = sw.ElapsedMilliseconds,
             Succeeded = true,
             TokensPerSecond = sw.ElapsedMilliseconds > 0 ? totalTokens / (sw.ElapsedMilliseconds / 1000.0) : 0,
             AvgLatencyMs = avgLatency,
@@ -119,8 +135,12 @@ public class PerformanceBenchmarkService
         string modelId, int width, int height, int steps, int iterations, CancellationToken ct = default)
     {
         if (_imagePipeline == null)
-            return BenchmarkResult.Create("ImageGeneration", 0)
+            return new BenchmarkResult
             {
+                BenchmarkName = "ImageGeneration",
+                StartedAt = DateTime.UtcNow,
+                CompletedAt = DateTime.UtcNow,
+                DurationMs = 0,
                 Succeeded = false,
                 Error = "IDiffusionPipelineService not registered in DI container.",
             };
@@ -147,8 +167,12 @@ public class PerformanceBenchmarkService
         var p95 = sorted[(int)(sorted.Count * 0.95)];
         var p99 = sorted[Math.Min((int)(sorted.Count * 0.99), sorted.Count - 1)];
 
-        return BenchmarkResult.Create("ImageGeneration", sw.ElapsedMilliseconds)
+        return new BenchmarkResult
         {
+            BenchmarkName = "ImageGeneration",
+            StartedAt = DateTime.UtcNow,
+            CompletedAt = DateTime.UtcNow,
+            DurationMs = sw.ElapsedMilliseconds,
             Succeeded = true,
             AvgLatencyMs = avgLatency,
             P50LatencyMs = p50,
@@ -183,8 +207,12 @@ public class PerformanceBenchmarkService
         var totalTokens = results.Sum(r => (int)r.TokensPerSecond);
         var peakMem = results.Max(r => r.PeakMemoryMb);
 
-        return BenchmarkResult.Create("FullBenchmark", totalMs)
+        return new BenchmarkResult
         {
+            BenchmarkName = "FullBenchmark",
+            StartedAt = DateTime.UtcNow,
+            CompletedAt = DateTime.UtcNow,
+            DurationMs = totalMs,
             ModelLoadTimeMs = loadResult.ModelLoadTimeMs,
             TokensPerSecond = totalTokens / (totalMs / 1000.0),
             AvgLatencyMs = imageResult.AvgLatencyMs,

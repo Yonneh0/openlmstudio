@@ -848,8 +848,10 @@ public class DiffusionPipelineService : IDiffusionPipelineService, IDisposable
             var progress = new ImageGenerationProgress(
                 stepIndex + 1,
                 request.Steps,
-                (stepIndex + 1) / (float)request.Steps * 100,
-                intermediatePng);
+                (stepIndex + 1) / (float)request.Steps * 100)
+            {
+                ImageBytes = intermediatePng,
+            };
 
             yield return progress;
         }
