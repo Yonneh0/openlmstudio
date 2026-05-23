@@ -82,7 +82,7 @@
             <TabControl Grid.Row="2" Background="Transparent" BorderThickness="0" x:Name="LeftTabControl" SelectionChanged="OnLeftTabControlSelectionChanged">
                 <!-- Chat tab -->
                 <TabItem Header="Chats" x:Name="ChatTabItem" Classes="toolTab" Content="{Binding ElementName=ChatTabContent}">
-                    <StackPanel x:Name="ChatTabContent" IsVisible="{Binding ActiveTab, Converter={StaticResource StringEqualsConverter}, ConverterParameter=Chat}">
+                    <StackPanel x:Name="ChatTabContent" IsVisible="True">
                         <TextBlock x:Name="_chatTabTitle" Text="Chats" FontWeight="SemiBold" Foreground="#4FC3F7" Padding="8,6"/>
                         <StackPanel x:Name="ChatListPanel" Margin="0,4,0,0">
                             <TextBlock Text="No chats loaded" Foreground="{StaticResource TextMuted}" Padding="12,8" FontSize="12"/>
@@ -267,6 +267,20 @@
                 </TabItem>
 
                 <!-- Image Generation tab -->
+                <TabItem Header="Games" x:Name="GamesTabItem" Classes="toolTab" Content="{Binding ElementName=GamesTabContent}">
+                    <StackPanel x:Name="GamesTabContent" IsVisible="False">
+                        <TextBlock Text="Games" FontWeight="SemiBold" Foreground="#4FC3F7" Padding="8,6"/>
+                        <Controls:GamesPanel x:Name="LeftGamesPanel"/>
+                    </StackPanel>
+                </TabItem>
+
+                <TabItem Header="Pingu" x:Name="PinguTabItem" Classes="toolTab" Content="{Binding ElementName=PinguTabContent}">
+                    <StackPanel x:Name="PinguTabContent" IsVisible="False">
+                        <TextBlock Text="Pingu" FontWeight="SemiBold" Foreground="#4FC3F7" Padding="8,6"/>
+                        <Controls:PinguPanel x:Name="LeftPinguPanel"/>
+                    </StackPanel>
+                </TabItem>
+
                 <TabItem Header="ImageGen" x:Name="ImageGenTabItem" Classes="toolTab" Content="{Binding ElementName=ImageGenTabContent}">
                     <StackPanel x:Name="ImageGenTabContent" IsVisible="False">
                         <TextBlock Text="Image Generation" FontWeight="SemiBold" Foreground="#4FC3F7" Padding="8,6"/>
@@ -413,11 +427,7 @@
                 <ScrollViewer DockPanel.Dock="Top" HorizontalScrollBarVisibility="Auto" Margin="0,0,0,8">
                     <StackPanel Orientation="Horizontal" Margin="0,0,0,0">
                         <RadioButton x:Name="RightContextTabButton" Content="Context" Classes="settingsTab" IsChecked="True" Margin="0,0,4,0"/>
-                        <RadioButton x:Name="RightServerTabButton" Content="Server" Classes="settingsTab" Margin="0,0,4,0"/>
-                        <RadioButton x:Name="RightDevicesTabButton" Content="Devices" Classes="settingsTab" Margin="0,0,4,0"/>
                         <RadioButton x:Name="RightAnalysisTabButton" Content="AI Analysis" Classes="settingsTab" Margin="0,0,4,0"/>
-                        <RadioButton x:Name="RightGamesTabButton" Content="Games" Classes="settingsTab" Margin="0,0,4,0"/>
-                        <RadioButton x:Name="RightPinguTabButton" Content="Pingu" Classes="settingsTab" Margin="0,0,0,0"/>
                     </StackPanel>
                 </ScrollViewer>
 
@@ -478,24 +488,6 @@
                             <TextBlock x:Name="AnalysisSegmentsRightText" Text="N/A" Foreground="{StaticResource TextMuted}" Padding="8" FontSize="10"/>
                         </StackPanel>
                     </Border>
-                </StackPanel>
-
-                <StackPanel x:Name="RightServerContent" DockPanel.Dock="Top" IsVisible="False">
-                    <Border Background="{StaticResource BgSecondary}" CornerRadius="4" Margin="0,0,0,0">
-                        <StackPanel>
-                            <TextBlock x:Name="ServerStatusRight" Text="Server: Stopped" Foreground="{StaticResource AccentRed}" Padding="12,8"/>
-                            <TextBlock x:Name="ServerPortRightText" Text="Port: 8080" Padding="12,4"/>
-                        </StackPanel>
-                    </Border>
-                    <Button x:Name="RightServerStartStopButton" Content="Start Server" DockPanel.Dock="Bottom" Height="36" Margin="0,8,0,0" HorizontalAlignment="Stretch"/>
-                </StackPanel>
-
-                <StackPanel x:Name="RightGamesContent" DockPanel.Dock="Top" IsVisible="False">
-                    <Controls:GamesPanel x:Name="RightGamesPanel"/>
-                </StackPanel>
-
-                <StackPanel x:Name="RightPinguContent" DockPanel.Dock="Top" IsVisible="False">
-                    <Controls:PinguPanel x:Name="RightPinguPanel"/>
                 </StackPanel>
 
                 <StackPanel x:Name="RightDevicesContent" DockPanel.Dock="Top" IsVisible="False">
