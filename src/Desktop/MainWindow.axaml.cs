@@ -194,9 +194,6 @@ public partial class MainWindow : Window
         if (LeftServerStartStopButton != null)
             LeftServerStartStopButton.Click += OnServerStartStopClicked;
 
-        if (RightServerStartStopButton != null)
-            RightServerStartStopButton.Click += OnServerStartStopClicked;
-
         // Handle Enter key in input box for sending messages
         if (MessageInputBox != null)
             MessageInputBox.KeyDown += OnMessageInputKeyDown;

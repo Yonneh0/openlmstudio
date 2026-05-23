@@ -97,14 +97,11 @@ public partial class MainWindow
                 // Stop the server
                 await _serverService.StopAsync();
 
-                // Update UI to reflect stopped state (both buttons + both text blocks)
+                // Update UI to reflect stopped state
                 if (LeftServerStartStopButton != null) LeftServerStartStopButton.Content = "Start Server";
-                if (RightServerStartStopButton != null) RightServerStartStopButton.Content = "Start Server";
                 ServerStatusText.Text = "Server: Stopped";
                 ServerStatusTextStatusBar.Text = "Server: Stopped";
                 ServerStatusText.Foreground = new SolidColorBrush(Color.FromRgb(255, 107, 107));
-                ServerStatusRight.Text = "Server: Stopped";
-                ServerStatusRight.Foreground = new SolidColorBrush(Color.FromRgb(255, 107, 107));
             }
             else
             {
@@ -112,14 +109,11 @@ public partial class MainWindow
                 var configuration = new ServerConfiguration { Port = 8080 };
                 await _serverService.StartAsync(configuration);
 
-                // Update UI to reflect running state (both buttons + both text blocks)
+                // Update UI to reflect running state
                 if (LeftServerStartStopButton != null) LeftServerStartStopButton.Content = "Stop Server";
-                if (RightServerStartStopButton != null) RightServerStartStopButton.Content = "Stop Server";
                 ServerStatusText.Text = $"Server: Running (Port {configuration.Port})";
                 ServerStatusTextStatusBar.Text = $"Server: Running (Port {configuration.Port})";
                 ServerStatusText.Foreground = new SolidColorBrush(Color.FromRgb(76, 175, 80));
-                ServerStatusRight.Text = $"Server: Running (Port {configuration.Port})";
-                ServerStatusRight.Foreground = new SolidColorBrush(Color.FromRgb(76, 175, 80));
             }
 
             UpdateServerStatus();
@@ -137,35 +131,28 @@ public partial class MainWindow
 
         var isRunning = _serverService.State != ServerState.Stopped;
 
-        // Update server status display across all UI elements (both buttons + both text blocks)
+        // Update server status display
         ServerStatusText.Text = $"Server: {(isRunning ? "Running" : "Stopped")}";
         ServerStatusTextStatusBar.Text = $"Server: {(isRunning ? "Running" : "Stopped")}";
-        ServerStatusRight.Text = $"Server: {(isRunning ? "Running" : "Stopped")}";
 
         if (LeftServerStartStopButton != null) LeftServerStartStopButton.Content = isRunning ? "Stop Server" : "Start Server";
-        if (RightServerStartStopButton != null) RightServerStartStopButton.Content = isRunning ? "Stop Server" : "Start Server";
 
         if (isRunning)
         {
             ServerStatusText.Foreground = new SolidColorBrush(Color.FromRgb(76, 175, 80)); // Green
             ServerStatusTextStatusBar.Foreground = new SolidColorBrush(Color.FromRgb(76, 175, 80)); // Green
-            ServerStatusRight.Foreground = new SolidColorBrush(Color.FromRgb(76, 175, 80)); // Green
 
             // Try to get port from the server service's configuration
             var srv = _serverService as OpenLMStudio.Infrastructure.Services.ServerService;
             if (srv?.Configuration != null)
             {
-                ServerPortRightText.Text = $"Port: {srv.Configuration.Port}";
                 ServerPortText.Text = $"Port: {srv.Configuration.Port}";
-                // Note: Right sidebar doesn't have a ServerPortRight display, only left side
             }
         }
         else
         {
             ServerStatusText.Foreground = new SolidColorBrush(Color.FromRgb(255, 107, 107)); // Red
             ServerStatusTextStatusBar.Foreground = new SolidColorBrush(Color.FromRgb(255, 107, 107)); // Red
-            ServerStatusRight.Foreground = new SolidColorBrush(Color.FromRgb(255, 107, 107)); // Red
-            ServerPortRightText.Text = "Port: 8080 (default)";
             ServerPortText.Text = "Port: 8080 (default)";
         }
     }
@@ -855,41 +842,41 @@ public partial class MainWindow
 
     private void OnOpenMinesweeperClicked(object? sender, RoutedEventArgs e)
     {
-        if (RightGamesPanel != null)
+        if (LeftGamesPanel != null)
         {
-            try { RightGamesPanel.ActivateGame("minesweeper"); } catch { }
+            try { LeftGamesPanel.ActivateGame("minesweeper"); } catch { }
         }
     }
 
     private void OnOpenTetrisClicked(object? sender, RoutedEventArgs e)
     {
-        if (RightGamesPanel != null)
+        if (LeftGamesPanel != null)
         {
-            try { RightGamesPanel.ActivateGame("tetris"); } catch { }
+            try { LeftGamesPanel.ActivateGame("tetris"); } catch { }
         }
     }
 
     private void OnOpenSnakeClicked(object? sender, RoutedEventArgs e)
     {
-        if (RightGamesPanel != null)
+        if (LeftGamesPanel != null)
         {
-            try { RightGamesPanel.ActivateGame("snake"); } catch { }
+            try { LeftGamesPanel.ActivateGame("snake"); } catch { }
         }
     }
 
     private void OnOpenJezzballClicked(object? sender, RoutedEventArgs e)
     {
-        if (RightGamesPanel != null)
+        if (LeftGamesPanel != null)
         {
-            try { RightGamesPanel.ActivateGame("jezzball"); } catch { }
+            try { LeftGamesPanel.ActivateGame("jezzball"); } catch { }
         }
     }
 
     private void OnOpenSolitaireClicked(object? sender, RoutedEventArgs e)
     {
-        if (RightGamesPanel != null)
+        if (LeftGamesPanel != null)
         {
-            try { RightGamesPanel.ActivateGame("solitaire"); } catch { }
+            try { LeftGamesPanel.ActivateGame("solitaire"); } catch { }
         }
     }
 }
