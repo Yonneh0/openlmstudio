@@ -22,9 +22,9 @@ This file captures the items from `DEVELOPMENT_PLAN.md` that still need attentio
 
 ---
 
-## 2. Streaming Image Generation (Phase 3.6) — Stubbed
+## 2. Streaming Image Generation (Phase 3.6) — Implemented
 
-**Status:** `DiffusionPipelineService.StreamProgressAsync` yields `ImageGenerationProgress` per step but doesn't emit real image bytes during denoising.
+**Status:** `DiffusionPipelineService.StreamProgressAsync` now emits real intermediate PNG bytes per denoising step via `DiffusionInferenceEngine.DecodeLatents`.
 
 **Evidence:**
 - `DiffusionPipelineService` (line 737): real `GenerateImageAsync` connected to full 3-stage pipeline
@@ -39,9 +39,9 @@ This file captures the items from `DEVELOPMENT_PLAN.md` that still need attentio
 
 ---
 
-## 3. ActiveProjectWatcher (Phase 7.5) — Stubbed
+## 3. ActiveProjectWatcher (Phase 7.5) — Implemented
 
-**Status:** Interface and implementation exist, but needs real filesystem watcher for large projects.
+**Status:** Real filesystem watcher with ignore patterns, event debouncing, and large-project support.
 
 **Evidence:**
 - `ActiveProjectWatcher.cs` exists
@@ -90,9 +90,9 @@ This file captures the items from `DEVELOPMENT_PLAN.md` that still need attentio
 
 ---
 
-## 6. ImagePostProcessingService.DecodeLatentsToPng (Phase 3.9) — Stubbed
+## 6. ImagePostProcessingService.DecodeLatentsToPng (Phase 3.9) — Implemented
 
-**Status:** Returns placeholder PNG via nearest-neighbor interpolation, not real VAE decode.
+**Status:** Real VAE decode via `DiffusionInferenceEngine.DecodeLatents` with fallback to minimal PNG.
 
 **Evidence:**
 - `ImagePostProcessingService` exists
@@ -107,9 +107,9 @@ This file captures the items from `DEVELOPMENT_PLAN.md` that still need attentio
 
 ---
 
-## 7. Agent System Prompt Generator (Phase 7.7) — Partial
+## 7. Agent System Prompt Generator (Phase 7.7) — Implemented
 
-**Status:** `AgentSystemPromptGenerator` (181 lines) has all 3 methods implemented.
+**Status:** `AgentSystemPromptGenerator` with dynamic tool auto-discovery via `ToolDescriptionAttribute`.
 
 **Evidence:**
 - `GeneratePlanningPrompt` — fully implemented
@@ -130,13 +130,13 @@ This file captures the items from `DEVELOPMENT_PLAN.md` that still need attentio
 | # | Item | Phase | Effort | Status |
 |---|------|-------|--------|--------|
 | 1 | LoRA runtime tensor injection | 3.7 | Low | Partial |
-| 2 | Streaming image generation | 3.6 | Medium | Stubbed |
-| 3 | ActiveProjectWatcher real implementation | 7.5 | Low-Medium | Stubbed |
-| 4 | Performance benchmarking | 10.1 | Low | Stubbed |
-| 5 | Load testing | 10.1 | Low | Stubbed |
-| 6 | ImagePostProcessingService.DecodeLatentsToPng | 3.9 | Low | Stubbed |
-| 7 | AgentSystemPromptGenerator dynamic assembly | 7.7 | Low | Partial |
+| 2 | Streaming image generation | 3.6 | Medium | Implemented |
+| 3 | ActiveProjectWatcher real implementation | 7.5 | Low-Medium | Implemented |
+| 4 | Performance benchmarking | 10.1 | Low | Implemented |
+| 5 | Load testing | 10.1 | Low | Implemented |
+| 6 | ImagePostProcessingService.DecodeLatentsToPng | 3.9 | Low | Implemented |
+| 7 | AgentSystemPromptGenerator dynamic assembly | 7.7 | Low | Implemented |
 
 **Total: 7 items remaining**
 
-The plan is **~85% complete** with only low-effort items remaining.
+The plan is **~86% complete** with Item 1 (LoRA) still needing ONNX tensor manipulation API for the direct `ApplyDeltasToSessionAsync` path.
