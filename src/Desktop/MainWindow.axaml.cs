@@ -202,19 +202,9 @@ public partial class MainWindow : Window
         if (InjectCustomContextBtn != null)
             InjectCustomContextBtn.Click += OnInjectCustomContextClicked;
 
-        if (RightAddCustomContextBtn != null)
-            RightAddCustomContextBtn.Click += OnRightAddCustomContextClicked;
-
-        if (RightCustomContextInjectBtn != null)
-            RightCustomContextInjectBtn.Click += OnRightCustomContextInjectClicked;
-
         // Context compression selector (left sidebar)
         if (ContextCompressionSelector != null)
             ContextCompressionSelector.SelectionChanged += OnContextCompressionSelectionChanged;
-
-        // Context compression selector (right sidebar)
-        if (RightCompressionSelector != null)
-            RightCompressionSelector.SelectionChanged += OnRightCompressionSelectionChanged;
 
         // Random seed button
         if (RandomSeedButton != null)
@@ -234,8 +224,11 @@ public partial class MainWindow : Window
         if (CreateTaskButton != null)
             CreateTaskButton.Click += OnCreateTaskClicked;
 
-        if (TasksTabTitle != null)
-            TasksTabTitle.PointerPressed += OnTasksTabPointerPressed;
+        if (TasksTabContent != null)
+        {
+            var firstChild = TasksTabContent.Children.OfType<Control>().FirstOrDefault();
+            firstChild?.AddHandler(Control.PointerPressedEvent, (_, _) => ShowTab("Tasks"));
+        }
 
         // Image generation generate button
         if (ImageGenGenerateBtn != null)
@@ -248,10 +241,6 @@ public partial class MainWindow : Window
         // Settings button
         if (SettingsButton != null)
             SettingsButton.Click += OnSettingsClicked;
-
-        // Refresh devices button
-        if (RightRefreshDevicesBtn != null)
-            RightRefreshDevicesBtn.Click += OnRefreshDevicesClicked;
 
         // Git status bar
         if (GitStatusBorder != null)
