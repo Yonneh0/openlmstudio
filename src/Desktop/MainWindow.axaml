@@ -83,7 +83,7 @@
             <TabControl Grid.Row="1" Background="Transparent" BorderThickness="0" x:Name="LeftTabControl" SelectionChanged="OnLeftTabControlSelectionChanged">
                 <TabControl.ItemsPanel>
                     <ItemsPanelTemplate>
-                        <StackPanel Orientation="Horizontal"/>
+                        <StackPanel Orientation="Vertical"/>
                     </ItemsPanelTemplate>
                 </TabControl.ItemsPanel>
                 <TabControl.Template>
