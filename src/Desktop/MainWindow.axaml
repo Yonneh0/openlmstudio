@@ -543,6 +543,12 @@
                                                     <Setter Property="Background" Value="{StaticResource AccentBlue}"/>
                                                     <Setter Property="Foreground" Value="White"/>
                                                 </Style>
+                                                <Style Selector="Button:pointerover">
+                                                    <Setter Property="Background" Value="{Binding (Button.Background), RelativeSource={RelativeSource Self}}"/>
+                                                </Style>
+                                                <Style Selector="Button.active:pointerover">
+                                                    <Setter Property="Background" Value="{StaticResource AccentBlue}"/>
+                                                </Style>
                                             </Button.Styles>
                                         </Button>
                                 </StackPanel>
@@ -562,7 +568,13 @@
                                                   HorizontalAlignment="Center"
                                                   VerticalAlignment="Center"
                                                   HorizontalContentAlignment="Center"
-                                                  VerticalContentAlignment="Center"/>
+                                                  VerticalContentAlignment="Center">
+                                        <ToggleButton.Styles>
+                                            <Style Selector="ToggleButton:pointerover">
+                                                <Setter Property="Background" Value="{Binding (ToggleButton.Background), RelativeSource={RelativeSource Self}}"/>
+                                            </Style>
+                                        </ToggleButton.Styles>
+                                    </ToggleButton>
                                     <ToggleButton x:Name="SafetyRead"
                                                   Content="&#x1F441;"
                                                   Width="36" Height="36"
@@ -574,7 +586,13 @@
                                                   HorizontalAlignment="Center"
                                                   VerticalAlignment="Center"
                                                   HorizontalContentAlignment="Center"
-                                                  VerticalContentAlignment="Center"/>
+                                                  VerticalContentAlignment="Center">
+                                        <ToggleButton.Styles>
+                                            <Style Selector="ToggleButton:pointerover">
+                                                <Setter Property="Background" Value="{Binding (ToggleButton.Background), RelativeSource={RelativeSource Self}}"/>
+                                            </Style>
+                                        </ToggleButton.Styles>
+                                    </ToggleButton>
                                     <ToggleButton x:Name="SafetyEdit"
                                                   Content="&#x270E;"
                                                   Width="36" Height="36"
@@ -586,7 +604,13 @@
                                                   HorizontalAlignment="Center"
                                                   VerticalAlignment="Center"
                                                   HorizontalContentAlignment="Center"
-                                                  VerticalContentAlignment="Center"/>
+                                                  VerticalContentAlignment="Center">
+                                        <ToggleButton.Styles>
+                                            <Style Selector="ToggleButton:pointerover">
+                                                <Setter Property="Background" Value="{Binding (ToggleButton.Background), RelativeSource={RelativeSource Self}}"/>
+                                            </Style>
+                                        </ToggleButton.Styles>
+                                    </ToggleButton>
                                     <ToggleButton x:Name="SafetyExec"
                                                   Content="&#x2699;"
                                                   Width="36" Height="36"
@@ -597,7 +621,13 @@
                                                   HorizontalAlignment="Center"
                                                   VerticalAlignment="Center"
                                                   HorizontalContentAlignment="Center"
-                                                  VerticalContentAlignment="Center"/>
+                                                  VerticalContentAlignment="Center">
+                                        <ToggleButton.Styles>
+                                            <Style Selector="ToggleButton:pointerover">
+                                                <Setter Property="Background" Value="{Binding (ToggleButton.Background), RelativeSource={RelativeSource Self}}"/>
+                                            </Style>
+                                        </ToggleButton.Styles>
+                                    </ToggleButton>
                                 </StackPanel>
                             </Border>
                         </StackPanel>
