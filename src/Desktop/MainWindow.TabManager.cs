@@ -73,7 +73,7 @@ public partial class MainWindow
                 break;
             case "Analysis":
                 LeftTabControl.SelectedItem = AnalysisTabItem;
-                RefreshAnalysisContextAsync();
+                _ = RefreshAnalysisContextAsync();
                 break;
         }
 

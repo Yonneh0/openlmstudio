@@ -315,7 +315,7 @@ public class ImagePostProcessingService : IImagePostProcessingService, IDisposab
             engine.Dispose();
             return pngBytes;
         }
-        catch (Exception ex)
+        catch
         {
             // Fallback to minimal PNG if VAE decode fails
             return DiffusionPipelineService.MinimalRedPixelPng;

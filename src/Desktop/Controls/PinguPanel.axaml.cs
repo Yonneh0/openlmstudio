@@ -10,7 +10,9 @@ namespace OpenLMStudio.Desktop.Controls;
 /// </summary>
 public partial class PinguPanel : UserControl
 {
+    #pragma warning disable CS0169
     private IPinguStore? _pingu;
+    #pragma warning restore CS0169
 
     public PinguPanel()
     {

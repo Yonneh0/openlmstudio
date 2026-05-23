@@ -24,10 +24,10 @@ public partial class GamesPanel : UserControl
     {
         base.OnAttachedToVisualTree(e);
         // Auto-load the first game when the panel is shown
-        if (GameSelector?.SelectedIndex == 0 && ActiveGameContainer?.Child == null)
+        if (GameSelector?.SelectedIndex == 0 && ActiveGameContainer is not null && ActiveGameContainer.Child == null)
         {
             _minesweeper ??= new MinesweeperGame();
-            ActiveGameContainer.Child = _minesweeper;
+            ActiveGameContainer!.Child = _minesweeper;
         }
     }
 
