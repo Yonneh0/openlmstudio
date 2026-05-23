@@ -83,16 +83,14 @@
             <TabControl Grid.Row="1" Background="Transparent" BorderThickness="0" x:Name="LeftTabControl" SelectionChanged="OnLeftTabControlSelectionChanged">
                 <TabControl.ItemsPanel>
                     <ItemsPanelTemplate>
-                        <StackPanel Orientation="Vertical"/>
+                        <StackPanel Orientation="Horizontal"/>
                     </ItemsPanelTemplate>
                 </TabControl.ItemsPanel>
                 <TabControl.Template>
                     <ControlTemplate TargetType="TabControl">
                         <DockPanel>
                             <ItemsPresenter x:Name="PART_ItemsPresenter" DockPanel.Dock="Top"/>
-                            <ScrollViewer DockPanel.Dock="Bottom" VerticalScrollBarVisibility="Auto">
-                                <ContentPresenter x:Name="PART_SelectedContentHost" Content="{Binding SelectedContent, RelativeSource={RelativeSource TemplatedParent}}" Margin="0,4,0,0"/>
-                            </ScrollViewer>
+                            <ContentPresenter x:Name="PART_SelectedContentHost" Content="{Binding SelectedContent, RelativeSource={RelativeSource TemplatedParent}}" Margin="0,4,0,0" DockPanel.Dock="Bottom"/>
                         </DockPanel>
                     </ControlTemplate>
                 </TabControl.Template>
