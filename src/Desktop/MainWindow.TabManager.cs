@@ -87,8 +87,6 @@ public partial class MainWindow
             ShowTab(tabs[index]);
     }
 
-    private bool _isHandlingSelectionChanged;
-
     /// <summary>
     /// Handles ToggleButton click changes — updates styling and right sidebar.
     /// </summary>
