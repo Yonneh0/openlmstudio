@@ -84,11 +84,9 @@
                     <!-- Chat tab -->
                     <StackPanel x:Name="ChatTabContent" IsVisible="True">
                         <TextBlock x:Name="_chatTabTitle" Text="Chats" FontWeight="SemiBold" Foreground="#4FC3F7" Padding="8,6" PointerPressed="OnChatTabPointerPressed"/>
-                        <ScrollViewer HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Auto">
-                            <StackPanel x:Name="ChatListPanel" Margin="0,4,0,0">
-                                <TextBlock Text="No chats loaded" Foreground="{StaticResource TextMuted}" Padding="12,8" FontSize="12"/>
-                            </StackPanel>
-                        </ScrollViewer>
+                        <StackPanel x:Name="ChatListPanel" Margin="0,4,0,0">
+                            <TextBlock Text="No chats loaded" Foreground="{StaticResource TextMuted}" Padding="12,8" FontSize="12"/>
+                        </StackPanel>
                         <Border Background="{StaticResource BgSecondary}" CornerRadius="4" Margin="0,16,0,0">
                             <TextBlock Text="Folders" FontWeight="SemiBold" Foreground="#4FC3F7" Padding="8,8"/>
                         </Border>
@@ -109,11 +107,9 @@
                     <!-- Models tab -->
                     <StackPanel x:Name="ModelsTabContent" IsVisible="False">
                         <TextBlock x:Name="_modelsTabTitle" Text="Models" FontWeight="SemiBold" Foreground="#4FC3F7" Padding="8,6" PointerPressed="OnModelsTabPointerPressed"/>
-                        <ScrollViewer HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Auto">
-                            <StackPanel>
-                                <TextBlock Text="No models loaded" Foreground="{StaticResource TextMuted}" Padding="12,8" FontSize="12"/>
-                            </StackPanel>
-                        </ScrollViewer>
+                        <StackPanel>
+                            <TextBlock Text="No models loaded" Foreground="{StaticResource TextMuted}" Padding="12,8" FontSize="12"/>
+                        </StackPanel>
                         <Button x:Name="AddModelButton" Content="+ Add Model" Background="#0E639C" Foreground="White" Padding="8,4" Margin="8,8,8,0" HorizontalAlignment="Stretch" Height="36"/>
                     </StackPanel>
 
@@ -161,37 +157,35 @@
                             </StackPanel>
                         </Border>
                         <Border Background="{StaticResource BgSecondary}" CornerRadius="4" Margin="0,8,0,0">
-                            <ScrollViewer HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Auto">
-                                <StackPanel x:Name="ContextSegmentsPanel" Margin="0,4,0,0">
-                                    <Border Background="{StaticResource BgTertiary}" CornerRadius="4" Padding="12,8" Margin="0,0,0,6">
-                                        <Grid>
-                                            <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
-                                            <StackPanel Grid.Column="0">
-                                                <TextBlock Text="System Prompt" FontWeight="SemiBold" Foreground="{StaticResource AccentBlue}" FontSize="12"/>
-                                                <Border Background="#2E7D32" CornerRadius="2" Padding="6,1"><TextBlock Text="Uncompressed (pinned)" FontSize="9" Foreground="White"/></Border>
-                                            </StackPanel>
-                                            <Border Grid.Column="1" Background="#4CAF50" CornerRadius="2" Padding="6,2"><TextBlock Text="PINNED" FontSize="9" Foreground="White"/></Border>
-                                        </Grid>
-                                    </Border>
-                                    <Border Background="{StaticResource BgTertiary}" CornerRadius="4" Padding="12,8" Margin="0,0,0,6">
-                                        <Grid>
-                                            <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
-                                            <StackPanel Grid.Column="0">
-                                                <TextBlock Text="Task Context" FontWeight="SemiBold" Foreground="{StaticResource AccentBlue}" FontSize="12"/>
-                                                <Border Background="#2E7D32" CornerRadius="2" Padding="6,1"><TextBlock Text="Uncompressed (pinned)" FontSize="9" Foreground="White"/></Border>
-                                            </StackPanel>
-                                            <Border Grid.Column="1" Background="#4CAF50" CornerRadius="2" Padding="6,2"><TextBlock Text="PINNED" FontSize="9" Foreground="White"/></Border>
-                                        </Grid>
-                                    </Border>
-                                    <StackPanel x:Name="CompressedSegmentsContainer">
-                                        <TextBlock Text="No compressed segments" Foreground="{StaticResource TextMuted}" Padding="12,8" FontSize="10"/>
-                                    </StackPanel>
-                                    <Border Background="{StaticResource BgTertiary}" CornerRadius="4" Padding="12,8" Margin="0,8,0,0">
-                                        <TextBlock Text="Injected Context:" FontWeight="SemiBold" Foreground="{StaticResource AccentBlue}" FontSize="12"/>
-                                    </Border>
-                                    <StackPanel x:Name="CustomContextSegmentsContainer"/>
+                            <StackPanel x:Name="ContextSegmentsPanel" Margin="0,4,0,0">
+                                <Border Background="{StaticResource BgTertiary}" CornerRadius="4" Padding="12,8" Margin="0,0,0,6">
+                                    <Grid>
+                                        <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
+                                        <StackPanel Grid.Column="0">
+                                            <TextBlock Text="System Prompt" FontWeight="SemiBold" Foreground="{StaticResource AccentBlue}" FontSize="12"/>
+                                            <Border Background="#2E7D32" CornerRadius="2" Padding="6,1"><TextBlock Text="Uncompressed (pinned)" FontSize="9" Foreground="White"/></Border>
+                                        </StackPanel>
+                                        <Border Grid.Column="1" Background="#4CAF50" CornerRadius="2" Padding="6,2"><TextBlock Text="PINNED" FontSize="9" Foreground="White"/></Border>
+                                    </Grid>
+                                </Border>
+                                <Border Background="{StaticResource BgTertiary}" CornerRadius="4" Padding="12,8" Margin="0,0,0,6">
+                                    <Grid>
+                                        <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
+                                        <StackPanel Grid.Column="0">
+                                            <TextBlock Text="Task Context" FontWeight="SemiBold" Foreground="{StaticResource AccentBlue}" FontSize="12"/>
+                                            <Border Background="#2E7D32" CornerRadius="2" Padding="6,1"><TextBlock Text="Uncompressed (pinned)" FontSize="9" Foreground="White"/></Border>
+                                        </StackPanel>
+                                        <Border Grid.Column="1" Background="#4CAF50" CornerRadius="2" Padding="6,2"><TextBlock Text="PINNED" FontSize="9" Foreground="White"/></Border>
+                                    </Grid>
+                                </Border>
+                                <StackPanel x:Name="CompressedSegmentsContainer">
+                                    <TextBlock Text="No compressed segments" Foreground="{StaticResource TextMuted}" Padding="12,8" FontSize="10"/>
                                 </StackPanel>
-                            </ScrollViewer>
+                                <Border Background="{StaticResource BgTertiary}" CornerRadius="4" Padding="12,8" Margin="0,8,0,0">
+                                    <TextBlock Text="Injected Context:" FontWeight="SemiBold" Foreground="{StaticResource AccentBlue}" FontSize="12"/>
+                                </Border>
+                                <StackPanel x:Name="CustomContextSegmentsContainer"/>
+                            </StackPanel>
                         </Border>
                         <StackPanel x:Name="CustomContextInjectionPanel" IsVisible="False">
                             <Border Background="{StaticResource BgSecondary}" CornerRadius="4" Margin="0,8,0,0">
@@ -212,11 +206,9 @@
                     <StackPanel x:Name="TasksTabContent" IsVisible="False">
                         <TextBlock x:Name="TasksTabTitle" Text="Tasks" FontWeight="SemiBold" Foreground="#4FC3F7" Padding="8,6" PointerPressed="OnTasksTabPointerPressed"/>
                         <Border Background="{StaticResource BgSecondary}" CornerRadius="4" Margin="0,8,0,0">
-                            <ScrollViewer HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Auto">
-                                <StackPanel x:Name="TaskListPanel">
-                                    <TextBlock Text="No tasks created" Foreground="{StaticResource TextMuted}" Padding="12,8" FontSize="12"/>
-                                </StackPanel>
-                            </ScrollViewer>
+                            <StackPanel x:Name="TaskListPanel">
+                                <TextBlock Text="No tasks created" Foreground="{StaticResource TextMuted}" Padding="12,8" FontSize="12"/>
+                            </StackPanel>
                         </Border>
                         <Border Background="{StaticResource BgSecondary}" CornerRadius="4" Margin="0,8,0,0">
                             <StackPanel>
