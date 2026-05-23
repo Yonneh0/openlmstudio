@@ -80,309 +80,297 @@
 
             <TextBlock Grid.Row="0" Text="OpenLMStudio" FontSize="18" FontWeight="SemiBold" Foreground="#4FC3F7" Padding="16,16,16,8"/>
 
-                <TabControl Grid.Row="1" Background="Transparent" BorderThickness="0" x:Name="LeftTabControl" SelectionChanged="OnLeftTabControlSelectionChanged">
-                    <TabControl.ItemsPanel>
-                        <ItemsPanelTemplate>
-                            <StackPanel Orientation="Horizontal" Margin="4,0,4,0"/>
-                        </ItemsPanelTemplate>
-                    </TabControl.ItemsPanel>
-                    <TabControl.Template>
-                        <ControlTemplate TargetType="TabControl">
-                            <DockPanel>
-                                <ItemsPresenter x:Name="PART_ItemsPresenter" DockPanel.Dock="Top"/>
-                                <ContentPresenter x:Name="PART_SelectedContentHost" Content="{Binding SelectedContent, RelativeSource={RelativeSource TemplatedParent}}" Margin="0,4,0,0"/>
-                            </DockPanel>
-                        </ControlTemplate>
-                    </TabControl.Template>
-                <!-- Chat tab -->
-                <TabItem Header="Chats" x:Name="ChatTabItem" Classes="toolTab">
-                    <StackPanel x:Name="ChatTabContent" IsVisible="True">
-                        <Border Background="{StaticResource BgSecondary}" CornerRadius="4" Margin="8,4,8,8">
-                            <TextBox x:Name="SearchText" Foreground="{StaticResource TextPrimary}" Background="Transparent" BorderThickness="0" Padding="10,6" FontSize="13"/>
-                        </Border>
-                        <StackPanel x:Name="ChatListPanel" Margin="0,4,0,0">
-                            <TextBlock Text="No chats loaded" Foreground="{StaticResource TextMuted}" Padding="12,8" FontSize="12"/>
+            <Grid Grid.Row="1">
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="*"/>
+                </Grid.RowDefinitions>
+                <WrapPanel Grid.Row="0" x:Name="LeftTabButtonsPanel" Margin="4,0,4,0" HorizontalAlignment="Left">
+                    <ToggleButton x:Name="ChatTab" Content="Chats" Classes="toolTab" IsChecked="True"/>
+                    <ToggleButton x:Name="ServerTab" Content="Server" Classes="toolTab"/>
+                    <ToggleButton x:Name="ModelsTab" Content="Models" Classes="toolTab"/>
+                    <ToggleButton x:Name="DevicesTab" Content="Devices" Classes="toolTab"/>
+                    <ToggleButton x:Name="ContextTab" Content="Context" Classes="toolTab"/>
+                    <ToggleButton x:Name="TasksTab" Content="Tasks" Classes="toolTab"/>
+                    <ToggleButton x:Name="AgentTab" Content="Agent" Classes="toolTab"/>
+                    <ToggleButton x:Name="GamesTab" Content="Games" Classes="toolTab"/>
+                    <ToggleButton x:Name="PinguTab" Content="Pingu" Classes="toolTab"/>
+                    <ToggleButton x:Name="ImageGenTab" Content="ImageGen" Classes="toolTab"/>
+                    <ToggleButton x:Name="AnalysisTab" Content="Analysis" Classes="toolTab"/>
+                </WrapPanel>
+                <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Auto">
+                    <StackPanel x:Name="LeftTabContentPanel">
+                        <!-- Chat tab content -->
+                        <StackPanel x:Name="ChatTabContent" IsVisible="True">
+                            <Border Background="{StaticResource BgSecondary}" CornerRadius="4" Margin="8,4,8,8">
+                                <TextBox x:Name="SearchText" Foreground="{StaticResource TextPrimary}" Background="Transparent" BorderThickness="0" Padding="10,6" FontSize="13"/>
+                            </Border>
+                            <StackPanel x:Name="ChatListPanel" Margin="0,4,0,0">
+                                <TextBlock Text="No chats loaded" Foreground="{StaticResource TextMuted}" Padding="12,8" FontSize="12"/>
+                            </StackPanel>
+                            <Border Background="{StaticResource BgSecondary}" CornerRadius="4" Margin="0,16,0,0">
+                                <TextBlock Text="Folders" FontWeight="SemiBold" Foreground="#4FC3F7" Padding="8,8"/>
+                            </Border>
                         </StackPanel>
-                        <Border Background="{StaticResource BgSecondary}" CornerRadius="4" Margin="0,16,0,0">
-                            <TextBlock Text="Folders" FontWeight="SemiBold" Foreground="#4FC3F7" Padding="8,8"/>
-                        </Border>
-                    </StackPanel>
-                </TabItem>
 
-                <!-- Server tab -->
-                <TabItem Header="Server" x:Name="ServerTabItem" Classes="toolTab">
-                    <StackPanel x:Name="ServerTabContent" IsVisible="False">
-                        <Border Background="{StaticResource BgSecondary}" CornerRadius="4" Margin="0,8,0,0">
-                            <StackPanel>
-                                <TextBlock x:Name="ServerStatusText" Text="Server: Stopped" Foreground="{StaticResource AccentRed}" Padding="12,8"/>
-                                <TextBlock x:Name="ServerPortText" Text="Port: 8080" Padding="12,4"/>
-                                <Button x:Name="LeftServerStartStopButton" Content="Start Server" Background="#0E639C" Foreground="White" Padding="8,4" Margin="8,8,8,8" HorizontalAlignment="Stretch" Height="36"/>
-                            </StackPanel>
-                        </Border>
-                    </StackPanel>
-                </TabItem>
-
-                <!-- Models tab -->
-                <TabItem Header="Models" x:Name="ModelsTabItem" Classes="toolTab">
-                    <StackPanel x:Name="ModelsTabContent" IsVisible="False">
-                        <StackPanel>
-                            <TextBlock Text="No models loaded" Foreground="{StaticResource TextMuted}" Padding="12,8" FontSize="12"/>
-                        </StackPanel>
-                        <Button x:Name="AddModelButton" Content="+ Add Model" Background="#0E639C" Foreground="White" Padding="8,4" Margin="8,8,8,0" HorizontalAlignment="Stretch" Height="36"/>
-                    </StackPanel>
-                </TabItem>
-
-                <!-- Devices tab -->
-                <TabItem Header="Devices" x:Name="DevicesTabItem" Classes="toolTab">
-                    <StackPanel x:Name="DevicesTabContent" IsVisible="False">
-                        <Border Background="{StaticResource BgSecondary}" CornerRadius="4" Margin="0,8,0,0">
-                            <StackPanel>
-                                <TextBlock Text="GPU: None Detected" Foreground="{StaticResource TextPrimary}" Padding="12,8"/>
-                                <TextBlock x:Name="CpuCoreText" Text="CPU Cores: 8" Padding="12,4"/>
-                                <TextBlock x:Name="RamInfoText" Text="RAM: 32 GB Available" Padding="12,4"/>
-                            </StackPanel>
-                        </Border>
-                        <Border Background="{StaticResource BgSecondary}" CornerRadius="4" Margin="0,8,0,0">
-                            <StackPanel>
-                                <TextBlock x:Name="LoadedModelRightText" Text="Loaded Model: None" Foreground="{StaticResource TextPrimary}" Padding="12,8"/>
-                                <TextBlock x:Name="ContextLengthRightText" Text="Context: 4096 tokens" Padding="12,4"/>
-                            </StackPanel>
-                        </Border>
-                        <Button x:Name="LoadModelButton" Content="Load Model" Background="#0E639C" Foreground="White" Padding="8,4" Margin="8,8,8,0" HorizontalAlignment="Stretch" Height="36"/>
-                    </StackPanel>
-                </TabItem>
-
-                <!-- Context tab -->
-                <TabItem Header="Context" x:Name="ContextTabItem" Classes="toolTab">
-                    <StackPanel x:Name="ContextTabContent" IsVisible="False">
-                        <Border Background="{StaticResource BgSecondary}" CornerRadius="4" Margin="0,8,0,0">
-                            <StackPanel>
-                                <TextBlock Text="Context Budget:" Foreground="{StaticResource TextPrimary}" Padding="12,4"/>
-                                <Border x:Name="ContextBudgetBar" Background="#3A3A3E" CornerRadius="4" Height="8" Margin="8,4,8,8"/>
-                                <TextBlock x:Name="ContextBudgetText" Text="Budget: 0 / 4096 tokens used" Foreground="{StaticResource TextSecondary}" Padding="8,0" FontSize="11"/>
-                            </StackPanel>
-                        </Border>
-                        <Border Background="{StaticResource BgSecondary}" CornerRadius="4" Margin="0,8,0,0">
-                            <StackPanel>
-                                <TextBlock Text="Compression:" Foreground="{StaticResource TextPrimary}" Padding="12,4"/>
-                                <ComboBox x:Name="ContextCompressionSelector" Foreground="{StaticResource TextPrimary}" Background="{StaticResource BgTertiary}" Margin="8,4,8,0" Height="32">
-                                    <TextBlock Text="None"/><TextBlock Text="Light"/><TextBlock Text="Medium"/><TextBlock Text="Aggressive"/>
-                                </ComboBox>
-                            </StackPanel>
-                        </Border>
-                        <Border Background="{StaticResource BgSecondary}" CornerRadius="4" Margin="0,8,0,0">
-                            <StackPanel x:Name="ContextInjectionSection">
-                                <TextBlock Text="Custom Context:" Foreground="{StaticResource TextPrimary}" Padding="12,4"/>
-                                <Button x:Name="InjectCustomContextBtn" Content="+ Add Custom Context" Background="#0E639C" Foreground="White" Padding="8,4" Margin="8,4,8,8" HorizontalAlignment="Stretch" Height="32"/>
-                            </StackPanel>
-                        </Border>
-                        <Border Background="{StaticResource BgSecondary}" CornerRadius="4" Margin="0,8,0,0">
-                            <StackPanel x:Name="ContextSegmentsPanel" Margin="0,4,0,0">
-                                <Border Background="{StaticResource BgTertiary}" CornerRadius="4" Padding="12,8" Margin="0,0,0,6">
-                                    <Grid>
-                                        <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
-                                        <StackPanel Grid.Column="0">
-                                            <TextBlock Text="System Prompt" FontWeight="SemiBold" Foreground="{StaticResource AccentBlue}" FontSize="12"/>
-                                            <Border Background="#2E7D32" CornerRadius="2" Padding="6,1"><TextBlock Text="Uncompressed (pinned)" FontSize="9" Foreground="White"/></Border>
-                                        </StackPanel>
-                                        <Border Grid.Column="1" Background="#4CAF50" CornerRadius="2" Padding="6,2"><TextBlock Text="PINNED" FontSize="9" Foreground="White"/></Border>
-                                    </Grid>
-                                </Border>
-                                <Border Background="{StaticResource BgTertiary}" CornerRadius="4" Padding="12,8" Margin="0,0,0,6">
-                                    <Grid>
-                                        <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
-                                        <StackPanel Grid.Column="0">
-                                            <TextBlock Text="Task Context" FontWeight="SemiBold" Foreground="{StaticResource AccentBlue}" FontSize="12"/>
-                                            <Border Background="#2E7D32" CornerRadius="2" Padding="6,1"><TextBlock Text="Uncompressed (pinned)" FontSize="9" Foreground="White"/></Border>
-                                        </StackPanel>
-                                        <Border Grid.Column="1" Background="#4CAF50" CornerRadius="2" Padding="6,2"><TextBlock Text="PINNED" FontSize="9" Foreground="White"/></Border>
-                                    </Grid>
-                                </Border>
-                                <StackPanel x:Name="CompressedSegmentsContainer">
-                                    <TextBlock Text="No compressed segments" Foreground="{StaticResource TextMuted}" Padding="12,8" FontSize="10"/>
-                                </StackPanel>
-                                <Border Background="{StaticResource BgTertiary}" CornerRadius="4" Padding="12,8" Margin="0,8,0,0">
-                                    <TextBlock Text="Injected Context:" FontWeight="SemiBold" Foreground="{StaticResource AccentBlue}" FontSize="12"/>
-                                </Border>
-                                <StackPanel x:Name="CustomContextSegmentsContainer"/>
-                            </StackPanel>
-                        </Border>
-                        <StackPanel x:Name="CustomContextInjectionPanel" IsVisible="False">
+                        <!-- Server tab content -->
+                        <StackPanel x:Name="ServerTabContent" IsVisible="False">
                             <Border Background="{StaticResource BgSecondary}" CornerRadius="4" Margin="0,8,0,0">
                                 <StackPanel>
-                                    <TextBlock Text="Inject Type:" Foreground="{StaticResource TextPrimary}" Padding="12,4"/>
-                                    <ComboBox x:Name="ContextInjectionTypeSelector" Foreground="{StaticResource TextPrimary}" Background="{StaticResource BgTertiary}" Margin="8,0,8,8" Height="32">
-                                        <TextBlock Text="System Prompt (custom)"/><TextBlock Text="File Contents"/><TextBlock Text="Raw Context"/>
+                                    <TextBlock x:Name="ServerStatusText" Text="Server: Stopped" Foreground="{StaticResource AccentRed}" Padding="12,8"/>
+                                    <TextBlock x:Name="ServerPortText" Text="Port: 8080" Padding="12,4"/>
+                                    <Button x:Name="LeftServerStartStopButton" Content="Start Server" Background="#0E639C" Foreground="White" Padding="8,4" Margin="8,8,8,8" HorizontalAlignment="Stretch" Height="36"/>
+                                </StackPanel>
+                            </Border>
+                        </StackPanel>
+
+                        <!-- Models tab content -->
+                        <StackPanel x:Name="ModelsTabContent" IsVisible="False">
+                            <StackPanel>
+                                <TextBlock Text="No models loaded" Foreground="{StaticResource TextMuted}" Padding="12,8" FontSize="12"/>
+                            </StackPanel>
+                            <Button x:Name="AddModelButton" Content="+ Add Model" Background="#0E639C" Foreground="White" Padding="8,4" Margin="8,8,8,0" HorizontalAlignment="Stretch" Height="36"/>
+                        </StackPanel>
+
+                        <!-- Devices tab content -->
+                        <StackPanel x:Name="DevicesTabContent" IsVisible="False">
+                            <Border Background="{StaticResource BgSecondary}" CornerRadius="4" Margin="0,8,0,0">
+                                <StackPanel>
+                                    <TextBlock Text="GPU: None Detected" Foreground="{StaticResource TextPrimary}" Padding="12,8"/>
+                                    <TextBlock x:Name="CpuCoreText" Text="CPU Cores: 8" Padding="12,4"/>
+                                    <TextBlock x:Name="RamInfoText" Text="RAM: 32 GB Available" Padding="12,4"/>
+                                </StackPanel>
+                            </Border>
+                            <Border Background="{StaticResource BgSecondary}" CornerRadius="4" Margin="0,8,0,0">
+                                <StackPanel>
+                                    <TextBlock x:Name="LoadedModelRightText" Text="Loaded Model: None" Foreground="{StaticResource TextPrimary}" Padding="12,8"/>
+                                    <TextBlock x:Name="ContextLengthRightText" Text="Context: 4096 tokens" Padding="12,4"/>
+                                </StackPanel>
+                            </Border>
+                            <Button x:Name="LoadModelButton" Content="Load Model" Background="#0E639C" Foreground="White" Padding="8,4" Margin="8,8,8,0" HorizontalAlignment="Stretch" Height="36"/>
+                        </StackPanel>
+
+                        <!-- Context tab content -->
+                        <StackPanel x:Name="ContextTabContent" IsVisible="False">
+                            <Border Background="{StaticResource BgSecondary}" CornerRadius="4" Margin="0,8,0,0">
+                                <StackPanel>
+                                    <TextBlock Text="Context Budget:" Foreground="{StaticResource TextPrimary}" Padding="12,4"/>
+                                    <Border x:Name="ContextBudgetBar" Background="#3A3A3E" CornerRadius="4" Height="8" Margin="8,4,8,8"/>
+                                    <TextBlock x:Name="ContextBudgetText" Text="Budget: 0 / 4096 tokens used" Foreground="{StaticResource TextSecondary}" Padding="8,0" FontSize="11"/>
+                                </StackPanel>
+                            </Border>
+                            <Border Background="{StaticResource BgSecondary}" CornerRadius="4" Margin="0,8,0,0">
+                                <StackPanel>
+                                    <TextBlock Text="Compression:" Foreground="{StaticResource TextPrimary}" Padding="12,4"/>
+                                    <ComboBox x:Name="ContextCompressionSelector" Foreground="{StaticResource TextPrimary}" Background="{StaticResource BgTertiary}" Margin="8,4,8,0" Height="32">
+                                        <TextBlock Text="None"/><TextBlock Text="Light"/><TextBlock Text="Medium"/><TextBlock Text="Aggressive"/>
                                     </ComboBox>
-                                    <TextBlock Text="Content:" Foreground="{StaticResource TextPrimary}" Padding="12,4"/>
-                                    <TextBox x:Name="CustomContextContentInput" Foreground="{StaticResource TextPrimary}" Background="{StaticResource BgTertiary}" BorderThickness="0" Margin="8,4,8,8" Height="80" AcceptsReturn="True"/>
-                                    <Button x:Name="CustomContextInjectBtn" Content="Inject Context" Background="#4FC3F7" Foreground="White" Padding="12,4" Height="36" Margin="8"/>
+                                </StackPanel>
+                            </Border>
+                            <Border Background="{StaticResource BgSecondary}" CornerRadius="4" Margin="0,8,0,0">
+                                <StackPanel x:Name="ContextInjectionSection">
+                                    <TextBlock Text="Custom Context:" Foreground="{StaticResource TextPrimary}" Padding="12,4"/>
+                                    <Button x:Name="InjectCustomContextBtn" Content="+ Add Custom Context" Background="#0E639C" Foreground="White" Padding="8,4" Margin="8,4,8,8" HorizontalAlignment="Stretch" Height="32"/>
+                                </StackPanel>
+                            </Border>
+                            <Border Background="{StaticResource BgSecondary}" CornerRadius="4" Margin="0,8,0,0">
+                                <StackPanel x:Name="ContextSegmentsPanel" Margin="0,4,0,0">
+                                    <Border Background="{StaticResource BgTertiary}" CornerRadius="4" Padding="12,8" Margin="0,0,0,6">
+                                        <Grid>
+                                            <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
+                                            <StackPanel Grid.Column="0">
+                                                <TextBlock Text="System Prompt" FontWeight="SemiBold" Foreground="{StaticResource AccentBlue}" FontSize="12"/>
+                                                <Border Background="#2E7D32" CornerRadius="2" Padding="6,1"><TextBlock Text="Uncompressed (pinned)" FontSize="9" Foreground="White"/></Border>
+                                            </StackPanel>
+                                            <Border Grid.Column="1" Background="#4CAF50" CornerRadius="2" Padding="6,2"><TextBlock Text="PINNED" FontSize="9" Foreground="White"/></Border>
+                                        </Grid>
+                                    </Border>
+                                    <Border Background="{StaticResource BgTertiary}" CornerRadius="4" Padding="12,8" Margin="0,0,0,6">
+                                        <Grid>
+                                            <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
+                                            <StackPanel Grid.Column="0">
+                                                <TextBlock Text="Task Context" FontWeight="SemiBold" Foreground="{StaticResource AccentBlue}" FontSize="12"/>
+                                                <Border Background="#2E7D32" CornerRadius="2" Padding="6,1"><TextBlock Text="Uncompressed (pinned)" FontSize="9" Foreground="White"/></Border>
+                                            </StackPanel>
+                                            <Border Grid.Column="1" Background="#4CAF50" CornerRadius="2" Padding="6,2"><TextBlock Text="PINNED" FontSize="9" Foreground="White"/></Border>
+                                        </Grid>
+                                    </Border>
+                                    <StackPanel x:Name="CompressedSegmentsContainer">
+                                        <TextBlock Text="No compressed segments" Foreground="{StaticResource TextMuted}" Padding="12,8" FontSize="10"/>
+                                    </StackPanel>
+                                    <Border Background="{StaticResource BgTertiary}" CornerRadius="4" Padding="12,8" Margin="0,8,0,0">
+                                        <TextBlock Text="Injected Context:" FontWeight="SemiBold" Foreground="{StaticResource AccentBlue}" FontSize="12"/>
+                                    </Border>
+                                    <StackPanel x:Name="CustomContextSegmentsContainer"/>
+                                </StackPanel>
+                            </Border>
+                            <StackPanel x:Name="CustomContextInjectionPanel" IsVisible="False">
+                                <Border Background="{StaticResource BgSecondary}" CornerRadius="4" Margin="0,8,0,0">
+                                    <StackPanel>
+                                        <TextBlock Text="Inject Type:" Foreground="{StaticResource TextPrimary}" Padding="12,4"/>
+                                        <ComboBox x:Name="ContextInjectionTypeSelector" Foreground="{StaticResource TextPrimary}" Background="{StaticResource BgTertiary}" Margin="8,0,8,8" Height="32">
+                                            <TextBlock Text="System Prompt (custom)"/><TextBlock Text="File Contents"/><TextBlock Text="Raw Context"/>
+                                        </ComboBox>
+                                        <TextBlock Text="Content:" Foreground="{StaticResource TextPrimary}" Padding="12,4"/>
+                                        <TextBox x:Name="CustomContextContentInput" Foreground="{StaticResource TextPrimary}" Background="{StaticResource BgTertiary}" BorderThickness="0" Margin="8,4,8,8" Height="80" AcceptsReturn="True"/>
+                                        <Button x:Name="CustomContextInjectBtn" Content="Inject Context" Background="#4FC3F7" Foreground="White" Padding="12,4" Height="36" Margin="8"/>
+                                    </StackPanel>
+                                </Border>
+                            </StackPanel>
+                        </StackPanel>
+
+                        <!-- Tasks tab content -->
+                        <StackPanel x:Name="TasksTabContent" IsVisible="False">
+                            <Border Background="{StaticResource BgSecondary}" CornerRadius="4" Margin="0,8,0,0">
+                                <StackPanel x:Name="TaskListPanel">
+                                    <TextBlock Text="No tasks created" Foreground="{StaticResource TextMuted}" Padding="12,8" FontSize="12"/>
+                                </StackPanel>
+                            </Border>
+                            <Border Background="{StaticResource BgSecondary}" CornerRadius="4" Margin="0,8,0,0">
+                                <StackPanel>
+                                    <TextBlock Text="New Task:" Foreground="{StaticResource TextPrimary}" Padding="12,4"/>
+                                    <TextBox x:Name="NewTaskDescriptionInput" Foreground="{StaticResource TextPrimary}" Background="{StaticResource BgTertiary}" BorderThickness="0" Margin="8,4,8,8" Height="60" AcceptsReturn="True"/>
+                                    <TextBlock Text="Priority:" Foreground="{StaticResource TextPrimary}" Padding="12,4,12,2"/>
+                                    <ComboBox x:Name="TaskPrioritySelector" Foreground="{StaticResource TextPrimary}" Background="{StaticResource BgTertiary}" Margin="8,0,8,8" Height="28">
+                                        <TextBlock Text="Low"/><TextBlock Text="Normal" Foreground="{StaticResource TextPrimary}"/><TextBlock Text="High"/><TextBlock Text="Critical"/>
+                                    </ComboBox>
+                                    <Button x:Name="CreateTaskButton" Content="+ Create Task" Background="#0E639C" Foreground="White" Padding="12,4" HorizontalAlignment="Stretch" Height="36"/>
+                                </StackPanel>
+                            </Border>
+                        </StackPanel>
+
+                        <!-- Agent tab content -->
+                        <StackPanel x:Name="AgentTabContent" IsVisible="False">
+                            <Border Background="{StaticResource BgSecondary}" CornerRadius="4" Margin="0,8,0,0">
+                                <StackPanel>
+                                    <TextBlock Text="Task:" Foreground="{StaticResource TextPrimary}" Padding="12,4"/>
+                                    <TextBox x:Name="AgentTaskInput" Foreground="{StaticResource TextPrimary}" Background="{StaticResource BgTertiary}" BorderThickness="0" Margin="8,4,8,8" Height="80" AcceptsReturn="True"/>
+                                    <TextBlock Text="Max Iterations:" Foreground="{StaticResource TextPrimary}" Padding="12,4,12,2"/>
+                                    <Slider x:Name="AgentMaxIterationsSlider" Minimum="10" Maximum="200" Value="50" Margin="8,4,8,8" TickFrequency="10" IsSnapToTickEnabled="True"/>
+                                    <TextBlock x:Name="AgentMaxIterationsText" Text="50" Foreground="{StaticResource TextSecondary}" FontSize="11" HorizontalAlignment="Center"/>
+                                    <Button x:Name="AgentStartButton" Content="Start Agent" Background="#0E639C" Foreground="White" Padding="12,4" HorizontalAlignment="Stretch" Height="36"/>
+                                    <Button x:Name="AgentStopButton" Content="Stop Agent" Background="#FF6B6B" Foreground="White" Padding="12,4" HorizontalAlignment="Stretch" Height="36" Margin="8,4,8,8" IsVisible="False"/>
+                                </StackPanel>
+                            </Border>
+                            <Border Background="{StaticResource BgSecondary}" CornerRadius="4" Margin="0,8,0,0">
+                                <StackPanel>
+                                    <TextBlock Text="Progress:" Foreground="{StaticResource TextPrimary}" Padding="12,4"/>
+                                    <Border x:Name="AgentProgressBar" Background="#3A3A3E" CornerRadius="4" Height="8" Margin="8,4,8,8"/>
+                                    <TextBlock x:Name="AgentProgressText" Foreground="{StaticResource TextSecondary}" Padding="8,0" FontSize="11"/>
+                                </StackPanel>
+                            </Border>
+                            <Border Background="{StaticResource BgSecondary}" CornerRadius="4" Margin="0,8,0,0">
+                                <ScrollViewer HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Auto">
+                                    <StackPanel x:Name="AgentToolLog">
+                                        <TextBlock Text="No tool calls yet" Foreground="{StaticResource TextMuted}" Padding="12,8" FontSize="11"/>
+                                    </StackPanel>
+                                </ScrollViewer>
+                            </Border>
+                        </StackPanel>
+
+                        <!-- Games tab content -->
+                        <StackPanel x:Name="GamesTabContent" IsVisible="False">
+                            <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Auto" Margin="0,8,0,0">
+                                <Controls:GamesPanel x:Name="LeftGamesPanel"/>
+                            </ScrollViewer>
+                        </StackPanel>
+
+                        <!-- Pingu tab content -->
+                        <StackPanel x:Name="PinguTabContent" IsVisible="False">
+                            <Controls:PinguPanel x:Name="LeftPinguPanel" Margin="0,8,0,0"/>
+                        </StackPanel>
+
+                        <!-- ImageGen tab content -->
+                        <StackPanel x:Name="ImageGenTabContent" IsVisible="False">
+                            <Border Background="{StaticResource BgSecondary}" CornerRadius="4" Margin="0,8,0,0">
+                                <StackPanel>
+                                    <TextBlock Text="Select Model:" Foreground="{StaticResource TextPrimary}" Padding="12,4"/>
+                                    <ComboBox x:Name="ImageGenModelSelector" Foreground="{StaticResource TextPrimary}" Background="{StaticResource BgTertiary}" Margin="8,4,8,8" Height="32"/>
+                                </StackPanel>
+                            </Border>
+                            <Border Background="{StaticResource BgSecondary}" CornerRadius="4" Margin="0,8,0,0">
+                                <StackPanel>
+                                    <TextBlock Text="Prompt:" Foreground="{StaticResource TextPrimary}" Padding="12,4"/>
+                                    <TextBox x:Name="ImageGenPromptInput" Foreground="{StaticResource TextPrimary}" Background="{StaticResource BgTertiary}" BorderThickness="0" Margin="8,4,8,8" Height="60" AcceptsReturn="True"/>
+                                    <TextBlock Text="Negative Prompt (optional):" Foreground="{StaticResource TextPrimary}" Padding="12,4,12,2"/>
+                                    <TextBox x:Name="ImageGenNegPromptInput" Foreground="{StaticResource TextPrimary}" Background="{StaticResource BgTertiary}" BorderThickness="0" Margin="8,4,8,8" Height="60" AcceptsReturn="True"/>
+                                </StackPanel>
+                            </Border>
+                            <Border Background="{StaticResource BgSecondary}" CornerRadius="4" Margin="0,8,0,0">
+                                <StackPanel>
+                                    <TextBlock Text="Parameters:" Foreground="{StaticResource TextPrimary}" Padding="12,4"/>
+                                    <DockPanel Margin="8,4,8,4">
+                                        <TextBlock Text="Resolution:" Width="70" Foreground="{StaticResource TextSecondary}"/>
+                                        <ComboBox x:Name="ImageGenResolutionSelector" Foreground="{StaticResource TextPrimary}" Background="{StaticResource BgTertiary}" Margin="8,0,0,0" Height="28">
+                                            <TextBlock Text="512x512"/><TextBlock Text="768x768"/><TextBlock Text="1024x1024"/><TextBlock Text="1280x720" Foreground="{StaticResource TextPrimary}"/>
+                                        </ComboBox>
+                                    </DockPanel>
+                                    <DockPanel Margin="8,4,8,4">
+                                        <TextBlock Text="Steps:" Width="70" Foreground="{StaticResource TextSecondary}"/>
+                                        <Slider x:Name="ImageGenStepsSlider" Minimum="1" Maximum="50" Value="20" Margin="8,0,8,0" TickFrequency="1" IsSnapToTickEnabled="True"/>
+                                        <TextBlock Text="{Binding ElementName=ImageGenStepsSlider, Path=Value, StringFormat={}{0:F0}}" Width="30" Foreground="{StaticResource TextSecondary}"/>
+                                    </DockPanel>
+                                    <DockPanel Margin="8,4,8,4">
+                                        <TextBlock Text="CFG:" Width="70" Foreground="{StaticResource TextSecondary}"/>
+                                        <Slider x:Name="ImageGenCfgSlider" Minimum="1.0" Maximum="20.0" Value="7.5" IsSnapToTickEnabled="True" TickFrequency="0.5" Margin="8,0,8,0"/>
+                                        <TextBlock Text="{Binding ElementName=ImageGenCfgSlider, Path=Value, StringFormat={}{0:F1}}" Width="35" Foreground="{StaticResource TextSecondary}"/>
+                                    </DockPanel>
+                                    <DockPanel Margin="8,4,8,4">
+                                        <TextBlock Text="Seed:" Width="70" Foreground="{StaticResource TextSecondary}"/>
+                                        <TextBox x:Name="ImageGenSeedInput" Foreground="{StaticResource TextPrimary}" Background="{StaticResource BgTertiary}" BorderThickness="0" Margin="8,0,0,0" Width="120" Height="28"/>
+                                        <Button x:Name="RandomSeedButton" Content="&#x1F3B2;" Background="#0E639C" Foreground="White" Padding="6,4" Margin="8,0,0,0"/>
+                                    </DockPanel>
+                                </StackPanel>
+                            </Border>
+                            <Border Background="{StaticResource BgSecondary}" CornerRadius="4" Margin="0,8,0,0">
+                                <Button x:Name="ImageGenGenerateBtn" Content="Generate Image" Background="#4FC3F7" Foreground="White" Padding="12,4" Height="40" Margin="8"/>
+                            </Border>
+                            <TextBlock x:Name="ImageGenProgressText" Foreground="{StaticResource TextMuted}" Padding="12,4" FontSize="12"/>
+                            <Border Background="{StaticResource BgSecondary}" CornerRadius="4" Margin="0,8,0,0">
+                                <StackPanel>
+                                    <TextBlock Text="Output:" Foreground="{StaticResource TextPrimary}" Padding="12,4"/>
+                                    <Border x:Name="ImageGenOutputArea" Background="{StaticResource BgTertiary}" CornerRadius="4" Margin="8,4,8,8">
+                                        <TextBlock Text="Generated image will appear here" Foreground="{StaticResource TextMuted}" Padding="20" FontSize="13"/>
+                                    </Border>
+                                </StackPanel>
+                            </Border>
+                            <Border Background="{StaticResource BgSecondary}" CornerRadius="4" Margin="0,8,0,0">
+                                <StackPanel>
+                                    <TextBlock Text="Batch Generation:" Foreground="{StaticResource TextPrimary}" Padding="12,4"/>
+                                    <DockPanel Margin="8,4,8,4">
+                                        <TextBlock Text="Count:" Width="70" Foreground="{StaticResource TextSecondary}"/>
+                                        <Slider x:Name="ImageGenBatchSizeSlider" Minimum="1" Maximum="16" Value="1" Margin="8,0,8,0" TickFrequency="1" IsSnapToTickEnabled="True"/>
+                                        <TextBlock Text="{Binding ElementName=ImageGenBatchSizeSlider, Path=Value, StringFormat={}{0:F0}}" Width="30" Foreground="{StaticResource TextSecondary}"/>
+                                    </DockPanel>
+                                </StackPanel>
+                            </Border>
+                            <Border Background="{StaticResource BgSecondary}" CornerRadius="4" Margin="0,8,0,0">
+                                <StackPanel>
+                                    <TextBlock Text="LoRA Adapters:" Foreground="{StaticResource TextPrimary}" Padding="12,4"/>
+                                    <ComboBox x:Name="ImageGenLoraSelector" Foreground="{StaticResource TextPrimary}" Background="{StaticResource BgTertiary}" Margin="8,4,8,0" Height="32"/>
+                                </StackPanel>
+                            </Border>
+                        </StackPanel>
+
+                        <!-- Analysis tab content -->
+                        <StackPanel x:Name="AnalysisTabContent" IsVisible="False">
+                            <Border Background="{StaticResource BgSecondary}" CornerRadius="4" Margin="0,8,0,0">
+                                <StackPanel>
+                                    <TextBlock Text="AI Analysis Context:" FontWeight="SemiBold" Foreground="#4FC3F7" Padding="12,8"/>
+                                    <DockPanel Margin="8,4"><TextBlock Text="Analyzed At:" Width="90" Foreground="{StaticResource TextSecondary}"/><TextBlock x:Name="AnalysisTimestampText" Text="N/A" Foreground="{StaticResource TextPrimary}" DockPanel.Dock="Right"/></DockPanel>
+                                    <DockPanel Margin="8,4"><TextBlock Text="Token Count:" Width="90" Foreground="{StaticResource TextSecondary}"/><TextBlock x:Name="AnalysisTokenCountText" Text="0" Foreground="{StaticResource TextPrimary}" DockPanel.Dock="Right"/></DockPanel>
+                                    <TextBlock Text="Compressed History:" Foreground="{StaticResource TextPrimary}" Padding="8,4"/>
+                                    <ScrollViewer Height="120" Margin="8,0"><TextBlock x:Name="AnalysisHistoryText" Text="No compressed history" Foreground="{StaticResource TextMuted}" Padding="4" FontSize="10"/></ScrollViewer>
+                                    <TextBlock Text="Project State:" Foreground="{StaticResource TextPrimary}" Padding="8,4"/>
+                                    <ScrollViewer Height="120" Margin="8,0"><TextBlock x:Name="AnalysisProjectStateText" Text="No project state" Foreground="{StaticResource TextMuted}" Padding="4" FontSize="10"/></ScrollViewer>
+                                    <TextBlock Text="Relevant Context Segments:" Foreground="{StaticResource TextPrimary}" Padding="8,4"/>
+                                    <TextBlock x:Name="AnalysisSegmentsText" Text="N/A" Foreground="{StaticResource TextMuted}" Padding="8" FontSize="10"/>
                                 </StackPanel>
                             </Border>
                         </StackPanel>
                     </StackPanel>
-                </TabItem>
-
-                <!-- Tasks tab -->
-                <TabItem Header="Tasks" x:Name="TasksTabItem" Classes="toolTab">
-                    <StackPanel x:Name="TasksTabContent" IsVisible="False">
-                        <Border Background="{StaticResource BgSecondary}" CornerRadius="4" Margin="0,8,0,0">
-                            <StackPanel x:Name="TaskListPanel">
-                                <TextBlock Text="No tasks created" Foreground="{StaticResource TextMuted}" Padding="12,8" FontSize="12"/>
-                            </StackPanel>
-                        </Border>
-                        <Border Background="{StaticResource BgSecondary}" CornerRadius="4" Margin="0,8,0,0">
-                            <StackPanel>
-                                <TextBlock Text="New Task:" Foreground="{StaticResource TextPrimary}" Padding="12,4"/>
-                                <TextBox x:Name="NewTaskDescriptionInput" Foreground="{StaticResource TextPrimary}" Background="{StaticResource BgTertiary}" BorderThickness="0" Margin="8,4,8,8" Height="60" AcceptsReturn="True"/>
-                                <TextBlock Text="Priority:" Foreground="{StaticResource TextPrimary}" Padding="12,4,12,2"/>
-                                <ComboBox x:Name="TaskPrioritySelector" Foreground="{StaticResource TextPrimary}" Background="{StaticResource BgTertiary}" Margin="8,0,8,8" Height="28">
-                                    <TextBlock Text="Low"/><TextBlock Text="Normal" Foreground="{StaticResource TextPrimary}"/><TextBlock Text="High"/><TextBlock Text="Critical"/>
-                                </ComboBox>
-                                <Button x:Name="CreateTaskButton" Content="+ Create Task" Background="#0E639C" Foreground="White" Padding="12,4" HorizontalAlignment="Stretch" Height="36"/>
-                            </StackPanel>
-                        </Border>
-                    </StackPanel>
-                </TabItem>
-
-                <!-- Agent tab -->
-                <TabItem Header="Agent" x:Name="AgentTabItem" Classes="toolTab">
-                    <StackPanel x:Name="AgentTabContent" IsVisible="False">
-                        <Border Background="{StaticResource BgSecondary}" CornerRadius="4" Margin="0,8,0,0">
-                            <StackPanel>
-                                <TextBlock Text="Task:" Foreground="{StaticResource TextPrimary}" Padding="12,4"/>
-                                <TextBox x:Name="AgentTaskInput" Foreground="{StaticResource TextPrimary}" Background="{StaticResource BgTertiary}" BorderThickness="0" Margin="8,4,8,8" Height="80" AcceptsReturn="True"/>
-                                <TextBlock Text="Max Iterations:" Foreground="{StaticResource TextPrimary}" Padding="12,4,12,2"/>
-                                <Slider x:Name="AgentMaxIterationsSlider" Minimum="10" Maximum="200" Value="50" Margin="8,4,8,8" TickFrequency="10" IsSnapToTickEnabled="True"/>
-                                <TextBlock x:Name="AgentMaxIterationsText" Text="50" Foreground="{StaticResource TextSecondary}" FontSize="11" HorizontalAlignment="Center"/>
-                                <Button x:Name="AgentStartButton" Content="Start Agent" Background="#0E639C" Foreground="White" Padding="12,4" HorizontalAlignment="Stretch" Height="36"/>
-                                <Button x:Name="AgentStopButton" Content="Stop Agent" Background="#FF6B6B" Foreground="White" Padding="12,4" HorizontalAlignment="Stretch" Height="36" Margin="8,4,8,8" IsVisible="False"/>
-                            </StackPanel>
-                        </Border>
-                        <Border Background="{StaticResource BgSecondary}" CornerRadius="4" Margin="0,8,0,0">
-                            <StackPanel>
-                                <TextBlock Text="Progress:" Foreground="{StaticResource TextPrimary}" Padding="12,4"/>
-                                <Border x:Name="AgentProgressBar" Background="#3A3A3E" CornerRadius="4" Height="8" Margin="8,4,8,8"/>
-                                <TextBlock x:Name="AgentProgressText" Foreground="{StaticResource TextSecondary}" Padding="8,0" FontSize="11"/>
-                            </StackPanel>
-                        </Border>
-                        <Border Background="{StaticResource BgSecondary}" CornerRadius="4" Margin="0,8,0,0">
-                            <ScrollViewer HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Auto">
-                                <StackPanel x:Name="AgentToolLog">
-                                    <TextBlock Text="No tool calls yet" Foreground="{StaticResource TextMuted}" Padding="12,8" FontSize="11"/>
-                                </StackPanel>
-                            </ScrollViewer>
-                        </Border>
-                    </StackPanel>
-                </TabItem>
-
-                <!-- Games tab -->
-                <TabItem Header="Games" x:Name="GamesTabItem" Classes="toolTab">
-                    <StackPanel x:Name="GamesTabContent" IsVisible="False">
-                        <ScrollViewer VerticalScrollBarVisibility="Auto" Margin="0,8,0,0">
-                            <Controls:GamesPanel x:Name="LeftGamesPanel"/>
-                        </ScrollViewer>
-                    </StackPanel>
-                </TabItem>
-
-                <TabItem Header="Pingu" x:Name="PinguTabItem" Classes="toolTab">
-                    <StackPanel x:Name="PinguTabContent" IsVisible="False">
-                        <Controls:PinguPanel x:Name="LeftPinguPanel" Margin="0,8,0,0"/>
-                    </StackPanel>
-                </TabItem>
-
-                <TabItem Header="ImageGen" x:Name="ImageGenTabItem" Classes="toolTab">
-                    <StackPanel x:Name="ImageGenTabContent" IsVisible="False">
-                        <Border Background="{StaticResource BgSecondary}" CornerRadius="4" Margin="0,8,0,0">
-                            <StackPanel>
-                                <TextBlock Text="Select Model:" Foreground="{StaticResource TextPrimary}" Padding="12,4"/>
-                                <ComboBox x:Name="ImageGenModelSelector" Foreground="{StaticResource TextPrimary}" Background="{StaticResource BgTertiary}" Margin="8,4,8,8" Height="32"/>
-                            </StackPanel>
-                        </Border>
-                        <Border Background="{StaticResource BgSecondary}" CornerRadius="4" Margin="0,8,0,0">
-                            <StackPanel>
-                                <TextBlock Text="Prompt:" Foreground="{StaticResource TextPrimary}" Padding="12,4"/>
-                                <TextBox x:Name="ImageGenPromptInput" Foreground="{StaticResource TextPrimary}" Background="{StaticResource BgTertiary}" BorderThickness="0" Margin="8,4,8,8" Height="60" AcceptsReturn="True"/>
-                                <TextBlock Text="Negative Prompt (optional):" Foreground="{StaticResource TextPrimary}" Padding="12,4,12,2"/>
-                                <TextBox x:Name="ImageGenNegPromptInput" Foreground="{StaticResource TextPrimary}" Background="{StaticResource BgTertiary}" BorderThickness="0" Margin="8,4,8,8" Height="60" AcceptsReturn="True"/>
-                            </StackPanel>
-                        </Border>
-                        <Border Background="{StaticResource BgSecondary}" CornerRadius="4" Margin="0,8,0,0">
-                            <StackPanel>
-                                <TextBlock Text="Parameters:" Foreground="{StaticResource TextPrimary}" Padding="12,4"/>
-                                <DockPanel Margin="8,4,8,4">
-                                    <TextBlock Text="Resolution:" Width="70" Foreground="{StaticResource TextSecondary}"/>
-                                    <ComboBox x:Name="ImageGenResolutionSelector" Foreground="{StaticResource TextPrimary}" Background="{StaticResource BgTertiary}" Margin="8,0,0,0" Height="28">
-                                        <TextBlock Text="512x512"/><TextBlock Text="768x768"/><TextBlock Text="1024x1024"/><TextBlock Text="1280x720" Foreground="{StaticResource TextPrimary}"/>
-                                    </ComboBox>
-                                </DockPanel>
-                                <DockPanel Margin="8,4,8,4">
-                                    <TextBlock Text="Steps:" Width="70" Foreground="{StaticResource TextSecondary}"/>
-                                    <Slider x:Name="ImageGenStepsSlider" Minimum="1" Maximum="50" Value="20" Margin="8,0,8,0" TickFrequency="1" IsSnapToTickEnabled="True"/>
-                                    <TextBlock Text="{Binding ElementName=ImageGenStepsSlider, Path=Value, StringFormat={}{0:F0}}" Width="30" Foreground="{StaticResource TextSecondary}"/>
-                                </DockPanel>
-                                <DockPanel Margin="8,4,8,4">
-                                    <TextBlock Text="CFG:" Width="70" Foreground="{StaticResource TextSecondary}"/>
-                                    <Slider x:Name="ImageGenCfgSlider" Minimum="1.0" Maximum="20.0" Value="7.5" IsSnapToTickEnabled="True" TickFrequency="0.5" Margin="8,0,8,0"/>
-                                    <TextBlock Text="{Binding ElementName=ImageGenCfgSlider, Path=Value, StringFormat={}{0:F1}}" Width="35" Foreground="{StaticResource TextSecondary}"/>
-                                </DockPanel>
-                                <DockPanel Margin="8,4,8,4">
-                                    <TextBlock Text="Seed:" Width="70" Foreground="{StaticResource TextSecondary}"/>
-                                    <TextBox x:Name="ImageGenSeedInput" Foreground="{StaticResource TextPrimary}" Background="{StaticResource BgTertiary}" BorderThickness="0" Margin="8,0,0,0" Width="120" Height="28"/>
-                                    <Button x:Name="RandomSeedButton" Content="&#x1F3B2;" Background="#0E639C" Foreground="White" Padding="6,4" Margin="8,0,0,0"/>
-                                </DockPanel>
-                            </StackPanel>
-                        </Border>
-                        <Border Background="{StaticResource BgSecondary}" CornerRadius="4" Margin="0,8,0,0">
-                            <Button x:Name="ImageGenGenerateBtn" Content="Generate Image" Background="#4FC3F7" Foreground="White" Padding="12,4" Height="40" Margin="8"/>
-                        </Border>
-                        <TextBlock x:Name="ImageGenProgressText" Foreground="{StaticResource TextMuted}" Padding="12,4" FontSize="12"/>
-                        <Border Background="{StaticResource BgSecondary}" CornerRadius="4" Margin="0,8,0,0">
-                            <StackPanel>
-                                <TextBlock Text="Output:" Foreground="{StaticResource TextPrimary}" Padding="12,4"/>
-                                <Border x:Name="ImageGenOutputArea" Background="{StaticResource BgTertiary}" CornerRadius="4" Margin="8,4,8,8">
-                                    <TextBlock Text="Generated image will appear here" Foreground="{StaticResource TextMuted}" Padding="20" FontSize="13"/>
-                                </Border>
-                            </StackPanel>
-                        </Border>
-                        <Border Background="{StaticResource BgSecondary}" CornerRadius="4" Margin="0,8,0,0">
-                            <StackPanel>
-                                <TextBlock Text="Batch Generation:" Foreground="{StaticResource TextPrimary}" Padding="12,4"/>
-                                <DockPanel Margin="8,4,8,4">
-                                    <TextBlock Text="Count:" Width="70" Foreground="{StaticResource TextSecondary}"/>
-                                    <Slider x:Name="ImageGenBatchSizeSlider" Minimum="1" Maximum="16" Value="1" Margin="8,0,8,0" TickFrequency="1" IsSnapToTickEnabled="True"/>
-                                    <TextBlock Text="{Binding ElementName=ImageGenBatchSizeSlider, Path=Value, StringFormat={}{0:F0}}" Width="30" Foreground="{StaticResource TextSecondary}"/>
-                                </DockPanel>
-                            </StackPanel>
-                        </Border>
-                        <Border Background="{StaticResource BgSecondary}" CornerRadius="4" Margin="0,8,0,0">
-                            <StackPanel>
-                                <TextBlock Text="LoRA Adapters:" Foreground="{StaticResource TextPrimary}" Padding="12,4"/>
-                                <ComboBox x:Name="ImageGenLoraSelector" Foreground="{StaticResource TextPrimary}" Background="{StaticResource BgTertiary}" Margin="8,4,8,0" Height="32"/>
-                            </StackPanel>
-                        </Border>
-                    </StackPanel>
-                </TabItem>
-
-                <!-- Analysis tab -->
-                <TabItem Header="Analysis" x:Name="AnalysisTabItem" Classes="toolTab">
-                    <StackPanel x:Name="AnalysisTabContent" IsVisible="False">
-                        <Border Background="{StaticResource BgSecondary}" CornerRadius="4" Margin="0,8,0,0">
-                            <StackPanel>
-                                <TextBlock Text="AI Analysis Context:" FontWeight="SemiBold" Foreground="#4FC3F7" Padding="12,8"/>
-                                <DockPanel Margin="8,4"><TextBlock Text="Analyzed At:" Width="90" Foreground="{StaticResource TextSecondary}"/><TextBlock x:Name="AnalysisTimestampText" Text="N/A" Foreground="{StaticResource TextPrimary}" DockPanel.Dock="Right"/></DockPanel>
-                                <DockPanel Margin="8,4"><TextBlock Text="Token Count:" Width="90" Foreground="{StaticResource TextSecondary}"/><TextBlock x:Name="AnalysisTokenCountText" Text="0" Foreground="{StaticResource TextPrimary}" DockPanel.Dock="Right"/></DockPanel>
-                                <TextBlock Text="Compressed History:" Foreground="{StaticResource TextPrimary}" Padding="8,4"/>
-                                <ScrollViewer Height="120" Margin="8,0"><TextBlock x:Name="AnalysisHistoryText" Text="No compressed history" Foreground="{StaticResource TextMuted}" Padding="4" FontSize="10"/></ScrollViewer>
-                                <TextBlock Text="Project State:" Foreground="{StaticResource TextPrimary}" Padding="8,4"/>
-                                <ScrollViewer Height="120" Margin="8,0"><TextBlock x:Name="AnalysisProjectStateText" Text="No project state" Foreground="{StaticResource TextMuted}" Padding="4" FontSize="10"/></ScrollViewer>
-                                <TextBlock Text="Relevant Context Segments:" Foreground="{StaticResource TextPrimary}" Padding="8,4"/>
-                                <TextBlock x:Name="AnalysisSegmentsText" Text="N/A" Foreground="{StaticResource TextMuted}" Padding="8" FontSize="10"/>
-                            </StackPanel>
-                        </Border>
-                    </StackPanel>
-                </TabItem>
-            </TabControl>
+                </ScrollViewer>
+            </Grid>
 
             <!-- Bottom buttons -->
             <StackPanel Grid.Row="3" Orientation="Horizontal" Margin="8,8,8,8">

@@ -118,6 +118,9 @@ public partial class MainWindow : Window
         // Load tab click handlers (they need access to this instance's ShowTab method)
         AttachTabClickHandlers();
 
+        // Wire up ToggleButton click handlers for left sidebar tabs
+        WireUpLeftTabClickHandlers();
+
         // Initialize Pingu avatar if IPinguStore is available
         InitializePingu();
 
@@ -502,6 +505,40 @@ public partial class MainWindow : Window
         catch
         {
             return "";
+        }
+    }
+
+    /// <summary>
+    /// Wires up ToggleButton click handlers for the left sidebar tabs.
+    /// </summary>
+    private void WireUpLeftTabClickHandlers()
+    {
+        var tabs = new (ToggleButton button, string tabName)[]
+        {
+            (ChatTab, "Chat"),
+            (ServerTab, "Server"),
+            (ModelsTab, "Models"),
+            (DevicesTab, "Devices"),
+            (ContextTab, "Context"),
+            (TasksTab, "Tasks"),
+            (AgentTab, "Agent"),
+            (GamesTab, "Games"),
+            (PinguTab, "Pingu"),
+            (ImageGenTab, "ImageGen"),
+            (AnalysisTab, "Analysis"),
+        };
+
+        foreach (var (button, tabName) in tabs)
+        {
+            if (button != null)
+            {
+                button.Click += (sender, e) =>
+                {
+                    if (tabName == "Context")
+                        UpdateRightSidebarTab("Context");
+                    ShowTab(tabName);
+                };
+            }
         }
     }
 }

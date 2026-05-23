@@ -32,53 +32,49 @@ public partial class MainWindow
         SetTabVisibility(TasksTabContent, tabName == "Tasks");
         SetTabVisibility(AnalysisTabContent, tabName == "Analysis");
 
-        // Also set SelectedItem on the TabControl to sync header styling
+        // Update ToggleButton checked state
+        SetToggleButtonChecked(ChatTab, tabName == "Chat");
+        SetToggleButtonChecked(ServerTab, tabName == "Server");
+        SetToggleButtonChecked(ModelsTab, tabName == "Models");
+        SetToggleButtonChecked(DevicesTab, tabName == "Devices");
+        SetToggleButtonChecked(ContextTab, tabName == "Context");
+        SetToggleButtonChecked(TasksTab, tabName == "Tasks");
+        SetToggleButtonChecked(AgentTab, tabName == "Agent");
+        SetToggleButtonChecked(GamesTab, tabName == "Games");
+        SetToggleButtonChecked(PinguTab, tabName == "Pingu");
+        SetToggleButtonChecked(ImageGenTab, tabName == "ImageGen");
+        SetToggleButtonChecked(AnalysisTab, tabName == "Analysis");
+
+        // Update server status
         switch (tabName)
         {
             case "Chat":
-                LeftTabControl.SelectedItem = ChatTabItem;
-                UpdateServerStatus();
-                break;
             case "Server":
-                LeftTabControl.SelectedItem = ServerTabItem;
                 UpdateServerStatus();
                 break;
             case "Models":
-                LeftTabControl.SelectedItem = ModelsTabItem;
                 RefreshModelListAsync();
                 break;
             case "Devices":
-                LeftTabControl.SelectedItem = DevicesTabItem;
                 _ = UpdateDeviceStatusAsync();
                 break;
             case "Context":
-                LeftTabControl.SelectedItem = ContextTabItem;
                 _ = RefreshContextBudgetAsync();
                 UpdateRightSidebarTab("Context");
                 break;
-            case "Agent":
-                LeftTabControl.SelectedItem = AgentTabItem;
-                break;
-            case "Games":
-                LeftTabControl.SelectedItem = GamesTabItem;
-                break;
-            case "Pingu":
-                LeftTabControl.SelectedItem = PinguTabItem;
-                break;
-            case "ImageGen":
-                LeftTabControl.SelectedItem = ImageGenTabItem;
-                break;
-            case "Tasks":
-                LeftTabControl.SelectedItem = TasksTabItem;
-                break;
             case "Analysis":
-                LeftTabControl.SelectedItem = AnalysisTabItem;
                 _ = RefreshAnalysisContextAsync();
                 break;
         }
 
         // Update active tab styling
         UpdateActiveTab(tabName);
+    }
+
+    private void SetToggleButtonChecked(ToggleButton? button, bool isChecked)
+    {
+        if (button != null)
+            button.IsChecked = isChecked;
     }
 
     /// <summary>
@@ -94,65 +90,12 @@ public partial class MainWindow
     private bool _isHandlingSelectionChanged;
 
     /// <summary>
-    /// Handles TabControl selection changes — updates styling and right sidebar.
+    /// Handles ToggleButton click changes — updates styling and right sidebar.
     /// </summary>
     private void OnLeftTabControlSelectionChanged(object? sender, SelectionChangedEventArgs e)
     {
-        try
-        {
-            // Prevent re-entry from ShowTab setting SelectedItem
-            if (_isHandlingSelectionChanged) return;
-            _isHandlingSelectionChanged = true;
-
-            var selectedItem = LeftTabControl.SelectedItem;
-            if (selectedItem is not TabItem tab)
-            {
-                _isHandlingSelectionChanged = false;
-                return;
-            }
-
-            // Guard: if TabItems are null, we're still in EndInit — skip handling
-            if (ChatTabItem == null && ServerTabItem == null && ModelsTabItem == null &&
-                DevicesTabItem == null && ContextTabItem == null && AgentTabItem == null &&
-                GamesTabItem == null && PinguTabItem == null && ImageGenTabItem == null && TasksTabItem == null && AnalysisTabItem == null)
-            {
-                _isHandlingSelectionChanged = false;
-                return;
-            }
-
-            // Map TabItem to tab name based on which item is selected
-            if (tab == ChatTabItem)
-                _activeTab = "Chat";
-            else if (tab == ServerTabItem)
-                _activeTab = "Server";
-            else if (tab == ModelsTabItem)
-                _activeTab = "Models";
-            else if (tab == DevicesTabItem)
-                _activeTab = "Devices";
-            else if (tab == ContextTabItem)
-                _activeTab = "Context";
-            else if (tab == AgentTabItem)
-                _activeTab = "Agent";
-            else if (tab == GamesTabItem)
-                _activeTab = "Games";
-            else if (tab == PinguTabItem)
-                _activeTab = "Pingu";
-            else if (tab == ImageGenTabItem)
-                _activeTab = "ImageGen";
-            else if (tab == TasksTabItem)
-                _activeTab = "Tasks";
-            else if (tab == AnalysisTabItem)
-                _activeTab = "Analysis";
-
-            ShowTab(_activeTab);
-            _isHandlingSelectionChanged = false;
-        }
-        catch
-        {
-            _isHandlingSelectionChanged = false;
-            // During XAML init, fields may be partially set up.
-            // Silently ignore errors — the event will fire again with valid fields.
-        }
+        // No longer needed since we use ToggleButtons with direct click handlers.
+        // Kept for compatibility with any remaining TabControl-based code.
     }
 
     private void SetTabVisibility(StackPanel? panel, bool visible)
