@@ -832,15 +832,15 @@
                             Height="36"/>
                 </Border>
 
-                <!-- Settings button -->
-                <Button x:Name="SettingsButton"
-                        Content="⚙️" 
-                        DockPanel.Dock="Bottom"
-                        Height="36"
-                        Margin="12,8,12,12"
-                        HorizontalAlignment="Stretch"
-                        Background="#252529"
-                        Foreground="{StaticResource TextPrimary}"/>
+        <!-- Settings button -->
+        <Button x:Name="SettingsButton"
+                Content="⚙️" 
+                DockPanel.Dock="Right"
+                Height="36"
+                Margin="12,8,12,12"
+                HorizontalAlignment="Right"
+                Background="#252529"
+                Foreground="{StaticResource TextPrimary}"/>
             </DockPanel>
         </Panel>
 
@@ -908,7 +908,9 @@
                                      Background="Transparent"
                                      BorderThickness="0"
                                      Padding="16,12"
-                                     FontSize="14"/>
+                                     FontSize="14"
+                                     MaxHeight="120"
+                                     MinHeight="60"/>
                         </Border>
 
                          <!-- Tool tabs -->
