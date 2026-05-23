@@ -158,12 +158,6 @@ Android builds produce `.apk` files.
 ## Testing
 
 ```bash
-# Run all tests
-dotnet test
-
-# Run a specific test project
-dotnet test tests/OpenLMStudio.Infrastructure.Tests/OpenLMStudio.Infrastructure.Tests.csproj
-
 # Verify formatting
 dotnet format --verify-no-changes
 ```
