@@ -32,7 +32,7 @@
         <Style Selector="ToggleButton.toolTab"><Setter Property="Background" Value="{StaticResource BgTertiary}"/><Setter Property="Foreground" Value="{StaticResource TextPrimary}"/><Setter Property="Padding" Value="12,6"/><Setter Property="BorderThickness" Value="0,0,0,2"/><Setter Property="FontSize" Value="12"/></Style>
         <Style Selector="ToggleButton.rightPanelTab"><Setter Property="Background" Value="{StaticResource BgTertiary}"/><Setter Property="Foreground" Value="{StaticResource TextPrimary}"/><Setter Property="Padding" Value="10,6"/><Setter Property="BorderThickness" Value="0"/><Setter Property="FontSize" Value="11"/><Setter Property="CornerRadius" Value="4"/></Style>
         <Style Selector="ToggleButton.rightPanelTab:checked"><Setter Property="Background" Value="{StaticResource AccentBlue}"/><Setter Property="Foreground" Value="White"/></Style>
-        <Style Selector="TabItem.toolTab"><Setter Property="Padding" Value="8,4"/><Setter Property="Margin" Value="2,1"/><Setter Property="Background" Value="{StaticResource BgTertiary}"/><Setter Property="Foreground" Value="{StaticResource TextPrimary}"/><Setter Property="FontSize" Value="11"/><Setter Property="BorderThickness" Value="2,0,0,0"/><Setter Property="BorderBrush" Value="Transparent"/><Setter Property="CornerRadius" Value="3"/></Style>
+        <Style Selector="TabItem.toolTab"><Setter Property="Padding" Value="4,2"/><Setter Property="Margin" Value="2,1"/><Setter Property="Background" Value="{StaticResource BgTertiary}"/><Setter Property="Foreground" Value="{StaticResource TextPrimary}"/><Setter Property="FontSize" Value="11"/><Setter Property="BorderThickness" Value="2,0,0,0"/><Setter Property="BorderBrush" Value="Transparent"/><Setter Property="CornerRadius" Value="3"/><Setter Property="Height" Value="26"/></Style>
         <Style Selector="TabItem.toolTab:selected"><Setter Property="Background" Value="{StaticResource BgSecondary}"/><Setter Property="BorderBrush" Value="{StaticResource AccentBlue}"/><Setter Property="Foreground" Value="{StaticResource AccentBlue}"/></Style>
         <Style Selector="TabItem.toolTab:hover"><Setter Property="Background" Value="#3A3A3E"/></Style>
         <Style Selector="RadioButton.settingsTab"><Setter Property="Background" Value="{StaticResource BgTertiary}"/><Setter Property="Foreground" Value="{StaticResource TextPrimary}"/><Setter Property="Padding" Value="16,8"/><Setter Property="BorderThickness" Value="0,0,0,2"/><Setter Property="FontSize" Value="13"/></Style>
@@ -265,9 +265,9 @@
 
                 <!-- Games tab -->
                 <TabItem Header="Games" x:Name="GamesTabItem" Classes="toolTab">
-                    <StackPanel x:Name="GamesTabContent" IsVisible="False">
-                        <Controls:GamesPanel x:Name="LeftGamesPanel" Margin="0,8,0,0"/>
-                    </StackPanel>
+                    <ScrollViewer VerticalScrollBarVisibility="Auto" Margin="0,8,0,0">
+                        <Controls:GamesPanel x:Name="LeftGamesPanel"/>
+                    </ScrollViewer>
                 </TabItem>
 
                 <TabItem Header="Pingu" x:Name="PinguTabItem" Classes="toolTab">

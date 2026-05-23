@@ -20,6 +20,17 @@ public partial class GamesPanel : UserControl
         CloseGameButton.Click += OnCloseGameClicked;
     }
 
+    protected override void OnAttachedToVisualTree(VisualTreeAttachmentEventArgs e)
+    {
+        base.OnAttachedToVisualTree(e);
+        // Auto-load the first game when the panel is shown
+        if (GameSelector?.SelectedIndex == 0 && ActiveGameContainer?.Child == null)
+        {
+            _minesweeper ??= new MinesweeperGame();
+            ActiveGameContainer.Child = _minesweeper;
+        }
+    }
+
     private void OnGameSelected(object? sender, SelectionChangedEventArgs e)
     {
         var index = GameSelector.SelectedIndex;

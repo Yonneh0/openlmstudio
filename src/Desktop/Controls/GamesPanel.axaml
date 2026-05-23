@@ -6,14 +6,6 @@
     VerticalAlignment="Stretch">
 
     <DockPanel Margin="8">
-        <TextBlock Text="Games"
-                   HorizontalAlignment="Center"
-                   FontSize="16"
-                   FontWeight="SemiBold"
-                   DockPanel.Dock="Top"
-                   Margin="0,0,0,8"
-                   Foreground="{DynamicResource TextPrimary}"/>
-
         <!-- Game selector -->
         <ComboBox x:Name="GameSelector"
                   DockPanel.Dock="Top"
