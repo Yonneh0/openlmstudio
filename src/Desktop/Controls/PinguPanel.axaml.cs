@@ -1,6 +1,7 @@
 using Avalonia.Controls;
 using OpenLMStudio.Application.Interfaces;
 using OpenLMStudio.Domain.Models.Pingu;
+using OpenLMStudio.Infrastructure.Services;
 
 namespace OpenLMStudio.Desktop.Controls;
 
@@ -9,13 +10,11 @@ namespace OpenLMStudio.Desktop.Controls;
 /// </summary>
 public partial class PinguPanel : UserControl
 {
-    private readonly IPinguStore _pingu;
+    private IPinguStore? _pingu;
 
-    public PinguPanel(IPinguStore pingu)
+    public PinguPanel()
     {
-        _pingu = pingu;
         InitializeComponent();
-        _pingu.OnStateChanged += OnPinguStateChanged;
     }
 
     private void OnPinguStateChanged(object? sender, PinguStateChangedEventArgs e)
@@ -32,7 +31,7 @@ public partial class PinguPanel : UserControl
                 PinguPanelType.About => 5,
                 _ => 0
             };
-            if (PanelTabs.SelectedIndex != tabIndex)
+            if (PanelTabs != null && PanelTabs.SelectedIndex != tabIndex)
                 PanelTabs.SelectedIndex = tabIndex;
         });
     }

@@ -260,27 +260,6 @@ public partial class MainWindow : Window
         if (GitStatusBorder != null)
             GitStatusBorder.PointerPressed += OnGitStatusClicked;
 
-        // Menu bar buttons
-        if (MenuOpenModel != null)
-            MenuOpenModel.Click += OnOpenModelClicked;
-
-        if (MenuExit != null)
-            MenuExit.Click += OnExitClicked;
-
-        if (MenuMinesweeper != null)
-            MenuMinesweeper.Click += OnOpenMinesweeperClicked;
-
-        if (MenuTetris != null)
-            MenuTetris.Click += OnOpenTetrisClicked;
-
-        if (MenuSnake != null)
-            MenuSnake.Click += OnOpenSnakeClicked;
-
-        if (MenuJezzball != null)
-            MenuJezzball.Click += OnOpenJezzballClicked;
-
-        if (MenuSolitaire != null)
-            MenuSolitaire.Click += OnOpenSolitaireClicked;
     }
 
     // =========================================================================
