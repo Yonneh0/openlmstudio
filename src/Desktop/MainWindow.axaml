@@ -511,7 +511,14 @@
                                                 HorizontalAlignment="Right"
                                                 Margin="0,0,-12,-4"
                                                 Click="OnAgentTurnsBadgeClicked"
-                                                IsHitTestVisible="True">
+                                                IsHitTestVisible="True"
+                                                Background="{StaticResource AccentOrange}"
+                                                Foreground="White">
+                                            <Button.Styles>
+                                                <Style Selector="Button:pointerover">
+                                                    <Setter Property="Background" Value="{Binding (Button.Background), RelativeSource={RelativeSource Self}}"/>
+                                                </Style>
+                                            </Button.Styles>
                                             <TextBlock x:Name="AgentTurnsText" Text="0" Foreground="White" FontSize="12" FontWeight="Bold" TextAlignment="Center"/>
                                         </Button>
                                     </Grid>
