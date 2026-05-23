@@ -19,7 +19,17 @@ public partial class MainWindow
     {
         _activeTab = tabName;
 
-        // Set SelectedItem on the TabControl — the ContentPresenter handles showing/hiding content
+        // Show the selected tab content, hide others
+        SetTabVisibility(ChatTabContent, tabName == "Chat");
+        SetTabVisibility(ServerTabContent, tabName == "Server");
+        SetTabVisibility(ModelsTabContent, tabName == "Models");
+        SetTabVisibility(DevicesTabContent, tabName == "Devices");
+        SetTabVisibility(ContextTabContent, tabName == "Context");
+        SetTabVisibility(AgentTabContent, tabName == "Agent");
+        SetTabVisibility(ImageGenTabContent, tabName == "ImageGen");
+        SetTabVisibility(TasksTabContent, tabName == "Tasks");
+
+        // Also set SelectedItem on the TabControl to sync header styling
         switch (tabName)
         {
             case "Chat":
@@ -73,35 +83,44 @@ public partial class MainWindow
     /// </summary>
     private void OnLeftTabControlSelectionChanged(object? sender, SelectionChangedEventArgs e)
     {
-        // Guard: if TabItems are null, we're still in EndInit — skip handling
-        if (LeftTabControl.SelectedItem is not TabItem selectedItem)
-            return;
+        try
+        {
+            var selectedItem = LeftTabControl.SelectedItem;
+            if (selectedItem is not TabItem tab)
+                return;
 
-        if (ChatTabItem == null || ServerTabItem == null || ModelsTabItem == null ||
-            DevicesTabItem == null || ContextTabItem == null || AgentTabItem == null ||
-            ImageGenTabItem == null || TasksTabItem == null)
-            return;
+            // Guard: if TabItems are null, we're still in EndInit — skip handling
+            if (ChatTabItem == null && ServerTabItem == null && ModelsTabItem == null &&
+                DevicesTabItem == null && ContextTabItem == null && AgentTabItem == null &&
+                ImageGenTabItem == null && TasksTabItem == null)
+                return;
 
-        // Map TabItem to tab name based on which item is selected
-        if (selectedItem == ChatTabItem)
-            _activeTab = "Chat";
-        else if (selectedItem == ServerTabItem)
-            _activeTab = "Server";
-        else if (selectedItem == ModelsTabItem)
-            _activeTab = "Models";
-        else if (selectedItem == DevicesTabItem)
-            _activeTab = "Devices";
-        else if (selectedItem == ContextTabItem)
-            _activeTab = "Context";
-        else if (selectedItem == AgentTabItem)
-            _activeTab = "Agent";
-        else if (selectedItem == ImageGenTabItem)
-            _activeTab = "ImageGen";
-        else if (selectedItem == TasksTabItem)
-            _activeTab = "Tasks";
+            // Map TabItem to tab name based on which item is selected
+            if (tab == ChatTabItem)
+                _activeTab = "Chat";
+            else if (tab == ServerTabItem)
+                _activeTab = "Server";
+            else if (tab == ModelsTabItem)
+                _activeTab = "Models";
+            else if (tab == DevicesTabItem)
+                _activeTab = "Devices";
+            else if (tab == ContextTabItem)
+                _activeTab = "Context";
+            else if (tab == AgentTabItem)
+                _activeTab = "Agent";
+            else if (tab == ImageGenTabItem)
+                _activeTab = "ImageGen";
+            else if (tab == TasksTabItem)
+                _activeTab = "Tasks";
 
-        UpdateActiveTab(_activeTab);
-        UpdateRightSidebarTab(_activeTab);
+            UpdateActiveTab(_activeTab);
+            UpdateRightSidebarTab(_activeTab);
+        }
+        catch
+        {
+            // During XAML init, fields may be partially set up.
+            // Silently ignore errors — the event will fire again with valid fields.
+        }
     }
 
     private void SetTabVisibility(StackPanel? panel, bool visible)
