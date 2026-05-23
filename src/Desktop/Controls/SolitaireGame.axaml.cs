@@ -12,9 +12,9 @@ namespace OpenLMStudio.Desktop.Controls;
 
 public partial class SolitaireGame : UserControl
 {
-    private const int CardWidth = 70;
-    private const int CardHeight = 98;
-    private const int CardOverlap = 25;
+    private const int CardWidth = 42;
+    private const int CardHeight = 58;
+    private const int CardOverlap = 15;
 
     private enum Suit { Hearts, Diamonds, Clubs, Spades }
     private enum Rank { Ace = 1, Two, Three, Four, Five, Six, Seven, Eight, Nine, Ten, Jack, Queen, King }
@@ -99,7 +99,7 @@ public partial class SolitaireGame : UserControl
     {
         _mousePos = e.GetPosition(GameBoard);
 
-        var wasteX = 50;
+        var wasteX = 20;
         var wasteY = 20;
         if (Math.Abs(_mousePos.X - (wasteX + CardWidth / 2)) < CardWidth / 2 &&
             Math.Abs(_mousePos.Y - (wasteY + CardHeight / 2)) < CardHeight / 2 && _waste.Count > 0)
@@ -110,8 +110,8 @@ public partial class SolitaireGame : UserControl
             return;
         }
 
-        var tableauStartX = 50;
-        var tableauStartY = 140;
+        var tableauStartX = 20;
+        var tableauStartY = 100;
         for (var col = 0; col < 7; col++)
         {
             var pile = _tableau[col];
@@ -133,7 +133,7 @@ public partial class SolitaireGame : UserControl
             }
         }
 
-        var stockX = 50;
+        var stockX = 20;
         var stockY = 20;
         if (Math.Abs(_mousePos.X - (stockX + CardWidth / 2)) < CardWidth / 2 &&
             Math.Abs(_mousePos.Y - (stockY + CardHeight / 2)) < CardHeight / 2)
@@ -156,7 +156,7 @@ public partial class SolitaireGame : UserControl
         var x = _mousePos.X - _dragOffset.X;
         var y = _mousePos.Y - _dragOffset.Y;
 
-        var foundationX = 350;
+        var foundationX = 20;
         var foundationY = 20;
         for (var i = 0; i < 4; i++)
         {
@@ -173,7 +173,7 @@ public partial class SolitaireGame : UserControl
             }
         }
 
-        var tableauStartX = 50;
+        var tableauStartX = 20;
         for (var col = 0; col < 7; col++)
         {
             var pile = _tableau[col];
@@ -238,17 +238,17 @@ public partial class SolitaireGame : UserControl
     {
         GameBoard.Children.Clear();
 
-        DrawCard(50, 20, null, false);
+        DrawCard(20, 20, null, false);
 
         for (var i = Math.Max(0, _waste.Count - 3); i < _waste.Count; i++)
         {
             var card = _waste[i];
-            DrawCard(50 + (i - Math.Max(0, _waste.Count - 3)) * 15, 20, card, true);
+            DrawCard(20 + (i - Math.Max(0, _waste.Count - 3)) * 15, 20, card, true);
         }
 
         for (var i = 0; i < 4; i++)
         {
-            var fx = 350 + i * (CardWidth + 5);
+            var fx = 20 + i * (CardWidth + 5);
             var fy = 20;
             if (_foundations[i].Count > 0)
                 DrawCard(fx, fy, _foundations[i].Last(), true);
@@ -256,8 +256,8 @@ public partial class SolitaireGame : UserControl
                 DrawCard(fx, fy, null, false);
         }
 
-        var startX = 50;
-        var startY = 140;
+        var startX = 20;
+        var startY = 100;
         for (var col = 0; col < 7; col++)
         {
             var pile = _tableau[col];
@@ -312,32 +312,32 @@ public partial class SolitaireGame : UserControl
             var rankText = new TextBlock
             {
                 Text = rankStr,
-                FontSize = 14,
+                FontSize = 10,
                 FontWeight = FontWeight.Bold,
                 Foreground = color,
             };
-            Canvas.SetLeft(rankText, x + 4);
-            Canvas.SetTop(rankText, y + 4);
+            Canvas.SetLeft(rankText, x + 3);
+            Canvas.SetTop(rankText, y + 3);
             GameBoard.Children.Add(rankText);
 
             var suitText = new TextBlock
             {
                 Text = symbol,
-                FontSize = 14,
+                FontSize = 10,
                 Foreground = color,
             };
-            Canvas.SetLeft(suitText, x + 4);
-            Canvas.SetTop(suitText, y + 20);
+            Canvas.SetLeft(suitText, x + 3);
+            Canvas.SetTop(suitText, y + 14);
             GameBoard.Children.Add(suitText);
 
             var centerText = new TextBlock
             {
                 Text = symbol,
-                FontSize = 36,
+                FontSize = 22,
                 Foreground = color,
             };
-            Canvas.SetLeft(centerText, x + CardWidth / 2 - 15);
-            Canvas.SetTop(centerText, y + CardHeight / 2 - 18);
+            Canvas.SetLeft(centerText, x + CardWidth / 2 - 10);
+            Canvas.SetTop(centerText, y + CardHeight / 2 - 11);
             GameBoard.Children.Add(centerText);
         }
     }

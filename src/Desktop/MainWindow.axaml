@@ -81,6 +81,21 @@
             <TextBlock Grid.Row="0" Text="OpenLMStudio" FontSize="18" FontWeight="SemiBold" Foreground="#4FC3F7" Padding="16,16,16,8"/>
 
             <TabControl Grid.Row="1" Background="Transparent" BorderThickness="0" x:Name="LeftTabControl" SelectionChanged="OnLeftTabControlSelectionChanged">
+                <TabControl.ItemsPanel>
+                    <ItemsPanelTemplate>
+                        <StackPanel Orientation="Horizontal"/>
+                    </ItemsPanelTemplate>
+                </TabControl.ItemsPanel>
+                <TabControl.Template>
+                    <ControlTemplate TargetType="TabControl">
+                        <DockPanel>
+                            <StackPanel DockPanel.Dock="Top" Height="24" Orientation="Horizontal">
+                                <ItemsPresenter x:Name="PART_ItemsPresenter" DockPanel.Dock="Top"/>
+                            </StackPanel>
+                            <ContentPresenter x:Name="PART_SelectedContentHost" Content="{Binding SelectedContent, RelativeSource={RelativeSource TemplatedParent}}" Margin="0,4,0,0"/>
+                        </DockPanel>
+                    </ControlTemplate>
+                </TabControl.Template>
                 <!-- Chat tab -->
                 <TabItem Header="Chats" x:Name="ChatTabItem" Classes="toolTab">
                     <StackPanel x:Name="ChatTabContent" IsVisible="True">
