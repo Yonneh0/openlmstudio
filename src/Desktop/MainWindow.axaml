@@ -79,10 +79,10 @@
                 <TextBox x:Name="SearchText" Foreground="{StaticResource TextPrimary}" Background="Transparent" BorderThickness="0" Padding="10,6" FontSize="13"/>
             </Border>
 
-            <ScrollViewer Grid.Row="2" HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Auto">
-                <StackPanel>
-                    <!-- Chat tab -->
-                    <StackPanel x:Name="ChatTabContent" IsVisible="True">
+            <TabControl Grid.Row="2" Background="Transparent" BorderThickness="0" x:Name="LeftTabControl">
+                <!-- Chat tab -->
+                <TabItem Header="Chats" x:Name="ChatTabItem" Classes="toolTab">
+                    <StackPanel x:Name="ChatTabContent">
                         <TextBlock x:Name="_chatTabTitle" Text="Chats" FontWeight="SemiBold" Foreground="#4FC3F7" Padding="8,6" PointerPressed="OnChatTabPointerPressed"/>
                         <StackPanel x:Name="ChatListPanel" Margin="0,4,0,0">
                             <TextBlock Text="No chats loaded" Foreground="{StaticResource TextMuted}" Padding="12,8" FontSize="12"/>
@@ -91,9 +91,11 @@
                             <TextBlock Text="Folders" FontWeight="SemiBold" Foreground="#4FC3F7" Padding="8,8"/>
                         </Border>
                     </StackPanel>
+                </TabItem>
 
-                    <!-- Server tab -->
-                    <StackPanel x:Name="ServerTabContent" IsVisible="False">
+                <!-- Server tab -->
+                <TabItem Header="Server" x:Name="ServerTabItem" Classes="toolTab">
+                    <StackPanel x:Name="ServerTabContent">
                         <TextBlock x:Name="_serverTabTitle" Text="Server Status" FontWeight="SemiBold" Foreground="#4FC3F7" Padding="8,6" PointerPressed="OnServerTabPointerPressed"/>
                         <Border Background="{StaticResource BgSecondary}" CornerRadius="4" Margin="0,8,0,0">
                             <StackPanel>
@@ -103,18 +105,22 @@
                             </StackPanel>
                         </Border>
                     </StackPanel>
+                </TabItem>
 
-                    <!-- Models tab -->
-                    <StackPanel x:Name="ModelsTabContent" IsVisible="False">
+                <!-- Models tab -->
+                <TabItem Header="Models" x:Name="ModelsTabItem" Classes="toolTab">
+                    <StackPanel x:Name="ModelsTabContent">
                         <TextBlock x:Name="_modelsTabTitle" Text="Models" FontWeight="SemiBold" Foreground="#4FC3F7" Padding="8,6" PointerPressed="OnModelsTabPointerPressed"/>
                         <StackPanel>
                             <TextBlock Text="No models loaded" Foreground="{StaticResource TextMuted}" Padding="12,8" FontSize="12"/>
                         </StackPanel>
                         <Button x:Name="AddModelButton" Content="+ Add Model" Background="#0E639C" Foreground="White" Padding="8,4" Margin="8,8,8,0" HorizontalAlignment="Stretch" Height="36"/>
                     </StackPanel>
+                </TabItem>
 
-                    <!-- Devices tab -->
-                    <StackPanel x:Name="DevicesTabContent" IsVisible="False">
+                <!-- Devices tab -->
+                <TabItem Header="Devices" x:Name="DevicesTabItem" Classes="toolTab">
+                    <StackPanel x:Name="DevicesTabContent">
                         <TextBlock x:Name="_devicesTabTitle" Text="Devices" FontWeight="SemiBold" Foreground="#4FC3F7" Padding="8,6" PointerPressed="OnDevicesTabPointerPressed"/>
                         <Border Background="{StaticResource BgSecondary}" CornerRadius="4" Margin="0,8,0,0">
                             <StackPanel>
@@ -131,9 +137,11 @@
                         </Border>
                         <Button x:Name="LoadModelButton" Content="Load Model" Background="#0E639C" Foreground="White" Padding="8,4" Margin="8,8,8,0" HorizontalAlignment="Stretch" Height="36"/>
                     </StackPanel>
+                </TabItem>
 
-                    <!-- Context tab -->
-                    <StackPanel x:Name="ContextTabContent" IsVisible="False">
+                <!-- Context tab -->
+                <TabItem Header="Context" x:Name="ContextTabItem" Classes="toolTab">
+                    <StackPanel x:Name="ContextTabContent">
                         <TextBlock Text="Context" FontWeight="SemiBold" Foreground="#4FC3F7" Padding="8,6" PointerPressed="OnContextTabPointerPressed"/>
                         <Border Background="{StaticResource BgSecondary}" CornerRadius="4" Margin="0,8,0,0">
                             <StackPanel>
@@ -201,9 +209,11 @@
                             </Border>
                         </StackPanel>
                     </StackPanel>
+                </TabItem>
 
-                    <!-- Tasks tab -->
-                    <StackPanel x:Name="TasksTabContent" IsVisible="False">
+                <!-- Tasks tab -->
+                <TabItem Header="Tasks" x:Name="TasksTabItem" Classes="toolTab">
+                    <StackPanel x:Name="TasksTabContent">
                         <TextBlock x:Name="TasksTabTitle" Text="Tasks" FontWeight="SemiBold" Foreground="#4FC3F7" Padding="8,6" PointerPressed="OnTasksTabPointerPressed"/>
                         <Border Background="{StaticResource BgSecondary}" CornerRadius="4" Margin="0,8,0,0">
                             <StackPanel x:Name="TaskListPanel">
@@ -222,9 +232,11 @@
                             </StackPanel>
                         </Border>
                     </StackPanel>
+                </TabItem>
 
-                    <!-- Agent tab -->
-                    <StackPanel x:Name="AgentTabContent" IsVisible="False">
+                <!-- Agent tab -->
+                <TabItem Header="Agent" x:Name="AgentTabItem" Classes="toolTab">
+                    <StackPanel x:Name="AgentTabContent">
                         <TextBlock x:Name="AgentTabTitle" Text="Agent" FontWeight="SemiBold" Foreground="#4FC3F7" Padding="8,6" PointerPressed="OnAgentTabPointerPressed"/>
                         <Border Background="{StaticResource BgSecondary}" CornerRadius="4" Margin="0,8,0,0">
                             <StackPanel>
@@ -252,9 +264,11 @@
                             </ScrollViewer>
                         </Border>
                     </StackPanel>
+                </TabItem>
 
-                    <!-- Image Generation tab -->
-                    <StackPanel x:Name="ImageGenTabContent" IsVisible="False">
+                <!-- Image Generation tab -->
+                <TabItem Header="ImageGen" x:Name="ImageGenTabItem" Classes="toolTab">
+                    <StackPanel x:Name="ImageGenTabContent">
                         <TextBlock Text="Image Generation" FontWeight="SemiBold" Foreground="#4FC3F7" Padding="8,6" PointerPressed="OnImageGenTabPointerPressed"/>
                         <Border Background="{StaticResource BgSecondary}" CornerRadius="4" Margin="0,8,0,0">
                             <StackPanel>
@@ -325,8 +339,8 @@
                             </StackPanel>
                         </Border>
                     </StackPanel>
-                </StackPanel>
-            </ScrollViewer>
+                </TabItem>
+            </TabControl>
 
             <!-- Bottom buttons -->
             <StackPanel Grid.Row="3" Orientation="Horizontal" Margin="8,8,8,8">
