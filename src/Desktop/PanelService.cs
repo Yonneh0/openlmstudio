@@ -22,6 +22,8 @@ public class PanelService : IPanelService
         ["BottomPane"] = "BottomPane",
         ["Agent"] = "AgentTabContent",
         ["ImageGeneration"] = "ImageGenerationTabContent",
+        ["Pingu"] = "RightPinguContent",
+        ["Games"] = "RightGamesContent",
     };
 
     public static void SetWindow(MainWindow window) => _window = window;

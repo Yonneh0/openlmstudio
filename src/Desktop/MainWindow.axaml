@@ -244,21 +244,7 @@
     </Window.Styles>
 
     <!-- Main content wrapper (Window can only have one child) -->
-    <DockPanel>
-        <!-- Menu bar -->
-        <DockPanel DockPanel.Dock="Top" Background="#252529" Height="32">
-            <TextBlock Text="OpenLMStudio" Foreground="#4FC3F7" FontSize="14" FontWeight="SemiBold" Padding="8,4" VerticalAlignment="Center"/>
-            <Button x:Name="MenuOpenModel" Content="Open Model" Background="Transparent" Foreground="#CCC" Padding="8,4"/>
-            <Button x:Name="MenuExit" Content="Exit" Background="Transparent" Foreground="#CCC" Padding="8,4"/>
-            <Button x:Name="MenuMinesweeper" Content="Minesweeper" Background="Transparent" Foreground="#CCC" Padding="8,4"/>
-            <Button x:Name="MenuTetris" Content="Tetris" Background="Transparent" Foreground="#CCC" Padding="8,4"/>
-            <Button x:Name="MenuSnake" Content="Snake" Background="Transparent" Foreground="#CCC" Padding="8,4"/>
-            <Button x:Name="MenuJezzball" Content="Jezzball" Background="Transparent" Foreground="#CCC" Padding="8,4"/>
-            <Button x:Name="MenuSolitaire" Content="Solitaire" Background="Transparent" Foreground="#CCC" Padding="8,4"/>
-        </DockPanel>
-
-        <!-- Three-panel layout: Left Sidebar | Center Chat | Right Sidebar -->
-        <Grid>
+    <Grid>
         <Grid.ColumnDefinitions>
             <!-- Left sidebar: Fixed width for navigation -->
             <ColumnDefinition Width="280"/>
@@ -957,20 +943,15 @@
         <Panel Grid.Column="2" Background="{StaticResource BgPrimary}">
             <DockPanel Margin="12">
                 
-                <!-- Right sidebar tabs (scrollable) -->
-                <ScrollViewer DockPanel.Dock="Top" HorizontalScrollBarVisibility="Auto" Margin="0,0,0,8">
-                    <StackPanel Orientation="Horizontal">
-                        <RadioButton x:Name="RightContextTabButton" Content="Context" Classes="settingsTab" IsChecked="True"/>
-                        <TextBlock Text="" Foreground="#CCCCCC" FontSize="12" Padding="4,6"/>
-                        <RadioButton x:Name="RightServerTabButton" Content="Server" Classes="settingsTab"/>
-                        <TextBlock Text="" Foreground="#CCCCCC" FontSize="12" Padding="4,6"/>
-                        <RadioButton x:Name="RightDevicesTabButton" Content="Devices" Classes="settingsTab"/>
-                        <TextBlock Text="" Foreground="#CCCCCC" FontSize="12" Padding="4,6"/>
-                        <RadioButton x:Name="RightAnalysisTabButton" Content="AI Analysis" Classes="settingsTab"/>
-                        <TextBlock Text="" Foreground="#CCCCCC" FontSize="12" Padding="4,6"/>
-                        <RadioButton x:Name="RightGamesTabButton" Content="Games" Classes="settingsTab"/>
-                    </StackPanel>
-                </ScrollViewer>
+        <!-- Right sidebar tabs (scrollable) -->
+        <StackPanel DockPanel.Dock="Top" Orientation="Horizontal" Margin="0,0,0,8">
+            <RadioButton x:Name="RightContextTabButton" Content="Context" Classes="settingsTab" IsChecked="True" Margin="0,0,4,0"/>
+            <RadioButton x:Name="RightServerTabButton" Content="Server" Classes="settingsTab" Margin="0,0,4,0"/>
+            <RadioButton x:Name="RightDevicesTabButton" Content="Devices" Classes="settingsTab" Margin="0,0,4,0"/>
+            <RadioButton x:Name="RightAnalysisTabButton" Content="AI Analysis" Classes="settingsTab" Margin="0,0,4,0"/>
+            <RadioButton x:Name="RightGamesTabButton" Content="Games" Classes="settingsTab" Margin="0,0,4,0"/>
+            <RadioButton x:Name="RightPinguTabButton" Content="Pingu" Classes="settingsTab" Margin="0,0,0,0"/>
+        </StackPanel>
 
                 <!-- Context tab content (default) -->
                 <StackPanel x:Name="RightContextContent" DockPanel.Dock="Top">
@@ -1141,6 +1122,11 @@
                      <!-- Games panel content (hidden by default) -->
                      <StackPanel x:Name="RightGamesContent" DockPanel.Dock="Top" IsVisible="False">
                          <Controls:GamesPanel x:Name="RightGamesPanel"/>
+                     </StackPanel>
+
+                     <!-- Pingu panel content (hidden by default) -->
+                     <StackPanel x:Name="RightPinguContent" DockPanel.Dock="Top" IsVisible="False">
+                         <Controls:PinguPanel x:Name="RightPinguPanel"/>
                      </StackPanel>
 
                      <!-- Devices tab content (hidden by default) -->

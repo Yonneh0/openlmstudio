@@ -133,12 +133,15 @@ public partial class MainWindow
         SetPanelVisibility(RightServerContent, false);
         SetPanelVisibility(RightDevicesContent, false);
         SetPanelVisibility(RightAnalysisContent, false);
+        SetPanelVisibility(RightGamesContent, false);
+        SetPanelVisibility(RightPinguContent, false);
 
         SetPanelVisibility(RightContextContent, activeTab == "Context");
         SetPanelVisibility(RightServerContent, activeTab == "Server");
         SetPanelVisibility(RightDevicesContent, activeTab == "Devices");
         SetPanelVisibility(RightAnalysisContent, activeTab == "Analysis");
         SetPanelVisibility(RightGamesContent, activeTab == "Games");
+        SetPanelVisibility(RightPinguContent, activeTab == "Pingu");
 
         // Update tab button states
         if (RightContextTabButton != null) RightContextTabButton.IsChecked = activeTab == "Context";
@@ -146,6 +149,7 @@ public partial class MainWindow
         if (RightDevicesTabButton != null) RightDevicesTabButton.IsChecked = activeTab == "Devices";
         if (RightAnalysisTabButton != null) RightAnalysisTabButton.IsChecked = activeTab == "Analysis";
         if (RightGamesTabButton != null) RightGamesTabButton.IsChecked = activeTab == "Games";
+        if (RightPinguTabButton != null) RightPinguTabButton.IsChecked = activeTab == "Pingu";
 
         // Update context budget when switching to context tab
         if (activeTab == "Context")
@@ -246,5 +250,8 @@ public partial class MainWindow
 
         if (RightGamesTabButton != null)
             RightGamesTabButton.IsCheckedChanged += (_, _) => UpdateRightSidebarTab(RightGamesTabButton.IsChecked == true ? "Games" : _activeTab);
+
+        if (RightPinguTabButton != null)
+            RightPinguTabButton.IsCheckedChanged += (_, _) => UpdateRightSidebarTab(RightPinguTabButton.IsChecked == true ? "Pingu" : _activeTab);
     }
 }
