@@ -1,18 +1,20 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Reflection;
 using Microsoft.Extensions.Logging;
 
 namespace OpenLMStudio.Infrastructure.Services;
 
 /// <summary>
 /// Dynamically assembles the system prompt for agent tasks based on the current context
-/// and available tools. Supports context-aware suggestions for next action.
+/// and available tools. Supports dynamic tool auto-discovery and context-aware suggestions.
 /// </summary>
 public class AgentSystemPromptGenerator
 {
     private readonly ILogger<AgentSystemPromptGenerator>? _logger;
     private readonly Dictionary<string, string> _toolDescriptions;
+    private readonly HashSet<string> _discoveredTools;
     private const string DefaultSystemPrompt = """
         You are an autonomous agent that completes tasks by planning and executing actions.
         You receive a task description, propose a plan, and then execute actions using available tools.
@@ -35,6 +37,7 @@ public class AgentSystemPromptGenerator
     {
         _logger = logger;
         _toolDescriptions = toolDescriptions ?? new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+        _discoveredTools = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
     }
 
     /// <summary>
@@ -167,9 +170,69 @@ If the task is complete, state so explicitly.
     public void RegisterToolDescription(string toolName, string description)
     {
         _toolDescriptions[toolName] = description;
+        _discoveredTools.Add(toolName);
+    }
+
+    /// <summary>
+    /// Discovers tools from the given assembly and auto-registers their descriptions.
+    /// Looks for types with a [ToolDescription] attribute or a "Description" property.
+    /// </summary>
+    public void AutoDiscoverTools(Assembly assembly)
+    {
+        var toolTypes = assembly.GetTypes()
+            .Where(t => t.IsClass && !t.IsAbstract)
+            .Select(t => new { Type = t, Attr = t.GetCustomAttributes(typeof(ToolDescriptionAttribute), true).FirstOrDefault() as ToolDescriptionAttribute });
+
+        foreach (var tool in toolTypes)
+        {
+            if (tool.Attr != null)
+            {
+                RegisterToolDescription(tool.Type.Name, tool.Attr.Description);
+                _logger?.LogDebug("Auto-discovered tool: {ToolName} — {Description}", tool.Type.Name, tool.Attr.Description);
+            }
+            else
+            {
+                var descProp = tool.Type.GetProperty("Description", BindingFlags.Public | BindingFlags.Instance | BindingFlags.Static);
+                if (descProp != null && descProp.PropertyType == typeof(string))
+                {
+                    var desc = descProp.GetValue(tool.Type)?.ToString() ?? tool.Type.Name;
+                    RegisterToolDescription(tool.Type.Name, desc);
+                    _logger?.LogDebug("Auto-discovered tool: {ToolName} — {Description}", tool.Type.Name, desc);
+                }
+            }
+        }
+    }
+
+    /// <summary>
+    /// Discovers tools from a list of types and auto-registers their descriptions.
+    /// </summary>
+    public void AutoDiscoverTools(IEnumerable<Type> toolTypes)
+    {
+        foreach (var t in toolTypes)
+        {
+            var attr = t.GetCustomAttributes(typeof(ToolDescriptionAttribute), true).FirstOrDefault() as ToolDescriptionAttribute;
+            var desc = attr?.Description ?? t.GetProperty("Description", BindingFlags.Public | BindingFlags.Instance | BindingFlags.Static)?.GetValue(t)?.ToString() ?? t.Name;
+            RegisterToolDescription(t.Name, desc);
+        }
+    }
+
+    /// <summary>
+    /// Clears all registered tools and auto-discovers from the current assembly.
+    /// Useful for rebuilding prompts after tool plugins are loaded.
+    /// </summary>
+    public void RebuildWithAutoDiscoveredTools(Assembly assembly)
+    {
+        _toolDescriptions.Clear();
+        _discoveredTools.Clear();
+        AutoDiscoverTools(assembly);
     }
 
     public IReadOnlyDictionary<string, string> GetToolDescriptions() => _toolDescriptions;
+
+    /// <summary>
+    /// Gets the list of discovered tool names.
+    /// </summary>
+    public IReadOnlyCollection<string> GetDiscoveredToolNames() => _discoveredTools;
 
     private string BuildToolSection()
     {
@@ -178,4 +241,14 @@ If the task is complete, state so explicitly.
 
         return string.Join("\n", _toolDescriptions.Select(t => $"- **{t.Key}**: {t.Value}"));
     }
+}
+
+/// <summary>
+/// Attribute for marking tool types with a description for auto-discovery.
+/// </summary>
+[AttributeUsage(AttributeTargets.Class)]
+public class ToolDescriptionAttribute : Attribute
+{
+    public string Description { get; }
+    public ToolDescriptionAttribute(string description) => Description = description;
 }

@@ -743,12 +743,118 @@ public class DiffusionPipelineService : IDiffusionPipelineService, IDisposable
             await LoadModelAsync(request.ModelId);
         }
 
-        // Placeholder streaming — real implementation emits progress per denoising step
-        for (var step = 0; step < request.Steps && !ct.IsCancellationRequested; step++)
+        // Create engine and load pipeline stages from the model file
+        var engine = new DiffusionInferenceEngine(null);
+
+        // Get the pipeline type from model metadata
+        var multimodalMeta = await _modelRepo.GetMultiModalModelByIdAsync(request.ModelId);
+        if (multimodalMeta == null)
+            throw new InvalidOperationException($"Image generation model '{request.ModelId}' not found in repository.");
+
+        var pipelineType = GetPipelineType(multimodalMeta);
+
+        // Load all three stages of the pipeline from safetensors model files
+        bool textEncoderLoaded, unetLoaded, vaeLoaded;
+        if (multimodalMeta.Format == ModelFormat.Safetensors)
         {
-            yield return new ImageGenerationProgress(step + 1, request.Steps, (step + 1) / (float)request.Steps * 100);
-            await Task.Delay(100, ct); // Simulate work
+            var weightFile = GetPrimaryWeightFile(multimodalMeta);
+            if (string.IsNullOrEmpty(weightFile) || !File.Exists(weightFile))
+                throw new FileNotFoundException($"Weight file not found for model '{request.ModelId}'.");
+
+            var headerValid = await _safetensorParser.ValidateHeaderAsync(weightFile);
+            if (!headerValid)
+                throw new InvalidDataException($"Safetensors header validation failed for model '{request.ModelId}'.");
+
+            textEncoderLoaded = engine.LoadTextEncoder(pipelineType, weightFile);
+            unetLoaded = engine.LoadUnet(pipelineType, weightFile);
+            vaeLoaded = engine.LoadVaeDecoder(pipelineType, weightFile);
         }
+        else
+        {
+            textEncoderLoaded = false;
+            unetLoaded = false;
+            vaeLoaded = false;
+        }
+
+        if (!textEncoderLoaded || !unetLoaded || !vaeLoaded)
+            throw new InvalidOperationException($"Failed to load complete pipeline for model '{request.ModelId}'.");
+
+        // Encode prompt and create latents (same as RunDenoisingLoop)
+        var textEmbedding = EncodePrompt(engine, pipelineType, request.Prompt);
+        if (request.NegativePrompt != null)
+            textEmbedding = BlendCfgConditioningAsync(engine, pipelineType, request.Prompt, request.NegativePrompt, request.GuidanceScale);
+        else
+        {
+            var unconditionedEmbedding = EncodePrompt(engine, pipelineType, string.Empty);
+            if (textEmbedding == null || unconditionedEmbedding == null)
+                throw new InvalidOperationException("Failed to encode prompt for streaming.");
+            textEmbedding = BlendTensors(textEmbedding, unconditionedEmbedding, request.GuidanceScale);
+        }
+
+        // Create initial latents from noise
+        var rng = new Random((int)(request.EffectiveSeed & int.MaxValue));
+        int latentChannels = multimodalMeta?.ExtraProperties?.TryGetValue("latent_channels", out var lch) == true
+            ? int.Parse(lch) : 4;
+        if (pipelineType.Equals("flux", StringComparison.OrdinalIgnoreCase) && latentChannels == 4)
+            latentChannels = 16;
+
+        var latentHeight = request.Height / 8;
+        var latentWidth = request.Width / 8;
+        var noiseTensor = new DenseTensor<float>(new[] { 1, latentChannels, latentHeight, latentWidth });
+        for (int i = 0; i < noiseTensor.Length; i++)
+            noiseTensor[i] = (float)rng.NextDouble() * 2f - 1f;
+
+        var latents = noiseTensor;
+        var timeSteps = request.SamplerType switch
+        {
+            ImageSamplerType.Euler => ComputeEulerTimeSteps(request.Steps),
+            ImageSamplerType.EulerA => ComputeEulerATimeSteps(request.Steps),
+            ImageSamplerType.DPMS => ComputeDPMTimesteps(request.Steps),
+            ImageSamplerType.LMS => ComputeLMSFixedTimeSteps(request.Steps),
+            _ => ComputeEulerTimeSteps(request.Steps),
+        };
+
+        // Denoising loop with per-step streaming
+        var effectiveTimeSteps = timeSteps ?? Array.Empty<double>();
+        var lastStepTime = effectiveTimeSteps.Length > 0 ? effectiveTimeSteps[effectiveTimeSteps.Length - 1] : 1.0;
+        for (int stepIndex = 0; stepIndex < request.Steps && !ct.IsCancellationRequested; stepIndex++)
+        {
+            int clampedStepIndex = Math.Min(stepIndex, effectiveTimeSteps.Length - 1);
+            double t = clampedStepIndex >= 0 ? effectiveTimeSteps[clampedStepIndex] : 1.0;
+
+            // Add noise for Euler a
+            if (request.SamplerType == ImageSamplerType.EulerA && stepIndex > 0 && effectiveTimeSteps.Length > 0)
+            {
+                var sigmaT = GetSigmaFromTime(t, lastStepTime);
+                var noiseToAdd = AddNoiseToLatents(latents, sigmaT, (int)(request.EffectiveSeed ^ stepIndex));
+                latents = AddTensors(latents, noiseToAdd);
+            }
+
+            // Run UNet denoising
+            var denoised = engine.RunUnetDenoise(pipelineType, latents, textEmbedding!, request.GuidanceScale, stepIndex, request.Steps);
+            if (denoised == null)
+                throw new InvalidOperationException("UNet denoising failed during streaming.");
+            latents = denoised;
+
+            // Reverse noise for Euler a
+            if (request.SamplerType == ImageSamplerType.EulerA && stepIndex > 0 && effectiveTimeSteps.Length > 0)
+            {
+                var sigmaT = GetSigmaFromTime(t, lastStepTime);
+                latents = SubtractNoiseFromLatents(denoised, sigmaT, (int)(request.EffectiveSeed ^ stepIndex));
+            }
+
+            // Decode intermediate latents to PNG and yield progress with image bytes
+            var intermediatePng = engine.DecodeLatents(pipelineType, latents);
+            var progress = new ImageGenerationProgress(
+                stepIndex + 1,
+                request.Steps,
+                (stepIndex + 1) / (float)request.Steps * 100,
+                intermediatePng);
+
+            yield return progress;
+        }
+
+        engine.Dispose();
     }
 
     public async Task<IEnumerable<MultiModalModelMetadata>> GetAvailableModelsAsync()

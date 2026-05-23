@@ -440,6 +440,12 @@ public static class DependencyInjection
         // Markdown renderer: converts Markdown to HTML with code block syntax highlighting (C#, Python, JS, etc.)
         services.AddSingleton<IMarkdownRenderer, Services.SyntaxHighlightingMarkdownRenderer>();
 
+        // PerformanceBenchmarkService benchmarks model load time, chat throughput, and image generation latency
+        services.AddSingleton<Services.PerformanceBenchmarkService>();
+
+        // ServerLoadTestService performs load testing of server endpoints under concurrent requests
+        services.AddSingleton<Services.ServerLoadTestService>();
+
         return services;
     }
 

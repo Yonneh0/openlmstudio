@@ -69,6 +69,9 @@ public record ImageGenerationProgress(
     float Percentage)
 {
     public float ProgressPercent => TotalSteps > 0 ? (Step / (float)TotalSteps) * 100 : 0;
+
+    /// <summary>Intermediate PNG bytes from this step (null for simulated progress).</summary>
+    public byte[]? ImageBytes { get; init; }
 }
 
 /// <summary>
