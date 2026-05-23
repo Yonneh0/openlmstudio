@@ -30,6 +30,11 @@
         <Style Selector="Border.inputArea"><Setter Property="Background" Value="{StaticResource BgSecondary}"/><Setter Property="CornerRadius" Value="4"/><Setter Property="Padding" Value="12"/></Style>
         <Style Selector="Border.searchBar"><Setter Property="Background" Value="{StaticResource BgSecondary}"/><Setter Property="CornerRadius" Value="4"/><Setter Property="Padding" Value="10,6"/></Style>
         <Style Selector="ToggleButton.toolTab"><Setter Property="Background" Value="{StaticResource BgTertiary}"/><Setter Property="Foreground" Value="{StaticResource TextPrimary}"/><Setter Property="Padding" Value="12,6"/><Setter Property="BorderThickness" Value="0,0,0,2"/><Setter Property="FontSize" Value="12"/></Style>
+        <Style Selector="ToggleButton.rightPanelTab"><Setter Property="Background" Value="{StaticResource BgTertiary}"/><Setter Property="Foreground" Value="{StaticResource TextPrimary}"/><Setter Property="Padding" Value="10,6"/><Setter Property="BorderThickness" Value="0"/><Setter Property="FontSize" Value="11"/><Setter Property="CornerRadius" Value="4"/></Style>
+        <Style Selector="ToggleButton.rightPanelTab:checked"><Setter Property="Background" Value="{StaticResource AccentBlue}"/><Setter Property="Foreground" Value="White"/></Style>
+        <Style Selector="TabItem.toolTab"><Setter Property="Padding" Value="16,12"/><Setter Property="Margin" Value="4,2"/><Setter Property="Background" Value="{StaticResource BgTertiary}"/><Setter Property="Foreground" Value="{StaticResource TextPrimary}"/><Setter Property="FontSize" Value="14"/><Setter Property="BorderThickness" Value="3,0,0,0"/><Setter Property="BorderBrush" Value="Transparent"/><Setter Property="CornerRadius" Value="4"/></Style>
+        <Style Selector="TabItem.toolTab:selected"><Setter Property="Background" Value="{StaticResource BgSecondary}"/><Setter Property="BorderBrush" Value="{StaticResource AccentBlue}"/><Setter Property="Foreground" Value="{StaticResource AccentBlue}"/></Style>
+        <Style Selector="TabItem.toolTab:hover"><Setter Property="Background" Value="#3A3A3E"/></Style>
         <Style Selector="RadioButton.settingsTab"><Setter Property="Background" Value="{StaticResource BgTertiary}"/><Setter Property="Foreground" Value="{StaticResource TextPrimary}"/><Setter Property="Padding" Value="16,8"/><Setter Property="BorderThickness" Value="0,0,0,2"/><Setter Property="FontSize" Value="13"/></Style>
         <Style Selector="RadioButton.settingsTab:checked"><Setter Property="Background" Value="{StaticResource BgSecondary}"/><Setter Property="Foreground" Value="{StaticResource AccentBlue}"/><Setter Property="BorderBrush" Value="{StaticResource AccentBlue}"/></Style>
         <Style Selector="StackPanel.settingItem"><Setter Property="Margin" Value="0,4,0,12"/></Style>
@@ -354,6 +359,26 @@
                         </Border>
                     </StackPanel>
                 </TabItem>
+
+                <!-- Analysis tab -->
+                <TabItem Header="Analysis" x:Name="AnalysisTabItem" Classes="toolTab">
+                    <StackPanel x:Name="AnalysisTabContent" IsVisible="False">
+                        <TextBlock x:Name="AnalysisTabTitle" Text="AI Analysis" FontWeight="SemiBold" Foreground="#4FC3F7" Padding="8,6"/>
+                        <Border Background="{StaticResource BgSecondary}" CornerRadius="4" Margin="0,8,0,0">
+                            <StackPanel>
+                                <TextBlock Text="AI Analysis Context:" FontWeight="SemiBold" Foreground="#4FC3F7" Padding="12,8"/>
+                                <DockPanel Margin="8,4"><TextBlock Text="Analyzed At:" Width="90" Foreground="{StaticResource TextSecondary}"/><TextBlock x:Name="AnalysisTimestampText" Text="N/A" Foreground="{StaticResource TextPrimary}" DockPanel.Dock="Right"/></DockPanel>
+                                <DockPanel Margin="8,4"><TextBlock Text="Token Count:" Width="90" Foreground="{StaticResource TextSecondary}"/><TextBlock x:Name="AnalysisTokenCountText" Text="0" Foreground="{StaticResource TextPrimary}" DockPanel.Dock="Right"/></DockPanel>
+                                <TextBlock Text="Compressed History:" Foreground="{StaticResource TextPrimary}" Padding="8,4"/>
+                                <ScrollViewer Height="120" Margin="8,0"><TextBlock x:Name="AnalysisHistoryText" Text="No compressed history" Foreground="{StaticResource TextMuted}" Padding="4" FontSize="10"/></ScrollViewer>
+                                <TextBlock Text="Project State:" Foreground="{StaticResource TextPrimary}" Padding="8,4"/>
+                                <ScrollViewer Height="120" Margin="8,0"><TextBlock x:Name="AnalysisProjectStateText" Text="No project state" Foreground="{StaticResource TextMuted}" Padding="4" FontSize="10"/></ScrollViewer>
+                                <TextBlock Text="Relevant Context Segments:" Foreground="{StaticResource TextPrimary}" Padding="8,4"/>
+                                <TextBlock x:Name="AnalysisSegmentsText" Text="N/A" Foreground="{StaticResource TextMuted}" Padding="8" FontSize="10"/>
+                            </StackPanel>
+                        </Border>
+                    </StackPanel>
+                </TabItem>
             </TabControl>
 
             <!-- Bottom buttons -->
@@ -422,95 +447,12 @@
         </Panel>
 
         <!-- ===== RIGHT SIDEBAR ===== -->
-        <Panel Grid.Column="2" Background="{StaticResource BgPrimary}">
-            <DockPanel Margin="12">
-                <ScrollViewer DockPanel.Dock="Top" HorizontalScrollBarVisibility="Auto" Margin="0,0,0,8">
-                    <StackPanel Orientation="Horizontal" Margin="0,0,0,0">
-                        <RadioButton x:Name="RightContextTabButton" Content="Context" Classes="settingsTab" IsChecked="True" Margin="0,0,4,0"/>
-                        <RadioButton x:Name="RightAnalysisTabButton" Content="AI Analysis" Classes="settingsTab" Margin="0,0,4,0"/>
-                    </StackPanel>
-                </ScrollViewer>
-
-                <StackPanel x:Name="RightContextContent" DockPanel.Dock="Top">
-                    <Border Background="{StaticResource BgSecondary}" CornerRadius="4" Margin="0,0,0,12">
-                        <StackPanel>
-                            <TextBlock Text="Context Budget:" FontWeight="SemiBold" Foreground="#4FC3F7" Padding="8,8"/>
-                            <Border x:Name="RightBudgetBar" CornerRadius="4" Height="10" Margin="8,4"><Border.Background><SolidColorBrush Color="#3A3A3E"/></Border.Background></Border>
-                            <TextBlock x:Name="RightBudgetText" Text="Loading..." Foreground="{StaticResource TextSecondary}" Padding="8,0" FontSize="11"/>
-                        </StackPanel>
-                    </Border>
-                    <Border Background="{StaticResource BgSecondary}" CornerRadius="4" Margin="0,0,0,12">
-                        <StackPanel>
-                            <TextBlock Text="Compression:" Foreground="{StaticResource TextPrimary}" Padding="8,4"/>
-                            <ComboBox x:Name="RightCompressionSelector" Foreground="{StaticResource TextPrimary}" Background="{StaticResource BgTertiary}" Margin="6,0,6,6" Height="28">
-                                <TextBlock Text="None"/><TextBlock Text="Light"/><TextBlock Text="Medium"/><TextBlock Text="Aggressive"/>
-                            </ComboBox>
-                        </StackPanel>
-                    </Border>
-                    <TextBlock Text="Context Segments:" FontWeight="SemiBold" Foreground="#4FC3F7" Margin="0,8,0,0"/>
-                    <ScrollViewer HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Auto">
-                        <StackPanel x:Name="RightSegmentsContainer" Margin="0,4,0,0">
-                            <TextBlock Text="No segments loaded" Foreground="{StaticResource TextMuted}" Padding="8,4" FontSize="10"/>
-                        </StackPanel>
-                    </ScrollViewer>
-                    <Button x:Name="RightAddCustomContextBtn" Content="+ Add Custom Context" Background="#0E639C" Foreground="White" Padding="8,4" Margin="0,12,0,0" HorizontalAlignment="Stretch"/>
-                    <StackPanel x:Name="RightCustomContextInjectionPanel" IsVisible="False">
-                        <Border Background="{StaticResource BgSecondary}" CornerRadius="4" Margin="0,8,0,0">
-                            <StackPanel>
-                                <TextBlock Text="Inject Type:" Foreground="{StaticResource TextPrimary}" Padding="8,4"/>
-                                <ComboBox x:Name="RightInjectionTypeSelector" Foreground="{StaticResource TextPrimary}" Background="{StaticResource BgTertiary}" Margin="6,0,6,6" Height="28">
-                                    <TextBlock Text="System Prompt (custom)"/><TextBlock Text="File Contents"/><TextBlock Text="Raw Context"/>
-                                </ComboBox>
-                                <TextBox x:Name="RightCustomContextContentInput" Foreground="{StaticResource TextPrimary}" Background="{StaticResource BgTertiary}" BorderThickness="0" Margin="6,4,6,8" Height="80" AcceptsReturn="True"/>
-                                <Button x:Name="RightCustomContextInjectBtn" Content="Inject Context" Background="#4FC3F7" Foreground="White" Padding="12,4" HorizontalAlignment="Stretch"/>
-                            </StackPanel>
-                        </Border>
-                    </StackPanel>
-                    <TextBlock Text="Message Segments:" FontWeight="SemiBold" Foreground="#4FC3F7" Margin="0,12,0,0"/>
-                    <ScrollViewer HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Auto">
-                        <StackPanel x:Name="RightMessageSegmentsContainer" Margin="0,4,0,0">
-                            <TextBlock Text="No messages loaded" Foreground="{StaticResource TextMuted}" Padding="8,4" FontSize="10"/>
-                        </StackPanel>
-                    </ScrollViewer>
-                </StackPanel>
-
-                <StackPanel x:Name="RightAnalysisContent" DockPanel.Dock="Top" IsVisible="False">
-                    <Border Background="{StaticResource BgSecondary}" CornerRadius="4" Margin="0,0,0,12">
-                        <StackPanel>
-                            <TextBlock Text="AI Analysis Context:" FontWeight="SemiBold" Foreground="#4FC3F7" Padding="12,8"/>
-                            <DockPanel Margin="8,4"><TextBlock Text="Analyzed At:" Width="90" Foreground="{StaticResource TextSecondary}"/><TextBlock x:Name="AnalysisTimestampRightText" Text="N/A" Foreground="{StaticResource TextPrimary}" DockPanel.Dock="Right"/></DockPanel>
-                            <DockPanel Margin="8,4"><TextBlock Text="Token Count:" Width="90" Foreground="{StaticResource TextSecondary}"/><TextBlock x:Name="AnalysisTokenCountRightText" Text="0" Foreground="{StaticResource TextPrimary}" DockPanel.Dock="Right"/></DockPanel>
-                            <TextBlock Text="Compressed History:" Foreground="{StaticResource TextPrimary}" Padding="8,4"/>
-                            <ScrollViewer Height="120" Margin="8,0"><TextBlock x:Name="AnalysisHistoryRightText" Text="No compressed history" Foreground="{StaticResource TextMuted}" Padding="4" FontSize="10"/></ScrollViewer>
-                            <TextBlock Text="Project State:" Foreground="{StaticResource TextPrimary}" Padding="8,4"/>
-                            <ScrollViewer Height="120" Margin="8,0"><TextBlock x:Name="AnalysisProjectStateRightText" Text="No project state" Foreground="{StaticResource TextMuted}" Padding="4" FontSize="10"/></ScrollViewer>
-                            <TextBlock Text="Relevant Context Segments:" Foreground="{StaticResource TextPrimary}" Padding="8,4"/>
-                            <TextBlock x:Name="AnalysisSegmentsRightText" Text="N/A" Foreground="{StaticResource TextMuted}" Padding="8" FontSize="10"/>
-                        </StackPanel>
-                    </Border>
-                </StackPanel>
-
-                <StackPanel x:Name="RightDevicesContent" DockPanel.Dock="Top" IsVisible="False">
-                    <Border Background="{StaticResource BgSecondary}" CornerRadius="4" Margin="0,0,0,12">
-                        <StackPanel>
-                            <TextBlock Text="GPU Information:" FontWeight="SemiBold" Foreground="#4FC3F7" Padding="12,8"/>
-                            <Border x:Name="RightGpuDevicesList" Background="{StaticResource BgTertiary}" Margin="8,0,8,8" CornerRadius="4"><TextBlock Text="No GPUs detected" Foreground="{StaticResource TextMuted}" Padding="12,8" FontSize="12"/></Border>
-                            <DockPanel Margin="8,4"><TextBlock Text="CPU Cores:" Width="70" Foreground="{StaticResource TextSecondary}"/><TextBlock x:Name="CpuCoreRightText" Text="Detecting..." Foreground="{StaticResource TextPrimary}" DockPanel.Dock="Right"/></DockPanel>
-                            <DockPanel Margin="8,4"><TextBlock Text="RAM:" Width="70" Foreground="{StaticResource TextSecondary}"/><TextBlock x:Name="RamInfoRightText" Text="Detecting..." Foreground="{StaticResource TextPrimary}" DockPanel.Dock="Right"/></DockPanel>
-                        </StackPanel>
-                    </Border>
-                    <Border Background="{StaticResource BgSecondary}" CornerRadius="4" Margin="0,0,0,12">
-                        <StackPanel>
-                            <TextBlock Text="Model" FontSize="14" FontWeight="SemiBold" Foreground="#4FC3F7" Padding="12,8"/>
-                            <DockPanel Margin="8,4"><TextBlock Text="Loaded Model:" Width="90" Foreground="{StaticResource TextSecondary}"/><TextBlock x:Name="LoadedModelRightText2" Text="None" Foreground="{StaticResource TextPrimary}" DockPanel.Dock="Right"/></DockPanel>
-                            <DockPanel Margin="8,4"><TextBlock Text="Context:" Width="90" Foreground="{StaticResource TextSecondary}"/><TextBlock x:Name="ContextLengthRightText2" Text="N/A" Foreground="{StaticResource TextPrimary}" DockPanel.Dock="Right"/></DockPanel>
-                            <DockPanel Margin="8,4"><TextBlock Text="Offload:" Width="90" Foreground="{StaticResource TextSecondary}"/><TextBlock x:Name="OffloadRightText" Text="N/A" Foreground="{StaticResource TextPrimary}" DockPanel.Dock="Right"/></DockPanel>
-                        </StackPanel>
-                    </Border>
-                    <Button x:Name="RightLoadModelButton" Content="Load Model" Background="#0E639C" Foreground="White" Padding="8,4" Margin="0,0,0,12" HorizontalAlignment="Stretch"/>
-                    <Button x:Name="RightRefreshDevicesBtn" Content="Refresh Devices" Background="#37474F" Foreground="White" Padding="8,4" Margin="0,0,0,12" HorizontalAlignment="Stretch"/>
-                </StackPanel>
-            </DockPanel>
+        <!-- Will be used for active task stuff when implemented -->
+        <Panel x:Name="RightSidebarPanel" Grid.Column="2" Background="{StaticResource BgPrimary}">
+            <StackPanel>
+                <TextBlock Text="Active Tasks" FontWeight="SemiBold" Foreground="#4FC3F7" Padding="16,12" FontSize="14"/>
+                <TextBlock Text="No active tasks" Foreground="{StaticResource TextMuted}" Padding="16,8" FontSize="12"/>
+            </StackPanel>
         </Panel>
 
         <!-- Status bar -->

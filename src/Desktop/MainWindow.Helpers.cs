@@ -536,48 +536,28 @@ public partial class MainWindow
 
             // Update CPU info
             CpuCoreText.Text = $"CPU Cores: {devices.Cpu.LogicalProcessorCount} ({devices.Cpu.PhysicalCoreCount} physical)";
-            CpuCoreRightText.Text = $"{devices.Cpu.LogicalProcessorCount} ({devices.Cpu.PhysicalCoreCount}P)";
 
             // Update RAM info
             long ramBytes = Environment.WorkingSet;
             var ramGb = ramBytes > 0 ? (int)(ramBytes / (1024 * 1024 * 1024)) : 0;
             RamInfoText.Text = $"RAM: {ramGb} GB";
-            RamInfoRightText.Text = $"~{ramGb} GB";
 
             // Update GPU info
             if (devices.Gpus.Any(g => g.TotalMemoryBytes > 0))
             {
                 var gpu = devices.Gpus.First(g => g.TotalMemoryBytes > 0);
                 LoadedModelRightText.Text = "GPU Detected";
-                LoadedModelRightText2.Text = "GPU Detected";
 
                 var gpuVramGb = gpu.TotalMemoryBytes / (1024 * 1024 * 1024);
                 var gpuInfoText = $"{gpu.Name} ({gpuVramGb} GB VRAM)";
-                RightGpuDevicesList.Child = new TextBlock
-                {
-                    Text = gpuInfoText,
-                    Foreground = new SolidColorBrush(Color.FromRgb(79, 195, 247)),
-                    Padding = new Thickness(12, 8),
-                    FontSize = 12
-                };
             }
             else
             {
                 LoadedModelRightText.Text = "CPU Only";
-                LoadedModelRightText2.Text = "CPU Only";
-                RightGpuDevicesList.Child = new TextBlock
-                {
-                    Text = "No GPUs detected — running on CPU",
-                    Foreground = new SolidColorBrush(Color.FromRgb(170, 170, 170)),
-                    Padding = new Thickness(12, 8),
-                    FontSize = 12
-                };
             }
 
             // Update context length and offload info
             ContextLengthRightText.Text = "Context: 4096 tokens (default)";
-            ContextLengthRightText2.Text = "4096 tokens";
-            OffloadRightText.Text = "Auto (GPU)";
         }
         catch (Exception ex)
         {
@@ -585,9 +565,14 @@ public partial class MainWindow
             // Set fallback text
             CpuCoreText.Text = "CPU Cores: Unknown";
             RamInfoText.Text = "RAM: Unknown";
-            RamInfoRightText.Text = "Unknown";
         }
     }
+
+    // ---- Right Panel Tab Handlers (no-op — right panel is now a placeholder) ----
+
+    private void OnRightContextTabClick(object? sender, RoutedEventArgs e) { }
+
+    private void OnRightAnalysisTabClick(object? sender, RoutedEventArgs e) { }
 
     // ---- AI Analysis Context Panel ----
 
@@ -611,56 +596,56 @@ public partial class MainWindow
             if (latestTask == null || latestTask.AiAnalysis == null)
             {
                 // No analysis data available
-                if (AnalysisTimestampRightText != null) AnalysisTimestampRightText.Text = "N/A";
-                if (AnalysisTokenCountRightText != null) AnalysisTokenCountRightText.Text = "0";
-                if (AnalysisHistoryRightText != null) AnalysisHistoryRightText.Text = "No compressed history";
-                if (AnalysisProjectStateRightText != null) AnalysisProjectStateRightText.Text = "No project state";
-                if (AnalysisSegmentsRightText != null) AnalysisSegmentsRightText.Text = "N/A";
+                if (AnalysisTimestampText != null) AnalysisTimestampText.Text = "N/A";
+                if (AnalysisTokenCountText != null) AnalysisTokenCountText.Text = "0";
+                if (AnalysisHistoryText != null) AnalysisHistoryText.Text = "No compressed history";
+                if (AnalysisProjectStateText != null) AnalysisProjectStateText.Text = "No project state";
+                if (AnalysisSegmentsText != null) AnalysisSegmentsText.Text = "N/A";
                 return;
             }
 
             var analysis = latestTask.AiAnalysis;
-            AnalysisTimestampRightText.Text = analysis.AnalyzedAt.ToString("yyyy-MM-dd HH:mm:ss");
-            AnalysisTokenCountRightText.Text = analysis.AnalysisTokenCount.ToString();
+            AnalysisTimestampText.Text = analysis.AnalyzedAt.ToString("yyyy-MM-dd HH:mm:ss");
+            AnalysisTokenCountText.Text = analysis.AnalysisTokenCount.ToString();
 
             // Compressed history
-            if (AnalysisHistoryRightText != null)
+            if (AnalysisHistoryText != null)
             {
                 if (analysis.AnalyzedChatHistory != null && analysis.AnalyzedChatHistory.Any())
                 {
                     var history = string.Join("\n", analysis.AnalyzedChatHistory.Take(10).Select(s => s.Content ?? "(empty)"));
-                    AnalysisHistoryRightText.Text = history.Length > 500 ? history[..500] + "..." : history;
+                    AnalysisHistoryText.Text = history.Length > 500 ? history[..500] + "..." : history;
                 }
                 else
                 {
-                    AnalysisHistoryRightText.Text = "No compressed history";
+                    AnalysisHistoryText.Text = "No compressed history";
                 }
             }
 
             // Project state
-            if (AnalysisProjectStateRightText != null)
+            if (AnalysisProjectStateText != null)
             {
                 if (!string.IsNullOrEmpty(analysis.ProjectStateAtTimeOfAnalysis))
                 {
                     var state = analysis.ProjectStateAtTimeOfAnalysis;
-                    AnalysisProjectStateRightText.Text = state.Length > 500 ? state[..500] + "..." : state;
+                    AnalysisProjectStateText.Text = state.Length > 500 ? state[..500] + "..." : state;
                 }
                 else
                 {
-                    AnalysisProjectStateRightText.Text = "No project state";
+                    AnalysisProjectStateText.Text = "No project state";
                 }
             }
 
             // Relevant segment IDs
-            if (AnalysisSegmentsRightText != null)
+            if (AnalysisSegmentsText != null)
             {
                 if (analysis.RelevantContextSegmentIds != null && analysis.RelevantContextSegmentIds.Any())
                 {
-                    AnalysisSegmentsRightText.Text = string.Join(", ", analysis.RelevantContextSegmentIds.Take(5));
+                    AnalysisSegmentsText.Text = string.Join(", ", analysis.RelevantContextSegmentIds.Take(5));
                 }
                 else
                 {
-                    AnalysisSegmentsRightText.Text = "N/A";
+                    AnalysisSegmentsText.Text = "N/A";
                 }
             }
         }

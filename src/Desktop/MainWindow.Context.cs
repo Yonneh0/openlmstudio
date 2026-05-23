@@ -33,10 +33,8 @@ public partial class MainWindow
         {
             var context = await _contextManager.GetCompressedContextAsync(_selectedChatId.Value, CompressionLevel.Medium);
 
-            // Clear existing compressed segments from both panels
+            // Clear existing compressed segments
             CompressedSegmentsContainer?.Children.Clear();
-            var rightMsgContainer = RightMessageSegmentsContainer;
-            rightMsgContainer?.Children.Clear();
 
             // Filter out pinned/system/task segments — show only regular message segments that were compressed
             var regularSegments = context.Segments
@@ -111,8 +109,8 @@ public partial class MainWindow
 
                 CompressedSegmentsContainer?.Children.Add(leftSegmentBorder);
 
-                // Right sidebar message segment with pin/suppress controls
-                var rightSegmentBorder = new Border
+                // Message segment with pin/suppress controls (added to left panel's CompressedSegmentsContainer)
+                var segmentBorder = new Border
                 {
                     Background = new SolidColorBrush(Color.FromRgb(45, 45, 48)),
                     CornerRadius = new CornerRadius(4),
@@ -120,11 +118,11 @@ public partial class MainWindow
                     Margin = new Thickness(0, 0, 0, 6)
                 };
 
-                var rightGrid = new Grid();
-                rightGrid.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Star });
-                rightGrid.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
+                var segmentGrid = new Grid();
+                segmentGrid.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Star });
+                segmentGrid.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
 
-                var rightLabel = new TextBlock
+                var segmentLabel = new TextBlock
                 {
                     Text = segment.Content != null && segment.Content.Length > 80
                         ? segment.Content[..80] + "..."
@@ -133,7 +131,7 @@ public partial class MainWindow
                     FontSize = 10
                 };
 
-                // Pin/suppress controls for right sidebar message segments
+                // Pin/suppress controls
                 var controlStack = new StackPanel { Orientation = Avalonia.Layout.Orientation.Horizontal };
                 var pinBtn = new Button { Content = "📌", Classes = { "msgPinBtn" }, Padding = new Thickness(4, 1), FontSize = 9, BorderThickness = new Thickness(0) };
                 pinBtn.Tag = segment.Id;
@@ -145,13 +143,13 @@ public partial class MainWindow
                 suppressBtn.Click += OnMessageSuppressClicked;
                 controlStack.Children.Add(suppressBtn);
 
-                Grid.SetColumn(rightLabel, 0);
+                Grid.SetColumn(segmentLabel, 0);
                 Grid.SetColumn(controlStack, 1);
-                rightGrid.Children.Add(rightLabel);
-                rightGrid.Children.Add(controlStack);
-                rightSegmentBorder.Child = rightGrid;
+                segmentGrid.Children.Add(segmentLabel);
+                segmentGrid.Children.Add(controlStack);
+                segmentBorder.Child = segmentGrid;
 
-                rightMsgContainer?.Children.Add(rightSegmentBorder);
+                CompressedSegmentsContainer?.Children.Add(segmentBorder);
             }
         }
         catch (Exception ex)
@@ -185,34 +183,13 @@ public partial class MainWindow
                     ContextBudgetText.Foreground = new SolidColorBrush(Color.FromRgb(136, 136, 136)); // Normal text color
             }
 
-            // Update right sidebar budget display
-            if (RightBudgetText != null)
-            {
-                RightBudgetText.Text = $"Used: {indicator.UsedTokens} / {indicator.MaximumTokens} tokens ({(int)(indicator.PercentageUsed)}%)";
-
-                // Set remaining color zone on the bar — use a SolidColorBrush based on zone instead of LinearGradientBrush which doesn't have Stops in Avalonia
-                switch (indicator.ColorZone)
-                {
-                    case ContextBudgetColorZone.Green:
-                        RightBudgetBar.Background = new SolidColorBrush(Color.FromRgb(76, 175, 80)); // Green
-                        break;
-                    case ContextBudgetColorZone.Yellow:
-                        RightBudgetBar.Background = new SolidColorBrush(Color.FromRgb(255, 152, 0)); // Orange
-                        break;
-                    case ContextBudgetColorZone.Red:
-                        RightBudgetBar.Background = new SolidColorBrush(Color.FromRgb(244, 67, 54)); // Red
-                        break;
-                }
-            }
-
-            // Note: HeaderBudgetPercentText was not defined in XAML — budget display is handled by left/right sidebar text blocks only
+            // Note: HeaderBudgetPercentText was not defined in XAML — budget display is handled by left sidebar text block
         }
         catch (Exception ex)
         {
             _logger?.LogDebug("Error refreshing context budget: {Message}", ex.Message);
 
             // Set fallback text on errors
-            if (RightBudgetText != null) RightBudgetText.Text = "Budget unavailable";
             if (ContextBudgetText != null) ContextBudgetText.Text = "Budget unavailable";
         }
     }
@@ -264,21 +241,13 @@ public partial class MainWindow
         // Toggle custom context injection panel visibility (left sidebar version)
         if (CustomContextInjectionPanel != null)
             CustomContextInjectionPanel.IsVisible = !CustomContextInjectionPanel.IsVisible;
-
-        // Also toggle right sidebar panel
-        if (RightCustomContextInjectionPanel != null)
-            RightCustomContextInjectionPanel.IsVisible = CustomContextInjectionPanel?.IsVisible == true;
     }
 
     private void OnRightAddCustomContextClicked(object? sender, RoutedEventArgs e)
     {
         // Toggle custom context injection panel visibility from right sidebar button
-        if (RightCustomContextInjectionPanel != null)
-            RightCustomContextInjectionPanel.IsVisible = !RightCustomContextInjectionPanel.IsVisible;
-
-        // Also toggle left sidebar panel
         if (CustomContextInjectionPanel != null)
-            CustomContextInjectionPanel.IsVisible = RightCustomContextInjectionPanel?.IsVisible == true;
+            CustomContextInjectionPanel.IsVisible = !CustomContextInjectionPanel.IsVisible;
     }
 
     private async void OnRightCustomContextInjectClicked(object? sender, RoutedEventArgs e)
@@ -286,7 +255,7 @@ public partial class MainWindow
         if (_contextManager == null || _selectedChatId == null) return;
 
         // Get the injection type from the ComboBox selection (0 = System Prompt custom, 1 = File Contents, 2 = Raw Context)
-        var selectedTypeIndex = RightInjectionTypeSelector?.SelectedIndex ?? 0;
+        var selectedTypeIndex = ContextInjectionTypeSelector?.SelectedIndex ?? 0;
 
         var injectionType = selectedTypeIndex switch
         {
@@ -300,11 +269,11 @@ public partial class MainWindow
             // Inject the custom context and add it to the UI segments list
             var segment = await _contextManager.InjectCustomContextAsync(
                 _selectedChatId.Value,
-                RightCustomContextContentInput?.Text ?? "",
+                CustomContextContentInput?.Text ?? "",
                 injectionType);
 
-            // Add visual representation to the right sidebar segments container
-            if (segment != null && RightSegmentsContainer != null)
+            // Add visual representation to the left sidebar segments container
+            if (segment != null && CustomContextSegmentsContainer != null)
             {
                 var segmentBorder = new Border
                 {
@@ -347,12 +316,12 @@ public partial class MainWindow
                 segmentBorder.Child = segmentGrid;
                 // Track the Border for later removal (avoids visual tree traversal in Avalonia)
                 _customContextBorders[segment.Id] = segmentBorder;
-                RightSegmentsContainer.Children.Add(segmentBorder);
+                CustomContextSegmentsContainer.Children.Add(segmentBorder);
             }
 
             // Collapse the panel after injection
-            if (RightCustomContextInjectionPanel != null)
-                RightCustomContextInjectionPanel.IsVisible = false;
+            if (CustomContextInjectionPanel != null)
+                CustomContextInjectionPanel.IsVisible = false;
         }
         catch (Exception ex)
         {
@@ -375,10 +344,10 @@ public partial class MainWindow
             {
                 await _contextManager.RemoveCustomContextAsync(_selectedChatId.Value, segmentIdObj.Value);
 
-                // Remove the visual representation from the UI — custom context borders are direct children of RightSegmentsContainer
+                // Remove the visual representation from the UI
                 if (_customContextBorders.TryRemove(segmentIdObj.Value, out var borderToRemove))
                 {
-                    RightSegmentsContainer.Children.Remove(borderToRemove);
+                    CustomContextSegmentsContainer.Children.Remove(borderToRemove);
                 }
             }
             catch (Exception ex)

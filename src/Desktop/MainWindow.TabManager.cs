@@ -30,6 +30,7 @@ public partial class MainWindow
         SetTabVisibility(PinguTabContent, tabName == "Pingu");
         SetTabVisibility(ImageGenTabContent, tabName == "ImageGen");
         SetTabVisibility(TasksTabContent, tabName == "Tasks");
+        SetTabVisibility(AnalysisTabContent, tabName == "Analysis");
 
         // Also set SelectedItem on the TabControl to sync header styling
         switch (tabName)
@@ -70,6 +71,10 @@ public partial class MainWindow
             case "Tasks":
                 LeftTabControl.SelectedItem = TasksTabItem;
                 break;
+            case "Analysis":
+                LeftTabControl.SelectedItem = AnalysisTabItem;
+                RefreshAnalysisContextAsync();
+                break;
         }
 
         // Update active tab styling
@@ -81,10 +86,12 @@ public partial class MainWindow
     /// </summary>
     public void SwitchToTab(int index)
     {
-        var tabs = new[] { "Chat", "Server", "Models", "Devices", "Context", "Agent", "Games", "Pingu", "Tasks", "ImageGen" };
+        var tabs = new[] { "Chat", "Server", "Models", "Devices", "Context", "Agent", "Games", "Pingu", "Tasks", "ImageGen", "Analysis" };
         if (index >= 0 && index < tabs.Length)
             ShowTab(tabs[index]);
     }
+
+    private bool _isHandlingSelectionChanged;
 
     /// <summary>
     /// Handles TabControl selection changes — updates styling and right sidebar.
@@ -93,15 +100,25 @@ public partial class MainWindow
     {
         try
         {
+            // Prevent re-entry from ShowTab setting SelectedItem
+            if (_isHandlingSelectionChanged) return;
+            _isHandlingSelectionChanged = true;
+
             var selectedItem = LeftTabControl.SelectedItem;
             if (selectedItem is not TabItem tab)
+            {
+                _isHandlingSelectionChanged = false;
                 return;
+            }
 
             // Guard: if TabItems are null, we're still in EndInit — skip handling
             if (ChatTabItem == null && ServerTabItem == null && ModelsTabItem == null &&
                 DevicesTabItem == null && ContextTabItem == null && AgentTabItem == null &&
-                GamesTabItem == null && PinguTabItem == null && ImageGenTabItem == null && TasksTabItem == null)
+                GamesTabItem == null && PinguTabItem == null && ImageGenTabItem == null && TasksTabItem == null && AnalysisTabItem == null)
+            {
+                _isHandlingSelectionChanged = false;
                 return;
+            }
 
             // Map TabItem to tab name based on which item is selected
             if (tab == ChatTabItem)
@@ -124,12 +141,15 @@ public partial class MainWindow
                 _activeTab = "ImageGen";
             else if (tab == TasksTabItem)
                 _activeTab = "Tasks";
+            else if (tab == AnalysisTabItem)
+                _activeTab = "Analysis";
 
-            UpdateActiveTab(_activeTab);
-            UpdateRightSidebarTab(_activeTab);
+            ShowTab(_activeTab);
+            _isHandlingSelectionChanged = false;
         }
         catch
         {
+            _isHandlingSelectionChanged = false;
             // During XAML init, fields may be partially set up.
             // Silently ignore errors — the event will fire again with valid fields.
         }
@@ -176,6 +196,9 @@ public partial class MainWindow
         if (TasksTabContent != null)
             tabs.Add(TasksTabContent.Children.OfType<TextBlock>().FirstOrDefault());
 
+        if (AnalysisTabContent != null)
+            tabs.Add(AnalysisTabContent.Children.OfType<TextBlock>().FirstOrDefault());
+
         foreach (var tb in tabs)
         {
             if (tb == null) continue;
@@ -183,13 +206,14 @@ public partial class MainWindow
             // Only update the first TextBlock of each tab section (the tab title)
             var parent = tb.Parent as Panel;
             if (parent?.Name != null &&
-                new[] { "ChatTabContent", "ServerTabContent", "ModelsTabContent", "DevicesTabContent", "ContextTabContent", "AgentTabContent", "GamesTabContent", "PinguTabContent", "ImageGenTabContent", "TasksTabContent" }
+                new[] { "ChatTabContent", "ServerTabContent", "ModelsTabContent", "DevicesTabContent", "ContextTabContent", "AgentTabContent", "GamesTabContent", "PinguTabContent", "ImageGenTabContent", "TasksTabContent", "AnalysisTabContent" }
                     .Contains(parent.Name))
             {
                 if (activeTabName.Equals(tb.Text, StringComparison.OrdinalIgnoreCase) ||
                     (activeTabName == "ImageGen" && tb.Text?.Equals("Image Generation") == true) ||
                     (activeTabName == "Games" && tb.Text?.Equals("Games") == true) ||
-                    (activeTabName == "Pingu" && tb.Text?.Equals("Pingu") == true))
+                    (activeTabName == "Pingu" && tb.Text?.Equals("Pingu") == true) ||
+                    (activeTabName == "Analysis" && tb.Text?.Equals("AI Analysis") == true))
                 {
                     tb.Foreground = new SolidColorBrush(Color.FromRgb(79, 195, 247)); // AccentBlue
                     tb.FontWeight = FontWeight.SemiBold;
@@ -205,21 +229,9 @@ public partial class MainWindow
 
     private void UpdateRightSidebarTab(string activeTab)
     {
-        // Right sidebar now only has Context and AI Analysis tabs
-        SetPanelVisibility(RightContextContent, activeTab == "Context");
-        SetPanelVisibility(RightAnalysisContent, activeTab == "Analysis");
-
-        // Update tab button states
-        if (RightContextTabButton != null) RightContextTabButton.IsChecked = activeTab == "Context";
-        if (RightAnalysisTabButton != null) RightAnalysisTabButton.IsChecked = activeTab == "Analysis";
-
-        // Update context budget when switching to context tab
-        if (activeTab == "Context")
-            _ = RefreshContextBudgetAsync();
-
-        // Update analysis data when switching to analysis tab
-        if (activeTab == "Analysis")
-            _ = RefreshAnalysisContextAsync();
+        // Right sidebar is now a simple placeholder — no-op for now.
+        // Left panel tabs (Chats, Server, Models, Devices, Context, Agent, Games, Pingu, ImageGen, Tasks, Analysis)
+        // handle all content display independently.
     }
 
     private void SetPanelVisibility(StackPanel? panel, bool visible)
@@ -247,13 +259,15 @@ public partial class MainWindow
 
     private void OnImageGenTabPointerPressed(object? sender, Avalonia.Input.PointerPressedEventArgs e) => ShowTab("ImageGen");
 
+    private void OnAnalysisTabPointerPressed(object? sender, Avalonia.Input.PointerPressedEventArgs e) => ShowTab("Analysis");
+
     /// <summary>
     /// Attaches Click event handlers to the Tab TextBlocks so users can switch tabs by clicking.
     /// </summary>
     private void AttachTabClickHandlers()
     {
         // Each tab's title TextBlock is inside a StackPanel — attach click to that panel instead for better hit target
-        var tabPanels = new[] { ChatTabContent, ServerTabContent, ModelsTabContent, DevicesTabContent, ContextTabContent, AgentTabContent, GamesTabContent, PinguTabContent, ImageGenTabContent, TasksTabContent };
+        var tabPanels = new[] { ChatTabContent, ServerTabContent, ModelsTabContent, DevicesTabContent, ContextTabContent, AgentTabContent, GamesTabContent, PinguTabContent, ImageGenTabContent, TasksTabContent, AnalysisTabContent };
         foreach (var tab in tabPanels)
         {
             if (tab == null) continue;
@@ -286,6 +300,8 @@ public partial class MainWindow
                             child.PointerPressed += (_, _) => ShowTab("ImageGen"); break;
                         case "TasksTabContent":
                             child.PointerPressed += (_, _) => ShowTab("Tasks"); break;
+                        case "AnalysisTabContent":
+                            child.PointerPressed += (_, _) => ShowTab("Analysis"); break;
                     }
                 }
                 catch { /* Ignore errors on individual tab attaches */ }
@@ -314,11 +330,15 @@ public partial class MainWindow
         var pinguChild = PinguTabContent?.Children.OfType<Control>().FirstOrDefault();
         pinguChild?.AddHandler(Control.PointerPressedEvent, (_, _) => ShowTab("Pingu"));
 
-        // Attach right sidebar tab button click handlers
-        if (RightContextTabButton != null)
-            RightContextTabButton.IsCheckedChanged += (_, _) => UpdateRightSidebarTab(RightContextTabButton.IsChecked == true ? "Context" : _activeTab);
+        var analysisChild = AnalysisTabContent?.Children.OfType<Control>().FirstOrDefault();
+        analysisChild?.AddHandler(Control.PointerPressedEvent, (_, _) => ShowTab("Analysis"));
 
-        if (RightAnalysisTabButton != null)
-            RightAnalysisTabButton.IsCheckedChanged += (_, _) => UpdateRightSidebarTab(RightAnalysisTabButton.IsChecked == true ? "Analysis" : _activeTab);
+        var imageGenChild = ImageGenTabContent?.Children.OfType<Control>().FirstOrDefault();
+        imageGenChild?.AddHandler(Control.PointerPressedEvent, (_, _) => ShowTab("ImageGen"));
+
+        var agentChild = AgentTabContent?.Children.OfType<Control>().FirstOrDefault();
+        agentChild?.AddHandler(Control.PointerPressedEvent, (_, _) => ShowTab("Agent"));
+
+        // Attach right sidebar tab button Click handlers (no-op — right panel is a placeholder)
     }
 }
