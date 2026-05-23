@@ -33,8 +33,17 @@ public class DiffusionModelFamilyService : IDiffusionModelFamilyService
     public DiffusionModelFamilyConfig? GetFamilyByModelId(string modelId)
     {
         var lower = modelId.ToLowerInvariant();
-        return _families.FirstOrDefault(f => f.SupportedSafetensorsFilePattern != null
+        // First try matching against the pipeline type (most reliable)
+        var byPipeline = _families.FirstOrDefault(f => f.PipelineType.Equals(lower, StringComparison.OrdinalIgnoreCase));
+        if (byPipeline != null) return byPipeline;
+
+        // Then try matching against the safetensors file pattern
+        var byPattern = _families.FirstOrDefault(f => f.SupportedSafetensorsFilePattern != null
             && lower.Contains(f.SupportedSafetensorsFilePattern.ToLowerInvariant()));
+        if (byPattern != null) return byPattern;
+
+        // Finally try matching against the family name
+        return _families.FirstOrDefault(f => lower.Contains(f.Name.ToLowerInvariant()));
     }
 
     public void RegisterFamily(DiffusionModelFamilyConfig config)

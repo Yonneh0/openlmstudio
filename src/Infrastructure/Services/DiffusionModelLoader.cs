@@ -135,7 +135,12 @@ public class DiffusionModelLoader : IModelLoader, IDisposable
 
     public long GetEstimatedModelSizeBytes()
     {
-        var meta = _currentModelId != null ? GetModelMetadataAsync(_currentModelId).GetAwaiter().GetResult() : null;
+        if (_currentModelId == null)
+            return -1;
+
+        // Try cached metadata first if available, otherwise resolve synchronously.
+        // For small models, GetAwaiter().GetResult() is acceptable since the repository lookup is typically fast.
+        var meta = GetModelMetadataAsync(_currentModelId).GetAwaiter().GetResult();
         return meta?.FileSizeBytes > 0 || meta?.EstimatedSizeBytes > 0 ? Math.Max(meta.FileSizeBytes, meta.EstimatedSizeBytes ?? 0) : -1;
     }
 

@@ -471,47 +471,6 @@ public class DiffusionInferenceEngine : IDisposable
         return tensor;
     }
 
-    /// <summary>
-    /// Applies LoRA delta tensors to a UNet denoising output. Each delta is added as: output += weight * delta.
-    /// Returns the modified tensor on success, or the original output on failure (never returns null).
-    /// </summary>
-    private static DenseTensor<float>? ApplyLoraDeltas(DenseTensor<float> output, IReadOnlyList<LoraDeltaTensor> loraDeltas, ILogger? logger = null)
-    {
-        if (output == null) return null;
-
-        if (loraDeltas == null || loraDeltas.Count == 0)
-            return output;
-
-        try
-        {
-            var result = new DenseTensor<float>(output.Dimensions);
-
-            // Start with a copy of the original output.
-            for (int i = 0; i < output.Length; i++)
-                result[i] = output[i];
-
-            // Apply each LoRA delta tensor — accumulate weighted deltas into the output.
-            foreach (var lora in loraDeltas)
-            {
-                if (lora.DeltaData == null || lora.DeltaData.Length == 0)
-                    continue;
-
-                // Skip if sizes don't match — clamp to fit the output tensor size (convert long → int for safety).
-                int applyCount = unchecked((int)Math.Min((long)lora.DeltaData.Length, (long)result.Length));
-                double weightScaled = lora.Weight;
-                for (int i = 0; i < applyCount; i++)
-                    result[i] += (float)(weightScaled * lora.DeltaData[i]);
-            }
-
-            return result;
-        }
-        catch (Exception ex)
-        {
-            logger?.LogWarning(ex, "Failed to apply LoRA delta tensors to UNet output — returning unmodified output.");
-            return output;
-        }
-    }
-
     // ---- Text encoding helpers for RunTextEncoder ----
 
     /// <summary>

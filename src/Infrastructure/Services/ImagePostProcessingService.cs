@@ -324,9 +324,59 @@ public class ImagePostProcessingService : IImagePostProcessingService, IDisposab
 
     private async Task<bool> LoadUpscaleModelAsync(string modelId)
     {
-        // Stub — real implementation loads ControlNet/Upscaler model
-        _loadedSessions[modelId] = new InferenceSession(modelId);
-        return true;
+        if (_loadedSessions.ContainsKey(modelId))
+            return true;
+
+        try
+        {
+            // Try to resolve modelId to a file path by searching the model repository
+            var model = await _modelRepo.GetMultiModalModelByIdAsync(modelId);
+            string? filePath;
+            if (model != null)
+            {
+                filePath = model.FilePath;
+            }
+            else
+            {
+                // Fallback: search common directories for the model
+                var searchPaths = new[]
+                {
+                    Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "models", "upscale"),
+                    Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "models", "controlnet"),
+                };
+
+                filePath = null;
+                foreach (var searchPath in searchPaths)
+                {
+                    if (!Directory.Exists(searchPath)) continue;
+                    var matches = Directory.GetFiles(searchPath, $"{modelId}*.onnx", SearchOption.AllDirectories);
+                    if (matches.Length > 0)
+                    {
+                        filePath = matches[0];
+                        break;
+                    }
+                }
+
+                // Final fallback: treat modelId as a file path
+                if (filePath == null)
+                    filePath = modelId;
+            }
+
+            if (string.IsNullOrEmpty(filePath) || !File.Exists(filePath))
+            {
+                _logger?.LogWarning("Upscale model '{ModelId}' not found at '{FilePath}'", modelId, filePath);
+                return false;
+            }
+
+            _logger?.LogInformation("Loading upscale model '{ModelId}' from '{FilePath}'", modelId, filePath);
+            _loadedSessions[modelId] = new InferenceSession(filePath);
+            return true;
+        }
+        catch (Exception ex)
+        {
+            _logger?.LogError(ex, "Failed to load upscale model '{ModelId}'", modelId);
+            return false;
+        }
     }
 
     private async Task<byte[]> ApplyCannyEdgeDetectionAsync(byte[] inputImage, CancellationToken ct)

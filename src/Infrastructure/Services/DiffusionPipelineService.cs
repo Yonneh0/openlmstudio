@@ -73,18 +73,6 @@ public class DiffusionPipelineService : IDiffusionPipelineService, IDisposable
             }
         }
 
-        // Ensure model is loaded; load it if not already present in _loadedSessions
-        var wasAlreadyLoaded = _loadedSessions.ContainsKey(request.ModelId);
-        if (!wasAlreadyLoaded)
-        {
-            var loaded = await LoadModelAsync(request.ModelId);
-            if (!loaded || !_loadedSessions.ContainsKey(request.ModelId))
-                throw new InvalidOperationException($"Failed to load model '{request.ModelId}' before generation.");
-        }
-
-        // Create engine and load pipeline stages from the model file
-        var engine = new DiffusionInferenceEngine(null);
-
         // Get the pipeline type from model metadata — try multi-modal first, then fall back to GGUF text
         var multimodalMeta = await _modelRepo.GetMultiModalModelByIdAsync(request.ModelId);
         if (multimodalMeta == null)
@@ -93,6 +81,18 @@ public class DiffusionPipelineService : IDiffusionPipelineService, IDisposable
         }
 
         var pipelineType = GetPipelineType(multimodalMeta);
+
+        // Ensure model is loaded in _loadedSessions; load it if not already present
+        var wasAlreadyLoaded = _loadedSessions.ContainsKey(request.ModelId);
+        if (!wasAlreadyLoaded)
+        {
+            var loaded = await LoadModelAsync(request.ModelId);
+            if (!loaded || !_loadedSessions.ContainsKey(request.ModelId))
+                throw new InvalidOperationException($"Failed to load model '{request.ModelId}' before generation.");
+        }
+
+        // Create engine and reuse the already-loaded session from _loadedSessions for UNet
+        var engine = new DiffusionInferenceEngine(null);
 
         // Load all three stages of the pipeline from safetensors model files
         // Each stage uses its own ONNX session loaded independently
