@@ -74,7 +74,7 @@
             <Grid.RowDefinitions>
                 <RowDefinition Height="Auto"/>
                 <RowDefinition Height="Auto"/>
-                <RowDefinition Height="*"/>
+                <RowDefinition Height="Auto"/>
                 <RowDefinition Height="Auto"/>
             </Grid.RowDefinitions>
 
@@ -83,14 +83,16 @@
             <TabControl Grid.Row="1" Background="Transparent" BorderThickness="0" x:Name="LeftTabControl" SelectionChanged="OnLeftTabControlSelectionChanged">
                 <TabControl.ItemsPanel>
                     <ItemsPanelTemplate>
-                        <StackPanel Orientation="Horizontal" MaxHeight="26"/>
+                        <StackPanel Orientation="Vertical"/>
                     </ItemsPanelTemplate>
                 </TabControl.ItemsPanel>
                 <TabControl.Template>
                     <ControlTemplate TargetType="TabControl">
                         <DockPanel>
                             <ItemsPresenter x:Name="PART_ItemsPresenter" DockPanel.Dock="Top"/>
-                            <ContentPresenter x:Name="PART_SelectedContentHost" Content="{Binding SelectedContent, RelativeSource={RelativeSource TemplatedParent}}" Margin="0,4,0,0"/>
+                            <ScrollViewer DockPanel.Dock="Bottom" VerticalScrollBarVisibility="Auto">
+                                <ContentPresenter x:Name="PART_SelectedContentHost" Content="{Binding SelectedContent, RelativeSource={RelativeSource TemplatedParent}}" Margin="0,4,0,0"/>
+                            </ScrollViewer>
                         </DockPanel>
                     </ControlTemplate>
                 </TabControl.Template>
