@@ -89,9 +89,7 @@
                 <TabControl.Template>
                     <ControlTemplate TargetType="TabControl">
                         <DockPanel>
-                            <StackPanel DockPanel.Dock="Top" Height="24" Orientation="Horizontal">
-                                <ItemsPresenter x:Name="PART_ItemsPresenter" DockPanel.Dock="Top"/>
-                            </StackPanel>
+                            <ItemsPresenter x:Name="PART_ItemsPresenter" DockPanel.Dock="Top"/>
                             <ContentPresenter x:Name="PART_SelectedContentHost" Content="{Binding SelectedContent, RelativeSource={RelativeSource TemplatedParent}}" Margin="0,4,0,0"/>
                         </DockPanel>
                     </ControlTemplate>
