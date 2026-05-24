@@ -215,7 +215,7 @@ public partial class MainModelSelector : UserControl
         if (PortText != null)
         {
             var activeSlot = _mainAIManager.LoadedModels.FirstOrDefault(m => m.Id == _mainAIManager.ActiveModelId);
-            PortText.Text = activeSlot.Port > 0 ? $"Port: {activeSlot.Port}" : "Port: --";
+            PortText.Text = activeSlot != null && activeSlot.Port > 0 ? $"Port: {activeSlot.Port}" : "Port: --";
         }
 
         // Update model count
@@ -225,7 +225,7 @@ public partial class MainModelSelector : UserControl
             ModelCountText.Text = count == 1 ? "1 model" : $"{count} models";
         }
 
-        // Update settings
+        // Update settings (safe even if settings is null)
         if (settings != null)
         {
             if (GpuLayersText != null)
