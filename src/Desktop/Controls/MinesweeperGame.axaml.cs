@@ -61,10 +61,10 @@ public class SevenSegmentDisplay : Panel
     ];
 
     // Pre-computed segment geometries for horizontal and vertical segments
-    // Horizontal: trapezoid wider at bottom (DigitWidth x SegThickness)
-    // Vertical: trapezoid wider at bottom (SegThickness x VerticalSegHeight)
-    // KEY: Path bounding box aspect ratio MUST match the Rectangle it's placed in,
-    //      otherwise Stretch.Fill distorts the trapezoid shape.
+    // Both are trapezoids wider at bottom (classic LED look).
+    // KEY: The geometry is defined in a unit square (0..1 x 0..1).
+    //      The Rectangle's Width/Height provide the bounding box, and Stretch.Fill
+    //      stretches the unit-square geometry to fit. This preserves the shape.
     private static readonly Geometry _hSegGeo;
     private static readonly Geometry _vSegGeo;
 
@@ -74,14 +74,14 @@ public class SevenSegmentDisplay : Panel
     static SevenSegmentDisplay()
     {
         var t = SegThickness;
-        var hw = t / 3; // adjusted so Path bounding box matches Rectangle aspect ratio
+        var hw = t / 3;
         var dW = DigitWidth;
 
         // Horizontal segment (angled cuts on left and right):
         // Bounding box: dW x t = 18 x 4 (aspect ratio 4.5)
         // Top width: dW - 2*(dW - t) = 18 - 12 = 6
         // Bottom width: dW = 18
-        // Ratio: 18/6 = 3.0, matches hw=4/3 trapezoid ratio
+        // -> Wider at bottom, classic LED look
         var hPts = new Point[]
         {
             new(0, t/2),
@@ -99,7 +99,6 @@ public class SevenSegmentDisplay : Panel
         // Bounding box: t x VerticalSegHeight = 6 x 24 (aspect ratio 4.0)
         // Top width: 2*hw = 8/3 ≈ 2.67
         // Bottom width: t = 4
-        // Ratio: 4 / (8/3) = 3.0
         // -> Wider at bottom, classic LED look (same as horizontal)
         var vPts = new Point[]
         {
