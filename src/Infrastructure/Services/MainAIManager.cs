@@ -327,8 +327,8 @@ public class MainAIManager : IDisposable
         var config = new EngineConfig(
             ModelPath: modelPath,
             Port: LoadedModels.FirstOrDefault(m => m.Id == _activeModelId)?.Port ?? 4200,
-            Temperature: settings.GpuLayers / 100f,
-            TopP: settings.ContextSize / 4096f,
+            Temperature: settings.GpuLayers,
+            TopP: settings.ContextSize,
             RecommendedBackend: CurrentBackend.ToString(),
             LastDownloadedBackend: null);
 

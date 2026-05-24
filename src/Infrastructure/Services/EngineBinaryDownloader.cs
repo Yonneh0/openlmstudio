@@ -561,7 +561,7 @@ public class EngineBinaryDownloader : IDisposable
         return BitConverter.ToString(hash).Replace("-", "").ToLowerInvariant();
     }
 
-    private bool ValidateBinaryLocally(string path, BackendType backend)
+    private async Task<bool> ValidateBinaryLocallyAsync(string path, BackendType backend)
     {
         try
         {
@@ -579,13 +579,13 @@ public class EngineBinaryDownloader : IDisposable
             if (process == null)
                 return false;
 
-            process.WaitForExit(5000);
+            await process.WaitForExitAsync().ConfigureAwait(false);
             var success = process.ExitCode == 0;
 
             if (!success)
             {
-                var stderr = process.StandardError.ReadToEnd();
-                var stdout = process.StandardOutput.ReadToEnd();
+                var stderr = await process.StandardError.ReadToEndAsync().ConfigureAwait(false);
+                var stdout = await process.StandardOutput.ReadToEndAsync().ConfigureAwait(false);
                 _logger?.LogWarning("Binary validation failed for {Backend}: exit code {Code}, stderr: {StdErr}, stdout: {StdOut}",
                     backend, process.ExitCode, stderr, stdout);
             }
@@ -597,6 +597,13 @@ public class EngineBinaryDownloader : IDisposable
             _logger?.LogWarning(ex, "Binary validation threw exception for {Backend}", backend);
             return false;
         }
+    }
+
+    private bool ValidateBinaryLocally(string path, BackendType backend)
+    {
+        var task = ValidateBinaryLocallyAsync(path, backend);
+        task.Wait(TimeSpan.FromSeconds(5));
+        return task.Result;
     }
 
     private void SetExecutablePermission(string path)

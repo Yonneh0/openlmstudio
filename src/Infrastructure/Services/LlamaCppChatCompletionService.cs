@@ -16,6 +16,7 @@ public class LlamaCppChatCompletionService : IChatCompletionService, IDisposable
     private readonly GgufParser _ggufParser;
     private readonly bool _hasNativeLibrary;
     private bool _disposed;
+    private readonly List<LoadedModelInstance> _loadedModels = new();
 
     // P/Invoke signatures for llama.cpp native integration
     private const string LlamaLibName = "libllama";
@@ -214,6 +215,7 @@ public class LlamaCppChatCompletionService : IChatCompletionService, IDisposable
         // 3. llava_load_model_from_file - load the model weights
 
         loadedInstance.State = ModelLoadState.Loaded;
+        _loadedModels.Add(loadedInstance);
         _logger.LogInformation("Model loaded successfully: {ModelId} ({Architecture})",
             modelId, metadata.Architecture);
 
@@ -227,12 +229,14 @@ public class LlamaCppChatCompletionService : IChatCompletionService, IDisposable
     {
         _logger.LogInformation("Unloading model: {ModelId}", modelId);
 
+        var removed = _loadedModels.RemoveAll(m => m.ModelId == modelId);
+
         // TODO: Real model unloading requires llama.cpp native binding integration:
         // 1. llava_free_model - free GPU memory for the model weights
         // 2. gguf_free_context - free the GGUF context and unmap file
 
-        _logger.LogInformation("Model unloaded: {ModelId}", modelId);
-        return true;
+        _logger.LogInformation("Model unloaded: {ModelId} (removed {Removed} instances)", modelId, removed);
+        return removed > 0;
     }
 
     /// <summary>
@@ -241,7 +245,7 @@ public class LlamaCppChatCompletionService : IChatCompletionService, IDisposable
     public Task<IEnumerable<LoadedModelInstance>> GetLoadedModelsAsync()
     {
         _logger.LogDebug("Getting list of loaded models");
-        return Task.FromResult(Enumerable.Empty<LoadedModelInstance>());
+        return Task.FromResult<IEnumerable<LoadedModelInstance>>(_loadedModels.ToList());
     }
 
     // ---- Private Helpers ----

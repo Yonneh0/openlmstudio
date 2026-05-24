@@ -23,6 +23,7 @@ public class GgufParser : IDisposable
 
     /// <summary>
     /// Tag mapping for GGUF key-value pair keys to ModelMetadata property names.
+    /// Includes architecture-specific prefixes for llama, mistral, qwen, phi, gemma, and deepseek.
     /// </summary>
     private static readonly Dictionary<string, string> TagMap = new()
     {
@@ -37,7 +38,44 @@ public class GgufParser : IDisposable
         {"llama.rope.dimension_count", "ropeDimensionCount"},
         {"llama.attention.head_count", "attentionHeads"},
         {"llama.attention.head_count_kv", "attentionHeadGroups"},
-        {"llama.vocab_size", "vocabSize"}
+        {"llama.vocab_size", "vocabSize"},
+        {"mistral.context_length", "contextLength"},
+        {"mistral.embedding_length", "embeddingLength"},
+        {"mistral.block_count", "blockCount"},
+        {"mistral.feed_forward_length", "ffnLength"},
+        {"mistral.rope.dimension_count", "ropeDimensionCount"},
+        {"mistral.attention.head_count", "attentionHeads"},
+        {"mistral.attention.head_count_kv", "attentionHeadGroups"},
+        {"mistral.vocab_size", "vocabSize"},
+        {"qwen.context_length", "contextLength"},
+        {"qwen.embedding_length", "embeddingLength"},
+        {"qwen.block_count", "blockCount"},
+        {"qwen.feed_forward_length", "ffnLength"},
+        {"qwen.rope.dimension_count", "ropeDimensionCount"},
+        {"qwen.attention.head_count", "attentionHeads"},
+        {"qwen.attention.head_count_kv", "attentionHeadGroups"},
+        {"qwen.vocab_size", "vocabSize"},
+        {"phi.context_length", "contextLength"},
+        {"phi.embedding_length", "embeddingLength"},
+        {"phi.block_count", "blockCount"},
+        {"phi.feed_forward_length", "ffnLength"},
+        {"phi.attention.head_count", "attentionHeads"},
+        {"phi.attention.head_count_kv", "attentionHeadGroups"},
+        {"phi.vocab_size", "vocabSize"},
+        {"gemma.context_length", "contextLength"},
+        {"gemma.embedding_length", "embeddingLength"},
+        {"gemma.block_count", "blockCount"},
+        {"gemma.feed_forward_length", "ffnLength"},
+        {"gemma.attention.head_count", "attentionHeads"},
+        {"gemma.attention.head_count_kv", "attentionHeadGroups"},
+        {"gemma.vocab_size", "vocabSize"},
+        {"deepseek.context_length", "contextLength"},
+        {"deepseek.embedding_length", "embeddingLength"},
+        {"deepseek.block_count", "blockCount"},
+        {"deepseek.feed_forward_length", "ffnLength"},
+        {"deepseek.attention.head_count", "attentionHeads"},
+        {"deepseek.attention.head_count_kv", "attentionHeadGroups"},
+        {"deepseek.vocab_size", "vocabSize"}
     };
 
     public GgufParser(ILogger<GgufParser>? logger = null)
@@ -589,6 +627,17 @@ public class GgufParser : IDisposable
     {
         var byteVal = (byte)stream.ReadByte();
         return byteVal != 0;
+    }
+
+    /// <summary>
+    /// Reads a bool value from the stream, handling EOF gracefully.
+    /// </summary>
+    private bool ReadBoolAlignedSafe(Stream stream)
+    {
+        var byteVal = stream.ReadByte();
+        if (byteVal == -1)
+            return false; // EOF returns false
+        return (byte)byteVal != 0;
     }
 
     private string? ReadStringAligned(Stream stream)

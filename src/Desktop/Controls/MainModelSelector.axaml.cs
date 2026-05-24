@@ -392,19 +392,27 @@ public partial class MainModelSelector : UserControl
             Margin = new Thickness(16)
         };
 
+        var gpuSlider = new Slider
+        {
+            Value = settings.GpuLayers,
+            Minimum = 0,
+            Maximum = 100,
+            Margin = new Thickness(0, 0, 0, 16)
+        };
+
         panel.Children.Add(new TextBlock
         {
             Text = "GPU Layers",
             Margin = new Thickness(0, 0, 0, 4),
             FontWeight = Avalonia.Media.FontWeight.SemiBold
         });
-        panel.Children.Add(new Slider
+        panel.Children.Add(gpuSlider);
+
+        var ctxTextBox = new TextBox
         {
-            Value = settings.GpuLayers,
-            Minimum = 0,
-            Maximum = 100,
+            Text = settings.ContextSize.ToString(),
             Margin = new Thickness(0, 0, 0, 16)
-        });
+        };
 
         panel.Children.Add(new TextBlock
         {
@@ -412,11 +420,13 @@ public partial class MainModelSelector : UserControl
             Margin = new Thickness(0, 0, 0, 4),
             FontWeight = Avalonia.Media.FontWeight.SemiBold
         });
-        panel.Children.Add(new TextBox
+        panel.Children.Add(ctxTextBox);
+
+        var batchTextBox = new TextBox
         {
-            Text = settings.ContextSize.ToString(),
+            Text = settings.BatchSize.ToString(),
             Margin = new Thickness(0, 0, 0, 16)
-        });
+        };
 
         panel.Children.Add(new TextBlock
         {
@@ -424,11 +434,13 @@ public partial class MainModelSelector : UserControl
             Margin = new Thickness(0, 0, 0, 4),
             FontWeight = Avalonia.Media.FontWeight.SemiBold
         });
-        panel.Children.Add(new TextBox
+        panel.Children.Add(batchTextBox);
+
+        var threadsTextBox = new TextBox
         {
-            Text = settings.BatchSize.ToString(),
+            Text = settings.Threads.ToString(),
             Margin = new Thickness(0, 0, 0, 16)
-        });
+        };
 
         panel.Children.Add(new TextBlock
         {
@@ -436,11 +448,7 @@ public partial class MainModelSelector : UserControl
             Margin = new Thickness(0, 0, 0, 4),
             FontWeight = Avalonia.Media.FontWeight.SemiBold
         });
-        panel.Children.Add(new TextBox
-        {
-            Text = settings.Threads.ToString(),
-            Margin = new Thickness(0, 0, 0, 16)
-        });
+        panel.Children.Add(threadsTextBox);
 
         var saveButton = new Button
         {
@@ -450,30 +458,19 @@ public partial class MainModelSelector : UserControl
         };
         saveButton.Click += (s, e) =>
         {
-            // Apply settings
+            // Apply settings from the actual controls (not display text)
             try
             {
-                if (GpuLayersText != null && GpuLayersText.Text != null)
-                {
-                    var gpuLayers = Convert.ToInt32(GpuLayersText.Text.Replace("GPU: ", ""));
-                    settings.GpuLayers = gpuLayers;
-                }
-                if (CtxSizeText != null && CtxSizeText.Text != null)
-                {
-                    var ctxSize = Convert.ToInt32(CtxSizeText.Text.Replace("Ctx: ", ""));
-                    settings.ContextSize = ctxSize;
-                }
-                if (BatchSizeText != null && BatchSizeText.Text != null)
-                {
-                    var batchSize = Convert.ToInt32(BatchSizeText.Text.Replace("Batch: ", ""));
-                    settings.BatchSize = batchSize;
-                }
+                settings.GpuLayers = (int)gpuSlider.Value;
+                settings.ContextSize = int.Parse(ctxTextBox.Text ?? settings.ContextSize.ToString());
+                settings.BatchSize = int.Parse(batchTextBox.Text ?? settings.BatchSize.ToString());
+                settings.Threads = int.Parse(threadsTextBox.Text ?? settings.Threads.ToString());
 
                 // Persist settings to disk
                 _mainAIManager?.SaveSettings(settings);
 
-                _logger?.LogInformation("Settings saved: GPU={GpuLayers}, Ctx={Ctx}, Batch={Batch}",
-                    settings.GpuLayers, settings.ContextSize, settings.BatchSize);
+                _logger?.LogInformation("Settings saved: GPU={GpuLayers}, Ctx={Ctx}, Batch={Batch}, Threads={Threads}",
+                    settings.GpuLayers, settings.ContextSize, settings.BatchSize, settings.Threads);
             }
             catch (Exception ex)
             {

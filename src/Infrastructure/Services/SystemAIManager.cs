@@ -241,6 +241,25 @@ public class SystemAIManager : IDisposable
         return await _helpParser.GetSettingsAsync(_currentBinaryPath).ConfigureAwait(false);
     }
 
+    /// <summary>
+    /// Saves the given settings to disk via the configuration service.
+    /// </summary>
+    public async Task SaveSettings(RecommendedSettings settings)
+    {
+        var modelPath = _currentModelPath ?? "local-model";
+        var config = new EngineConfig(
+            ModelPath: modelPath,
+            Port: DefaultPort,
+            Temperature: settings.GpuLayers,
+            TopP: settings.ContextSize,
+            RecommendedBackend: _currentBackend.ToString(),
+            LastDownloadedBackend: null);
+
+        await _configService.SaveAsync(config).ConfigureAwait(false);
+        _logger.LogInformation("Saved SystemAI settings: GPU={GpuLayers}, Ctx={Ctx}, Batch={Batch}, Threads={Threads}",
+            settings.GpuLayers, settings.ContextSize, settings.BatchSize, settings.Threads);
+    }
+
     public void Dispose()
     {
         if (_disposed) return;

@@ -372,19 +372,27 @@ public partial class SystemModelSelector : UserControl
             Margin = new Thickness(16)
         };
 
+        var gpuSlider = new Slider
+        {
+            Value = settings.GpuLayers,
+            Minimum = 0,
+            Maximum = 100,
+            Margin = new Thickness(0, 0, 0, 16)
+        };
+
         panel.Children.Add(new TextBlock
         {
             Text = "GPU Layers",
             Margin = new Thickness(0, 0, 0, 4),
             FontWeight = Avalonia.Media.FontWeight.SemiBold
         });
-        panel.Children.Add(new Slider
+        panel.Children.Add(gpuSlider);
+
+        var ctxTextBox = new TextBox
         {
-            Value = settings.GpuLayers,
-            Minimum = 0,
-            Maximum = 100,
+            Text = settings.ContextSize.ToString(),
             Margin = new Thickness(0, 0, 0, 16)
-        });
+        };
 
         panel.Children.Add(new TextBlock
         {
@@ -392,11 +400,13 @@ public partial class SystemModelSelector : UserControl
             Margin = new Thickness(0, 0, 0, 4),
             FontWeight = Avalonia.Media.FontWeight.SemiBold
         });
-        panel.Children.Add(new TextBox
+        panel.Children.Add(ctxTextBox);
+
+        var batchTextBox = new TextBox
         {
-            Text = settings.ContextSize.ToString(),
+            Text = settings.BatchSize.ToString(),
             Margin = new Thickness(0, 0, 0, 16)
-        });
+        };
 
         panel.Children.Add(new TextBlock
         {
@@ -404,11 +414,13 @@ public partial class SystemModelSelector : UserControl
             Margin = new Thickness(0, 0, 0, 4),
             FontWeight = Avalonia.Media.FontWeight.SemiBold
         });
-        panel.Children.Add(new TextBox
+        panel.Children.Add(batchTextBox);
+
+        var threadsTextBox = new TextBox
         {
-            Text = settings.BatchSize.ToString(),
+            Text = settings.Threads.ToString(),
             Margin = new Thickness(0, 0, 0, 16)
-        });
+        };
 
         panel.Children.Add(new TextBlock
         {
@@ -416,11 +428,7 @@ public partial class SystemModelSelector : UserControl
             Margin = new Thickness(0, 0, 0, 4),
             FontWeight = Avalonia.Media.FontWeight.SemiBold
         });
-        panel.Children.Add(new TextBox
-        {
-            Text = settings.Threads.ToString(),
-            Margin = new Thickness(0, 0, 0, 16)
-        });
+        panel.Children.Add(threadsTextBox);
 
         var saveButton = new Button
         {
@@ -430,8 +438,28 @@ public partial class SystemModelSelector : UserControl
         };
         saveButton.Click += (s, e) =>
         {
-            // TODO: Apply settings
-            dialog?.Close();
+            // Apply settings from the actual controls
+            try
+            {
+                settings.GpuLayers = (int)gpuSlider.Value;
+                settings.ContextSize = int.Parse(ctxTextBox.Text ?? settings.ContextSize.ToString());
+                settings.BatchSize = int.Parse(batchTextBox.Text ?? settings.BatchSize.ToString());
+                settings.Threads = int.Parse(threadsTextBox.Text ?? settings.Threads.ToString());
+
+                // Persist settings to disk
+                _systemAIManager?.SaveSettings(settings);
+
+                _logger?.LogInformation("SystemAI settings saved: GPU={GpuLayers}, Ctx={Ctx}, Batch={Batch}, Threads={Threads}",
+                    settings.GpuLayers, settings.ContextSize, settings.BatchSize, settings.Threads);
+            }
+            catch (Exception ex)
+            {
+                _logger?.LogError(ex, "Failed to save SystemAI settings");
+            }
+            finally
+            {
+                dialog?.Close();
+            }
         };
         panel.Children.Add(saveButton);
 

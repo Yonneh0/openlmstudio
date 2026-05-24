@@ -36,7 +36,7 @@ public class GgufModelDownloader : IDisposable
         _downloadDirectory = downloadDirectory ?? Path.Combine(
             Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
             "OpenLMStudio", "models");
-        _httpClient = new HttpClient { Timeout = TimeSpan.FromMinutes(30) };
+        _httpClient = new HttpClient { Timeout = TimeSpan.FromMinutes(10) };
     }
 
     /// <summary>
