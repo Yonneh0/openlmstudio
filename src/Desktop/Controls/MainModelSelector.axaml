@@ -1,7 +1,7 @@
 <UserControl x:Class="OpenLMStudio.Desktop.Controls.MainModelSelector"
              xmlns="https://github.com/avaloniaui"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-             Width="240"
+             Width="280"
              Padding="12,8">
     <UserControl.Resources>
         <SolidColorBrush x:Key="BgPrimary" Color="#1E1E22"/>
@@ -14,21 +14,32 @@
         <SolidColorBrush x:Key="AccentGreen" Color="#4CAF50"/>
         <SolidColorBrush x:Key="AccentRed" Color="#FF6B6B"/>
         <SolidColorBrush x:Key="AccentOrange" Color="#FF9800"/>
+        <SolidColorBrush x:Key="AccentPurple" Color="#9C27B0"/>
     </UserControl.Resources>
 
     <Panel>
         <StackPanel Margin="8,4,8,4">
             <!-- Model name and status row -->
             <DockPanel Margin="0,0,0,6">
-                <TextBlock x:Name="ModelNameText" Text="No Model" Foreground="{StaticResource TextPrimary}" FontWeight="SemiBold" FontSize="12" DockPanel.Dock="Left"/>
+                <TextBlock x:Name="ModelNameText" Text="No Model" Foreground="{StaticResource TextPrimary}" FontWeight="SemiBold" FontSize="13" DockPanel.Dock="Left" TextTrimming="CharacterEllipsis"/>
                 <Border x:Name="StatusBadge" Background="{StaticResource AccentRed}" CornerRadius="2" Padding="6,2" DockPanel.Dock="Right">
                     <TextBlock x:Name="StatusText" Text="Stopped" FontSize="9" Foreground="White" TextAlignment="Center"/>
                 </Border>
             </DockPanel>
-            <!-- Engine info -->
-            <TextBlock x:Name="EngineInfoText" Text="CPU | llama-server" Foreground="{StaticResource TextSecondary}" FontSize="10" Margin="0,2,0,4"/>
+
+            <!-- Model type indicator -->
+            <TextBlock x:Name="ModelTypeText" Text="MainAI" Foreground="{StaticResource AccentPurple}" FontWeight="SemiBold" FontSize="10" Margin="0,0,0,2"/>
+
+            <!-- Engine info row -->
+            <StackPanel Orientation="Horizontal" Margin="0,2,0,4">
+                <TextBlock x:Name="BackendText" Text="CPU" Foreground="{StaticResource TextSecondary}" FontSize="10" Margin="0,0,8,0"/>
+                <TextBlock x:Name="PortText" Text="Port: --" Foreground="{StaticResource TextSecondary}" FontSize="10" Margin="0,0,8,0"/>
+                <TextBlock x:Name="ModelCountText" Text="0 models" Foreground="{StaticResource TextMuted}" FontSize="10"/>
+            </StackPanel>
+
             <!-- Model path -->
-            <TextBlock x:Name="ModelPathText" Text="" Foreground="{StaticResource TextMuted}" FontSize="10" TextWrapping="Wrap" MaxWidth="200" Margin="0,0,0,4"/>
+            <TextBlock x:Name="ModelPathText" Text="" Foreground="{StaticResource TextMuted}" FontSize="10" TextWrapping="Wrap" MaxWidth="240" Margin="0,0,0,4"/>
+
             <!-- Settings row -->
             <StackPanel Orientation="Horizontal" Margin="0,4,0,4">
                 <Border Background="{StaticResource BgTertiary}" CornerRadius="3" Padding="6,2" Margin="0,0,4,0">
@@ -41,6 +52,18 @@
                     <TextBlock x:Name="BatchSizeText" Text="Batch: --" FontSize="9" Foreground="{StaticResource TextSecondary}"/>
                 </Border>
             </StackPanel>
+
+            <!-- GPU memory bar -->
+            <Border Background="{StaticResource BgTertiary}" CornerRadius="3" Padding="6,4" Margin="0,4,0,4">
+                <StackPanel>
+                    <StackPanel Orientation="Horizontal">
+                        <TextBlock Text="GPU Memory" FontSize="9" Foreground="{StaticResource TextSecondary}"/>
+                        <TextBlock x:Name="GpuMemText" Text=" --" FontSize="9" Foreground="{StaticResource TextSecondary}" HorizontalAlignment="Right"/>
+                    </StackPanel>
+                    <ProgressBar x:Name="GpuMemBar" Value="0" Minimum="0" Maximum="100" Height="3" Margin="0,2,0,0"/>
+                </StackPanel>
+            </Border>
+
             <!-- Actions row -->
             <StackPanel Orientation="Horizontal" Margin="0,4,0,0">
                 <Button x:Name="LoadModelButton" Content="Load Model" Background="{StaticResource AccentBlue}" Foreground="White" Padding="8,4" FontSize="10" Margin="0,0,4,0" Height="26"/>
@@ -48,11 +71,30 @@
                 <Button x:Name="RestartButton" Content="Restart" Background="{StaticResource BgTertiary}" Foreground="{StaticResource TextPrimary}" Padding="8,4" FontSize="10" Margin="0,0,4,0" Height="26" IsVisible="False"/>
                 <Button x:Name="AdvancedSettingsButton" Content="⚙" Background="{StaticResource BgTertiary}" Foreground="{StaticResource TextSecondary}" Padding="8,4" FontSize="12" Height="26" Cursor="Hand"/>
             </StackPanel>
+
             <!-- Download progress -->
             <Border x:Name="DownloadProgressArea" Background="{StaticResource BgTertiary}" CornerRadius="4" Padding="8" Margin="0,4,0,0" IsVisible="False">
                 <StackPanel>
-                    <TextBlock x:Name="DownloadProgressText" Text="Downloading..." Foreground="{StaticResource TextPrimary}" FontSize="10"/>
+                    <TextBlock x:Name="DownloadProgressText" Text="Downloading engine..." Foreground="{StaticResource TextPrimary}" FontSize="10"/>
                     <ProgressBar x:Name="DownloadProgressBar" Value="0" Minimum="0" Maximum="100" Height="4" Margin="0,4,0,0"/>
+                </StackPanel>
+            </Border>
+
+            <!-- Model list -->
+            <Border x:Name="ModelListArea" Background="{StaticResource BgSecondary}" CornerRadius="4" Padding="6" Margin="0,4,0,0" IsVisible="True">
+                <StackPanel>
+                    <TextBlock Text="Loaded Models" Foreground="{StaticResource TextSecondary}" FontSize="10" FontWeight="SemiBold" Margin="0,0,0,4"/>
+                    <ItemsControl x:Name="ModelsItemsControl" MaxHeight="120">
+                        <ItemsControl.ItemTemplate>
+                            <DataTemplate>
+                                <StackPanel Orientation="Horizontal" Margin="0,1,0,1">
+                                    <TextBlock Text="●" Foreground="{StaticResource AccentGreen}" FontSize="8" Margin="0,0,4,0" VerticalAlignment="Center"/>
+                                    <TextBlock Text="{Binding Name}" Foreground="{StaticResource TextPrimary}" FontSize="10" TextTrimming="CharacterEllipsis" MaxWidth="180" VerticalAlignment="Center"/>
+                                    <TextBlock Text="{Binding Port}" Foreground="{StaticResource TextSecondary}" FontSize="9" Margin="4,0,0,0" VerticalAlignment="Center"/>
+                                </StackPanel>
+                            </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                    </ItemsControl>
                 </StackPanel>
             </Border>
         </StackPanel>

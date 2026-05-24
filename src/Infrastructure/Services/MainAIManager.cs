@@ -8,11 +8,29 @@ using DomainLogLevel = OpenLMStudio.Domain.Models.ContextCompression.LogLevel;
 namespace OpenLMStudio.Infrastructure.Services;
 
 /// <summary>
-/// Manages the MainAI (primary text generation) lifecycle:
+/// Represents a loaded MainAI model with its associated llama-server process.
+/// </summary>
+public record MainAIModelSlot(
+    string ModelPath,
+    string BinaryPath,
+    int Port,
+    BackendType Backend,
+    Process ServerProcess,
+    RecommendedSettings Settings,
+    string Id);
+
+/// <summary>
+/// Manages the MainAI (primary text generation) lifecycle with multi-model support:
 /// engine binary download → model loading → server start → streaming.
+///
+/// Each loaded model runs on its own llama-server instance with a unique port
+/// allocated from the range starting at 4200.
 /// </summary>
 public class MainAIManager : IDisposable
 {
+    private const int InitialPort = 4200;
+    private const int MaxPort = 4400;
+
     private readonly ILogger<MainAIManager> _logger;
     private readonly EngineBinaryDownloader _binaryDownloader;
     private readonly BinaryRegistry _binaryRegistry;
@@ -23,17 +41,54 @@ public class MainAIManager : IDisposable
     private readonly GgufModelDownloader _modelDownloader;
     private readonly EngineConfigService _configService;
     private readonly object _lock = new();
-    private Process? _serverProcess;
     private bool _disposed;
-    private string? _currentModelPath;
-    private string? _currentBinaryPath;
-    private BackendType _currentBackend = BackendType.Cpu;
-    private RecommendedSettings? _currentSettings;
-    private AppEngineType _engineId = AppEngineType.Primary;
+    private int _nextPort = InitialPort;
+    private readonly List<MainAIModelSlot> _loadedModels = new();
+    private string? _activeModelId;
 
     public event EventHandler<MainAIStateChanged>? StateChanged;
     public event EventHandler<LogEntry>? LogEntryReceived;
 
+    /// <summary>
+    /// The currently active model's ID.
+    /// </summary>
+    public string? ActiveModelId => _activeModelId;
+
+    /// <summary>
+    /// The currently active model's path.
+    /// </summary>
+    public string? ActiveModelPath => _loadedModels.FirstOrDefault(m => m.Id == _activeModelId)?.ModelPath;
+
+    /// <summary>
+    /// All loaded MainAI models.
+    /// </summary>
+    public IReadOnlyList<MainAIModelSlot> LoadedModels => _loadedModels.AsReadOnly();
+
+    /// <summary>
+    /// The state of the active model.
+    /// </summary>
+    public MainAIState State
+    {
+        get
+        {
+            lock (_lock)
+            {
+                var active = _loadedModels.FirstOrDefault(m => m.Id == _activeModelId);
+                if (active.ServerProcess == null) return MainAIState.Stopped;
+                if (active.ServerProcess.HasExited) return MainAIState.Stopped;
+                return active.ModelPath != null ? MainAIState.Running : MainAIState.Idle;
+            }
+        }
+    }
+
+    public string? CurrentModelPath => ActiveModelPath;
+    public string? CurrentBinaryPath => _loadedModels.FirstOrDefault(m => m.Id == _activeModelId)?.BinaryPath;
+    public BackendType CurrentBackend => _loadedModels.FirstOrDefault(m => m.Id == _activeModelId)?.Backend ?? BackendType.Cpu;
+    public RecommendedSettings? CurrentSettings => _loadedModels.FirstOrDefault(m => m.Id == _activeModelId)?.Settings;
+
+    /// <summary>
+    /// Initializes a new instance of <see cref="MainAIManager"/>.
+    /// </summary>
     public MainAIManager(
         ILogger<MainAIManager> logger,
         EngineBinaryDownloader binaryDownloader,
@@ -56,47 +111,20 @@ public class MainAIManager : IDisposable
         _configService = configService;
     }
 
-    public MainAIState State
-    {
-        get
-        {
-            lock (_lock)
-            {
-                if (_serverProcess == null) return MainAIState.Stopped;
-                if (_serverProcess.HasExited) return MainAIState.Stopped;
-                return _currentModelPath != null ? MainAIState.Running : MainAIState.Idle;
-            }
-        }
-    }
-
-    public string? CurrentModelPath => _currentModelPath;
-    public string? CurrentBinaryPath => _currentBinaryPath;
-    public BackendType CurrentBackend => _currentBackend;
-    public RecommendedSettings? CurrentSettings => _currentSettings;
-
     /// <summary>
-    /// Starts MainAI with the given GGUF model. Downloads the engine binary if needed.
+    /// Loads a GGUF model into MainAI. Downloads the engine binary if needed.
+    /// Each call creates a new llama-server instance on a unique port.
     /// </summary>
-    public async Task<bool> StartAsync(string modelPath, BackendType? backend = null)
+    /// <param name="modelPath">Path to the GGUF model file.</param>
+    /// <param name="backend">The backend to use (CPU, CUDA, Metal, Vulkan). Auto-detected if null.</param>
+    /// <returns>True if the model was loaded successfully.</returns>
+    public async Task<bool> LoadModelAsync(string modelPath, BackendType? backend = null)
     {
-        lock (_lock)
-        {
-            if (_serverProcess != null && !_serverProcess.HasExited)
-            {
-                _logger.LogInformation("MainAI is already running, stopping first");
-                Stop();
-            }
-        }
-
-        _currentModelPath = modelPath;
-        _currentBackend = backend ?? InferBackend();
-
-        // Get recommendation for this model
         var modelInfo = new GgufModelInfo(
             Id: Path.GetFileNameWithoutExtension(modelPath),
             Name: Path.GetFileNameWithoutExtension(modelPath),
-            Architecture: null,
-            Quantization: null,
+            Architecture: InferArchitecture(modelPath),
+            Quantization: InferQuantization(modelPath),
             ContextLength: null,
             EmbeddingDim: null,
             FileSizeBytes: new FileInfo(modelPath).Length,
@@ -105,85 +133,156 @@ public class MainAIManager : IDisposable
             Description: null,
             LastUsed: null,
             UsageCount: null);
-        _currentSettings = _recommendationService.GetRecommendation(modelInfo).Settings;
 
-        // Download engine binary
-        var binaryPath = await DownloadEngineAsync(_currentBackend).ConfigureAwait(false);
-        _currentBinaryPath = binaryPath;
+        var settings = _recommendationService.GetRecommendation(modelInfo).Settings;
+        var port = AllocatePort();
+        var binaryPath = await DownloadEngineAsync(backend ?? InferBackend()).ConfigureAwait(false);
 
-        // Start the server
-        var success = await StartServerAsync(binaryPath, modelPath).ConfigureAwait(false);
+        var success = await StartServerAsync(binaryPath, modelPath, port, settings).ConfigureAwait(false);
         if (success)
         {
-            _logger.LogInformation("MainAI started with model: {Model}", modelPath);
-            StateChanged?.Invoke(this, new MainAIStateChanged(State, modelPath));
+            var slot = new MainAIModelSlot(
+                ModelPath: modelPath,
+                BinaryPath: binaryPath,
+                Port: port,
+                Backend: backend ?? InferBackend(),
+                ServerProcess: _loadedModels.Last().ServerProcess,
+                Settings: settings,
+                Id: Guid.NewGuid().ToString("N"));
+
+            lock (_lock)
+            {
+                _loadedModels.Add(slot);
+                _activeModelId = slot.Id;
+            }
+
+            _logger.LogInformation("MainAI loaded model: {Model} on port {Port}", modelPath, port);
+            StateChanged?.Invoke(this, new MainAIStateChanged(MainAIState.Running, modelPath));
         }
+
         return success;
     }
 
     /// <summary>
-    /// Stops MainAI and cleans up resources.
+    /// Switches the active model to a different loaded model.
+    /// </summary>
+    /// <param name="modelId">The ID of the model to activate.</param>
+    public void SwitchActiveModel(string modelId)
+    {
+        lock (_lock)
+        {
+            var slot = _loadedModels.FirstOrDefault(m => m.Id == modelId);
+            if (slot.ServerProcess == null || slot.ServerProcess.HasExited)
+            {
+                _logger.LogWarning("Cannot switch to model {ModelId} — process has exited", modelId);
+                return;
+            }
+
+            _activeModelId = modelId;
+            _logger.LogInformation("MainAI switched to model: {Model}", slot.ModelPath);
+            StateChanged?.Invoke(this, new MainAIStateChanged(MainAIState.Running, slot.ModelPath));
+        }
+    }
+
+    /// <summary>
+    /// Unloads a specific model by ID.
+    /// </summary>
+    /// <param name="modelId">The ID of the model to unload.</param>
+    public void UnloadModel(string modelId)
+    {
+        lock (_lock)
+        {
+            var index = _loadedModels.FindIndex(m => m.Id == modelId);
+            if (index == -1) return;
+
+            var slot = _loadedModels[index];
+            try
+            {
+                slot.ServerProcess?.Kill();
+                slot.ServerProcess?.WaitForExit(5000);
+                slot.ServerProcess?.Dispose();
+            }
+            catch { /* ignore kill errors */ }
+
+            _loadedModels.RemoveAt(index);
+
+            // If this was the active model, pick the next one
+            if (_activeModelId == modelId && _loadedModels.Count > 0)
+            {
+                _activeModelId = _loadedModels.Last().Id;
+            }
+            else if (_loadedModels.Count == 0)
+            {
+                _activeModelId = null;
+            }
+
+            _logger.LogInformation("MainAI unloaded model: {Model}", slot.ModelPath);
+            StateChanged?.Invoke(this, new MainAIStateChanged(MainAIState.Stopped, slot.ModelPath));
+        }
+    }
+
+    /// <summary>
+    /// Stops the active model only.
+    /// </summary>
+    public void StopActiveModel()
+    {
+        lock (_lock)
+        {
+            var active = _loadedModels.FirstOrDefault(m => m.Id == _activeModelId);
+            if (active.ServerProcess == null) return;
+
+            try
+            {
+                active.ServerProcess.Kill();
+                active.ServerProcess.WaitForExit(5000);
+            }
+            catch { /* ignore */ }
+            finally
+            {
+                active.ServerProcess?.Dispose();
+            }
+
+            _loadedModels.Remove(active);
+
+            if (_loadedModels.Count > 0)
+            {
+                _activeModelId = _loadedModels.Last().Id;
+                StateChanged?.Invoke(this, new MainAIStateChanged(MainAIState.Running, active.ModelPath));
+            }
+            else
+            {
+                _activeModelId = null;
+                StateChanged?.Invoke(this, new MainAIStateChanged(MainAIState.Stopped, null));
+            }
+
+            _logger.LogInformation("MainAI stopped active model: {Model}", active.ModelPath);
+        }
+    }
+
+    /// <summary>
+    /// Stops all loaded models and cleans up resources.
     /// </summary>
     public void Stop()
     {
         lock (_lock)
         {
-            if (_serverProcess == null) return;
-            try
+            foreach (var slot in _loadedModels)
             {
-                _serverProcess.Kill();
-                _serverProcess.WaitForExit(5000);
+                try
+                {
+                    slot.ServerProcess?.Kill();
+                    slot.ServerProcess?.WaitForExit(5000);
+                    slot.ServerProcess?.Dispose();
+                }
+                catch { /* ignore */ }
             }
-            catch { /* ignore */ }
-            finally
-            {
-                _serverProcess?.Dispose();
-                _serverProcess = null;
-            }
+
+            _loadedModels.Clear();
+            _activeModelId = null;
         }
-        _currentModelPath = null;
-        _currentBinaryPath = null;
-        _currentSettings = null;
-        _logger.LogInformation("MainAI stopped");
+
+        _logger.LogInformation("MainAI stopped all models");
         StateChanged?.Invoke(this, new MainAIStateChanged(MainAIState.Stopped, null));
-    }
-
-    /// <summary>
-    /// Switches to a different model without restarting the server.
-    /// </summary>
-    public async Task<bool> SwitchModelAsync(string modelPath, BackendType? backend = null)
-    {
-        _currentModelPath = modelPath;
-        _currentBackend = backend ?? _currentBackend;
-
-        var modelInfo = new GgufModelInfo(
-            Id: Path.GetFileNameWithoutExtension(modelPath),
-            Name: Path.GetFileNameWithoutExtension(modelPath),
-            Architecture: null,
-            Quantization: null,
-            ContextLength: null,
-            EmbeddingDim: null,
-            FileSizeBytes: new FileInfo(modelPath).Length,
-            FilePath: modelPath,
-            ChatTemplate: null,
-            Description: null,
-            LastUsed: null,
-            UsageCount: null);
-        _currentSettings = _recommendationService.GetRecommendation(modelInfo).Settings;
-
-        // Download engine binary if needed
-        var binaryPath = await DownloadEngineAsync(_currentBackend).ConfigureAwait(false);
-        _currentBinaryPath = binaryPath;
-
-        // Restart server with new model
-        Stop();
-        var success = await StartServerAsync(binaryPath, modelPath).ConfigureAwait(false);
-        if (success)
-        {
-            _logger.LogInformation("MainAI switched to model: {Model}", modelPath);
-            StateChanged?.Invoke(this, new MainAIStateChanged(MainAIState.Running, modelPath));
-        }
-        return success;
     }
 
     /// <summary>
@@ -194,8 +293,8 @@ public class MainAIManager : IDisposable
         var modelInfo = new GgufModelInfo(
             Id: Path.GetFileNameWithoutExtension(modelPath),
             Name: Path.GetFileNameWithoutExtension(modelPath),
-            Architecture: null,
-            Quantization: null,
+            Architecture: InferArchitecture(modelPath),
+            Quantization: InferQuantization(modelPath),
             ContextLength: null,
             EmbeddingDim: null,
             FileSizeBytes: new FileInfo(modelPath).Length,
@@ -212,7 +311,11 @@ public class MainAIManager : IDisposable
     /// </summary>
     public async Task<HelpSetting[]> GetAvailableSettingsAsync()
     {
-        return await _helpParser.GetSettingsAsync(_currentBinaryPath).ConfigureAwait(false);
+        var activeBinary = CurrentBinaryPath;
+        if (string.IsNullOrEmpty(activeBinary))
+            return Array.Empty<HelpSetting>();
+
+        return await _helpParser.GetSettingsAsync(activeBinary).ConfigureAwait(false);
     }
 
     public void Dispose()
@@ -237,13 +340,12 @@ public class MainAIManager : IDisposable
         }
     }
 
-    private async Task<bool> StartServerAsync(string binaryPath, string modelPath)
+    private async Task<bool> StartServerAsync(string binaryPath, string modelPath, int port, RecommendedSettings settings)
     {
-        // Start engine logging session
-        await _engineLogger.StartSessionAsync(_engineId).ConfigureAwait(false);
+        var engineId = (AppEngineType)(int)CurrentBackend;
+        await _engineLogger.StartSessionAsync(engineId).ConfigureAwait(false);
 
-        // Build args from current settings
-        var args = BuildServerArgs(binaryPath, modelPath);
+        var args = BuildServerArgs(binaryPath, modelPath, port, settings);
 
         try
         {
@@ -261,7 +363,7 @@ public class MainAIManager : IDisposable
             var proc = Process.Start(psi);
             if (proc == null)
             {
-                _logger.LogError("Failed to start llama-server process");
+                _logger.LogError("Failed to start llama-server process on port {Port}", port);
                 return false;
             }
 
@@ -269,16 +371,16 @@ public class MainAIManager : IDisposable
             {
                 if (!string.IsNullOrEmpty(e.Data))
                 {
-                    _engineLogger.HandleEngineStdout(_engineId, e.Data);
+                    _engineLogger.HandleEngineStdout(engineId, e.Data);
                     var level = InferLogLevel(e.Data);
                     var logEntry = new LogEntry(
                         Id: Guid.NewGuid().ToString(),
                         Timestamp: DateTime.UtcNow,
                         Level: level,
                         Message: e.Data,
-                        Source: (DomainEngineType)(int)_engineId,
+                        Source: (DomainEngineType)(int)engineId,
                         IsImportant: IsImportantMessage(e.Data));
-                    _logViewer.AddLogEntry(_engineId, level, e.Data, IsImportantMessage(e.Data));
+                    _logViewer.AddLogEntry(engineId, level, e.Data, IsImportantMessage(e.Data));
                     LogEntryReceived?.Invoke(this, logEntry);
                 }
             };
@@ -287,15 +389,15 @@ public class MainAIManager : IDisposable
             {
                 if (!string.IsNullOrEmpty(e.Data))
                 {
-                    _engineLogger.HandleEngineStderr(_engineId, e.Data);
+                    _engineLogger.HandleEngineStderr(engineId, e.Data);
                     var logEntry = new LogEntry(
                         Id: Guid.NewGuid().ToString(),
                         Timestamp: DateTime.UtcNow,
                         Level: DomainLogLevel.Warn,
                         Message: $"stderr: {e.Data}",
-                        Source: (DomainEngineType)(int)_engineId,
+                        Source: (DomainEngineType)(int)engineId,
                         IsImportant: false);
-                    _logViewer.AddLogEntry(_engineId, DomainLogLevel.Warn, $"stderr: {e.Data}");
+                    _logViewer.AddLogEntry(engineId, DomainLogLevel.Warn, $"stderr: {e.Data}");
                     LogEntryReceived?.Invoke(this, logEntry);
                 }
             };
@@ -304,12 +406,10 @@ public class MainAIManager : IDisposable
             proc.BeginOutputReadLine();
             proc.BeginErrorReadLine();
 
-            // Wait for server to be ready
-            var ready = await WaitForServerReady(binaryPath).ConfigureAwait(false);
+            var ready = await WaitForServerReady(port).ConfigureAwait(false);
             if (ready)
             {
-                _serverProcess = proc;
-                _logger.LogInformation("MainAI server ready on port {Port}", 8081);
+                _logger.LogInformation("MainAI server ready on port {Port}", port);
                 return true;
             }
             else
@@ -320,15 +420,15 @@ public class MainAIManager : IDisposable
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Failed to start MainAI server");
+            _logger.LogError(ex, "Failed to start MainAI server on port {Port}", port);
             return false;
         }
     }
 
-    private string BuildServerArgs(string binaryPath, string modelPath)
+    private string BuildServerArgs(string binaryPath, string modelPath, int port, RecommendedSettings settings)
     {
-        var settings = _currentSettings ?? GetRecommendedSettings(modelPath);
-        var args = $"--mlock -m \"{modelPath}\" --port 8081";
+        // Use --port and only add --mlock once (from settings, not hardcoded)
+        var args = $"-m \"{modelPath}\" --port {port}";
 
         // GPU settings
         args += $" --ngl {settings.GpuLayers}";
@@ -363,10 +463,12 @@ public class MainAIManager : IDisposable
 
     private static BackendType InferBackend()
     {
-        // Check for CUDA
-        if (File.Exists(Path.Combine(
+        // Check for CUDA binary in the cache directory
+        var cudaPath = Path.Combine(
             Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
-            "OpenLMStudio", "engines", "cuda", "llama-server-cuda")))
+            "OpenLMStudio", "engines", "cuda", "llama-server-cuda");
+
+        if (File.Exists(cudaPath) || File.Exists(cudaPath + ".exe"))
             return BackendType.Cuda;
 
         // Check for Metal (macOS)
@@ -376,7 +478,60 @@ public class MainAIManager : IDisposable
         return BackendType.Cpu;
     }
 
-    private static async Task<bool> WaitForServerReady(string binaryPath)
+    private static string? InferArchitecture(string modelPath)
+    {
+        if (string.IsNullOrEmpty(modelPath)) return null;
+        var name = Path.GetFileNameWithoutExtension(modelPath).ToLowerInvariant();
+
+        if (name.Contains("llama")) return "llama";
+        if (name.Contains("mistral")) return "mistral";
+        if (name.Contains("phi")) return "phi";
+        if (name.Contains("gemma")) return "gemma";
+        if (name.Contains("qwen")) return "qwen";
+        if (name.Contains("deepseek")) return "deepseek";
+        return null;
+    }
+
+    private static string? InferQuantization(string modelPath)
+    {
+        if (string.IsNullOrEmpty(modelPath)) return null;
+        var name = Path.GetFileNameWithoutExtension(modelPath).ToLowerInvariant();
+
+        if (name.Contains("q8_0")) return "Q8_0";
+        if (name.Contains("q6_")) return "Q6_K";
+        if (name.Contains("q5_")) return "Q5_K_M";
+        if (name.Contains("q4_")) return "Q4_K_M";
+        if (name.Contains("q3_")) return "Q3_K_M";
+        if (name.Contains("q2_")) return "Q2_K";
+        if (name.Contains("bf16")) return "BF16";
+        if (name.Contains("f16")) return "F16";
+        if (name.Contains("f32")) return "F32";
+        return null;
+    }
+
+    private int AllocatePort()
+    {
+        lock (_lock)
+        {
+            var port = _nextPort;
+            _nextPort++;
+            if (_nextPort > MaxPort)
+                _nextPort = InitialPort;
+
+            // Ensure port isn't already in use
+            while (_loadedModels.Any(m => m.Port == port))
+            {
+                port = _nextPort;
+                _nextPort++;
+                if (_nextPort > MaxPort)
+                    _nextPort = InitialPort;
+            }
+
+            return port;
+        }
+    }
+
+    private static async Task<bool> WaitForServerReady(int port)
     {
         using var client = new HttpClient { Timeout = TimeSpan.FromSeconds(30) };
         var deadline = DateTime.UtcNow + TimeSpan.FromSeconds(30);
@@ -384,7 +539,7 @@ public class MainAIManager : IDisposable
         {
             try
             {
-                var response = await client.GetAsync("http://127.0.0.1:8081/health").ConfigureAwait(false);
+                var response = await client.GetAsync($"http://127.0.0.1:{port}/health").ConfigureAwait(false);
                 if (response.IsSuccessStatusCode)
                     return true;
             }

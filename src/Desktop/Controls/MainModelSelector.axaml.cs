@@ -1,4 +1,6 @@
 using System;
+using System.Collections.ObjectModel;
+using System.IO;
 using System.Linq;
 using Avalonia;
 using Avalonia.Controls;
@@ -16,6 +18,7 @@ namespace OpenLMStudio.Desktop.Controls;
 
 /// <summary>
 /// Interaction logic for MainModelSelector.axaml.
+/// Manages the UI for loading and managing MainAI models.
 /// </summary>
 public partial class MainModelSelector : UserControl
 {
@@ -23,6 +26,8 @@ public partial class MainModelSelector : UserControl
     private readonly GgufModelDownloader _modelDownloader;
     private readonly LogViewerService _logViewer;
     private readonly ILogger<MainModelSelector>? _logger;
+    private readonly ObservableCollection<MainModelItem> _modelItems = new();
+    private bool _isInitialized;
 
     /// <summary>
     /// Default parameterless constructor for XAML instantiation.
@@ -99,6 +104,9 @@ public partial class MainModelSelector : UserControl
             _mainAIManager.StateChanged += OnStateChanged;
             _mainAIManager.LogEntryReceived += OnLogEntryReceived;
         }
+
+        // Update UI with current state
+        UpdateUI();
     }
 
     /// <summary>
@@ -118,8 +126,13 @@ public partial class MainModelSelector : UserControl
         }
     }
 
+    /// <summary>
+    /// Discovers models and updates the UI.
+    /// </summary>
     private async Task DiscoverModelsAsync()
     {
+        if (_modelDownloader == null) return;
+
         try
         {
             var models = await _modelDownloader.DiscoverModelsAsync();
@@ -137,9 +150,9 @@ public partial class MainModelSelector : UserControl
                 });
             }
         }
-        catch
+        catch (Exception ex)
         {
-            // Silently handle discovery errors
+            _logger?.LogWarning(ex, "Failed to discover models");
         }
     }
 
@@ -173,20 +186,80 @@ public partial class MainModelSelector : UserControl
 
         if (!string.IsNullOrEmpty(state.ModelPath))
         {
-            ModelNameText.Text = System.IO.Path.GetFileNameWithoutExtension(state.ModelPath);
+            ModelNameText.Text = Path.GetFileNameWithoutExtension(state.ModelPath);
             ModelPathText.Text = state.ModelPath;
         }
 
         // Update engine info and settings
-        if (_mainAIManager != null)
+        UpdateUI();
+    }
+
+    /// <summary>
+    /// Updates the UI with current manager state.
+    /// </summary>
+    private void UpdateUI()
+    {
+        if (_mainAIManager == null) return;
+
+        var settings = _mainAIManager.CurrentSettings;
+        var backend = _mainAIManager.CurrentBackend;
+
+        // Update model type
+        if (ModelTypeText != null)
+            ModelTypeText.Text = "MainAI";
+
+        // Update backend and port
+        if (BackendText != null)
+            BackendText.Text = backend.ToString();
+
+        if (PortText != null)
         {
-            var settings = _mainAIManager.CurrentSettings;
-            var backend = _mainAIManager.CurrentBackend;
-            EngineInfoText.Text = $"{backend} | llama-server";
-            GpuLayersText.Text = $"GPU: {settings?.GpuLayers ?? 0}";
-            CtxSizeText.Text = $"Ctx: {settings?.ContextSize ?? 4096}";
-            BatchSizeText.Text = $"Batch: {settings?.BatchSize ?? 2048}";
+            var activeSlot = _mainAIManager.LoadedModels.FirstOrDefault(m => m.Id == _mainAIManager.ActiveModelId);
+            PortText.Text = activeSlot.Port > 0 ? $"Port: {activeSlot.Port}" : "Port: --";
         }
+
+        // Update model count
+        if (ModelCountText != null)
+        {
+            var count = _mainAIManager.LoadedModels.Count;
+            ModelCountText.Text = count == 1 ? "1 model" : $"{count} models";
+        }
+
+        // Update settings
+        if (settings != null)
+        {
+            if (GpuLayersText != null)
+                GpuLayersText.Text = $"GPU: {settings.GpuLayers}";
+
+            if (CtxSizeText != null)
+                CtxSizeText.Text = $"Ctx: {settings.ContextSize}";
+
+            if (BatchSizeText != null)
+                BatchSizeText.Text = $"Batch: {settings.BatchSize}";
+        }
+
+        // Update model list
+        UpdateModelList();
+    }
+
+    /// <summary>
+    /// Updates the model list display.
+    /// </summary>
+    private void UpdateModelList()
+    {
+        if (_mainAIManager == null || ModelsItemsControl == null) return;
+
+        _modelItems.Clear();
+        foreach (var slot in _mainAIManager.LoadedModels)
+        {
+            var isActive = slot.Id == _mainAIManager.ActiveModelId;
+            _modelItems.Add(new MainModelItem(
+                Name: Path.GetFileNameWithoutExtension(slot.ModelPath),
+                Port: slot.Port,
+                IsActive: isActive));
+        }
+
+        ModelsItemsControl.ItemsSource = _modelItems;
     }
 
     private async void OnLoadModelClicked(object? sender, RoutedEventArgs e)
@@ -195,6 +268,14 @@ public partial class MainModelSelector : UserControl
             ? desktop.MainWindow
             : null;
         if (window == null) return;
+
+        // Show download progress
+        if (DownloadProgressArea != null)
+            DownloadProgressArea.IsVisible = true;
+        if (DownloadProgressText != null)
+            DownloadProgressText.Text = "Selecting model...";
+        if (DownloadProgressBar != null)
+            DownloadProgressBar.Value = 0;
 
         var files = await window.StorageProvider.OpenFilePickerAsync(new Avalonia.Platform.Storage.FilePickerOpenOptions
         {
@@ -206,34 +287,160 @@ public partial class MainModelSelector : UserControl
         if (files?.Any() == true)
         {
             var modelPath = files.First().Path.LocalPath;
-            _mainAIManager?.StartAsync(modelPath);
+
+            if (DownloadProgressText != null)
+                DownloadProgressText.Text = "Loading model...";
+            if (DownloadProgressBar != null)
+                DownloadProgressBar.Value = 50;
+
+            if (_mainAIManager != null)
+            {
+                var success = await _mainAIManager.LoadModelAsync(modelPath);
+                if (success)
+                {
+                    UpdateUI();
+                    _logger?.LogInformation("Model loaded: {Model}", modelPath);
+                }
+            }
+
+            // Hide download progress after a short delay
+            _ = Task.Delay(TimeSpan.FromMilliseconds(1000)).ContinueWith(_ =>
+            {
+                Avalonia.Threading.Dispatcher.UIThread.Post(() =>
+                {
+                    if (DownloadProgressArea != null)
+                        DownloadProgressArea.IsVisible = false;
+                });
+            });
+        }
+        else
+        {
+            if (DownloadProgressArea != null)
+                DownloadProgressArea.IsVisible = false;
         }
     }
 
     private void OnStopClicked(object? sender, RoutedEventArgs e)
     {
-        _mainAIManager?.Stop();
+        _mainAIManager?.StopActiveModel();
     }
 
     private void OnRestartClicked(object? sender, RoutedEventArgs e)
     {
-        if (_mainAIManager?.CurrentModelPath != null)
+        if (_mainAIManager?.ActiveModelPath != null)
         {
-            _ = _mainAIManager.StartAsync(_mainAIManager.CurrentModelPath);
+            _ = _mainAIManager.LoadModelAsync(_mainAIManager.ActiveModelPath);
         }
     }
 
     private void OnAdvancedSettingsClicked(object? sender, RoutedEventArgs e)
     {
-        // TODO: Show advanced settings dialog
-        _logger?.LogInformation("Advanced settings clicked");
+        if (_mainAIManager == null) return;
+
+        var settings = _mainAIManager.CurrentSettings;
+        if (settings == null) return;
+
+        var win = new Window
+        {
+            Title = "Advanced Settings",
+            Width = 400,
+            Height = 500,
+            WindowStartupLocation = WindowStartupLocation.CenterOwner
+        };
+        win.Content = CreateSettingsPanel(settings, win);
+
+        var parentWindow = Avalonia.Application.Current?.ApplicationLifetime is IClassicDesktopStyleApplicationLifetime desktop
+            ? desktop.MainWindow
+            : null;
+        win.ShowDialog(parentWindow);
+    }
+
+    private Control CreateSettingsPanel(RecommendedSettings settings, Window dialog)
+    {
+        var panel = new StackPanel
+        {
+            Margin = new Thickness(16)
+        };
+
+        panel.Children.Add(new TextBlock
+        {
+            Text = "GPU Layers",
+            Margin = new Thickness(0, 0, 0, 4),
+            FontWeight = Avalonia.Media.FontWeight.SemiBold
+        });
+        panel.Children.Add(new Slider
+        {
+            Value = settings.GpuLayers,
+            Minimum = 0,
+            Maximum = 100,
+            Margin = new Thickness(0, 0, 0, 16)
+        });
+
+        panel.Children.Add(new TextBlock
+        {
+            Text = "Context Size",
+            Margin = new Thickness(0, 0, 0, 4),
+            FontWeight = Avalonia.Media.FontWeight.SemiBold
+        });
+        panel.Children.Add(new TextBox
+        {
+            Text = settings.ContextSize.ToString(),
+            Margin = new Thickness(0, 0, 0, 16)
+        });
+
+        panel.Children.Add(new TextBlock
+        {
+            Text = "Batch Size",
+            Margin = new Thickness(0, 0, 0, 4),
+            FontWeight = Avalonia.Media.FontWeight.SemiBold
+        });
+        panel.Children.Add(new TextBox
+        {
+            Text = settings.BatchSize.ToString(),
+            Margin = new Thickness(0, 0, 0, 16)
+        });
+
+        panel.Children.Add(new TextBlock
+        {
+            Text = "Threads",
+            Margin = new Thickness(0, 0, 0, 4),
+            FontWeight = Avalonia.Media.FontWeight.SemiBold
+        });
+        panel.Children.Add(new TextBox
+        {
+            Text = settings.Threads.ToString(),
+            Margin = new Thickness(0, 0, 0, 16)
+        });
+
+        var saveButton = new Button
+        {
+            Content = "Save",
+            Margin = new Thickness(0, 16, 0, 0),
+            HorizontalAlignment = Avalonia.Layout.HorizontalAlignment.Center
+        };
+        saveButton.Click += (s, e) =>
+        {
+            // TODO: Apply settings
+            dialog?.Close();
+        };
+        panel.Children.Add(saveButton);
+
+        return panel;
     }
 
     private void OnLogEntryReceived(object? sender, LogEntry e)
     {
         Avalonia.Threading.Dispatcher.UIThread.Post(() =>
         {
-            // Update log display - could add to a log viewer panel
+            if (e.IsImportant)
+            {
+                // Show important messages in the status area
+                if (StatusText != null)
+                {
+                    var msg = e.Message.Length > 40 ? e.Message[..40] + "..." : e.Message;
+                    StatusText.Text = msg;
+                }
+            }
         });
     }
 
@@ -247,4 +454,19 @@ public partial class MainModelSelector : UserControl
             _ => $"{bytes / (1024.0 * 1024 * 1024):F1} GB"
         };
     }
+
+    /// <summary>
+    /// Called after the control is loaded into the visual tree.
+    /// </summary>
+    protected override void OnLoaded(RoutedEventArgs e)
+    {
+        base.OnLoaded(e);
+        _isInitialized = true;
+        _ = DiscoverModelsAsync();
+    }
 }
+
+/// <summary>
+/// Represents a loaded model item for the UI.
+/// </summary>
+public record MainModelItem(string Name, int Port, bool IsActive);

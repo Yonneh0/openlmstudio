@@ -10,9 +10,13 @@ namespace OpenLMStudio.Infrastructure.Services;
 /// <summary>
 /// Manages the SystemAI (system-level AI) lifecycle:
 /// engine binary download → model loading → server start → streaming.
+///
+/// SystemAI runs a single model on a dedicated port (8082) for system orchestration tasks.
 /// </summary>
 public class SystemAIManager : IDisposable
 {
+    private const int DefaultPort = 8082;
+
     private readonly ILogger<SystemAIManager> _logger;
     private readonly EngineBinaryDownloader _binaryDownloader;
     private readonly BinaryRegistry _binaryRegistry;
@@ -34,6 +38,45 @@ public class SystemAIManager : IDisposable
     public event EventHandler<SystemAIStateChanged>? StateChanged;
     public event EventHandler<LogEntry>? LogEntryReceived;
 
+    /// <summary>
+    /// The current model's path.
+    /// </summary>
+    public string? CurrentModelPath => _currentModelPath;
+
+    /// <summary>
+    /// The current binary's path.
+    /// </summary>
+    public string? CurrentBinaryPath => _currentBinaryPath;
+
+    /// <summary>
+    /// The current backend type.
+    /// </summary>
+    public BackendType CurrentBackend => _currentBackend;
+
+    /// <summary>
+    /// The current recommended settings.
+    /// </summary>
+    public RecommendedSettings? CurrentSettings => _currentSettings;
+
+    /// <summary>
+    /// The current system AI state.
+    /// </summary>
+    public SystemAIState State
+    {
+        get
+        {
+            lock (_lock)
+            {
+                if (_serverProcess == null) return SystemAIState.Stopped;
+                if (_serverProcess.HasExited) return SystemAIState.Stopped;
+                return _currentModelPath != null ? SystemAIState.Running : SystemAIState.Idle;
+            }
+        }
+    }
+
+    /// <summary>
+    /// Initializes a new instance of <see cref="SystemAIManager"/>.
+    /// </summary>
     public SystemAIManager(
         ILogger<SystemAIManager> logger,
         EngineBinaryDownloader binaryDownloader,
@@ -56,24 +99,12 @@ public class SystemAIManager : IDisposable
         _configService = configService;
     }
 
-    public SystemAIState State
-    {
-        get
-        {
-            lock (_lock)
-            {
-                if (_serverProcess == null) return SystemAIState.Stopped;
-                if (_serverProcess.HasExited) return SystemAIState.Stopped;
-                return _currentModelPath != null ? SystemAIState.Running : SystemAIState.Idle;
-            }
-        }
-    }
-
-    public string? CurrentModelPath => _currentModelPath;
-    public string? CurrentBinaryPath => _currentBinaryPath;
-    public BackendType CurrentBackend => _currentBackend;
-    public RecommendedSettings? CurrentSettings => _currentSettings;
-
+    /// <summary>
+    /// Starts SystemAI with the given GGUF model. Downloads the engine binary if needed.
+    /// </summary>
+    /// <param name="modelPath">Path to the GGUF model file.</param>
+    /// <param name="backend">The backend to use. Auto-detected if null.</param>
+    /// <returns>True if the model was loaded successfully.</returns>
     public async Task<bool> StartAsync(string modelPath, BackendType? backend = null)
     {
         lock (_lock)
@@ -91,8 +122,8 @@ public class SystemAIManager : IDisposable
         var modelInfo = new GgufModelInfo(
             Id: Path.GetFileNameWithoutExtension(modelPath),
             Name: Path.GetFileNameWithoutExtension(modelPath),
-            Architecture: null,
-            Quantization: null,
+            Architecture: InferArchitecture(modelPath),
+            Quantization: InferQuantization(modelPath),
             ContextLength: null,
             EmbeddingDim: null,
             FileSizeBytes: new FileInfo(modelPath).Length,
@@ -115,6 +146,9 @@ public class SystemAIManager : IDisposable
         return success;
     }
 
+    /// <summary>
+    /// Stops SystemAI and cleans up resources.
+    /// </summary>
     public void Stop()
     {
         lock (_lock)
@@ -139,6 +173,9 @@ public class SystemAIManager : IDisposable
         StateChanged?.Invoke(this, new SystemAIStateChanged(SystemAIState.Stopped, null));
     }
 
+    /// <summary>
+    /// Switches to a different model without restarting the server.
+    /// </summary>
     public async Task<bool> SwitchModelAsync(string modelPath, BackendType? backend = null)
     {
         _currentModelPath = modelPath;
@@ -147,8 +184,8 @@ public class SystemAIManager : IDisposable
         var modelInfo = new GgufModelInfo(
             Id: Path.GetFileNameWithoutExtension(modelPath),
             Name: Path.GetFileNameWithoutExtension(modelPath),
-            Architecture: null,
-            Quantization: null,
+            Architecture: InferArchitecture(modelPath),
+            Quantization: InferQuantization(modelPath),
             ContextLength: null,
             EmbeddingDim: null,
             FileSizeBytes: new FileInfo(modelPath).Length,
@@ -172,13 +209,16 @@ public class SystemAIManager : IDisposable
         return success;
     }
 
+    /// <summary>
+    /// Gets the recommended settings for a model.
+    /// </summary>
     public RecommendedSettings GetRecommendedSettings(string modelPath)
     {
         var modelInfo = new GgufModelInfo(
             Id: Path.GetFileNameWithoutExtension(modelPath),
             Name: Path.GetFileNameWithoutExtension(modelPath),
-            Architecture: null,
-            Quantization: null,
+            Architecture: InferArchitecture(modelPath),
+            Quantization: InferQuantization(modelPath),
             ContextLength: null,
             EmbeddingDim: null,
             FileSizeBytes: new FileInfo(modelPath).Length,
@@ -190,8 +230,14 @@ public class SystemAIManager : IDisposable
         return _recommendationService.GetRecommendation(modelInfo).Settings;
     }
 
+    /// <summary>
+    /// Gets all available settings from llama-server --help.
+    /// </summary>
     public async Task<HelpSetting[]> GetAvailableSettingsAsync()
     {
+        if (string.IsNullOrEmpty(_currentBinaryPath))
+            return Array.Empty<HelpSetting>();
+
         return await _helpParser.GetSettingsAsync(_currentBinaryPath).ConfigureAwait(false);
     }
 
@@ -286,7 +332,7 @@ public class SystemAIManager : IDisposable
             if (ready)
             {
                 _serverProcess = proc;
-                _logger.LogInformation("SystemAI server ready on port {Port}", 8082);
+                _logger.LogInformation("SystemAI server ready on port {Port}", DefaultPort);
                 return true;
             }
             else
@@ -305,8 +351,9 @@ public class SystemAIManager : IDisposable
     private string BuildServerArgs(string binaryPath, string modelPath)
     {
         var settings = _currentSettings ?? GetRecommendedSettings(modelPath);
-        var args = $"--mlock -m \"{modelPath}\" --port 8082";
+        var args = $"-m \"{modelPath}\" --port {DefaultPort}";
 
+        // GPU settings
         args += $" --ngl {settings.GpuLayers}";
         args += $" --ctx-size {settings.ContextSize}";
         args += $" --batch-size {settings.BatchSize}";
@@ -339,15 +386,50 @@ public class SystemAIManager : IDisposable
 
     private static BackendType InferBackend()
     {
-        if (File.Exists(Path.Combine(
+        // Check for CUDA binary in the cache directory
+        var cudaPath = Path.Combine(
             Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
-            "OpenLMStudio", "engines", "cuda", "llama-server-cuda")))
+            "OpenLMStudio", "engines", "cuda", "llama-server-cuda");
+
+        if (File.Exists(cudaPath) || File.Exists(cudaPath + ".exe"))
             return BackendType.Cuda;
 
+        // Check for Metal (macOS)
         if (System.Runtime.InteropServices.RuntimeInformation.IsOSPlatform(System.Runtime.InteropServices.OSPlatform.OSX))
             return BackendType.Metal;
 
         return BackendType.Cpu;
+    }
+
+    private static string? InferArchitecture(string modelPath)
+    {
+        if (string.IsNullOrEmpty(modelPath)) return null;
+        var name = Path.GetFileNameWithoutExtension(modelPath).ToLowerInvariant();
+
+        if (name.Contains("llama")) return "llama";
+        if (name.Contains("mistral")) return "mistral";
+        if (name.Contains("phi")) return "phi";
+        if (name.Contains("gemma")) return "gemma";
+        if (name.Contains("qwen")) return "qwen";
+        if (name.Contains("deepseek")) return "deepseek";
+        return null;
+    }
+
+    private static string? InferQuantization(string modelPath)
+    {
+        if (string.IsNullOrEmpty(modelPath)) return null;
+        var name = Path.GetFileNameWithoutExtension(modelPath).ToLowerInvariant();
+
+        if (name.Contains("q8_0")) return "Q8_0";
+        if (name.Contains("q6_")) return "Q6_K";
+        if (name.Contains("q5_")) return "Q5_K_M";
+        if (name.Contains("q4_")) return "Q4_K_M";
+        if (name.Contains("q3_")) return "Q3_K_M";
+        if (name.Contains("q2_")) return "Q2_K";
+        if (name.Contains("bf16")) return "BF16";
+        if (name.Contains("f16")) return "F16";
+        if (name.Contains("f32")) return "F32";
+        return null;
     }
 
     private static async Task<bool> WaitForServerReady()
@@ -358,7 +440,7 @@ public class SystemAIManager : IDisposable
         {
             try
             {
-                var response = await client.GetAsync("http://127.0.0.1:8082/health").ConfigureAwait(false);
+                var response = await client.GetAsync($"http://127.0.0.1:{DefaultPort}/health").ConfigureAwait(false);
                 if (response.IsSuccessStatusCode)
                     return true;
             }

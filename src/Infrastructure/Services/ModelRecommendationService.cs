@@ -5,11 +5,15 @@ namespace OpenLMStudio.Infrastructure.Services;
 
 /// <summary>
 /// Provides smart default settings for models based on their characteristics (size, name, architecture).
+/// Includes specific optimizations for common model types.
 /// </summary>
 public class ModelRecommendationService
 {
     private readonly ILogger<ModelRecommendationService> _logger;
 
+    /// <summary>
+    /// Initializes a new instance of <see cref="ModelRecommendationService"/>.
+    /// </summary>
     public ModelRecommendationService(ILogger<ModelRecommendationService> logger)
     {
         _logger = logger;
@@ -54,32 +58,49 @@ public class ModelRecommendationService
         var sizeGB = (double)model.FileSizeBytes / (1024.0 * 1024 * 1024);
         var paramEstimate = InferParameterCount(model.Name, sizeGB);
 
-        // Base settings on parameter count
-        var gpuLayers = paramEstimate switch
-        {
-            < 3_000_000_000L => 99,   // < 3B: offload all layers
-            < 8_000_000_000L => 60,   // 3B-8B: partial offload
-            < 70_000_000_000L => 30,  // 8B-70B: moderate offload
-            _ => 10                    // > 70B: minimal offload
-        };
+        // Check for specific model optimizations
+        var isSmallModel = paramEstimate < 3_000_000_000L; // < 3B parameters
+        var isMediumModel = paramEstimate >= 3_000_000_000L && paramEstimate < 70_000_000_000L;
+        var isLargeModel = paramEstimate >= 70_000_000_000L;
 
-        var ctxSize = paramEstimate switch
-        {
-            < 3_000_000_000L => 8192,
-            < 8_000_000_000L => 16384,
-            < 70_000_000_000L => 32768,
-            _ => 32768
-        };
+        // Check for specific model names
+        var name = (model.Name ?? "").ToLowerInvariant();
+        var isQwen = name.Contains("qwen") || name.Contains("huihui");
+        var isLlama = name.Contains("llama");
+        var isMistral = name.Contains("mistral");
+        var isGrok = name.Contains("grok");
+        var isDeepSeek = name.Contains("deepseek");
 
-        var batchSize = paramEstimate switch
-        {
-            < 3_000_000_000L => 512,
-            < 8_000_000_000L => 1024,
-            < 70_000_000_000L => 2048,
-            _ => 4096
-        };
+        // GPU layers based on parameter count and model type
+        var gpuLayers = isSmallModel
+            ? 99 // Small models: offload all layers to GPU
+            : isQwen && paramEstimate >= 20_000_000_000L
+                ? 60 // Qwen 35B: moderate GPU offload for CUDA
+                : isMediumModel
+                    ? 60
+                    : isLargeModel ? 30 : 99;
 
+        // Context size based on model architecture
+        var ctxSize = isSmallModel
+            ? 8192
+            : isQwen ? 32768 // Qwen models support larger context
+            : isMediumModel ? 16384 : 32768;
+
+        // Batch size
+        var batchSize = isSmallModel
+            ? 512
+            : isMediumModel ? 1024 : 2048;
+
+        // Thread count based on CPU cores
         var threads = Environment.ProcessorCount;
+        if (isLargeModel && threads > 8)
+            threads = threads / 2; // Large models benefit from fewer threads
+
+        // Feature flags
+        var flashAttention = isQwen || isLlama || isMistral || isDeepSeek;
+        var kvOffload = isMediumModel || isLargeModel;
+        var mmap = true;
+        var mlock = isSmallModel; // Small models benefit from memory lock
         var embedding = IsEmbeddingModel(model.Name, model.Architecture);
         var reranking = IsRerankingModel(model.Name);
         var pooling = embedding ? "cls" : (reranking ? "rank" : null);
@@ -89,10 +110,10 @@ public class ModelRecommendationService
             ContextSize: ctxSize,
             BatchSize: batchSize,
             Threads: threads,
-            FlashAttention: true,
-            KvOffload: true,
-            Mmap: true,
-            Mlock: false,
+            FlashAttention: flashAttention,
+            KvOffload: kvOffload,
+            Mmap: mmap,
+            Mlock: mlock,
             Pooling: pooling,
             Embedding: embedding,
             Reranking: reranking);
