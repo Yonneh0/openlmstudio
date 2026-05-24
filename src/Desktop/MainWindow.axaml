@@ -82,6 +82,8 @@
         <Style Selector="Border.statusBadge.green"><Setter Property="Background" Value="#4CAF50"/><Setter Property="CornerRadius" Value="2"/><Setter Property="Padding" Value="6,2"/></Style>
         <Style Selector="Border.statusBadge.orange"><Setter Property="Background" Value="#FF9800"/><Setter Property="CornerRadius" Value="2"/><Setter Property="Padding" Value="6,2"/></Style>
         <Style Selector="Border.statusBadge.red"><Setter Property="Background" Value="#FF6B6B"/><Setter Property="CornerRadius" Value="2"/><Setter Property="Padding" Value="6,2"/></Style>
+        <Style Selector="Button.headerDeleteBtn"><Setter Property="Background" Value="#2D2D30"/><Setter Property="Foreground" Value="{StaticResource TextSecondary}"/><Setter Property="FontSize" Value="13"/><Setter Property="Padding" Value="8,2"/><Setter Property="BorderThickness" Value="0"/><Setter Property="Cursor" Value="Hand"/></Style>
+        <Style Selector="Button.headerDeleteBtn:pointerover"><Setter Property="Background" Value="#454549"/><Setter Property="Foreground" Value="{StaticResource AccentRed}"/></Style>
     </Window.Styles>
 
     <Grid>
@@ -161,7 +163,8 @@
                 <!-- Settings button at beginning of tab row -->
                 <Button x:Name="SettingsButton"
                         Content="&#x2699;&#xFE0E;"
-                        Classes="toolTab"
+                        Tag="Settings"
+                        Classes="settingsTab"
                         Padding="0"
                         Margin="0,0,2,0"
                         Background="{StaticResource BgTertiary}"
@@ -474,6 +477,15 @@
             </StackPanel>
         </Grid>
 
+        <!-- Invisible overlay to catch clicks outside the title while editing -->
+        <Border x:Name="TitleEditOverlay"
+                Grid.Row="1"
+                Grid.Column="1"
+                Background="Transparent"
+                IsVisible="False"
+                PointerPressed="OnTitleEditOverlayPointerPressed">
+        </Border>
+
         <!-- ===== CENTER PANE ===== -->
         <Grid Grid.Row="1" Grid.Column="1" Background="#1A1A1E">
             <Grid>
@@ -484,8 +496,15 @@
                 </Grid.RowDefinitions>
 
                 <!-- Token Count and Streaming (in chat pane) -->
-                <Border Grid.Row="0" Background="{StaticResource BgSecondary}">
-                    <StackPanel Orientation="Horizontal" Margin="16,12">
+                <Grid Grid.Row="0" Background="{StaticResource BgSecondary}">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="Auto"/>
+                        <ColumnDefinition Width="*"/>
+                        <ColumnDefinition Width="Auto"/>
+                    </Grid.ColumnDefinitions>
+
+                    <!-- Left: Tokens + Streaming -->
+                    <StackPanel Grid.Column="0" Orientation="Horizontal" Margin="16,12">
                         <Border Background="#333338" CornerRadius="4">
                             <TextBlock x:Name="TokenCountText" Text="Tokens: 0" Padding="12,6" FontSize="12"/>
                         </Border>
@@ -496,7 +515,65 @@
                             </StackPanel>
                         </Border>
                     </StackPanel>
-                </Border>
+
+                    <!-- Center: Chat Title (clipped when wide) -->
+                    <Border Grid.Column="1"
+                            Padding="16,12"
+                            HorizontalAlignment="Stretch">
+                        <Border.Clip>
+                            <RectangleGeometry Rect="0,0,10000,40"/>
+                        </Border.Clip>
+                        <StackPanel Orientation="Horizontal" HorizontalAlignment="Left">
+                            <!-- Chat Title Display (click to edit) -->
+                            <TextBlock x:Name="ChatTitleDisplay"
+                                       Text="Chat Session"
+                                       Foreground="{StaticResource TextPrimary}"
+                                       FontSize="13"
+                                       FontWeight="SemiBold"
+                                       Padding="12,6"
+                                       Cursor="Hand"
+                                       PointerPressed="OnChatTitleClicked">
+                                <TextBlock.Styles>
+                                    <Style Selector="TextBlock:pointerover">
+                                        <Setter Property="Foreground" Value="{StaticResource AccentBlue}"/>
+                                    </Style>
+                                </TextBlock.Styles>
+                            </TextBlock>
+                            <!-- Chat Title Edit (hidden by default) -->
+                            <TextBox x:Name="ChatTitleEdit"
+                                     IsVisible="False"
+                                     Foreground="{StaticResource TextPrimary}"
+                                     Background="{StaticResource BgTertiary}"
+                                     BorderBrush="#3A3A3E"
+                                     BorderThickness="1"
+                                     Padding="8,6"
+                                     FontSize="13"
+                                     MaxWidth="500"
+                                     LostFocus="OnChatTitleLostFocus"
+                                     KeyDown="OnChatTitleKeyDown"/>
+                        </StackPanel>
+                    </Border>
+
+                    <!-- Right: Delete Chat button (anchored to the right edge) -->
+                    <Button Grid.Column="2"
+                            x:Name="DeleteChatButton"
+                            Content="&#x2715;"
+                            Background="#B91C1C"
+                            Foreground="White"
+                            BorderThickness="0"
+                            Padding="10,6"
+                            FontSize="14"
+                            Cursor="Hand"
+                            HorizontalAlignment="Right"
+                            Margin="0,0,16,0"
+                            Click="OnDeleteChatClicked">
+                        <Button.Styles>
+                            <Style Selector="Button:pointerover">
+                                <Setter Property="Background" Value="#DC2626"/>
+                            </Style>
+                        </Button.Styles>
+                    </Button>
+                </Grid>
 
                 <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto">
                     <StackPanel x:Name="MessageDisplayPanel" Margin="24,24,24,0">
@@ -683,7 +760,7 @@
                                 </StackPanel>
                             </Border>
                         </StackPanel>
-                                <Button x:Name="SendButton" Content="Send" Grid.RowSpan="3" Width="60" Height="36" HorizontalAlignment="Right" VerticalAlignment="Bottom" Margin="16,0,16,8" Background="{StaticResource AccentBlue}" Foreground="White">
+                                <Button x:Name="SendButton" Content="Send" Grid.Row="2" Grid.Column="0" Width="60" Height="36" HorizontalAlignment="Right" VerticalAlignment="Bottom" Margin="16,0,16,8" Background="{StaticResource AccentBlue}" Foreground="White">
                                     <Button.Styles>
                                         <Style Selector="Button">
                                             <Setter Property="Background" Value="{StaticResource AccentBlue}"/>
