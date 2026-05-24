@@ -285,7 +285,7 @@ public class GgufParser : IDisposable
                         if (mappedKey == "architecture")
                             metadata.Architecture = boolVal ? "gpu" : "cpu";
                         else
-                            metadata.SetMetadataProperty(mappedKey, boolVal ? "true" : "false");
+                            SetMetadataProperty(metadata, mappedKey, boolVal ? "true" : "false");
                         break;
 
                     default:
