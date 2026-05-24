@@ -315,10 +315,13 @@ public partial class MainModelSelector : UserControl
         {
             var modelPath = files.First().Path.LocalPath;
 
-            if (DownloadProgressText != null)
-                DownloadProgressText.Text = "Loading model...";
-            if (DownloadProgressBar != null)
-                DownloadProgressBar.Value = 50;
+            Avalonia.Threading.Dispatcher.UIThread.Post(() =>
+            {
+                if (DownloadProgressText != null)
+                    DownloadProgressText.Text = "Loading model...";
+                if (DownloadProgressBar != null)
+                    DownloadProgressBar.Value = 50;
+            });
 
             if (_mainAIManager != null)
             {

@@ -305,8 +305,11 @@ public partial class SystemModelSelector : UserControl
                 var success = await _systemAIManager.StartAsync(modelPath);
                 if (success)
                 {
-                    UpdateUI();
-                    _logger?.LogInformation("SystemAI model loaded: {Model}", modelPath);
+                    Avalonia.Threading.Dispatcher.UIThread.Post(() =>
+                    {
+                        UpdateUI();
+                        _logger?.LogInformation("SystemAI model loaded: {Model}", modelPath);
+                    });
                 }
             }
 
