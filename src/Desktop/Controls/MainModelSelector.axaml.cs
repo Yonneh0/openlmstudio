@@ -35,6 +35,8 @@ public partial class MainModelSelector : UserControl
     public MainModelSelector()
     {
         InitializeComponent();
+        // Wire up button events so clicks work regardless of whether SetManager is called
+        WireUpEvents();
         // Resolve dependencies from the app service provider if not set via DI
         try
         {

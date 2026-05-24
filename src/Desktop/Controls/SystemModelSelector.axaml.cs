@@ -33,6 +33,8 @@ public partial class SystemModelSelector : UserControl
     public SystemModelSelector()
     {
         InitializeComponent();
+        // Wire up button events so clicks work regardless of whether SetManager is called
+        WireUpEvents();
         // Resolve dependencies from the app service provider if not set via DI
         try
         {
