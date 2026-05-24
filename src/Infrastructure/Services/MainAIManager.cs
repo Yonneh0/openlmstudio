@@ -353,7 +353,7 @@ public class MainAIManager : IDisposable
             return BackendType.Cuda;
 
         // Check for Metal (macOS)
-        if (RuntimeInformation.IsOSPlatform(OSPlatform.OSX))
+        if (System.Runtime.InteropServices.RuntimeInformation.IsOSPlatform(System.Runtime.InteropServices.OSPlatform.OSX))
             return BackendType.Metal;
 
         return BackendType.Cpu;
@@ -402,6 +402,7 @@ public class MainAIManager : IDisposable
 public enum MainAIState
 {
     Stopped,
+    Idle,
     Starting,
     Running,
     Stopping,

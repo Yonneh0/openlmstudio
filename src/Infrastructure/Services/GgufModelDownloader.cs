@@ -123,12 +123,6 @@ public class GgufModelDownloader
                 _modelCache[modelId] = info with { LastUsed = DateTime.UtcNow, UsageCount = (info.UsageCount ?? 0) + 1 };
             }
         }
-
-        var meta = await _modelRepository.GetModelByIdAsync(modelId).ConfigureAwait(false);
-        if (meta != null)
-        {
-            await _modelRepository.SaveModelMetadataAsync(meta with { LastUsed = DateTime.UtcNow }).ConfigureAwait(false);
-        }
     }
 
     private async Task<GgufModelInfo?> ParseModelInfoAsync(string filePath, CancellationToken ct)
@@ -141,7 +135,7 @@ public class GgufModelDownloader
         var header = await _ggufParser.ParseHeaderAsync(filePath).ConfigureAwait(false);
         var fileSize = new FileInfo(filePath).Length;
 
-        var chatTemplate = header?.ChatTemplate;
+        var chatTemplate = header?.Metadata.GetValueOrDefault("chat_template")?.ToString();
         var architecture = header?.Architecture;
         var contextLength = header?.ContextLength;
 
@@ -151,11 +145,11 @@ public class GgufModelDownloader
             Architecture: architecture,
             Quantization: quantization,
             ContextLength: contextLength,
-            EmbeddingDim: header?.EmbeddingDim,
+            EmbeddingDim: header?.EmbeddingDimension,
             FileSizeBytes: fileSize,
             FilePath: filePath,
             ChatTemplate: chatTemplate,
-            Description: header?.Description,
+            Description: header?.ModelName,
             LastUsed: null,
             UsageCount: null);
 

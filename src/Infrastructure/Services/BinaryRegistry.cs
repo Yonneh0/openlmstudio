@@ -229,15 +229,15 @@ public class BinaryRegistry
 
     private static string GetPlatform()
     {
-        if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows)) return "windows";
-        if (RuntimeInformation.IsOSPlatform(OSPlatform.Linux)) return "linux";
-        if (RuntimeInformation.IsOSPlatform(OSPlatform.OSX)) return "macos";
+        if (System.Runtime.InteropServices.RuntimeInformation.IsOSPlatform(System.Runtime.InteropServices.OSPlatform.Windows)) return "windows";
+        if (System.Runtime.InteropServices.RuntimeInformation.IsOSPlatform(System.Runtime.InteropServices.OSPlatform.Linux)) return "linux";
+        if (System.Runtime.InteropServices.RuntimeInformation.IsOSPlatform(System.Runtime.InteropServices.OSPlatform.OSX)) return "macos";
         return "linux";
     }
 
     private static string GetArchitecture()
     {
-        var arch = RuntimeInformation.ProcessArchitecture.ToString().ToLower();
+        var arch = System.Runtime.InteropServices.RuntimeInformation.ProcessArchitecture.ToString().ToLower();
         return arch switch
         {
             "x64" => "x64",

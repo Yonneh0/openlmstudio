@@ -1,6 +1,9 @@
 using Microsoft.Extensions.Logging;
 using OpenLMStudio.Domain.Models.LLamaCpp;
+using OpenLMStudio.Domain.Models.ContextCompression;
+using OpenLMStudio.Application.Interfaces;
 using DomainLogLevel = OpenLMStudio.Domain.Models.ContextCompression.LogLevel;
+using DomainEngineType = OpenLMStudio.Application.Interfaces.EngineType;
 using System.Collections.ObjectModel;
 
 namespace OpenLMStudio.Infrastructure.Services;
@@ -13,11 +16,11 @@ public class LogViewerService
 {
     private readonly ILogger<LogViewerService> _logger;
     private readonly object _lock = new();
-    private readonly Dictionary<EngineType, ObservableCollection<LogEntry>> _logStores = new();
-    private readonly Dictionary<EngineType, List<string>> _rawBuffers = new();
+    private readonly Dictionary<DomainEngineType, ObservableCollection<LogEntry>> _logStores = new();
+    private readonly Dictionary<DomainEngineType, List<string>> _rawBuffers = new();
 
     // Filters
-    private LogLevel? _minLevel;
+    private DomainLogLevel? _minLevel;
     private string? _searchText;
     private string? _categoryFilter;
 
@@ -32,7 +35,7 @@ public class LogViewerService
     /// <summary>
     /// Gets the log entries for an engine, filtered.
     /// </summary>
-    public IReadOnlyList<LogEntry> GetFilteredLogs(EngineType engine)
+    public IReadOnlyList<LogEntry> GetFilteredLogs(DomainEngineType engine)
     {
         lock (_lock)
         {
@@ -50,23 +53,36 @@ public class LogViewerService
     /// <summary>
     /// Gets the raw (unfiltered) log entries for an engine.
     /// </summary>
-    public IReadOnlyList<LogEntry> GetRawLogs(EngineType engine)
+    public IReadOnlyList<LogEntry> GetRawLogs(DomainEngineType engine)
     {
         lock (_lock)
-            return _logStores.GetValueOrDefault(engine)?.ToList() ?? Array.Empty<LogEntry>();
+        {
+            if (_logStores.TryGetValue(engine, out var store))
+                return store.ToList();
+            return Array.Empty<LogEntry>();
+        }
     }
 
     /// <summary>
     /// Adds a log entry from the engine.
     /// </summary>
-    public void AddLogEntry(EngineType engine, LogLevel level, string message, bool isImportant = false, string? category = null)
+    public void AddLogEntry(DomainEngineType engine, DomainLogLevel level, string message, bool isImportant = false, string? category = null)
     {
+        var domainEngine = engine switch
+        {
+            DomainEngineType.Primary => OpenLMStudio.Domain.Models.ContextCompression.EngineType.Primary,
+            DomainEngineType.SystemAI => OpenLMStudio.Domain.Models.ContextCompression.EngineType.SystemAI,
+            DomainEngineType.Diffusion => OpenLMStudio.Domain.Models.ContextCompression.EngineType.Diffusion,
+            DomainEngineType.Embedding => OpenLMStudio.Domain.Models.ContextCompression.EngineType.Embedding,
+            _ => OpenLMStudio.Domain.Models.ContextCompression.EngineType.Primary
+        };
+
         var entry = new LogEntry(
             Id: $"log-{DateTimeOffset.UtcNow.ToUnixTimeMilliseconds()}-{engine}",
             Timestamp: DateTime.UtcNow,
             Level: level,
             Message: message,
-            Source: engine,
+            Source: domainEngine,
             IsImportant: isImportant,
             Category: category);
 
@@ -91,7 +107,7 @@ public class LogViewerService
     /// <summary>
     /// Sets the minimum log level filter.
     /// </summary>
-    public void SetMinLevel(LogLevel? level)
+    public void SetMinLevel(DomainLogLevel? level)
     {
         lock (_lock)
             _minLevel = level;
@@ -118,7 +134,7 @@ public class LogViewerService
     /// <summary>
     /// Clears all logs for an engine.
     /// </summary>
-    public void ClearLogs(EngineType engine)
+    public void ClearLogs(DomainEngineType engine)
     {
         lock (_lock)
         {
@@ -143,26 +159,26 @@ public class LogViewerService
     /// <summary>
     /// Gets the color for a log level (for UI colorization).
     /// </summary>
-    public static string GetColorForLevel(LogLevel level) => level switch
+    public static string GetColorForLevel(DomainLogLevel level) => level switch
     {
-        LogLevel.Trace => "#888888",
-        LogLevel.Debug => "#4FC3F7",
-        LogLevel.Info => "#66BB6A",
-        LogLevel.Warn => "#FFA726",
-        LogLevel.Error => "#EF5350",
+        DomainLogLevel.Trace => "#888888",
+        DomainLogLevel.Debug => "#4FC3F7",
+        DomainLogLevel.Info => "#66BB6A",
+        DomainLogLevel.Warn => "#FFA726",
+        DomainLogLevel.Error => "#EF5350",
         _ => "#CCCCCC"
     };
 
     /// <summary>
     /// Gets the emoji for a log level.
     /// </summary>
-    public static string GetEmojiForLevel(LogLevel level) => level switch
+    public static string GetEmojiForLevel(DomainLogLevel level) => level switch
     {
-        LogLevel.Trace => "🔵",
-        LogLevel.Debug => "🔵",
-        LogLevel.Info => "🟢",
-        LogLevel.Warn => "🟡",
-        LogLevel.Error => "🔴",
-        _ => "⚪"
+        DomainLogLevel.Trace => "\U0001F535",
+        DomainLogLevel.Debug => "\U0001F535",
+        DomainLogLevel.Info => "\U0001F7E2",
+        DomainLogLevel.Warn => "\U0001F7E1",
+        DomainLogLevel.Error => "\U0001F534",
+        _ => "\u26AA"
     };
 }

@@ -24,7 +24,7 @@
                     <Border x:Name="StatusBadge" Background="{StaticResource AccentRed}" CornerRadius="2" Padding="6,2" DockPanel.Dock="Right">
                         <TextBlock x:Name="StatusText" Text="Stopped" FontSize="9" Foreground="White" TextAlignment="Center"/>
                     </Border>
-                </Border>
+                </DockPanel>
                 <!-- Engine info -->
                 <TextBlock x:Name="EngineInfoText" Text="CPU | llama-server" Foreground="{StaticResource TextSecondary}" FontSize="10" Margin="0,2,0,4"/>
                 <!-- Model path -->

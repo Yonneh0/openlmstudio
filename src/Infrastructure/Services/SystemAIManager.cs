@@ -1,6 +1,7 @@
 using Microsoft.Extensions.Logging;
 using OpenLMStudio.Application.Interfaces;
 using OpenLMStudio.Domain.Models.LLamaCpp;
+using DomainLogLevel = OpenLMStudio.Domain.Models.ContextCompression.LogLevel;
 
 namespace OpenLMStudio.Infrastructure.Services;
 
@@ -255,7 +256,7 @@ public class SystemAIManager : IDisposable
                 if (!string.IsNullOrEmpty(e.Data))
                 {
                     _engineLogger.HandleEngineStderr(_engineId, e.Data);
-                    _logViewer.AddLogEntry(_engineId, LogLevel.Warn, $"stderr: {e.Data}");
+                    _logViewer.AddLogEntry(_engineId, DomainLogLevel.Warn, $"stderr: {e.Data}");
                 }
             };
 
@@ -325,7 +326,7 @@ public class SystemAIManager : IDisposable
             "OpenLMStudio", "engines", "cuda", "llama-server-cuda")))
             return BackendType.Cuda;
 
-        if (RuntimeInformation.IsOSPlatform(OSPlatform.OSX))
+        if (System.Runtime.InteropServices.RuntimeInformation.IsOSPlatform(System.Runtime.InteropServices.OSPlatform.OSX))
             return BackendType.Metal;
 
         return BackendType.Cpu;
@@ -349,13 +350,13 @@ public class SystemAIManager : IDisposable
         return false;
     }
 
-    private static LogLevel InferLogLevel(string line)
+    private static DomainLogLevel InferLogLevel(string line)
     {
-        if (line.Contains("error", StringComparison.OrdinalIgnoreCase)) return LogLevel.Error;
-        if (line.Contains("warn", StringComparison.OrdinalIgnoreCase)) return LogLevel.Warn;
-        if (line.Contains("info", StringComparison.OrdinalIgnoreCase)) return LogLevel.Info;
-        if (line.Contains("debug", StringComparison.OrdinalIgnoreCase)) return LogLevel.Debug;
-        return LogLevel.Info;
+        if (line.Contains("error", StringComparison.OrdinalIgnoreCase)) return DomainLogLevel.Error;
+        if (line.Contains("warn", StringComparison.OrdinalIgnoreCase)) return DomainLogLevel.Warn;
+        if (line.Contains("info", StringComparison.OrdinalIgnoreCase)) return DomainLogLevel.Info;
+        if (line.Contains("debug", StringComparison.OrdinalIgnoreCase)) return DomainLogLevel.Debug;
+        return DomainLogLevel.Info;
     }
 
     private static bool IsImportantMessage(string line)
@@ -374,6 +375,7 @@ public class SystemAIManager : IDisposable
 public enum SystemAIState
 {
     Stopped,
+    Idle,
     Starting,
     Running,
     Stopping,

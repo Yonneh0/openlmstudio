@@ -5,8 +5,7 @@ using OpenLMStudio.Application.Interfaces;
 using OpenLMStudio.Domain.Models;
 using OpenLMStudio.Domain.Models.ContextCompression;
 using OpenLMStudio.Domain.Models.Pingu;
-using OpenLMStudio.Infrastructure.Services;
-using OpenLMStudio.Infrastructure.Models;
+using InfraServices = OpenLMStudio.Infrastructure.Services;
 
 namespace OpenLMStudio.Desktop;
 
@@ -17,33 +16,40 @@ public static class DependencyInjection
 {
     public static IServiceCollection AddInfrastructureServices(this IServiceCollection services)
     {
-        // Existing services
-        services.AddSingleton<IServerService, ServerService>();
-        services.AddSingleton<IModelRepository, ModelRepository>();
-        services.AddSingleton<IChatCompletionService, ChatCompletionService>();
-        services.AddSingleton<IChatContextManager, ChatContextManager>();
-        services.AddSingleton<IContextWindowBudgeter, ContextWindowBudgeter>();
-        services.AddSingleton<IPinguStore, PinguStore>();
-        services.AddSingleton<IWindowSettings, WindowSettings>();
-        services.AddSingleton<IEngineLogger, EngineLogger>();
-        services.AddSingleton<IGamesPanelService, GamesPanelService>();
+        // Existing services (Infrastructure layer)
+        services.AddSingleton<IServerService, InfraServices.ServerService>();
+        services.AddSingleton<IModelRepository, InfraServices.JsonModelRepository>();
+        services.AddSingleton<IChatCompletionService, InfraServices.LlamaCppChatCompletionService>();
+        services.AddSingleton<IChatContextManager, InfraServices.ChatContextManager>();
+        services.AddSingleton<IContextWindowBudgeter, InfraServices.ContextWindowBudgeter>();
+        services.AddSingleton<IPinguStore, InfraServices.PinguStore>();
+        services.AddSingleton<IWindowSettings, InfraServices.WindowSettingsService>();
+        services.AddSingleton<IEngineLogger, InfraServices.EngineLogger>();
+        services.AddSingleton<IGamesPanel, GamesPanelService>();
         services.AddSingleton<PanelService>();
         services.AddSingleton<TabService>();
-        services.AddSingleton<AvaloniaMarkdownRenderer>();
-        services.AddSingleton<DependencyInjection>();
+        services.AddSingleton<InfraServices.AvaloniaMarkdownRenderer>();
 
         // New llama.cpp services
-        services.AddSingleton<BinaryRegistry>();
-        services.AddSingleton<EngineBinaryDownloader>();
-        services.AddSingleton<GgufParser>();
-        services.AddSingleton<ModelRecommendationService>();
-        services.AddSingleton<GgufModelDownloader>();
-        services.AddSingleton<LlamaServerHelpParser>();
-        services.AddSingleton<LogViewerService>();
-        services.AddSingleton<EngineConfigService>();
-        services.AddSingleton<MainAIManager>();
-        services.AddSingleton<SystemAIManager>();
+        services.AddSingleton<InfraServices.BinaryRegistry>();
+        services.AddSingleton<InfraServices.EngineBinaryDownloader>();
+        services.AddSingleton<InfraServices.GgufParser>();
+        services.AddSingleton<InfraServices.ModelRecommendationService>();
+        services.AddSingleton<InfraServices.GgufModelDownloader>();
+        services.AddSingleton<InfraServices.LlamaServerHelpParser>();
+        services.AddSingleton<InfraServices.LogViewerService>();
+        services.AddSingleton<InfraServices.EngineConfigService>();
+        services.AddSingleton<InfraServices.MainAIManager>();
+        services.AddSingleton<InfraServices.SystemAIManager>();
 
+        return services;
+    }
+
+    /// <summary>
+    /// Registers Desktop-layer services with the DI container.
+    /// </summary>
+    public static IServiceCollection AddDesktopServices(this IServiceCollection services)
+    {
         return services;
     }
 }

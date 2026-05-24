@@ -8,45 +8,36 @@ using Avalonia.Interactivity;
 using Avalonia.Media;
 using Avalonia.Platform.Storage;
 using Avalonia.Styling;
-using OpenLMStudio.Application.Interfaces;
 using OpenLMStudio.Domain.Models.LLamaCpp;
 using OpenLMStudio.Infrastructure.Services;
 
 namespace OpenLMStudio.Desktop.Controls;
 
-/// <summary>
-/// Interaction logic for MainModelSelector.axaml.
-/// </summary>
-public partial class MainModelSelector : UserControl
+public partial class SystemModelSelector : UserControl
 {
-    private readonly MainAIManager _mainAIManager;
+    private readonly SystemAIManager _systemAIManager;
     private readonly GgufModelDownloader _modelDownloader;
     private readonly LogViewerService _logViewer;
-    private bool _isInitialized;
 
-    public MainModelSelector(
-        MainAIManager mainAIManager,
+    public SystemModelSelector(
+        SystemAIManager systemAIManager,
         GgufModelDownloader modelDownloader,
         LogViewerService logViewer)
     {
         InitializeComponent();
-        _mainAIManager = mainAIManager;
+        _systemAIManager = systemAIManager;
         _modelDownloader = modelDownloader;
         _logViewer = logViewer;
 
-        // Wire up events
         LoadModelButton.Click += OnLoadModelClicked;
         StopButton.Click += OnStopClicked;
         RestartButton.Click += OnRestartClicked;
         AdvancedSettingsButton.Click += OnAdvancedSettingsClicked;
 
-        // Subscribe to state changes
-        _mainAIManager.StateChanged += OnStateChanged;
-        _mainAIManager.LogEntryReceived += OnLogEntryReceived;
+        _systemAIManager.StateChanged += OnStateChanged;
+        _systemAIManager.LogEntryReceived += OnLogEntryReceived;
 
-        // Discover models
         _ = DiscoverModelsAsync();
-        _isInitialized = true;
     }
 
     private async Task DiscoverModelsAsync()
@@ -61,16 +52,12 @@ public partial class MainModelSelector : UserControl
                     Content = $"{model.Name} ({FormatSize(model.FileSizeBytes)})",
                     Tag = model.FilePath
                 };
-                // Add to a dropdown or store for later use
             }
         }
-        catch
-        {
-            // Silently handle discovery errors
-        }
+        catch { /* silently handle */ }
     }
 
-    private void OnStateChanged(object? sender, MainAIStateChanged e)
+    private void OnStateChanged(object? sender, SystemAIStateChanged e)
     {
         Avalonia.Threading.Dispatcher.UIThread.Post(() =>
         {
@@ -78,24 +65,14 @@ public partial class MainModelSelector : UserControl
         });
     }
 
-    private void UpdateStateDisplay(MainAIStateChanged state)
+    private void UpdateStateDisplay(SystemAIStateChanged state)
     {
-        var statusColor = state.NewState switch
-        {
-            MainAIState.Running => "#4CAF50",
-            MainAIState.Stopped => "#FF6B6B",
-            MainAIState.Starting => "#FF9800",
-            MainAIState.Stopping => "#FF9800",
-            MainAIState.Error => "#FF6B6B",
-            _ => "#888888"
-        };
-
-        var accentRed = (ISolidColorBrush)this.FindResource("AccentRed") ?? Brushes.Gray;
-        var accentGreen = (ISolidColorBrush)this.FindResource("AccentGreen") ?? Brushes.Green;
-        StatusBadge.Background = state.NewState == MainAIState.Running ? accentGreen : accentRed;
+        var accentRed = (ISolidColorBrush)(this.FindResource("AccentRed") ?? Avalonia.Media.Brushes.Gray);
+        var accentGreen = (ISolidColorBrush)(this.FindResource("AccentGreen") ?? Avalonia.Media.Brushes.Green);
+        StatusBadge.Background = state.NewState == SystemAIState.Running ? accentGreen : accentRed;
         StatusText.Text = state.NewState.ToString();
 
-        if (state.NewState == MainAIState.Running)
+        if (state.NewState == SystemAIState.Running)
         {
             StopButton.IsVisible = true;
             RestartButton.IsVisible = true;
@@ -117,7 +94,6 @@ public partial class MainModelSelector : UserControl
 
     private async void OnLoadModelClicked(object? sender, RoutedEventArgs e)
     {
-        // Show file picker
         var window = Avalonia.Application.Current?.ApplicationLifetime is IClassicDesktopStyleApplicationLifetime desktop
             ? desktop.MainWindow
             : null;
@@ -133,34 +109,21 @@ public partial class MainModelSelector : UserControl
         if (files?.Any() == true)
         {
             var modelPath = files.First().Path.LocalPath;
-            await _mainAIManager.StartAsync(modelPath);
+            await _systemAIManager.StartAsync(modelPath);
         }
     }
 
-    private void OnStopClicked(object? sender, RoutedEventArgs e)
-    {
-        _mainAIManager.Stop();
-    }
-
+    private void OnStopClicked(object? sender, RoutedEventArgs e) => _systemAIManager.Stop();
     private void OnRestartClicked(object? sender, RoutedEventArgs e)
     {
-        if (_mainAIManager.CurrentModelPath != null)
-        {
-            _ = _mainAIManager.StartAsync(_mainAIManager.CurrentModelPath);
-        }
+        if (_systemAIManager.CurrentModelPath != null)
+            _ = _systemAIManager.StartAsync(_systemAIManager.CurrentModelPath);
     }
 
-    private void OnAdvancedSettingsClicked(object? sender, RoutedEventArgs e)
-    {
-        // TODO: Show advanced settings dialog
-    }
-
+    private void OnAdvancedSettingsClicked(object? sender, RoutedEventArgs e) { /* TODO */ }
     private void OnLogEntryReceived(object? sender, LogEntry e)
     {
-        Avalonia.Threading.Dispatcher.UIThread.Post(() =>
-        {
-            // Update log display
-        });
+        Avalonia.Threading.Dispatcher.UIThread.Post(() => { /* update log */ });
     }
 
     private static string FormatSize(long bytes)

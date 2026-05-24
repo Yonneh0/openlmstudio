@@ -13,6 +13,7 @@ using Microsoft.Extensions.Logging;
 using OpenLMStudio.Application;
 using OpenLMStudio.Application.Interfaces;
 using OpenLMStudio.Infrastructure;
+using OpenLMStudio.Infrastructure.Services;
 using LogLevel = Microsoft.Extensions.Logging.LogLevel;
 
 namespace OpenLMStudio.Desktop;
