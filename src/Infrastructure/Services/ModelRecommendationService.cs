@@ -105,18 +105,20 @@ public class ModelRecommendationService
         var reranking = IsRerankingModel(name);
         var pooling = embedding ? "cls" : (reranking ? "rank" : null);
 
-        return new RecommendedSettings(
-            GpuLayers: gpuLayers,
-            ContextSize: ctxSize,
-            BatchSize: batchSize,
-            Threads: threads,
-            FlashAttention: flashAttention,
-            KvOffload: kvOffload,
-            Mmap: mmap,
-            Mlock: mlock,
-            Pooling: pooling,
-            Embedding: embedding,
-            Reranking: reranking);
+        return new RecommendedSettings
+        {
+            GpuLayers = gpuLayers,
+            ContextSize = ctxSize,
+            BatchSize = batchSize,
+            Threads = threads,
+            FlashAttention = flashAttention,
+            KvOffload = kvOffload,
+            Mmap = mmap,
+            Mlock = mlock,
+            Pooling = pooling,
+            Embedding = embedding,
+            Reranking = reranking
+        };
     }
 
     private static string BuildReason(GgufModelInfo model, RecommendedSettings settings)
