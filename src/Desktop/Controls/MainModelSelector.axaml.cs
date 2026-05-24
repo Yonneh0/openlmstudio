@@ -8,7 +8,6 @@ using Avalonia.Interactivity;
 using Avalonia.Media;
 using Avalonia.Platform.Storage;
 using Avalonia.Styling;
-using OpenLMStudio.Application.Interfaces;
 using OpenLMStudio.Domain.Models.LLamaCpp;
 using OpenLMStudio.Infrastructure.Services;
 
@@ -19,9 +18,21 @@ namespace OpenLMStudio.Desktop.Controls;
 /// </summary>
 public partial class MainModelSelector : UserControl
 {
-    private readonly MainAIManager _mainAIManager;
+    private MainAIManager? _mainAIManager;
     private readonly GgufModelDownloader _modelDownloader;
     private readonly LogViewerService _logViewer;
+
+    /// <summary>
+    /// Default parameterless constructor for XAML instantiation.
+    /// </summary>
+    public MainModelSelector()
+    {
+        InitializeComponent();
+    }
+
+    /// <summary>
+    /// Constructor with DI parameters (for direct instantiation).
+    /// </summary>
     public MainModelSelector(
         MainAIManager mainAIManager,
         GgufModelDownloader modelDownloader,
@@ -31,19 +42,46 @@ public partial class MainModelSelector : UserControl
         _mainAIManager = mainAIManager;
         _modelDownloader = modelDownloader;
         _logViewer = logViewer;
+        WireUpEvents();
+    }
 
-        // Wire up events
+    /// <summary>
+    /// Sets the manager after construction (for XAML-instantiated controls).
+    /// </summary>
+    public void SetManager(MainAIManager manager)
+    {
+        // Unsubscribe from old events
+        if (_mainAIManager != null)
+        {
+            _mainAIManager.StateChanged -= OnStateChanged;
+            _mainAIManager.LogEntryReceived -= OnLogEntryReceived;
+        }
+
+        _mainAIManager = manager;
+
+        // Subscribe to state changes
+        if (_mainAIManager != null)
+        {
+            _mainAIManager.StateChanged += OnStateChanged;
+            _mainAIManager.LogEntryReceived += OnLogEntryReceived;
+        }
+    }
+
+    /// <summary>
+    /// Wires up event handlers for buttons and state/log events.
+    /// </summary>
+    private void WireUpEvents()
+    {
         LoadModelButton.Click += OnLoadModelClicked;
         StopButton.Click += OnStopClicked;
         RestartButton.Click += OnRestartClicked;
         AdvancedSettingsButton.Click += OnAdvancedSettingsClicked;
 
-        // Subscribe to state changes
-        _mainAIManager.StateChanged += OnStateChanged;
-        _mainAIManager.LogEntryReceived += OnLogEntryReceived;
-
-        // Discover models
-        _ = DiscoverModelsAsync();
+        if (_mainAIManager != null)
+        {
+            _mainAIManager.StateChanged += OnStateChanged;
+            _mainAIManager.LogEntryReceived += OnLogEntryReceived;
+        }
     }
 
     private async Task DiscoverModelsAsync()
@@ -58,7 +96,6 @@ public partial class MainModelSelector : UserControl
                     Content = $"{model.Name} ({FormatSize(model.FileSizeBytes)})",
                     Tag = model.FilePath
                 };
-                // Add to a dropdown or store for later use
             }
         }
         catch
@@ -114,7 +151,6 @@ public partial class MainModelSelector : UserControl
 
     private async void OnLoadModelClicked(object? sender, RoutedEventArgs e)
     {
-        // Show file picker
         var window = Avalonia.Application.Current?.ApplicationLifetime is IClassicDesktopStyleApplicationLifetime desktop
             ? desktop.MainWindow
             : null;
@@ -130,18 +166,18 @@ public partial class MainModelSelector : UserControl
         if (files?.Any() == true)
         {
             var modelPath = files.First().Path.LocalPath;
-            await _mainAIManager.StartAsync(modelPath);
+            _mainAIManager?.StartAsync(modelPath);
         }
     }
 
     private void OnStopClicked(object? sender, RoutedEventArgs e)
     {
-        _mainAIManager.Stop();
+        _mainAIManager?.Stop();
     }
 
     private void OnRestartClicked(object? sender, RoutedEventArgs e)
     {
-        if (_mainAIManager.CurrentModelPath != null)
+        if (_mainAIManager?.CurrentModelPath != null)
         {
             _ = _mainAIManager.StartAsync(_mainAIManager.CurrentModelPath);
         }

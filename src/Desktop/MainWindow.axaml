@@ -117,17 +117,9 @@
                 <!-- Main AI Model (centered) -->
                 <StackPanel Grid.Column="1" Orientation="Horizontal" HorizontalAlignment="Center" VerticalAlignment="Center">
                     <TextBlock Text="Main AI:" Foreground="{StaticResource TextSecondary}" FontSize="12" VerticalAlignment="Center" Margin="0,0,8,0"/>
-                    <ComboBox x:Name="MainModelSelector"
-                              Foreground="{StaticResource TextPrimary}"
-                              Background="{StaticResource BgTertiary}"
-                              BorderBrush="#3A3A3E"
-                              BorderThickness="1"
-                              Padding="8,4"
-                              Width="180"
-                              Height="26"
-                              FontSize="11">
-                        <TextBlock Text="Not Selected"/>
-                    </ComboBox>
+                    <Controls:MainModelSelector x:Name="MainModelSelectorControl"
+                                                  Width="280"
+                                                  Height="60"/>
                 </StackPanel>
 
                 <!-- Chat Title (for ChatTitleText reference, hidden from view) -->
@@ -136,17 +128,9 @@
                 <!-- System AI Model (aligned to right) -->
                 <StackPanel Grid.Column="6" Orientation="Horizontal" HorizontalAlignment="Right" VerticalAlignment="Center">
                     <TextBlock Text="System AI:" Foreground="{StaticResource TextSecondary}" FontSize="12" VerticalAlignment="Center" Margin="0,0,8,0"/>
-                    <ComboBox x:Name="SystemModelSelector"
-                              Foreground="{StaticResource TextPrimary}"
-                              Background="{StaticResource BgTertiary}"
-                              BorderBrush="#3A3A3E"
-                              BorderThickness="1"
-                              Padding="8,4"
-                              Width="180"
-                              Height="26"
-                              FontSize="11">
-                        <TextBlock Text="None Selected"/>
-                    </ComboBox>
+                    <Controls:SystemModelSelector x:Name="SystemModelSelectorControl"
+                                                  Width="280"
+                                                  Height="60"/>
                 </StackPanel>
             </Grid>
         </Border>

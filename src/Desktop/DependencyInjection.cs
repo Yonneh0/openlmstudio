@@ -45,6 +45,12 @@ public static class DependencyInjection
         // ConversationManager (required by App.axaml.cs)
         services.AddSingleton<IConversationManager, InfraServices.FileConversationManager>();
 
+        // AppDataDirectoryResolver (required by ChatContextManager and other services)
+        services.AddSingleton<InfraServices.AppDataDirectoryResolver>();
+
+        // SqliteDatabaseFactory (required by ChatContextManager)
+        services.AddSingleton<InfraServices.SqliteDatabaseFactory>();
+
         return services;
     }
 

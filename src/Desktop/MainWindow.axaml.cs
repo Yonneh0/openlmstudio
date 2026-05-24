@@ -49,6 +49,8 @@ public partial class MainWindow : Window
     private readonly IContextWindowBudgeter? _budgeter;
     private readonly IPinguStore? _pinguStore;
     private readonly IWindowSettings? _windowSettings;
+    private readonly Infrastructure.Services.MainAIManager? _mainAIManager;
+    private readonly Infrastructure.Services.SystemAIManager? _systemAIManager;
 
     /// <summary>Flag to prevent duplicate title saves when both LostFocus and overlay click fire.</summary>
     private bool _titleEditSaving = false;
@@ -85,10 +87,17 @@ public partial class MainWindow : Window
         IChatContextManager? contextManager = null,
         IContextWindowBudgeter? budgeter = null,
         IPinguStore? pinguStore = null,
-        IWindowSettings? windowSettings = null)
+        IWindowSettings? windowSettings = null,
+        Infrastructure.Services.MainAIManager? mainAIManager = null,
+        Infrastructure.Services.SystemAIManager? systemAIManager = null)
     {
         InitializeComponent();
         _logger = logger;
+        _mainAIManager = mainAIManager ?? ResolveMainAIManagerFromAppServices();
+        _systemAIManager = systemAIManager ?? ResolveSystemAIManagerFromAppServices();
+
+        // Wire up model selector controls
+        WireUpModelSelectors();
 
         // Register this window with static services (TabService, PanelService)
         TabService.SetWindow(this);
@@ -283,6 +292,64 @@ public partial class MainWindow : Window
         if (GitStatusBorder != null)
             GitStatusBorder.PointerPressed += OnGitStatusClicked;
 
+    }
+
+    /// <summary>
+    /// Wires up the MainModelSelector and SystemModelSelector controls with their respective managers.
+    /// </summary>
+    private void WireUpModelSelectors()
+    {
+        // Wire up MainModelSelector control
+        if (MainModelSelectorControl != null)
+        {
+            if (_mainAIManager != null)
+                MainModelSelectorControl.SetManager(_mainAIManager);
+        }
+
+        // Wire up SystemModelSelector control
+        if (SystemModelSelectorControl != null)
+        {
+            if (_systemAIManager != null)
+                SystemModelSelectorControl.SetManager(_systemAIManager);
+        }
+    }
+
+    /// <summary>
+    /// Resolves MainAIManager from the application service provider.
+    /// </summary>
+    private Infrastructure.Services.MainAIManager ResolveMainAIManagerFromAppServices()
+    {
+        try
+        {
+            var sp = GetAppServiceProvider();
+            var manager = sp?.GetService(typeof(Infrastructure.Services.MainAIManager)) as Infrastructure.Services.MainAIManager;
+            return manager ?? sp?.GetService<Infrastructure.Services.MainAIManager>()
+                ?? throw new InvalidOperationException("MainAIManager not registered in DI");
+        }
+        catch (Exception ex)
+        {
+            _logger?.LogWarning(ex, "Failed to resolve MainAIManager from app services");
+            throw;
+        }
+    }
+
+    /// <summary>
+    /// Resolves SystemAIManager from the application service provider.
+    /// </summary>
+    private Infrastructure.Services.SystemAIManager ResolveSystemAIManagerFromAppServices()
+    {
+        try
+        {
+            var sp = GetAppServiceProvider();
+            var manager = sp?.GetService(typeof(Infrastructure.Services.SystemAIManager)) as Infrastructure.Services.SystemAIManager;
+            return manager ?? sp?.GetService<Infrastructure.Services.SystemAIManager>()
+                ?? throw new InvalidOperationException("SystemAIManager not registered in DI");
+        }
+        catch (Exception ex)
+        {
+            _logger?.LogWarning(ex, "Failed to resolve SystemAIManager from app services");
+            throw;
+        }
     }
 
     // =========================================================================

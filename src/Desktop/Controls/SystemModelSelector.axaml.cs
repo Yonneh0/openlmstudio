@@ -13,12 +13,26 @@ using OpenLMStudio.Infrastructure.Services;
 
 namespace OpenLMStudio.Desktop.Controls;
 
+/// <summary>
+/// Interaction logic for SystemModelSelector.axaml.
+/// </summary>
 public partial class SystemModelSelector : UserControl
 {
-    private readonly SystemAIManager _systemAIManager;
+    private SystemAIManager? _systemAIManager;
     private readonly GgufModelDownloader _modelDownloader;
     private readonly LogViewerService _logViewer;
 
+    /// <summary>
+    /// Default parameterless constructor for XAML instantiation.
+    /// </summary>
+    public SystemModelSelector()
+    {
+        InitializeComponent();
+    }
+
+    /// <summary>
+    /// Constructor with DI parameters (for direct instantiation).
+    /// </summary>
     public SystemModelSelector(
         SystemAIManager systemAIManager,
         GgufModelDownloader modelDownloader,
@@ -28,16 +42,46 @@ public partial class SystemModelSelector : UserControl
         _systemAIManager = systemAIManager;
         _modelDownloader = modelDownloader;
         _logViewer = logViewer;
+        WireUpEvents();
+    }
 
+    /// <summary>
+    /// Sets the manager after construction (for XAML-instantiated controls).
+    /// </summary>
+    public void SetManager(SystemAIManager manager)
+    {
+        // Unsubscribe from old events
+        if (_systemAIManager != null)
+        {
+            _systemAIManager.StateChanged -= OnStateChanged;
+            _systemAIManager.LogEntryReceived -= OnLogEntryReceived;
+        }
+
+        _systemAIManager = manager;
+
+        // Subscribe to state changes
+        if (_systemAIManager != null)
+        {
+            _systemAIManager.StateChanged += OnStateChanged;
+            _systemAIManager.LogEntryReceived += OnLogEntryReceived;
+        }
+    }
+
+    /// <summary>
+    /// Wires up event handlers for buttons and state/log events.
+    /// </summary>
+    private void WireUpEvents()
+    {
         LoadModelButton.Click += OnLoadModelClicked;
         StopButton.Click += OnStopClicked;
         RestartButton.Click += OnRestartClicked;
         AdvancedSettingsButton.Click += OnAdvancedSettingsClicked;
 
-        _systemAIManager.StateChanged += OnStateChanged;
-        _systemAIManager.LogEntryReceived += OnLogEntryReceived;
-
-        _ = DiscoverModelsAsync();
+        if (_systemAIManager != null)
+        {
+            _systemAIManager.StateChanged += OnStateChanged;
+            _systemAIManager.LogEntryReceived += OnLogEntryReceived;
+        }
     }
 
     private async Task DiscoverModelsAsync()
@@ -65,14 +109,24 @@ public partial class SystemModelSelector : UserControl
         });
     }
 
-    private void UpdateStateDisplay(SystemAIStateChanged state)
+    private void UpdateStateDisplay(SystemAIStateChanged e)
     {
-        var accentRed = (ISolidColorBrush)(this.FindResource("AccentRed") ?? Avalonia.Media.Brushes.Gray);
-        var accentGreen = (ISolidColorBrush)(this.FindResource("AccentGreen") ?? Avalonia.Media.Brushes.Green);
-        StatusBadge.Background = state.NewState == SystemAIState.Running ? accentGreen : accentRed;
-        StatusText.Text = state.NewState.ToString();
+        var statusColor = e.NewState switch
+        {
+            SystemAIState.Running => "#4CAF50",
+            SystemAIState.Stopped => "#FF6B6B",
+            SystemAIState.Starting => "#FF9800",
+            SystemAIState.Stopping => "#FF9800",
+            SystemAIState.Error => "#FF6B6B",
+            _ => "#888888"
+        };
 
-        if (state.NewState == SystemAIState.Running)
+        var accentRed = (ISolidColorBrush)(this.FindResource("AccentRed") ?? Brushes.Gray);
+        var accentGreen = (ISolidColorBrush)(this.FindResource("AccentGreen") ?? Brushes.Green);
+        StatusBadge.Background = e.NewState == SystemAIState.Running ? accentGreen : accentRed;
+        StatusText.Text = e.NewState.ToString();
+
+        if (e.NewState == SystemAIState.Running)
         {
             StopButton.IsVisible = true;
             RestartButton.IsVisible = true;
@@ -85,10 +139,10 @@ public partial class SystemModelSelector : UserControl
             LoadModelButton.IsVisible = true;
         }
 
-        if (!string.IsNullOrEmpty(state.ModelPath))
+        if (!string.IsNullOrEmpty(e.ModelPath))
         {
-            ModelNameText.Text = System.IO.Path.GetFileNameWithoutExtension(state.ModelPath);
-            ModelPathText.Text = state.ModelPath;
+            ModelNameText.Text = System.IO.Path.GetFileNameWithoutExtension(e.ModelPath);
+            ModelPathText.Text = e.ModelPath;
         }
     }
 
@@ -109,21 +163,34 @@ public partial class SystemModelSelector : UserControl
         if (files?.Any() == true)
         {
             var modelPath = files.First().Path.LocalPath;
-            await _systemAIManager.StartAsync(modelPath);
+            _systemAIManager?.StartAsync(modelPath);
         }
     }
 
-    private void OnStopClicked(object? sender, RoutedEventArgs e) => _systemAIManager.Stop();
-    private void OnRestartClicked(object? sender, RoutedEventArgs e)
+    private void OnStopClicked(object? sender, RoutedEventArgs e)
     {
-        if (_systemAIManager.CurrentModelPath != null)
-            _ = _systemAIManager.StartAsync(_systemAIManager.CurrentModelPath);
+        _systemAIManager?.Stop();
     }
 
-    private void OnAdvancedSettingsClicked(object? sender, RoutedEventArgs e) { /* TODO */ }
+    private void OnRestartClicked(object? sender, RoutedEventArgs e)
+    {
+        if (_systemAIManager?.CurrentModelPath != null)
+        {
+            _ = _systemAIManager.StartAsync(_systemAIManager.CurrentModelPath);
+        }
+    }
+
+    private void OnAdvancedSettingsClicked(object? sender, RoutedEventArgs e)
+    {
+        // TODO: Show advanced settings dialog
+    }
+
     private void OnLogEntryReceived(object? sender, LogEntry e)
     {
-        Avalonia.Threading.Dispatcher.UIThread.Post(() => { /* update log */ });
+        Avalonia.Threading.Dispatcher.UIThread.Post(() =>
+        {
+            // Update log display
+        });
     }
 
     private static string FormatSize(long bytes)
