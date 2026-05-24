@@ -22,8 +22,6 @@ public partial class MainModelSelector : UserControl
     private readonly MainAIManager _mainAIManager;
     private readonly GgufModelDownloader _modelDownloader;
     private readonly LogViewerService _logViewer;
-    private bool _isInitialized;
-
     public MainModelSelector(
         MainAIManager mainAIManager,
         GgufModelDownloader modelDownloader,
@@ -46,7 +44,6 @@ public partial class MainModelSelector : UserControl
 
         // Discover models
         _ = DiscoverModelsAsync();
-        _isInitialized = true;
     }
 
     private async Task DiscoverModelsAsync()
@@ -90,8 +87,8 @@ public partial class MainModelSelector : UserControl
             _ => "#888888"
         };
 
-        var accentRed = (ISolidColorBrush)this.FindResource("AccentRed") ?? Brushes.Gray;
-        var accentGreen = (ISolidColorBrush)this.FindResource("AccentGreen") ?? Brushes.Green;
+        var accentRed = (ISolidColorBrush)(this.FindResource("AccentRed") ?? Brushes.Gray);
+        var accentGreen = (ISolidColorBrush)(this.FindResource("AccentGreen") ?? Brushes.Green);
         StatusBadge.Background = state.NewState == MainAIState.Running ? accentGreen : accentRed;
         StatusText.Text = state.NewState.ToString();
 

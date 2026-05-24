@@ -1,6 +1,8 @@
 using Microsoft.Extensions.Logging;
-using OpenLMStudio.Application.Interfaces;
+using OpenLMStudio.Domain.Models.ContextCompression;
 using OpenLMStudio.Domain.Models.LLamaCpp;
+using AppEngineType = OpenLMStudio.Application.Interfaces.EngineType;
+using DomainEngineType = OpenLMStudio.Domain.Models.ContextCompression.EngineType;
 using DomainLogLevel = OpenLMStudio.Domain.Models.ContextCompression.LogLevel;
 
 namespace OpenLMStudio.Infrastructure.Services;
@@ -27,7 +29,7 @@ public class SystemAIManager : IDisposable
     private string? _currentBinaryPath;
     private BackendType _currentBackend = BackendType.Cpu;
     private RecommendedSettings? _currentSettings;
-    private EngineType _engineId = EngineType.SystemAI;
+    private AppEngineType _engineId = AppEngineType.SystemAI;
 
     public event EventHandler<SystemAIStateChanged>? StateChanged;
     public event EventHandler<LogEntry>? LogEntryReceived;
@@ -247,7 +249,15 @@ public class SystemAIManager : IDisposable
                 {
                     _engineLogger.HandleEngineStdout(_engineId, e.Data);
                     var level = InferLogLevel(e.Data);
+                    var logEntry = new LogEntry(
+                        Id: Guid.NewGuid().ToString(),
+                        Timestamp: DateTime.UtcNow,
+                        Level: level,
+                        Message: e.Data,
+                        Source: (DomainEngineType)(int)_engineId,
+                        IsImportant: IsImportantMessage(e.Data));
                     _logViewer.AddLogEntry(_engineId, level, e.Data, IsImportantMessage(e.Data));
+                    LogEntryReceived?.Invoke(this, logEntry);
                 }
             };
 
@@ -256,7 +266,15 @@ public class SystemAIManager : IDisposable
                 if (!string.IsNullOrEmpty(e.Data))
                 {
                     _engineLogger.HandleEngineStderr(_engineId, e.Data);
+                    var logEntry = new LogEntry(
+                        Id: Guid.NewGuid().ToString(),
+                        Timestamp: DateTime.UtcNow,
+                        Level: DomainLogLevel.Warn,
+                        Message: $"stderr: {e.Data}",
+                        Source: (DomainEngineType)(int)_engineId,
+                        IsImportant: false);
                     _logViewer.AddLogEntry(_engineId, DomainLogLevel.Warn, $"stderr: {e.Data}");
+                    LogEntryReceived?.Invoke(this, logEntry);
                 }
             };
 

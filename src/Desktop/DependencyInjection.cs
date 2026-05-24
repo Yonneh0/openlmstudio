@@ -42,6 +42,9 @@ public static class DependencyInjection
         services.AddSingleton<InfraServices.MainAIManager>();
         services.AddSingleton<InfraServices.SystemAIManager>();
 
+        // ConversationManager (required by App.axaml.cs)
+        services.AddSingleton<IConversationManager, InfraServices.FileConversationManager>();
+
         return services;
     }
 
