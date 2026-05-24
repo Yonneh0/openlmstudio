@@ -283,7 +283,9 @@ public class GgufParser : IDisposable
                             break;
                         var boolVal = boolByte[0] != 0;
                         if (mappedKey == "architecture")
-                            metadata.GpuSupportAvailable = boolVal;
+                            metadata.Architecture = boolVal ? "gpu" : "cpu";
+                        else
+                            metadata.SetMetadataProperty(mappedKey, boolVal ? "true" : "false");
                         break;
 
                     default:
@@ -738,7 +740,7 @@ public record GgufHeaderInfo
     /// <summary>
     /// Whether the model is quantized.
     /// </summary>
-    public bool IsQuantized { get; init; }
+    public bool IsQuantized { get; set; }
 
     /// <summary>
     /// Quantization type (e.g., "Q4_0", "Q8_0").
