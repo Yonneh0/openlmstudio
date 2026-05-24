@@ -68,16 +68,17 @@ public record ModelRecommendation(
 /// <summary>
 /// Recommended settings for a model.
 /// </summary>
-public record RecommendedSettings(
-    int GpuLayers,
-    int ContextSize,
-    int BatchSize,
-    int Threads,
-    bool FlashAttention,
-    bool KvOffload,
-    bool Mmap,
-    bool Mlock,
-    string? Pooling,
-    bool Embedding,
-    bool Reranking
-);
+public record RecommendedSettings
+{
+    public int GpuLayers { get; set; }
+    public int ContextSize { get; set; }
+    public int BatchSize { get; set; }
+    public int Threads { get; set; }
+    public bool FlashAttention { get; set; }
+    public bool KvOffload { get; set; }
+    public bool Mmap { get; set; }
+    public bool Mlock { get; set; }
+    public string? Pooling { get; set; }
+    public bool Embedding { get; set; }
+    public bool Reranking { get; set; }
+}
