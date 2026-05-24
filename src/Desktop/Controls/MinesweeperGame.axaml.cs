@@ -27,7 +27,7 @@ public class SevenSegmentDisplay : Panel
     private const int TotalHeight = DigitHeight;
 
     private Canvas? _canvas;
-    private Avalonia.Controls.Shapes.Path[]? _segments;
+    private Avalonia.Controls.Shapes.Rectangle[]? _segments;
     private int _digit;
 
     // Classic Minesweeper LED red (bright, vivid red for active segments)
@@ -61,8 +61,8 @@ public class SevenSegmentDisplay : Panel
     ];
 
     // Pre-computed segment geometries for horizontal and vertical segments
-    // Horizontal: rectangle with angled cuts on left and right
-    // Vertical: rectangle with angled cuts on top and bottom
+    // Horizontal: rectangle with angled cuts on left and right (DigitWidth x SegThickness)
+    // Vertical: rectangle with angled cuts on top and bottom (SegThickness x DigitHeight)
     private static readonly Geometry _hSegGeo;
     private static readonly Geometry _vSegGeo;
 
@@ -70,10 +70,9 @@ public class SevenSegmentDisplay : Panel
     {
         var t = SegThickness;
         var hw = t / 4;
-        var t2 = 2 * t;
 
         // Horizontal segment (angled cuts on left and right):
-        // Points: (0,t/2) -> (0,0) -> (t/2,hw) -> (W-t/2,hw) -> (W,0) -> (W,t) -> (W-t/2,t-hw) -> (t/2,t-hw) -> (0,t) -> (0,t/2)
+        // Full width (DigitWidth) x SegThickness, with angled cuts
         var hPts = new Point[]
         {
             new(0, t/2),
@@ -85,23 +84,22 @@ public class SevenSegmentDisplay : Panel
             new(DigitWidth - t/2, t - hw),
             new(t/2, t - hw),
         };
-        var hPath = "M" + string.Join(" L", hPts) + " Z";
-        _hSegGeo = Geometry.Parse(hPath);
+        _hSegGeo = Geometry.Parse("M" + string.Join(" L", hPts) + " Z");
 
         // Vertical segment (angled cuts on top and bottom):
+        // SegThickness x DigitHeight, with angled cuts
         var vPts = new Point[]
         {
             new(t/2, 0),
             new(0, t/2),
             new(hw, t/2),
-            new(hw, t2 - t/2),
-            new(hw, t2),
-            new(t2 - hw, t2),
-            new(t2 - hw, t/2),
+            new(hw, DigitHeight - t/2),
+            new(hw, DigitHeight),
+            new(t - hw, DigitHeight),
+            new(t - hw, t/2),
             new(t/2, t/2),
         };
-        var vPath = "M" + string.Join(" L", vPts) + " Z";
-        _vSegGeo = Geometry.Parse(vPath);
+        _vSegGeo = Geometry.Parse("M" + string.Join(" L", vPts) + " Z");
     }
 
     private void UpdateSegments()
@@ -126,14 +124,74 @@ public class SevenSegmentDisplay : Panel
             for (int segIdx = 0; segIdx < 7; segIdx++)
             {
                 var isActive = pattern.Contains(segIdx);
-                var path = _segments[segIndex];
+                var rect = _segments[segIndex];
 
-                // Horizontal segments: 0, 3, 6
-                // Vertical segments: 1, 2, 4, 5
-                path.Data = (segIdx == 0 || segIdx == 3 || segIdx == 6) ? _hSegGeo : _vSegGeo;
-                Canvas.SetLeft(path, offsetX);
-                Canvas.SetTop(path, 0);
-                path.Fill = isActive ? _segmentBrush : _ghostBrush;
+                // 7 segments per digit, numbered:
+                //  000
+                // 1   2
+                //  333
+                // 4   5
+                //  666
+                // Horizontal (0,3,6): full width (DigitWidth), SegThickness tall
+                // Vertical (1,2,4,5): SegThickness wide, DigitHeight tall
+                if (segIdx == 0)
+                {
+                    // Top horizontal
+                    rect.Width = DigitWidth;
+                    rect.Height = SegThickness;
+                    Canvas.SetLeft(rect, offsetX);
+                    Canvas.SetTop(rect, 0);
+                }
+                else if (segIdx == 1)
+                {
+                    // Upper-left vertical
+                    rect.Width = SegThickness;
+                    rect.Height = DigitHeight;
+                    Canvas.SetLeft(rect, offsetX);
+                    Canvas.SetTop(rect, 0);
+                }
+                else if (segIdx == 2)
+                {
+                    // Upper-right vertical
+                    rect.Width = SegThickness;
+                    rect.Height = DigitHeight;
+                    Canvas.SetLeft(rect, offsetX + DigitWidth - SegThickness);
+                    Canvas.SetTop(rect, 0);
+                }
+                else if (segIdx == 3)
+                {
+                    // Middle horizontal
+                    rect.Width = DigitWidth;
+                    rect.Height = SegThickness;
+                    Canvas.SetLeft(rect, offsetX);
+                    Canvas.SetTop(rect, (DigitHeight - SegThickness) / 2);
+                }
+                else if (segIdx == 4)
+                {
+                    // Lower-left vertical
+                    rect.Width = SegThickness;
+                    rect.Height = DigitHeight;
+                    Canvas.SetLeft(rect, offsetX);
+                    Canvas.SetTop(rect, (DigitHeight - 2 * SegThickness) / 2);
+                }
+                else if (segIdx == 5)
+                {
+                    // Lower-right vertical
+                    rect.Width = SegThickness;
+                    rect.Height = DigitHeight;
+                    Canvas.SetLeft(rect, offsetX + DigitWidth - SegThickness);
+                    Canvas.SetTop(rect, (DigitHeight - 2 * SegThickness) / 2);
+                }
+                else // segIdx == 6
+                {
+                    // Bottom horizontal
+                    rect.Width = DigitWidth;
+                    rect.Height = SegThickness;
+                    Canvas.SetLeft(rect, offsetX);
+                    Canvas.SetTop(rect, DigitHeight - SegThickness);
+                }
+
+                rect.Fill = isActive ? _segmentBrush : _ghostBrush;
                 segIndex++;
             }
         }
@@ -171,16 +229,18 @@ public class SevenSegmentDisplay : Panel
             Fill = _bgBrush
         });
 
-        // Create 21 segment paths (7 per digit x 3 digits)
-        _segments = new Avalonia.Controls.Shapes.Path[21];
+        // Create 21 segment rectangles (7 per digit x 3 digits)
+        _segments = new Rectangle[21];
         for (int i = 0; i < 21; i++)
         {
-            var path = new Avalonia.Controls.Shapes.Path
+            var rect = new Rectangle
             {
-                Fill = _bgBrush
+                Fill = _bgBrush,
+                RadiusX = 1,
+                RadiusY = 1,
             };
-            _segments[i] = path;
-            _canvas.Children.Add(path);
+            _segments[i] = rect;
+            _canvas.Children.Add(rect);
         }
 
         this.Children.Add(_canvas);
