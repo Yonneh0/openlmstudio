@@ -18,63 +18,73 @@
         <SolidColorBrush x:Key="AccentTeal" Color="#00BCD4"/>
     </UserControl.Resources>
 
-    <Panel>
-        <StackPanel Margin="8,4,8,4">
-            <!-- Model name and status row -->
-            <DockPanel Margin="0,0,0,6">
-                <TextBlock x:Name="ModelNameText" Text="No Model" Foreground="{StaticResource TextPrimary}" FontWeight="SemiBold" FontSize="13" DockPanel.Dock="Left" TextTrimming="CharacterEllipsis"/>
-                <Border x:Name="StatusBadge" Background="{StaticResource AccentRed}" CornerRadius="2" Padding="6,2" DockPanel.Dock="Right">
-                    <TextBlock x:Name="StatusText" Text="Stopped" FontSize="9" Foreground="White" TextAlignment="Center"/>
-                </Border>
-            </DockPanel>
+    <Grid>
+        <Grid.RowDefinitions>
+            <RowDefinition Height="*"/>
+            <RowDefinition Height="Auto"/>
+        </Grid.RowDefinitions>
 
-            <!-- Model type indicator -->
-            <TextBlock x:Name="ModelTypeText" Text="SystemAI" Foreground="{StaticResource AccentTeal}" FontWeight="SemiBold" FontSize="10" Margin="0,0,0,2"/>
+        <!-- Scrollable model info -->
+        <ScrollViewer Grid.Row="0" VerticalScrollBarVisibility="Auto">
+            <StackPanel Margin="8,4,8,4">
+                <!-- Model name and status row -->
+                <DockPanel Margin="0,0,0,6">
+                    <TextBlock x:Name="ModelNameText" Text="No Model" Foreground="{StaticResource TextPrimary}" FontWeight="SemiBold" FontSize="13" DockPanel.Dock="Left" TextTrimming="CharacterEllipsis"/>
+                    <Border x:Name="StatusBadge" Background="{StaticResource AccentRed}" CornerRadius="2" Padding="6,2" DockPanel.Dock="Right">
+                        <TextBlock x:Name="StatusText" Text="Stopped" FontSize="9" Foreground="White" TextAlignment="Center"/>
+                    </Border>
+                </DockPanel>
 
-            <!-- Engine info row -->
-            <StackPanel Orientation="Horizontal" Margin="0,2,0,4">
-                <TextBlock x:Name="BackendText" Text="CPU" Foreground="{StaticResource TextSecondary}" FontSize="10" Margin="0,0,8,0"/>
-                <TextBlock x:Name="PortText" Text="Port: --" Foreground="{StaticResource TextSecondary}" FontSize="10"/>
-            </StackPanel>
+                <!-- Model type indicator -->
+                <TextBlock x:Name="ModelTypeText" Text="SystemAI" Foreground="{StaticResource AccentTeal}" FontWeight="SemiBold" FontSize="10" Margin="0,0,0,2"/>
 
-            <!-- Model path -->
-            <TextBlock x:Name="ModelPathText" Text="" Foreground="{StaticResource TextMuted}" FontSize="10" TextWrapping="Wrap" MaxWidth="240" Margin="0,0,0,4"/>
-
-            <!-- Settings row -->
-            <StackPanel Orientation="Horizontal" Margin="0,4,0,4">
-                <Border Background="{StaticResource BgTertiary}" CornerRadius="3" Padding="6,2" Margin="0,0,4,0">
-                    <TextBlock x:Name="GpuLayersText" Text="GPU: --" FontSize="9" Foreground="{StaticResource TextSecondary}"/>
-                </Border>
-                <Border Background="{StaticResource BgTertiary}" CornerRadius="3" Padding="6,2" Margin="0,0,4,0">
-                    <TextBlock x:Name="CtxSizeText" Text="Ctx: --" FontSize="9" Foreground="{StaticResource TextSecondary}"/>
-                </Border>
-                <Border Background="{StaticResource BgTertiary}" CornerRadius="3" Padding="6,2">
-                    <TextBlock x:Name="BatchSizeText" Text="Batch: --" FontSize="9" Foreground="{StaticResource TextSecondary}"/>
-                </Border>
-            </StackPanel>
-
-            <!-- Status info -->
-            <Border Background="{StaticResource BgTertiary}" CornerRadius="3" Padding="6,4" Margin="0,4,0,4">
-                <StackPanel>
-                    <TextBlock x:Name="StatusInfoText" Text="Ready" FontSize="9" Foreground="{StaticResource TextSecondary}"/>
+                <!-- Engine info row -->
+                <StackPanel Orientation="Horizontal" Margin="0,2,0,4">
+                    <TextBlock x:Name="BackendText" Text="CPU" Foreground="{StaticResource TextSecondary}" FontSize="10" Margin="0,0,8,0"/>
+                    <TextBlock x:Name="PortText" Text="Port: --" Foreground="{StaticResource TextSecondary}" FontSize="10"/>
                 </StackPanel>
-            </Border>
 
-            <!-- Actions row -->
-            <StackPanel Orientation="Horizontal" Margin="0,4,0,0">
+                <!-- Model path -->
+                <TextBlock x:Name="ModelPathText" Text="" Foreground="{StaticResource TextMuted}" FontSize="10" TextWrapping="Wrap" MaxWidth="240" Margin="0,0,0,4"/>
+
+                <!-- Settings row -->
+                <StackPanel Orientation="Horizontal" Margin="0,4,0,4">
+                    <Border Background="{StaticResource BgTertiary}" CornerRadius="3" Padding="6,2" Margin="0,0,4,0">
+                        <TextBlock x:Name="GpuLayersText" Text="GPU: --" FontSize="9" Foreground="{StaticResource TextSecondary}"/>
+                    </Border>
+                    <Border Background="{StaticResource BgTertiary}" CornerRadius="3" Padding="6,2" Margin="0,0,4,0">
+                        <TextBlock x:Name="CtxSizeText" Text="Ctx: --" FontSize="9" Foreground="{StaticResource TextSecondary}"/>
+                    </Border>
+                    <Border Background="{StaticResource BgTertiary}" CornerRadius="3" Padding="6,2">
+                        <TextBlock x:Name="BatchSizeText" Text="Batch: --" FontSize="9" Foreground="{StaticResource TextSecondary}"/>
+                    </Border>
+                </StackPanel>
+
+                <!-- Status info -->
+                <Border Background="{StaticResource BgTertiary}" CornerRadius="3" Padding="6,4" Margin="0,4,0,4">
+                    <StackPanel>
+                        <TextBlock x:Name="StatusInfoText" Text="Ready" FontSize="9" Foreground="{StaticResource TextSecondary}"/>
+                    </StackPanel>
+                </Border>
+
+                <!-- Download progress -->
+                <Border x:Name="DownloadProgressArea" Background="{StaticResource BgTertiary}" CornerRadius="4" Padding="8" Margin="0,4,0,0" IsVisible="False">
+                    <StackPanel>
+                        <TextBlock x:Name="DownloadProgressText" Text="Downloading engine..." Foreground="{StaticResource TextPrimary}" FontSize="10"/>
+                        <ProgressBar x:Name="DownloadProgressBar" Value="0" Minimum="0" Maximum="100" Height="4" Margin="0,4,0,0"/>
+                    </StackPanel>
+                </Border>
+            </StackPanel>
+        </ScrollViewer>
+
+        <!-- Actions row (always visible at bottom) -->
+        <Border Grid.Row="1" Background="{StaticResource BgPrimary}">
+            <StackPanel Orientation="Horizontal" Margin="8,4,8,4">
                 <Button x:Name="LoadModelButton" Content="Load Model" Background="{StaticResource AccentBlue}" Foreground="White" Padding="8,4" FontSize="10" Margin="0,0,4,0" Height="26"/>
                 <Button x:Name="StopButton" Content="Stop" Background="{StaticResource AccentRed}" Foreground="White" Padding="8,4" FontSize="10" Margin="0,0,4,0" Height="26" IsVisible="False"/>
                 <Button x:Name="RestartButton" Content="Restart" Background="{StaticResource BgTertiary}" Foreground="{StaticResource TextPrimary}" Padding="8,4" FontSize="10" Margin="0,0,4,0" Height="26" IsVisible="False"/>
                 <Button x:Name="AdvancedSettingsButton" Content="⚙" Background="{StaticResource BgTertiary}" Foreground="{StaticResource TextSecondary}" Padding="8,4" FontSize="12" Height="26" Cursor="Hand"/>
             </StackPanel>
-
-            <!-- Download progress -->
-            <Border x:Name="DownloadProgressArea" Background="{StaticResource BgTertiary}" CornerRadius="4" Padding="8" Margin="0,4,0,0" IsVisible="False">
-                <StackPanel>
-                    <TextBlock x:Name="DownloadProgressText" Text="Downloading engine..." Foreground="{StaticResource TextPrimary}" FontSize="10"/>
-                    <ProgressBar x:Name="DownloadProgressBar" Value="0" Minimum="0" Maximum="100" Height="4" Margin="0,4,0,0"/>
-                </StackPanel>
-            </Border>
-        </StackPanel>
-    </Panel>
+        </Border>
+    </Grid>
 </UserControl>

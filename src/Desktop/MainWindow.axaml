@@ -99,8 +99,12 @@
         </Grid.RowDefinitions>
 
         <!-- ===== HEADER BAR (spans all columns) ===== -->
-        <Border Grid.Row="0" Grid.ColumnSpan="3" Background="{StaticResource BgPrimary}">
-            <Grid Margin="16,6,16,6">
+        <Border Grid.Row="0" Grid.ColumnSpan="3" Background="{StaticResource BgPrimary}" ClipToBounds="True">
+            <Grid Margin="16,0,16,0">
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="48"/>
+                    <RowDefinition Height="*"/>
+                </Grid.RowDefinitions>
                 <Grid.ColumnDefinitions>
                     <ColumnDefinition Width="Auto"/>
                     <ColumnDefinition Width="*"/>
@@ -112,25 +116,23 @@
                 </Grid.ColumnDefinitions>
 
                 <!-- OpenLMStudio Title -->
-                <TextBlock Grid.Column="0" Text="OpenLMStudio" FontSize="16" FontWeight="SemiBold" Foreground="#4FC3F7" VerticalAlignment="Center"/>
+                <TextBlock Grid.Row="0" Grid.Column="0" Text="OpenLMStudio" FontSize="16" FontWeight="SemiBold" Foreground="#4FC3F7" VerticalAlignment="Center"/>
 
                 <!-- Main AI Model (centered) -->
-                <StackPanel Grid.Column="1" Orientation="Horizontal" HorizontalAlignment="Center" VerticalAlignment="Center">
+                <StackPanel Grid.Row="0" Grid.Column="1" Orientation="Horizontal" HorizontalAlignment="Center" VerticalAlignment="Center" Height="48">
                     <TextBlock Text="Main AI:" Foreground="{StaticResource TextSecondary}" FontSize="12" VerticalAlignment="Center" Margin="0,0,8,0"/>
                     <Controls:MainModelSelector x:Name="MainModelSelectorControl"
-                                                  Width="280"
-                                                  Height="85"/>
+                                                  Width="280"/>
                 </StackPanel>
 
                 <!-- Chat Title (for ChatTitleText reference, hidden from view) -->
-                <TextBlock Grid.Column="2" x:Name="ChatTitleText" Text="Chat Session" FontWeight="SemiBold" Foreground="{StaticResource TextPrimary}" VerticalAlignment="Center" Margin="0,0,8,0" IsVisible="False"/>
+                <TextBlock Grid.Row="0" Grid.Column="2" x:Name="ChatTitleText" Text="Chat Session" FontWeight="SemiBold" Foreground="{StaticResource TextPrimary}" VerticalAlignment="Center" Margin="0,0,8,0" IsVisible="False"/>
 
                 <!-- System AI Model (aligned to right) -->
-                <StackPanel Grid.Column="6" Orientation="Horizontal" HorizontalAlignment="Right" VerticalAlignment="Center">
+                <StackPanel Grid.Row="0" Grid.Column="6" Orientation="Horizontal" HorizontalAlignment="Right" VerticalAlignment="Center" Height="48">
                     <TextBlock Text="System AI:" Foreground="{StaticResource TextSecondary}" FontSize="12" VerticalAlignment="Center" Margin="0,0,8,0"/>
                     <Controls:SystemModelSelector x:Name="SystemModelSelectorControl"
-                                                  Width="280"
-                                                  Height="85"/>
+                                                  Width="280"/>
                 </StackPanel>
             </Grid>
         </Border>
