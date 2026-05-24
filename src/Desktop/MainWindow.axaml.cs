@@ -50,6 +50,9 @@ public partial class MainWindow : Window
     private readonly IPinguStore? _pinguStore;
     private readonly IWindowSettings? _windowSettings;
 
+    /// <summary>Flag to prevent duplicate title saves when both LostFocus and overlay click fire.</summary>
+    private bool _titleEditSaving = false;
+
     /// <summary>Pingu avatar control for the bottom-right corner of the main window.</summary>
     private PinguAvatar? _pinguAvatar;
 
@@ -592,6 +595,247 @@ public partial class MainWindow : Window
     private void OnGitStatusClicked(object? sender, PointerPressedEventArgs e)
     {
         GitLogPopup?.SetValue(Avalonia.Controls.Primitives.Popup.IsOpenProperty, !GitLogPopup.IsOpen);
+    }
+
+    /// <summary>
+    /// Deletes the currently selected chat from the UI, backing store, and file system.
+    /// </summary>
+    private async void OnDeleteChatClicked(object? sender, RoutedEventArgs e)
+    {
+        if (_selectedChatId == null || _conversationManager == null)
+            return;
+
+        var chatId = _selectedChatId.Value;
+        _logger?.LogInformation("Deleting chat {ChatId}", chatId);
+
+        // Delete from conversation manager (removes from memory and deletes the associated file)
+        try
+        {
+            await _conversationManager.DeleteChatAsync(chatId);
+        }
+        catch (Exception ex)
+        {
+            _logger?.LogError(ex, "Failed to delete chat {ChatId}", chatId);
+            return;
+        }
+
+        // Clear the selected chat
+        _selectedChatId = null;
+
+        // Hide the delete button
+        DeleteChatButton?.SetValue(Button.IsVisibleProperty, false);
+
+        // Refresh the chat list
+        RefreshChatListAsync();
+
+        // Clear the message display
+        MessageDisplayPanel?.Children.Clear();
+        MessageDisplayPanel?.Children.Add(new Border
+        {
+            Background = new SolidColorBrush(Color.FromRgb(37, 37, 41)),
+            CornerRadius = new CornerRadius(8),
+            Padding = new Thickness(20),
+            Margin = new Thickness(0, 0, 0, 16),
+            Child = new TextBlock
+            {
+                Text = "No messages yet. Start a conversation!",
+                Foreground = new SolidColorBrush(Color.FromRgb(170, 170, 170)),
+                FontSize = 14
+            }
+        });
+    }
+
+    /// <summary>
+    /// Toggles the chat title between display mode and edit mode.
+    /// Uses Task.Run to avoid blocking the UI thread (prevents freeze).
+    /// </summary>
+    private void OnChatTitleClicked(object? sender, PointerPressedEventArgs e)
+    {
+        try
+        {
+            if (_selectedChatId == null)
+            {
+                ChatTitleDisplay.Text = "New Chat";
+                return;
+            }
+
+            if (ChatTitleDisplay == null || ChatTitleEdit == null)
+                return;
+
+            var chatId = _selectedChatId.Value;
+            var mgr = _conversationManager;
+
+            // Run the blocking call on a background thread to avoid freezing the UI
+            Task.Run(async () =>
+            {
+                var chat = mgr != null
+                    ? await mgr.LoadChatAsync(chatId).ConfigureAwait(false)
+                    : null;
+
+                await Dispatcher.UIThread.InvokeAsync(() =>
+                {
+                    if (chat != null && !string.IsNullOrEmpty(chat.Name))
+                    {
+                        ChatTitleDisplay.Text = chat.Name;
+                        ChatTitleEdit.Text = chat.Name;
+                    }
+                    else
+                    {
+                        ChatTitleDisplay.Text = "New Chat";
+                        ChatTitleEdit.Text = "New Chat";
+                    }
+
+                    // Switch to edit mode and show overlay
+                    ChatTitleDisplay.IsVisible = false;
+                    ChatTitleEdit.IsVisible = true;
+                    TitleEditOverlay.IsVisible = true;
+                    // Use SelectAll() instead of Focus() to avoid blocking the dispatcher thread
+                    ChatTitleEdit.SelectAll();
+                });
+            });
+        }
+        catch (Exception ex)
+        {
+            _logger?.LogWarning(ex, "Failed to load chat title for {ChatId}", _selectedChatId);
+            ChatTitleDisplay.Text = "New Chat";
+            ChatTitleEdit.Text = "New Chat";
+        }
+    }
+
+    /// <summary>
+    /// Saves the chat title and exits edit mode when focus is lost.
+    /// Uses a flag to prevent duplicate saves when both LostFocus and overlay click fire.
+    /// </summary>
+    private void OnChatTitleLostFocus(object? sender, RoutedEventArgs e)
+    {
+        if (ChatTitleEdit == null || ChatTitleDisplay == null)
+            return;
+
+        // If we're already in the process of saving (triggered by overlay click), skip
+        if (_titleEditSaving)
+            return;
+
+        // Switch mode immediately (before the save completes)
+        // This ensures that if the user clicks another control, the edit mode
+        // is already switched and subsequent clicks work correctly
+        var wasVisible = ChatTitleEdit.IsVisible;
+        ChatTitleEdit.IsVisible = false;
+        ChatTitleDisplay.IsVisible = true;
+
+        // Only save if the title was visible (i.e., we were actually in edit mode)
+        if (wasVisible)
+        {
+            _ = SaveChatTitleAsync(refreshList: true);
+        }
+    }
+
+    /// <summary>
+    /// Saves the chat title when Enter is pressed.
+    /// </summary>
+    private async void OnChatTitleKeyDown(object? sender, KeyEventArgs e)
+    {
+        if (e.Key == Key.Enter)
+        {
+            await SaveChatTitleAsync(refreshList: true);
+            ChatTitleEdit.IsVisible = false;
+            ChatTitleDisplay.IsVisible = true;
+        }
+        else if (e.Key == Key.Escape)
+        {
+            // Cancel edit - restore original title
+            if (_selectedChatId != null)
+            {
+                try
+                {
+                    var chat = _conversationManager != null
+                        ? await _conversationManager.LoadChatAsync(_selectedChatId.Value)
+                        : null;
+                    ChatTitleDisplay.Text = chat?.Name ?? "New Chat";
+                }
+                catch
+                {
+                    ChatTitleDisplay.Text = "New Chat";
+                }
+            }
+            ChatTitleEdit.IsVisible = false;
+            ChatTitleDisplay.IsVisible = true;
+        }
+    }
+
+    /// <summary>
+    /// Called when ChatTitleEdit loses focus while the window is not focused.
+    /// </summary>
+    private void OnChatTitleEditLostFocusWhileNotFocused(object? sender, RoutedEventArgs e)
+    {
+        // Always save and exit when this fires
+        OnChatTitleLostFocus(sender, e);
+    }
+
+    /// <summary>
+    /// Called when the transparent overlay is clicked while the title is being edited.
+    /// This ensures the title saves even when focus doesn't propagate properly.
+    /// </summary>
+    private void OnTitleEditOverlayPointerPressed(object? sender, PointerPressedEventArgs e)
+    {
+        // If already saving, don't duplicate
+        if (_titleEditSaving)
+            return;
+
+        _titleEditSaving = true;
+
+        // If the edit box is still visible, save and exit edit mode
+        if (ChatTitleEdit != null && ChatTitleEdit.IsVisible)
+        {
+            var title = ChatTitleEdit.Text?.Trim();
+            if (!string.IsNullOrEmpty(title) && _selectedChatId != null)
+            {
+                _ = SaveChatTitleAsync(refreshList: true);
+            }
+
+            // Hide edit mode
+            ChatTitleEdit.IsVisible = false;
+            ChatTitleDisplay.IsVisible = true;
+            TitleEditOverlay.IsVisible = false;
+
+            // Reset the flag after a short delay to let the LostFocus event settle
+            Dispatcher.UIThread.InvokeAsync(() =>
+            {
+                _titleEditSaving = false;
+            });
+        }
+        else
+        {
+            _titleEditSaving = false;
+        }
+    }
+
+    /// <summary>
+    /// Saves the current chat title to the conversation manager.
+    /// </summary>
+    private async Task SaveChatTitleAsync(bool refreshList = false)
+    {
+        if (_selectedChatId == null || ChatTitleEdit == null || _conversationManager == null)
+            return;
+
+        var newTitle = ChatTitleEdit.Text?.Trim();
+        if (string.IsNullOrEmpty(newTitle))
+            return;
+
+        try
+        {
+            await _conversationManager.RenameChatAsync(_selectedChatId.Value, newTitle);
+            ChatTitleDisplay.Text = newTitle;
+
+            // Refresh the chat list to update the name in the left sidebar
+            if (refreshList)
+            {
+                await Dispatcher.UIThread.InvokeAsync(() => RefreshChatListAsync());
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger?.LogError(ex, "Failed to rename chat {ChatId}", _selectedChatId.Value);
+        }
     }
 
     private static string GetGitCommitShort()

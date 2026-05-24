@@ -388,6 +388,22 @@ public class FileConversationManager : IConversationManager, IDisposable
         }
     }
 
+    public async Task RenameChatAsync(Guid chatId, string newName)
+    {
+        var chat = await LoadChatAsync(chatId);
+        if (chat == null)
+        {
+            _logger.LogWarning("Cannot rename - conversation not found: {ChatId}", chatId);
+            return;
+        }
+
+        chat.Name = newName;
+        chat.UpdatedAt = DateTime.UtcNow;
+        await SaveChatAsync(chat);
+
+        _logger.LogInformation("Renamed chat {ChatId} to \"{Name}\"", chatId, newName);
+    }
+
     private async Task SaveChatAsync(Chat chat)
     {
         var filePath = GetChatFilePath(chat.Id);

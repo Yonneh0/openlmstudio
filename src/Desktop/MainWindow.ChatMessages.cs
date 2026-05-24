@@ -139,6 +139,9 @@ public partial class MainWindow
 
         // Load the selected conversation's messages — fire-and-forget since this is called from an async void event handler
         _ = LoadConversationMessagesAsync(chatIdObj.Value).ConfigureAwait(false);
+
+        // Show the delete button when a chat is selected
+        DeleteChatButton?.SetValue(Button.IsVisibleProperty, true);
     }
 
     private async void OnNewChatClicked(object? sender, RoutedEventArgs e)
@@ -194,7 +197,12 @@ public partial class MainWindow
             }
 
             // Update chat title display
-            ChatTitleText.Text = "Chat Session";
+            var loadedChat = await _conversationManager.LoadChatAsync(chatId);
+            if (loadedChat != null)
+            {
+                ChatTitleText.Text = loadedChat.Name ?? "Chat Session";
+                ChatTitleDisplay.Text = loadedChat.Name ?? "Chat Session";
+            }
 
             // Refresh context budget after loading messages
             await RefreshContextBudgetAsync();

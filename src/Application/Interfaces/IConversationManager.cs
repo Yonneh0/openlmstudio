@@ -172,6 +172,14 @@ public interface IConversationManager : IDisposable
     /// Gets token count for a specific conversation by string ID.
     /// </summary>
     long GetConversationTokenCount(string chatId);
+
+    /// <summary>
+    /// Renames a chat to a new title.
+    /// </summary>
+    /// <param name="chatId">The chat to rename.</param>
+    /// <param name="newName">The new display name for the chat.</param>
+    /// <returns>Awaitable task indicating completion.</returns>
+    Task RenameChatAsync(Guid chatId, string newName);
 }
 
 /// <summary>
