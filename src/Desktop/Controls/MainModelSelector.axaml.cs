@@ -67,11 +67,11 @@ public partial class MainModelSelector : UserControl
         }
     }
 
-    private void OnStateChanged(object? sender, MainAIStateChanged e)
+    private void OnStateChanged(object? sender, MainAIStateChanged state)
     {
         Avalonia.Threading.Dispatcher.UIThread.Post(() =>
         {
-            UpdateStateDisplay(e);
+            UpdateStateDisplay(state);
         });
     }
 
