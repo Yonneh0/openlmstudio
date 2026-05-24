@@ -545,7 +545,7 @@ public class EngineBinaryDownloader : IDisposable
         foreach (var ext in extensions)
         {
             var found = Directory.GetFiles(directory, $"*{ext}", SearchOption.TopDirectoryOnly)
-                .Where(f => f.Contains("llama-server") || f.Contains("llama-server"));
+                .Where(f => f.Contains("llama-server"));
             if (found.Any())
                 return found.First();
         }

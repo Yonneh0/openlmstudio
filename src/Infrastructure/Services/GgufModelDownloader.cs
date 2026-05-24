@@ -8,8 +8,9 @@ namespace OpenLMStudio.Infrastructure.Services;
 
 /// <summary>
 /// Downloads GGUF models from HuggingFace and discovers local GGUF files.
+/// Manages a cache of discovered models and provides download functionality.
 /// </summary>
-public class GgufModelDownloader
+public class GgufModelDownloader : IDisposable
 {
     private readonly HttpClient _httpClient;
     private readonly ILogger<GgufModelDownloader> _logger;
@@ -19,6 +20,7 @@ public class GgufModelDownloader
     private readonly ModelRecommendationService _recommendationService;
     private readonly object _lock = new();
     private readonly Dictionary<string, GgufModelInfo> _modelCache = new();
+    private bool _disposed;
 
     public GgufModelDownloader(
         ILogger<GgufModelDownloader> logger,
@@ -39,6 +41,7 @@ public class GgufModelDownloader
 
     /// <summary>
     /// Discovers all GGUF models in the download directory and subdirectories.
+    /// Periodically checks the cancellation token to allow early exit.
     /// </summary>
     public async Task<IReadOnlyList<GgufModelInfo>> DiscoverModelsAsync(CancellationToken ct = default)
     {
@@ -47,6 +50,7 @@ public class GgufModelDownloader
 
         foreach (var file in ggufFiles)
         {
+            ct.ThrowIfCancellationRequested();
             try
             {
                 var info = await ParseModelInfoAsync(file, ct).ConfigureAwait(false);
@@ -64,6 +68,7 @@ public class GgufModelDownloader
 
     /// <summary>
     /// Downloads a model from HuggingFace.
+    /// Uses a unique filename that includes the repo ID to avoid collisions when multiple repos have the same file name.
     /// </summary>
     public async Task<GgufModelInfo> DownloadFromHuggingFaceAsync(
         string repoId,
@@ -75,7 +80,12 @@ public class GgufModelDownloader
             ? $"https://huggingface.co/{repoId}/resolve/{revision}/{fileName}"
             : $"https://huggingface.co/{repoId}/resolve/main/{fileName}";
 
-        var localPath = Path.Combine(_downloadDirectory, fileName ?? Path.GetFileName(url));
+        // Use a unique filename that includes the repo ID to avoid collisions
+        var safeRepoId = repoId.Replace("/", "_");
+        var localFileName = fileName ?? Path.GetFileName(url);
+        var localPath = Path.Combine(_downloadDirectory, $"{safeRepoId}_{localFileName}");
+        await Task.Yield(); // Ensure async continuation
+
         Directory.CreateDirectory(Path.GetDirectoryName(localPath)!);
 
         _logger.LogInformation("Downloading {FileName} from {RepoId}", fileName, repoId);
@@ -157,5 +167,12 @@ public class GgufModelDownloader
             _modelCache[name] = info;
 
         return info;
+    }
+
+    public void Dispose()
+    {
+        if (_disposed) return;
+        _disposed = true;
+        _httpClient.Dispose();
     }
 }

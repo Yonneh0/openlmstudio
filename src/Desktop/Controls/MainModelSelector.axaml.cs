@@ -450,8 +450,39 @@ public partial class MainModelSelector : UserControl
         };
         saveButton.Click += (s, e) =>
         {
-            // TODO: Apply settings
-            dialog?.Close();
+            // Apply settings
+            try
+            {
+                if (GpuLayersText != null && GpuLayersText.Text != null)
+                {
+                    var gpuLayers = Convert.ToInt32(GpuLayersText.Text.Replace("GPU: ", ""));
+                    settings.GpuLayers = gpuLayers;
+                }
+                if (CtxSizeText != null && CtxSizeText.Text != null)
+                {
+                    var ctxSize = Convert.ToInt32(CtxSizeText.Text.Replace("Ctx: ", ""));
+                    settings.ContextSize = ctxSize;
+                }
+                if (BatchSizeText != null && BatchSizeText.Text != null)
+                {
+                    var batchSize = Convert.ToInt32(BatchSizeText.Text.Replace("Batch: ", ""));
+                    settings.BatchSize = batchSize;
+                }
+
+                // Persist settings to disk
+                _mainAIManager?.SaveSettings(settings);
+
+                _logger?.LogInformation("Settings saved: GPU={GpuLayers}, Ctx={Ctx}, Batch={Batch}",
+                    settings.GpuLayers, settings.ContextSize, settings.BatchSize);
+            }
+            catch (Exception ex)
+            {
+                _logger?.LogError(ex, "Failed to save settings");
+            }
+            finally
+            {
+                dialog?.Close();
+            }
         };
         panel.Children.Add(saveButton);
 

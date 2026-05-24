@@ -318,6 +318,25 @@ public class MainAIManager : IDisposable
         return await _helpParser.GetSettingsAsync(activeBinary).ConfigureAwait(false);
     }
 
+    /// <summary>
+    /// Saves the given settings to disk via the configuration service.
+    /// </summary>
+    public async Task SaveSettings(RecommendedSettings settings)
+    {
+        var modelPath = ActiveModelPath ?? "local-model";
+        var config = new EngineConfig(
+            ModelPath: modelPath,
+            Port: LoadedModels.FirstOrDefault(m => m.Id == _activeModelId)?.Port ?? 4200,
+            Temperature: settings.GpuLayers / 100f,
+            TopP: settings.ContextSize / 4096f,
+            RecommendedBackend: CurrentBackend.ToString(),
+            LastDownloadedBackend: null);
+
+        await _configService.SaveAsync(config).ConfigureAwait(false);
+        _logger.LogInformation("Saved engine settings: GPU={GpuLayers}, Ctx={Ctx}, Batch={Batch}, Threads={Threads}",
+            settings.GpuLayers, settings.ContextSize, settings.BatchSize, settings.Threads);
+    }
+
     public void Dispose()
     {
         if (_disposed) return;

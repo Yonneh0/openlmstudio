@@ -86,7 +86,7 @@ public class GgufChatCompletionLoader : IModelLoader, IDisposable
     {
         // Delegate to the chat service — returns loaded models only.
         return await _chatService.GetLoadedModelsAsync()
-            .ContinueWith(t => t.Result.Select(m => m.Metadata));
+            .ContinueWith(t => t.Result.Select(m => m.Metadata), cancellationToken);
     }
 
     public long GetEstimatedModelSizeBytes()

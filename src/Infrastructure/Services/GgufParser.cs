@@ -288,6 +288,9 @@ public class GgufParser : IDisposable
 
                     default:
                         // Skip unknown value types (advance stream past value)
+                        // GGUF v2+ value types: 0=uint8, 1=int8, 2=uint16, 3=int16, 4=uint32, 5=int32,
+                        // 6=uint64, 7=int64, 8=float32, 9=bool, 10=string, 11=array
+                        SkipUnknownValueType(stream, valueType);
                         break;
                 }
             }
@@ -308,33 +311,46 @@ public class GgufParser : IDisposable
 
     /// <summary>
     /// Parses key-value pairs from GGUF format version 1 using little-endian byte order.
+    /// Version 1 stores pairs sequentially: each pair has a 4-byte key length, key bytes, then 64-byte value.
     /// </summary>
     private void ParseKeyValuePairsV1(Stream stream, Domain.Models.ModelMetadata metadata)
     {
-        // Version 1 has simpler binary structure - read with little-endian
-        var keyLengthBytes = new byte[4];
-        if (stream.Read(keyLengthBytes, 0, 4) != 4)
+        // Read the number of key-value pairs (8 bytes, uint64, little-endian)
+        var countBytes = new byte[8];
+        if (stream.Read(countBytes, 0, 8) != 8)
             return;
 
-        var keyLength = BinaryPrimitives.ReadUInt32LittleEndian(keyLengthBytes);
-        var keyBytes = new byte[keyLength];
-        if (stream.Read(keyBytes, 0, (int)keyLength) != (int)keyLength)
-            return;
+        var pairCount = BinaryPrimitives.ReadUInt64LittleEndian(countBytes);
 
-        var key = System.Text.Encoding.UTF8.GetString(keyBytes);
-        var mappedKey = TagMap.GetValueOrDefault(key, key);
+        for (ulong i = 0; i < Math.Min(pairCount, 256UL); i++) // Limit to prevent DoS
+        {
+            // Read key length (4 bytes for v1)
+            var keyLengthBytes = new byte[4];
+            if (stream.Read(keyLengthBytes, 0, 4) != 4)
+                return;
 
-        // Read value as string for v1 (64 bytes with null terminator)
-        var valBytes = new byte[64];
-        if (stream.Read(valBytes, 0, 64) != 64)
-            return;
+            var keyLength = BinaryPrimitives.ReadUInt32LittleEndian(keyLengthBytes);
+            if (keyLength > 1024) break; // Safety limit
 
-        var endIndex = Array.FindIndex(valBytes, 0, b => b == 0);
-        if (endIndex > 0)
-            valBytes = valBytes[..endIndex];
+            var keyBytes = new byte[keyLength];
+            if (stream.Read(keyBytes, 0, (int)keyLength) != (int)keyLength)
+                return;
 
-        var value = System.Text.Encoding.UTF8.GetString(valBytes);
-        SetMetadataProperty(metadata, mappedKey, value);
+            var key = System.Text.Encoding.UTF8.GetString(keyBytes);
+            var mappedKey = TagMap.GetValueOrDefault(key, key);
+
+            // Read value as string for v1 (64 bytes with null terminator)
+            var valBytes = new byte[64];
+            if (stream.Read(valBytes, 0, 64) != 64)
+                return;
+
+            var endIndex = Array.FindIndex(valBytes, 0, b => b == 0);
+            if (endIndex > 0)
+                valBytes = valBytes[..endIndex];
+
+            var value = System.Text.Encoding.UTF8.GetString(valBytes);
+            SetMetadataProperty(metadata, mappedKey, value);
+        }
     }
 
     /// <summary>
@@ -410,19 +426,28 @@ public class GgufParser : IDisposable
         {
             var key = kvp.Key.ToLowerInvariant();
             if (key.Contains("q4_0") || key.Contains("q4_1"))
+            {
+                isQuantized = true;
                 detectedQuantType ??= "Q4_0";
+            }
             else if (key.Contains("q5_0") || key.Contains("q5_1"))
+            {
+                isQuantized = true;
                 detectedQuantType ??= "Q5_0";
+            }
             else if (key.Contains("f16") || key.Contains("q8_0"))
+            {
+                isQuantized = true;
                 detectedQuantType ??= "Q8_0";
+            }
         }
 
-        // Note: IsQuantized is init-only, must be set in object initializer.
-        // We'll use a workaround - the value is already set to false by default.
-        if (isQuantized)
-            info.QuantizationType ??= detectedQuantType ?? "quantized";
+        // Update IsQuantized and QuantizationType based on detection results
+        info.IsQuantized = isQuantized;
         if (!string.IsNullOrEmpty(detectedQuantType))
             info.QuantizationType = detectedQuantType;
+        else if (isQuantized)
+            info.QuantizationType = "quantized";
 
         // Model name from metadata
         if (kvPairs.TryGetValue("general.name", out var modelName))
@@ -576,6 +601,49 @@ public class GgufParser : IDisposable
         var buffer = new byte[length];
         stream.Read(buffer, 0, (int)length);
         return Encoding.UTF8.GetString(buffer);
+    }
+
+    /// <summary>
+    /// Skips an unknown value type in the stream by reading the appropriate number of bytes.
+    /// </summary>
+    private void SkipUnknownValueType(Stream stream, uint valueType)
+    {
+        switch (valueType)
+        {
+            case 0: ReadUInt8(stream); break;
+            case 1: ReadInt8(stream); break;
+            case 2: ReadUInt16(stream); break;
+            case 3: ReadInt16(stream); break;
+            case 4: ReadUInt32(stream); break;
+            case 5: ReadInt32(stream); break;
+            case 6: ReadUInt64Aligned(stream); break;
+            case 7: ReadInt64Aligned(stream); break;
+            case 8: ReadFloat32(stream); break;
+            case 9: ReadBoolAligned(stream); break;
+            case 10: ReadStringAligned(stream); break;
+            case 11:
+                // Array type — read array type (uint8) and length (uint64), then skip
+                var arrayType = ReadUInt8(stream);
+                var arrayLen = ReadUInt64Aligned(stream);
+                // Skip array elements based on type
+                var elementSize = arrayType switch
+                {
+                    0 or 1 => 1,
+                    2 or 3 => 2,
+                    4 or 5 => 4,
+                    6 or 7 => 8,
+                    8 => 4,
+                    9 => 1,
+                    10 => 0, // String arrays — complex, skip conservatively
+                    _ => 0
+                };
+                if (elementSize > 0)
+                    stream.Seek((long)arrayLen * elementSize, SeekOrigin.Current);
+                break;
+            default:
+                // Unknown type — skip conservatively (assume no data follows)
+                break;
+        }
     }
 
     private string GetTensorDataTypeName(uint dataType) => dataType switch
