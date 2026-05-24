@@ -101,8 +101,8 @@ public class ModelRecommendationService
         var kvOffload = isMediumModel || isLargeModel;
         var mmap = true;
         var mlock = isSmallModel; // Small models benefit from memory lock
-        var embedding = IsEmbeddingModel(model.Name, model.Architecture);
-        var reranking = IsRerankingModel(model.Name);
+        var embedding = IsEmbeddingModel(name, model.Architecture);
+        var reranking = IsRerankingModel(name);
         var pooling = embedding ? "cls" : (reranking ? "rank" : null);
 
         return new RecommendedSettings(

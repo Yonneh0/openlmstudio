@@ -23,8 +23,8 @@ namespace OpenLMStudio.Desktop.Controls;
 public partial class MainModelSelector : UserControl
 {
     private MainAIManager? _mainAIManager;
-    private readonly GgufModelDownloader _modelDownloader;
-    private readonly LogViewerService _logViewer;
+    private GgufModelDownloader? _modelDownloader;
+    private LogViewerService? _logViewer;
     private readonly ILogger<MainModelSelector>? _logger;
     private readonly ObservableCollection<MainModelItem> _modelItems = new();
     private bool _isInitialized;
@@ -352,7 +352,7 @@ public partial class MainModelSelector : UserControl
         var parentWindow = Avalonia.Application.Current?.ApplicationLifetime is IClassicDesktopStyleApplicationLifetime desktop
             ? desktop.MainWindow
             : null;
-        win.ShowDialog(parentWindow);
+        win.ShowDialog(parentWindow ?? new Window());
     }
 
     private Control CreateSettingsPanel(RecommendedSettings settings, Window dialog)

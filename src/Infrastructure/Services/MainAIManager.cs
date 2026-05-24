@@ -74,8 +74,7 @@ public class MainAIManager : IDisposable
             lock (_lock)
             {
                 var active = _loadedModels.FirstOrDefault(m => m.Id == _activeModelId);
-                if (active.ServerProcess == null) return MainAIState.Stopped;
-                if (active.ServerProcess.HasExited) return MainAIState.Stopped;
+                if (active is null || active.ServerProcess is null || active.ServerProcess.HasExited) return MainAIState.Stopped;
                 return active.ModelPath != null ? MainAIState.Running : MainAIState.Idle;
             }
         }
@@ -172,7 +171,7 @@ public class MainAIManager : IDisposable
         lock (_lock)
         {
             var slot = _loadedModels.FirstOrDefault(m => m.Id == modelId);
-            if (slot.ServerProcess == null || slot.ServerProcess.HasExited)
+            if (slot is null || slot.ServerProcess is null || slot.ServerProcess.HasExited)
             {
                 _logger.LogWarning("Cannot switch to model {ModelId} — process has exited", modelId);
                 return;
@@ -229,7 +228,7 @@ public class MainAIManager : IDisposable
         lock (_lock)
         {
             var active = _loadedModels.FirstOrDefault(m => m.Id == _activeModelId);
-            if (active.ServerProcess == null) return;
+            if (active is null || active.ServerProcess is null) return;
 
             try
             {
