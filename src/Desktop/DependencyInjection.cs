@@ -1,28 +1,48 @@
+using System;
+using System.IO;
 using Microsoft.Extensions.DependencyInjection;
 using OpenLMStudio.Application.Interfaces;
-using OpenLMStudio.Application.Services;
-using OpenLMStudio.Desktop.Services;
+using OpenLMStudio.Domain.Models;
+using OpenLMStudio.Domain.Models.ContextCompression;
+using OpenLMStudio.Domain.Models.Pingu;
+using OpenLMStudio.Infrastructure.Services;
+using OpenLMStudio.Infrastructure.Models;
 
 namespace OpenLMStudio.Desktop;
 
 /// <summary>
-/// Desktop-specific DI registrations.
-/// Call AddDesktopServices() from App.axaml.cs before building the service provider.
+/// Registers infrastructure services with the DI container.
 /// </summary>
 public static class DependencyInjection
 {
-    public static IServiceCollection AddDesktopServices(this IServiceCollection services)
+    public static IServiceCollection AddInfrastructureServices(this IServiceCollection services)
     {
-        // Markdown renderer: converts markdown (via Markdig) to Avalonia-compatible markup
-        services.AddSingleton<IMarkdownRenderer, AvaloniaMarkdownRenderer>();
+        // Existing services
+        services.AddSingleton<IServerService, ServerService>();
+        services.AddSingleton<IModelRepository, ModelRepository>();
+        services.AddSingleton<IChatCompletionService, ChatCompletionService>();
+        services.AddSingleton<IChatContextManager, ChatContextManager>();
+        services.AddSingleton<IContextWindowBudgeter, ContextWindowBudgeter>();
+        services.AddSingleton<IPinguStore, PinguStore>();
+        services.AddSingleton<IWindowSettings, WindowSettings>();
+        services.AddSingleton<IEngineLogger, EngineLogger>();
+        services.AddSingleton<IGamesPanelService, GamesPanelService>();
+        services.AddSingleton<PanelService>();
+        services.AddSingleton<TabService>();
+        services.AddSingleton<AvaloniaMarkdownRenderer>();
+        services.AddSingleton<DependencyInjection>();
 
-        // Accessibility service: manages accessibility settings and control properties
-        services.AddSingleton<IAccessibilityService, AccessibilityService>();
-
-        // Pingu UI service implementations — window reference set after construction
-        services.AddSingleton<ITabService, TabService>();
-        services.AddSingleton<IPanelService, PanelService>();
-        services.AddSingleton<IGamesPanel, GamesPanelService>();
+        // New llama.cpp services
+        services.AddSingleton<BinaryRegistry>();
+        services.AddSingleton<EngineBinaryDownloader>();
+        services.AddSingleton<GgufParser>();
+        services.AddSingleton<ModelRecommendationService>();
+        services.AddSingleton<GgufModelDownloader>();
+        services.AddSingleton<LlamaServerHelpParser>();
+        services.AddSingleton<LogViewerService>();
+        services.AddSingleton<EngineConfigService>();
+        services.AddSingleton<MainAIManager>();
+        services.AddSingleton<SystemAIManager>();
 
         return services;
     }

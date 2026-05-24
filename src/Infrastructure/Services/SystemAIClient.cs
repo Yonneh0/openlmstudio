@@ -1,5 +1,5 @@
 using Microsoft.Extensions.Logging;
-using OpenLMStudio.Application.Interfaces;
+using OpenLMStudio.Domain.Models.LLamaCpp;
 using OpenLMStudio.Domain.Models.SystemAI;
 using System.Text;
 using System.Text.Json;

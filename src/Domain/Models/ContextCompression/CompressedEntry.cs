@@ -1,6 +1,29 @@
 namespace OpenLMStudio.Domain.Models.ContextCompression;
 
 /// <summary>
+/// Log level for engine logging.
+/// </summary>
+public enum LogLevel
+{
+    Trace,
+    Debug,
+    Info,
+    Warn,
+    Error
+}
+
+/// <summary>
+/// Type of engine being logged.
+/// </summary>
+public enum EngineType
+{
+    Primary,
+    SystemAI,
+    Diffusion,
+    Embedding
+}
+
+/// <summary>
 /// Represents a compressed conversation entry for context management.
 /// </summary>
 public class CompressedEntry

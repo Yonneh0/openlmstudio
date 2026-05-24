@@ -1,20 +1,10 @@
 using Microsoft.Extensions.Logging;
+using OpenLMStudio.Domain.Models.LLamaCpp;
 using System.Runtime.InteropServices;
 using System.Security.Cryptography;
 using System.Text.Json;
 
 namespace OpenLMStudio.Infrastructure.Services;
-
-/// <summary>
-/// Supported backend types for engine binaries.
-/// </summary>
-public enum BackendType
-{
-    Cpu,
-    Cuda,
-    Metal,
-    Vulkan
-}
 
 /// <summary>
 /// Configuration for engine binary downloads.
