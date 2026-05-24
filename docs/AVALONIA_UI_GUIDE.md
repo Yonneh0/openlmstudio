@@ -81,15 +81,36 @@
 - Use `Click` event in code-behind.
 - **In Avalonia 11.x+, Button styles in `Window.Styles` do NOT cascade to buttons.** You must apply styles directly to each Button using `Button.Styles`, or define styles on a parent container that the button can inherit from.
 - `Padding`, `Margin`, `HorizontalAlignment`, `VerticalAlignment`.
+- `VerticalContentAlignment="Center"` — centers content vertically within the button (useful for preventing text clipping in short buttons).
+- `FontFamily`, `FontSize`, `FontWeight` — control text appearance.
+- `IsDefault` — button activates on Enter key press.
+- `IsCancel` — button activates on Escape key press.
 - Use `Classes` attribute for style class names (e.g., `Classes="accent"`).
+- **Click vs PointerPressed:** Always use `Click` to determine whether a user has pressed a button, not `PointerPressed`. `Click` is the high-level event specific to `Button`, while `PointerPressed` is a low-level input event that `Button` handles internally (setting `IsHandled` to `true`).
+- **Keyboard accessibility:** Button is focusable by default and participates in tab navigation. Users activate it by pressing Space or Enter.
+- **Icon buttons:** For icon-only buttons, set `AutomationProperties.Name` so screen readers can identify the button.
+- `Command` property to bind to `ICommand` in your view model.
+- `CommandParameter` to pass a parameter to the command.
+- `ClickMode` — controls when Click fires:
+  - `Release` (default) — fires on pointer release
+  - `Press` — fires on pointer press
+  - `Hover` — fires when pointer enters the button
+- `Flyout` — attach a `Flyout` for contextual overlays.
 
 ### ToggleButton
 - Toggle switch button (two states: checked/unchecked).
-- `IsChecked` property.
+- `IsChecked` property (nullable `bool?` for three-state mode).
+- `IsThreeState` — set to `true` for three-state support (checked/unchecked/indeterminate).
 - `:checked` and `:unchecked` pseudo-selectors.
+- `:indeterminate` — pseudo-class for three-state mode when `IsChecked` is `null`.
 - `:pointerover` for hover (must be on Button.Styles or a parent container's Styles).
 - `:pressed` for press state.
 - **Critical:** In Avalonia 11.x+, use `ToggleButton.Styles` to apply hover styles — `Window.Styles` does not apply to ToggleButton children.
+- `VerticalContentAlignment="Center"` — centers content vertically within the button.
+- `ClickMode` — same as Button (Release, Press, Hover).
+- Inherits from `Avalonia.Controls.Primitives.ToggleButton`.
+- Base class for `CheckBox` and other toggle-style controls.
+- **Three-state binding:** When `IsThreeState="true"`, `IsChecked` cycles through `true` → `false` → `null`. Style each state independently using `:checked`, `:unchecked`, and `:indeterminate` pseudo classes.
 
 ### RadioButton
 - For exclusive selection groups (needs `GroupName` for grouping).

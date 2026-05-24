@@ -22,18 +22,26 @@
     <Window.Styles>
         <Style Selector="Button.accent"><Setter Property="Background" Value="{StaticResource AccentBlue}"/><Setter Property="Foreground" Value="White"/><Setter Property="Padding" Value="12,4"/></Style>
         <Style Selector="Button.action"><Setter Property="Background" Value="{StaticResource SendButtonColor}"/><Setter Property="Foreground" Value="White"/><Setter Property="Padding" Value="8,4"/></Style>
-        <Style Selector="ToggleButton.tab"><Setter Property="Background" Value="{StaticResource BgTertiary}"/><Setter Property="Foreground" Value="{StaticResource TextPrimary}"/><Setter Property="Padding" Value="12,6"/><Setter Property="BorderThickness" Value="0,0,0,2"/><Setter Property="FontSize" Value="12"/></Style>
+        <Style Selector="ToggleButton.tab"><Setter Property="Background" Value="{StaticResource BgTertiary}"/><Setter Property="Foreground" Value="{StaticResource TextPrimary}"/><Setter Property="Padding" Value="12,6"/><Setter Property="BorderThickness" Value="0,0,0,2"/><Setter Property="FontSize" Value="12"/><Setter Property="VerticalContentAlignment" Value="Center"/></Style>
         <Style Selector="Button.chatItem"><Setter Property="Background" Value="{StaticResource BgSecondary}"/><Setter Property="Foreground" Value="{StaticResource TextPrimary}"/><Setter Property="Padding" Value="12,8"/><Setter Property="FontSize" Value="13"/></Style>
         <Style Selector="Border.userMessage"><Setter Property="Background" Value="{StaticResource BgSecondary}"/><Setter Property="CornerRadius" Value="8,0,8,8"/><Setter Property="Padding" Value="16,12"/><Setter Property="Margin" Value="0,0,4,8"/></Style>
         <Style Selector="Border.assistantMessage"><Setter Property="Background" Value="{StaticResource BgTertiary}"/><Setter Property="CornerRadius" Value="0,8,8,8"/><Setter Property="Padding" Value="16,12"/><Setter Property="Margin" Value="4,0,0,8"/></Style>
         <Style Selector="Ellipse.statusDot"><Setter Property="Fill" Value="{StaticResource AccentRed}"/><Setter Property="Width" Value="10"/><Setter Property="Height" Value="10"/><Setter Property="Margin" Value="0,2,6,0"/></Style>
         <Style Selector="Border.inputArea"><Setter Property="Background" Value="{StaticResource BgSecondary}"/><Setter Property="CornerRadius" Value="4"/><Setter Property="Padding" Value="12"/></Style>
         <Style Selector="Border.searchBar"><Setter Property="Background" Value="{StaticResource BgSecondary}"/><Setter Property="CornerRadius" Value="4"/><Setter Property="Padding" Value="10,6"/></Style>
-        <Style Selector="ToggleButton.toolTab"><Setter Property="Background" Value="{StaticResource BgTertiary}"/><Setter Property="Foreground" Value="{StaticResource TextPrimary}"/><Setter Property="Padding" Value="12,6"/><Setter Property="Margin" Value="2,1"/><Setter Property="BorderThickness" Value="2,0,0,0"/><Setter Property="BorderBrush" Value="Transparent"/><Setter Property="FontSize" Value="11"/><Setter Property="CornerRadius" Value="3"/><Setter Property="Height" Value="24"/></Style>
+        <Style Selector="ToggleButton.toolTab"><Setter Property="Background" Value="{StaticResource BgTertiary}"/><Setter Property="Foreground" Value="{StaticResource TextPrimary}"/><Setter Property="Padding" Value="10,4"/><Setter Property="Margin" Value="2,1"/><Setter Property="BorderThickness" Value="2,0,0,0"/><Setter Property="BorderBrush" Value="Transparent"/><Setter Property="FontSize" Value="11"/><Setter Property="CornerRadius" Value="3"/><Setter Property="Height" Value="24"/><Setter Property="VerticalContentAlignment" Value="Center"/></Style>
         <Style Selector="ToggleButton.toolTab:checked"><Setter Property="Background" Value="{StaticResource BgSecondary}"/><Setter Property="Foreground" Value="{StaticResource AccentBlue}"/><Setter Property="BorderBrush" Value="{StaticResource AccentBlue}"/></Style>
         <Style Selector="ToggleButton.toolTab:hover"><Setter Property="Background" Value="#3A3A3E"/></Style>
         <Style Selector="Button.AgentModeToggle">
             <Setter Property="Background" Value="#2D2D30"/>
+        </Style>
+        <Style Selector="Button.settingsTab">
+            <Setter Property="Background" Value="{StaticResource BgTertiary}"/>
+            <Setter Property="Foreground" Value="{StaticResource TextPrimary}"/>
+            <Setter Property="Padding" Value="6,3"/>
+            <Setter Property="FontSize" Value="14"/>
+            <Setter Property="Height" Value="24"/>
+            <Setter Property="VerticalContentAlignment" Value="Center"/>
         </Style>
         <Style Selector="Button.AgentModeToggle.off">
             <Setter Property="Background" Value="#2D2D30"/>
@@ -50,7 +58,7 @@
         </Style>
         <Style Selector="ToggleButton.rightPanelTab"><Setter Property="Background" Value="{StaticResource BgTertiary}"/><Setter Property="Foreground" Value="{StaticResource TextPrimary}"/><Setter Property="Padding" Value="10,6"/><Setter Property="BorderThickness" Value="0"/><Setter Property="FontSize" Value="11"/><Setter Property="CornerRadius" Value="4"/></Style>
         <Style Selector="ToggleButton.rightPanelTab:checked"><Setter Property="Background" Value="{StaticResource AccentBlue}"/><Setter Property="Foreground" Value="White"/></Style>
-        <Style Selector="TabItem.toolTab"><Setter Property="Padding" Value="8,4"/><Setter Property="Margin" Value="2,1"/><Setter Property="Background" Value="{StaticResource BgTertiary}"/><Setter Property="Foreground" Value="{StaticResource TextPrimary}"/><Setter Property="FontSize" Value="11"/><Setter Property="BorderThickness" Value="2,0,0,0"/><Setter Property="BorderBrush" Value="Transparent"/><Setter Property="CornerRadius" Value="3"/><Setter Property="Height" Value="24"/><Setter Property="MinHeight" Value="24"/><Setter Property="MaxHeight" Value="24"/><Setter Property="HorizontalContentAlignment" Value="Center"/></Style>
+        <Style Selector="TabItem.toolTab"><Setter Property="Padding" Value="8,4"/><Setter Property="Margin" Value="2,1"/><Setter Property="Background" Value="{StaticResource BgTertiary}"/><Setter Property="Foreground" Value="{StaticResource TextPrimary}"/><Setter Property="FontSize" Value="11"/><Setter Property="BorderThickness" Value="2,0,0,0"/><Setter Property="BorderBrush" Value="Transparent"/><Setter Property="CornerRadius" Value="3"/><Setter Property="Height" Value="24"/><Setter Property="MinHeight" Value="24"/><Setter Property="MaxHeight" Value="24"/><Setter Property="HorizontalContentAlignment" Value="Center"/><Setter Property="VerticalContentAlignment" Value="Center"/></Style>
         <Style Selector="TabItem.toolTab:selected"><Setter Property="Background" Value="{StaticResource BgSecondary}"/><Setter Property="BorderBrush" Value="{StaticResource AccentBlue}"/><Setter Property="Foreground" Value="{StaticResource AccentBlue}"/></Style>
         <Style Selector="TabItem.toolTab:hover"><Setter Property="Background" Value="#3A3A3E"/></Style>
         <Style Selector="RadioButton.settingsTab"><Setter Property="Background" Value="{StaticResource BgTertiary}"/><Setter Property="Foreground" Value="{StaticResource TextPrimary}"/><Setter Property="Padding" Value="16,8"/><Setter Property="BorderThickness" Value="0,0,0,2"/><Setter Property="FontSize" Value="13"/></Style>
@@ -154,28 +162,30 @@
                 <Button x:Name="SettingsButton"
                         Content="&#x2699;&#xFE0E;"
                         Classes="toolTab"
-                        Padding="12,6"
+                        Padding="0"
                         Margin="0,0,2,0"
                         Background="{StaticResource BgTertiary}"
                         Foreground="{StaticResource TextPrimary}"
                         BorderThickness="2,0,0,0"
                         BorderBrush="Transparent"
-                        FontSize="12"
+                        FontSize="16"
                         Height="24"
                         MinWidth="24"
+                        HorizontalContentAlignment="Center"
+                        VerticalContentAlignment="Center"
                         Cursor="Hand"/>
                 <!-- Tab buttons -->
-                <ToggleButton x:Name="ChatTab" Content="Chats" Classes="toolTab" IsChecked="True" MinHeight="24"/>
-                <ToggleButton x:Name="ServerTab" Content="Server" Classes="toolTab" MinHeight="24"/>
-                <ToggleButton x:Name="ModelsTab" Content="Models" Classes="toolTab" MinHeight="24"/>
-                <ToggleButton x:Name="DevicesTab" Content="Devices" Classes="toolTab" MinHeight="24"/>
-                <ToggleButton x:Name="ContextTab" Content="Context" Classes="toolTab" MinHeight="24"/>
-                <ToggleButton x:Name="TasksTab" Content="Tasks" Classes="toolTab" MinHeight="24"/>
-                <ToggleButton x:Name="AgentTab" Content="Agent" Classes="toolTab" MinHeight="24"/>
-                <ToggleButton x:Name="GamesTab" Content="Games" Classes="toolTab" MinHeight="24"/>
-                <ToggleButton x:Name="PinguTab" Content="Pingu" Classes="toolTab" MinHeight="24"/>
-                <ToggleButton x:Name="ImageGenTab" Content="ImageGen" Classes="toolTab" MinHeight="24"/>
-                <ToggleButton x:Name="AnalysisTab" Content="Analysis" Classes="toolTab" MinHeight="24"/>
+                <ToggleButton x:Name="ChatTab" Content="Chats" Classes="toolTab" IsChecked="True" MinHeight="24" VerticalContentAlignment="Center"/>
+                <ToggleButton x:Name="ServerTab" Content="Server" Classes="toolTab" MinHeight="24" VerticalContentAlignment="Center"/>
+                <ToggleButton x:Name="ModelsTab" Content="Models" Classes="toolTab" MinHeight="24" VerticalContentAlignment="Center"/>
+                <ToggleButton x:Name="DevicesTab" Content="Devices" Classes="toolTab" MinHeight="24" VerticalContentAlignment="Center"/>
+                <ToggleButton x:Name="ContextTab" Content="Context" Classes="toolTab" MinHeight="24" VerticalContentAlignment="Center"/>
+                <ToggleButton x:Name="TasksTab" Content="Tasks" Classes="toolTab" MinHeight="24" VerticalContentAlignment="Center"/>
+                <ToggleButton x:Name="AgentTab" Content="Agent" Classes="toolTab" MinHeight="24" VerticalContentAlignment="Center"/>
+                <ToggleButton x:Name="GamesTab" Content="Games" Classes="toolTab" MinHeight="24" VerticalContentAlignment="Center"/>
+                <ToggleButton x:Name="PinguTab" Content="Pingu" Classes="toolTab" MinHeight="24" VerticalContentAlignment="Center"/>
+                <ToggleButton x:Name="ImageGenTab" Content="ImageGen" Classes="toolTab" MinHeight="24" VerticalContentAlignment="Center"/>
+                <ToggleButton x:Name="AnalysisTab" Content="Analysis" Classes="toolTab" MinHeight="24" VerticalContentAlignment="Center"/>
             </WrapPanel>
 
             <Grid Grid.Row="1">
@@ -183,7 +193,7 @@
                     <RowDefinition Height="Auto"/>
                     <RowDefinition Height="*"/>
                 </Grid.RowDefinitions>
-                <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Auto">
+                <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Disabled" HorizontalScrollBarVisibility="Disabled">
                     <StackPanel x:Name="LeftTabContentPanel">
                         <!-- Chat tab content -->
                         <StackPanel x:Name="ChatTabContent" IsVisible="True">
@@ -359,9 +369,7 @@
 
                         <!-- Games tab content -->
                         <StackPanel x:Name="GamesTabContent" IsVisible="False">
-                            <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Auto" Margin="0,8,0,0">
-                                <Controls:GamesPanel x:Name="LeftGamesPanel"/>
-                            </ScrollViewer>
+                            <Controls:GamesPanel x:Name="LeftGamesPanel" Margin="0,8,0,0"/>
                         </StackPanel>
 
                         <!-- Pingu tab content -->

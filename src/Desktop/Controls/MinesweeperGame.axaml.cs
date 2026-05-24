@@ -18,16 +18,19 @@ namespace OpenLMStudio.Desktop.Controls;
 public class SevenSegmentDisplay : Panel
 {
     private const int Digits = 3;
-    private const int DigitWidth = 18;
-    private const int DigitHeight = 36;
-    private const int Gap = 6;
-    private const int SegThickness = 4;
+    private const int DigitWidth = 24;
+    private const int DigitHeight = 60;
+    private const int Gap = 8;
+    private const int SegThickness = 6;
+    // Vertical segments: 24px tall with 2px gap between upper/lower halves
+    private const int VerticalSegHeight = 24;
+    private const int VerticalGap = 2;
 
     private const int TotalWidth = Digits * (DigitWidth + Gap) - Gap;
     private const int TotalHeight = DigitHeight;
 
     private Canvas? _canvas;
-    private Avalonia.Controls.Shapes.Rectangle[]? _segments;
+    private Avalonia.Controls.Shapes.Path[]? _segments;
     private int _digit;
 
     // Classic Minesweeper LED red (bright, vivid red for active segments)
@@ -61,55 +64,46 @@ public class SevenSegmentDisplay : Panel
     ];
 
     // Pre-computed segment geometries for horizontal and vertical segments
-    // Both are trapezoids wider at bottom (classic LED look).
-    // KEY: The geometry is defined in a unit square (0..1 x 0..1).
-    //      The Rectangle's Width/Height provide the bounding box, and Stretch.Fill
-    //      stretches the unit-square geometry to fit. This preserves the shape.
+    // Horizontal: rectangle with angled cuts on left and right (DigitWidth x SegThickness)
+    // Vertical: rectangle with angled cuts on top and bottom (SegThickness x DigitHeight)
+    // Trapezoidal segments (like real 7-segment LED displays)
+    // Horizontal: wider at base, narrower at top (trapezoid)
+    // Vertical: wider at base, narrower at top (trapezoid)
     private static readonly Geometry _hSegGeo;
     private static readonly Geometry _vSegGeo;
-
-    // Vertical segment spacing (24px tall, 2px gap between upper/lower halves)
-    private const int VerticalSegHeight = 24;
 
     static SevenSegmentDisplay()
     {
         var t = SegThickness;
-        var hw = t / 3;
-        var dW = DigitWidth;
+        var hw = t / 4;
 
-        // Horizontal segment (angled cuts on left and right):
-        // Bounding box: dW x t = 18 x 4 (aspect ratio 4.5)
-        // Top width: dW - 2*(dW - t) = 18 - 12 = 6
-        // Bottom width: dW = 18
-        // -> Wider at bottom, classic LED look
+        // Horizontal trapezoid (wider at bottom, narrower at top):
+        // Left side slopes inward (toward top), right side slopes inward (toward top)
         var hPts = new Point[]
         {
-            new(0, t/2),
-            new(0, 0),
-            new(t/2, hw),
-            new(dW - t/2, hw),
-            new(dW, 0),
-            new(dW, t),
-            new(dW - t/2, t - hw),
-            new(t/2, t - hw),
+            new(0, t),           // bottom-left (wide)
+            new(0, 0),           // top-left (wide)
+            new(hw, hw),         // top-left inner (narrow)
+            new(DigitWidth - hw, hw), // top-right inner (narrow)
+            new(DigitWidth, 0),  // top-right (wide)
+            new(DigitWidth, t),  // bottom-right (wide)
+            new(DigitWidth - hw, t - hw), // bottom-right inner (narrow)
+            new(hw, t - hw),     // bottom-left inner (narrow)
         };
         _hSegGeo = Geometry.Parse("M" + string.Join(" L", hPts) + " Z");
 
-        // Vertical segment (angled cuts on top and bottom):
-        // Bounding box: t x VerticalSegHeight = 6 x 24 (aspect ratio 4.0)
-        // Top width: 2*hw = 8/3 ≈ 2.67
-        // Bottom width: t = 4
-        // -> Wider at bottom, classic LED look (same as horizontal)
+        // Vertical trapezoid (wider at bottom, narrower at top):
+        // Left side slopes inward (toward top), right side slopes inward (toward top)
         var vPts = new Point[]
         {
-            new(t/2, 0),
-            new(t, t/2),
-            new(t - hw, t/2),
-            new(t - hw, VerticalSegHeight - t/2),
-            new(t - hw, VerticalSegHeight),
-            new(hw, VerticalSegHeight),
-            new(hw, t/2),
-            new(t/2, t/2),
+            new(t / 2, 0),              // top-center (narrow)
+            new(0, t / 2),             // top-left outer (wide)
+            new(hw, t / 2),            // top-left inner (narrow)
+            new(hw, DigitHeight - t / 2),  // bottom-left inner (narrow)
+            new(hw, DigitHeight),      // bottom-left (wide)
+            new(t - hw, DigitHeight),  // bottom-right (wide)
+            new(t - hw, t / 2),        // bottom-right inner (narrow)
+            new(t / 2, t / 2),         // top-right inner (narrow)
         };
         _vSegGeo = Geometry.Parse("M" + string.Join(" L", vPts) + " Z");
     }
@@ -136,74 +130,79 @@ public class SevenSegmentDisplay : Panel
             for (int segIdx = 0; segIdx < 7; segIdx++)
             {
                 var isActive = pattern.Contains(segIdx);
-                var rect = _segments[segIndex];
+                var path = _segments[segIndex];
 
                 // 7 segments per digit, numbered:
-                //  000
-                // 1   2
-                //  333
-                // 4   5
-                //  666
-                // Horizontal (0,3,6): full width (DigitWidth), SegThickness tall
-                // Vertical (1,2,4,5): SegThickness wide, VerticalSegHeight tall
+                //  000   (seg 0 = top horizontal)
+                // 1   2  (seg 1 = upper-left, seg 2 = upper-right)
+                //  333   (seg 3 = middle horizontal)
+                // 4   5  (seg 4 = lower-left, seg 5 = lower-right)
+                //  666   (seg 6 = bottom horizontal)
                 if (segIdx == 0)
                 {
-                    // Top horizontal
-                    rect.Width = DigitWidth;
-                    rect.Height = SegThickness;
-                    Canvas.SetLeft(rect, offsetX);
-                    Canvas.SetTop(rect, 0);
+                    // Top horizontal (wider at bottom)
+                    path.Data = _hSegGeo;
+                    path.Width = DigitWidth;
+                    path.Height = SegThickness;
+                    Canvas.SetLeft(path, offsetX);
+                    Canvas.SetTop(path, 0);
                 }
                 else if (segIdx == 1)
                 {
                     // Upper-left vertical (wider at bottom)
-                    rect.Width = SegThickness;
-                    rect.Height = VerticalSegHeight;
-                    Canvas.SetLeft(rect, offsetX);
-                    Canvas.SetTop(rect, 0);
+                    path.Data = _vSegGeo;
+                    path.Width = SegThickness;
+                    path.Height = VerticalSegHeight;
+                    Canvas.SetLeft(path, offsetX);
+                    Canvas.SetTop(path, 0);
                 }
                 else if (segIdx == 2)
                 {
                     // Upper-right vertical (wider at bottom)
-                    rect.Width = SegThickness;
-                    rect.Height = VerticalSegHeight;
-                    Canvas.SetLeft(rect, offsetX + DigitWidth - SegThickness);
-                    Canvas.SetTop(rect, 0);
+                    path.Data = _vSegGeo;
+                    path.Width = SegThickness;
+                    path.Height = VerticalSegHeight;
+                    Canvas.SetLeft(path, offsetX + DigitWidth - SegThickness);
+                    Canvas.SetTop(path, 0);
                 }
                 else if (segIdx == 3)
                 {
                     // Middle horizontal (wider at bottom)
-                    rect.Width = DigitWidth;
-                    rect.Height = SegThickness;
-                    Canvas.SetLeft(rect, offsetX);
-                    Canvas.SetTop(rect, (DigitHeight - SegThickness) / 2);
+                    path.Data = _hSegGeo;
+                    path.Width = DigitWidth;
+                    path.Height = SegThickness;
+                    Canvas.SetLeft(path, offsetX);
+                    Canvas.SetTop(path, (DigitHeight - SegThickness) / 2);
                 }
                 else if (segIdx == 4)
                 {
                     // Lower-left vertical (wider at bottom)
-                    rect.Width = SegThickness;
-                    rect.Height = VerticalSegHeight;
-                    Canvas.SetLeft(rect, offsetX);
-                    Canvas.SetTop(rect, (DigitHeight - SegThickness) / 2 + SegThickness + 2);
+                    path.Data = _vSegGeo;
+                    path.Width = SegThickness;
+                    path.Height = VerticalSegHeight;
+                    Canvas.SetLeft(path, offsetX);
+                    Canvas.SetTop(path, (DigitHeight - SegThickness) / 2 + SegThickness + VerticalGap);
                 }
                 else if (segIdx == 5)
                 {
                     // Lower-right vertical (wider at bottom)
-                    rect.Width = SegThickness;
-                    rect.Height = VerticalSegHeight;
-                    Canvas.SetLeft(rect, offsetX + DigitWidth - SegThickness);
-                    Canvas.SetTop(rect, (DigitHeight - SegThickness) / 2 + SegThickness + 2);
+                    path.Data = _vSegGeo;
+                    path.Width = SegThickness;
+                    path.Height = VerticalSegHeight;
+                    Canvas.SetLeft(path, offsetX + DigitWidth - SegThickness);
+                    Canvas.SetTop(path, (DigitHeight - SegThickness) / 2 + SegThickness + VerticalGap);
                 }
                 else // segIdx == 6
                 {
-                    // Bottom horizontal (wider at bottom)
-                    rect.Width = DigitWidth;
-                    rect.Height = SegThickness;
-                    Canvas.SetLeft(rect, offsetX);
-                    Canvas.SetTop(rect, DigitHeight - SegThickness);
+                    // Bottom horizontal (wider at top)
+                    path.Data = _hSegGeo;
+                    path.Width = DigitWidth;
+                    path.Height = SegThickness;
+                    Canvas.SetLeft(path, offsetX);
+                    Canvas.SetTop(path, DigitHeight - SegThickness);
                 }
 
-                rect.Fill = isActive ? _segmentBrush : _ghostBrush;
+                path.Fill = isActive ? _segmentBrush : _ghostBrush;
                 segIndex++;
             }
         }
@@ -241,18 +240,17 @@ public class SevenSegmentDisplay : Panel
             Fill = _bgBrush
         });
 
-        // Create 21 segment rectangles (7 per digit x 3 digits)
-        _segments = new Rectangle[21];
+        // Create 21 segment paths (7 per digit x 3 digits)
+        _segments = new Avalonia.Controls.Shapes.Path[21];
         for (int i = 0; i < 21; i++)
         {
-            var rect = new Rectangle
+            var path = new Avalonia.Controls.Shapes.Path
             {
                 Fill = _bgBrush,
-                RadiusX = 1,
-                RadiusY = 1,
+                Stretch = Avalonia.Media.Stretch.Fill,
             };
-            _segments[i] = rect;
-            _canvas.Children.Add(rect);
+            _segments[i] = path;
+            _canvas.Children.Add(path);
         }
 
         this.Children.Add(_canvas);
