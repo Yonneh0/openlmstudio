@@ -28,6 +28,7 @@ public partial class MainModelSelector : UserControl
     private readonly ILogger<MainModelSelector>? _logger;
     private readonly ObservableCollection<MainModelItem> _modelItems = new();
     private bool _isInitialized;
+    private bool _buttonsWired;
 
     /// <summary>
     /// Default parameterless constructor for XAML instantiation.
@@ -35,8 +36,9 @@ public partial class MainModelSelector : UserControl
     public MainModelSelector()
     {
         InitializeComponent();
-        // Wire up button events so clicks work regardless of whether SetManager is called
-        WireUpEvents();
+        // Wire up button events after InitializeComponent
+        _wireButtonEvents();
+        _buttonsWired = true;
         // Resolve dependencies from the app service provider if not set via DI
         try
         {
@@ -107,6 +109,13 @@ public partial class MainModelSelector : UserControl
             _mainAIManager.LogEntryReceived += OnLogEntryReceived;
         }
 
+        // Re-wire button events if not already done
+        if (!_buttonsWired)
+        {
+            _wireButtonEvents();
+            _buttonsWired = true;
+        }
+
         // Update UI with current state
         UpdateUI();
     }
@@ -116,16 +125,32 @@ public partial class MainModelSelector : UserControl
     /// </summary>
     private void WireUpEvents()
     {
-        LoadModelButton.Click += OnLoadModelClicked;
-        StopButton.Click += OnStopClicked;
-        RestartButton.Click += OnRestartClicked;
-        AdvancedSettingsButton.Click += OnAdvancedSettingsClicked;
+        if (!_buttonsWired)
+        {
+            _wireButtonEvents();
+            _buttonsWired = true;
+        }
 
         if (_mainAIManager != null)
         {
             _mainAIManager.StateChanged += OnStateChanged;
             _mainAIManager.LogEntryReceived += OnLogEntryReceived;
         }
+    }
+
+    /// <summary>
+    /// Wires up button Click events.
+    /// </summary>
+    private void _wireButtonEvents()
+    {
+        if (LoadModelButton != null)
+            LoadModelButton.Click += OnLoadModelClicked;
+        if (StopButton != null)
+            StopButton.Click += OnStopClicked;
+        if (RestartButton != null)
+            RestartButton.Click += OnRestartClicked;
+        if (AdvancedSettingsButton != null)
+            AdvancedSettingsButton.Click += OnAdvancedSettingsClicked;
     }
 
     /// <summary>
