@@ -340,7 +340,7 @@ public class MainAIManager : IDisposable
         }
     }
 
-    private async Task<bool> StartServerAsync(string binaryPath, string modelPath, int port, RecommendedSettings settings)
+    private async Task<Process?> StartServerAsync(string binaryPath, string modelPath, int port, RecommendedSettings settings)
     {
         var engineId = (AppEngineType)(int)CurrentBackend;
         await _engineLogger.StartSessionAsync(engineId).ConfigureAwait(false);
@@ -364,7 +364,7 @@ public class MainAIManager : IDisposable
             if (proc == null)
             {
                 _logger.LogError("Failed to start llama-server process on port {Port}", port);
-                return false;
+                return null;
             }
 
             proc.OutputDataReceived += (s, e) =>
@@ -410,18 +410,18 @@ public class MainAIManager : IDisposable
             if (ready)
             {
                 _logger.LogInformation("MainAI server ready on port {Port}", port);
-                return true;
+                return proc;
             }
             else
             {
                 proc.Kill();
-                return false;
+                return null;
             }
         }
         catch (Exception ex)
         {
             _logger.LogError(ex, "Failed to start MainAI server on port {Port}", port);
-            return false;
+            return null;
         }
     }
 
