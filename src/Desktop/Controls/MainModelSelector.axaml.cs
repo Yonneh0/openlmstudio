@@ -217,8 +217,8 @@ public partial class MainModelSelector : UserControl
             ModelPathText.Text = state.ModelPath;
         }
 
-        // Update engine info and settings
-        UpdateUI();
+        // Update engine info and settings (must run on UI thread)
+        Avalonia.Threading.Dispatcher.UIThread.Post(() => UpdateUI());
     }
 
     /// <summary>
@@ -325,8 +325,11 @@ public partial class MainModelSelector : UserControl
                 var success = await _mainAIManager.LoadModelAsync(modelPath);
                 if (success)
                 {
-                    UpdateUI();
-                    _logger?.LogInformation("Model loaded: {Model}", modelPath);
+                    Avalonia.Threading.Dispatcher.UIThread.Post(() =>
+                    {
+                        UpdateUI();
+                        _logger?.LogInformation("Model loaded: {Model}", modelPath);
+                    });
                 }
             }
 

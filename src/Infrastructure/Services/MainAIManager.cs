@@ -137,15 +137,15 @@ public class MainAIManager : IDisposable
         var port = AllocatePort();
         var binaryPath = await DownloadEngineAsync(backend ?? InferBackend()).ConfigureAwait(false);
 
-        var success = await StartServerAsync(binaryPath, modelPath, port, settings).ConfigureAwait(false);
-        if (success)
+        var serverProcess = await StartServerAsync(binaryPath, modelPath, port, settings).ConfigureAwait(false);
+        if (serverProcess != null)
         {
             var slot = new MainAIModelSlot(
                 ModelPath: modelPath,
                 BinaryPath: binaryPath,
                 Port: port,
                 Backend: backend ?? InferBackend(),
-                ServerProcess: _loadedModels.Last().ServerProcess,
+                ServerProcess: serverProcess,
                 Settings: settings,
                 Id: Guid.NewGuid().ToString("N"));
 
@@ -157,9 +157,10 @@ public class MainAIManager : IDisposable
 
             _logger.LogInformation("MainAI loaded model: {Model} on port {Port}", modelPath, port);
             StateChanged?.Invoke(this, new MainAIStateChanged(MainAIState.Running, modelPath));
+            return true;
         }
 
-        return success;
+        return false;
     }
 
     /// <summary>
