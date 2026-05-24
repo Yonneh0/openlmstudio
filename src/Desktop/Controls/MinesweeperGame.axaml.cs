@@ -61,42 +61,55 @@ public class SevenSegmentDisplay : Panel
     ];
 
     // Pre-computed segment geometries for horizontal and vertical segments
-    // Horizontal: rectangle with angled cuts on left and right (DigitWidth x SegThickness)
-    // Vertical: rectangle with angled cuts on top and bottom (SegThickness x DigitHeight)
+    // Horizontal: trapezoid wider at bottom (DigitWidth x SegThickness)
+    // Vertical: trapezoid wider at bottom (SegThickness x VerticalSegHeight)
+    // KEY: Path bounding box aspect ratio MUST match the Rectangle it's placed in,
+    //      otherwise Stretch.Fill distorts the trapezoid shape.
     private static readonly Geometry _hSegGeo;
     private static readonly Geometry _vSegGeo;
+
+    // Vertical segment spacing (24px tall, 2px gap between upper/lower halves)
+    private const int VerticalSegHeight = 24;
 
     static SevenSegmentDisplay()
     {
         var t = SegThickness;
-        var hw = t / 4;
+        var hw = t / 3; // adjusted so Path bounding box matches Rectangle aspect ratio
+        var dW = DigitWidth;
 
         // Horizontal segment (angled cuts on left and right):
-        // Full width (DigitWidth) x SegThickness, with angled cuts
+        // Bounding box: dW x t = 18 x 4 (aspect ratio 4.5)
+        // Top width: dW - 2*(dW - t) = 18 - 12 = 6
+        // Bottom width: dW = 18
+        // Ratio: 18/6 = 3.0, matches hw=4/3 trapezoid ratio
         var hPts = new Point[]
         {
             new(0, t/2),
             new(0, 0),
             new(t/2, hw),
-            new(DigitWidth - t/2, hw),
-            new(DigitWidth, 0),
-            new(DigitWidth, t),
-            new(DigitWidth - t/2, t - hw),
+            new(dW - t/2, hw),
+            new(dW, 0),
+            new(dW, t),
+            new(dW - t/2, t - hw),
             new(t/2, t - hw),
         };
         _hSegGeo = Geometry.Parse("M" + string.Join(" L", hPts) + " Z");
 
         // Vertical segment (angled cuts on top and bottom):
-        // SegThickness x DigitHeight, with angled cuts
+        // Bounding box: t x VerticalSegHeight = 6 x 24 (aspect ratio 4.0)
+        // Top width: 2*hw = 8/3 ≈ 2.67
+        // Bottom width: t = 4
+        // Ratio: 4 / (8/3) = 3.0
+        // -> Wider at bottom, classic LED look (same as horizontal)
         var vPts = new Point[]
         {
             new(t/2, 0),
-            new(0, t/2),
-            new(hw, t/2),
-            new(hw, DigitHeight - t/2),
-            new(hw, DigitHeight),
-            new(t - hw, DigitHeight),
+            new(t, t/2),
             new(t - hw, t/2),
+            new(t - hw, VerticalSegHeight - t/2),
+            new(t - hw, VerticalSegHeight),
+            new(hw, VerticalSegHeight),
+            new(hw, t/2),
             new(t/2, t/2),
         };
         _vSegGeo = Geometry.Parse("M" + string.Join(" L", vPts) + " Z");
@@ -133,7 +146,7 @@ public class SevenSegmentDisplay : Panel
                 // 4   5
                 //  666
                 // Horizontal (0,3,6): full width (DigitWidth), SegThickness tall
-                // Vertical (1,2,4,5): SegThickness wide, DigitHeight tall
+                // Vertical (1,2,4,5): SegThickness wide, VerticalSegHeight tall
                 if (segIdx == 0)
                 {
                     // Top horizontal
@@ -144,23 +157,23 @@ public class SevenSegmentDisplay : Panel
                 }
                 else if (segIdx == 1)
                 {
-                    // Upper-left vertical
+                    // Upper-left vertical (wider at bottom)
                     rect.Width = SegThickness;
-                    rect.Height = DigitHeight;
+                    rect.Height = VerticalSegHeight;
                     Canvas.SetLeft(rect, offsetX);
                     Canvas.SetTop(rect, 0);
                 }
                 else if (segIdx == 2)
                 {
-                    // Upper-right vertical
+                    // Upper-right vertical (wider at bottom)
                     rect.Width = SegThickness;
-                    rect.Height = DigitHeight;
+                    rect.Height = VerticalSegHeight;
                     Canvas.SetLeft(rect, offsetX + DigitWidth - SegThickness);
                     Canvas.SetTop(rect, 0);
                 }
                 else if (segIdx == 3)
                 {
-                    // Middle horizontal
+                    // Middle horizontal (wider at bottom)
                     rect.Width = DigitWidth;
                     rect.Height = SegThickness;
                     Canvas.SetLeft(rect, offsetX);
@@ -168,23 +181,23 @@ public class SevenSegmentDisplay : Panel
                 }
                 else if (segIdx == 4)
                 {
-                    // Lower-left vertical
+                    // Lower-left vertical (wider at bottom)
                     rect.Width = SegThickness;
-                    rect.Height = DigitHeight;
+                    rect.Height = VerticalSegHeight;
                     Canvas.SetLeft(rect, offsetX);
-                    Canvas.SetTop(rect, (DigitHeight - 2 * SegThickness) / 2);
+                    Canvas.SetTop(rect, (DigitHeight - SegThickness) / 2 + SegThickness + 2);
                 }
                 else if (segIdx == 5)
                 {
-                    // Lower-right vertical
+                    // Lower-right vertical (wider at bottom)
                     rect.Width = SegThickness;
-                    rect.Height = DigitHeight;
+                    rect.Height = VerticalSegHeight;
                     Canvas.SetLeft(rect, offsetX + DigitWidth - SegThickness);
-                    Canvas.SetTop(rect, (DigitHeight - 2 * SegThickness) / 2);
+                    Canvas.SetTop(rect, (DigitHeight - SegThickness) / 2 + SegThickness + 2);
                 }
                 else // segIdx == 6
                 {
-                    // Bottom horizontal
+                    // Bottom horizontal (wider at bottom)
                     rect.Width = DigitWidth;
                     rect.Height = SegThickness;
                     Canvas.SetLeft(rect, offsetX);
