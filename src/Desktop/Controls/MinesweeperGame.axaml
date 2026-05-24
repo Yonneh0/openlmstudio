@@ -1,42 +1,67 @@
 <UserControl x:Class="OpenLMStudio.Desktop.Controls.MinesweeperGame"
     xmlns="https://github.com/avaloniaui"
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-    Width="320">
+    Width="220">
 
-    <StackPanel Margin="8">
+    <StackPanel Margin="6">
         <!-- Title -->
         <TextBlock Text="Minesweeper"
                    HorizontalAlignment="Center"
                    FontSize="18"
                    FontWeight="SemiBold"
+                   Foreground="#4FC3F7"
                    Margin="0,0,0,8"/>
 
-        <!-- Emoji centered, flags aligned to the right -->
-        <StackPanel HorizontalAlignment="Center"
-                    Margin="0,0,0,8">
-            <TextBlock x:Name="ResetButton"
-                       Text="🙂"
-                       HorizontalAlignment="Center"
-                       FontSize="28"
-                       FontWeight="Bold"/>
-            <StackPanel Orientation="Horizontal"
-                        HorizontalAlignment="Center"
-                        Margin="0,4,0,0">
-                <TextBlock x:Name="FlagCountText"
-                           Text="Flags: 10"
-                           FontSize="13"
-                           VerticalAlignment="Center"/>
-                <TextBlock x:Name="TimerDisplay"
-                           Text="⏱ 0s"
-                           FontSize="13"
-                           Margin="12,0,0,0"
-                           VerticalAlignment="Center"/>
-            </StackPanel>
-        </StackPanel>
+        <!-- Classic Minesweeper header bar -->
+        <Border Background="#C0C0C0" BorderBrush="#808080" BorderThickness="3" CornerRadius="2" Margin="0,0,0,8" Padding="6,4">
+            <StackPanel Orientation="Horizontal" HorizontalAlignment="Center">
+                 <!-- Flag count -->
+                 <Border Background="#000000" BorderBrush="#404040" BorderThickness="2" CornerRadius="2" Padding="2,4" Margin="0,0,8,0">
+                     <TextBlock x:Name="FlagCountText"
+                                Text="010"
+                                FontFamily="Consolas, 'Courier New'"
+                                FontSize="22"
+                                FontWeight="Bold"
+                                Foreground="#FF6600"
+                                TextAlignment="Right"
+                                Width="50"/>
+                 </Border>
 
+                <!-- Reset button -->
+                <Border x:Name="ResetButton"
+                        Background="#C0C0C0"
+                        BorderBrush="#808080"
+                        BorderThickness="2"
+                        CornerRadius="2"
+                        Padding="4"
+                        Margin="8,0,8,0"
+                        Cursor="Hand">
+                    <TextBlock x:Name="ResetEmoji"
+                               Text="🙂"
+                               FontSize="22"
+                               FontWeight="Bold"
+                               HorizontalAlignment="Center"
+                               VerticalAlignment="Center"/>
+                </Border>
+
+                 <!-- Timer -->
+                 <Border Background="#000000" BorderBrush="#404040" BorderThickness="2" CornerRadius="2" Padding="2,4">
+                     <TextBlock x:Name="TimerDisplay"
+                                Text="000"
+                                FontFamily="Consolas, 'Courier New'"
+                                FontSize="22"
+                                FontWeight="Bold"
+                                Foreground="#FF6600"
+                                TextAlignment="Right"
+                                Width="50"/>
+                 </Border>
+            </StackPanel>
+        </Border>
+
+        <!-- Game board -->
         <Border x:Name="GameBoard"
                 Background="#C0C0C0"
-                BorderThickness="2"
+                BorderThickness="3"
                 BorderBrush="#808080"
                 CornerRadius="2"
                 HorizontalAlignment="Center"/>
@@ -45,12 +70,14 @@
                    Text="Click to start"
                    HorizontalAlignment="Center"
                    Margin="0,8,0,0"
-                   FontSize="12"/>
+                   FontSize="12"
+                   Foreground="#666666"/>
 
         <TextBlock x:Name="BestTimesText"
                    Text="Best times: (none yet)"
                    HorizontalAlignment="Center"
                    Margin="0,8,0,8"
-                   FontSize="10"/>
+                   FontSize="10"
+                   Foreground="#888888"/>
     </StackPanel>
 </UserControl>

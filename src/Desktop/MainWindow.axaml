@@ -29,7 +29,7 @@
         <Style Selector="Ellipse.statusDot"><Setter Property="Fill" Value="{StaticResource AccentRed}"/><Setter Property="Width" Value="10"/><Setter Property="Height" Value="10"/><Setter Property="Margin" Value="0,2,6,0"/></Style>
         <Style Selector="Border.inputArea"><Setter Property="Background" Value="{StaticResource BgSecondary}"/><Setter Property="CornerRadius" Value="4"/><Setter Property="Padding" Value="12"/></Style>
         <Style Selector="Border.searchBar"><Setter Property="Background" Value="{StaticResource BgSecondary}"/><Setter Property="CornerRadius" Value="4"/><Setter Property="Padding" Value="10,6"/></Style>
-        <Style Selector="ToggleButton.toolTab"><Setter Property="Background" Value="{StaticResource BgTertiary}"/><Setter Property="Foreground" Value="{StaticResource TextPrimary}"/><Setter Property="Padding" Value="12,6"/><Setter Property="Margin" Value="2,1"/><Setter Property="BorderThickness" Value="2,0,0,0"/><Setter Property="BorderBrush" Value="Transparent"/><Setter Property="FontSize" Value="11"/><Setter Property="CornerRadius" Value="3"/><Setter Property="MinHeight" Value="24"/></Style>
+        <Style Selector="ToggleButton.toolTab"><Setter Property="Background" Value="{StaticResource BgTertiary}"/><Setter Property="Foreground" Value="{StaticResource TextPrimary}"/><Setter Property="Padding" Value="12,6"/><Setter Property="Margin" Value="2,1"/><Setter Property="BorderThickness" Value="2,0,0,0"/><Setter Property="BorderBrush" Value="Transparent"/><Setter Property="FontSize" Value="11"/><Setter Property="CornerRadius" Value="3"/><Setter Property="Height" Value="24"/></Style>
         <Style Selector="ToggleButton.toolTab:checked"><Setter Property="Background" Value="{StaticResource BgSecondary}"/><Setter Property="Foreground" Value="{StaticResource AccentBlue}"/><Setter Property="BorderBrush" Value="{StaticResource AccentBlue}"/></Style>
         <Style Selector="ToggleButton.toolTab:hover"><Setter Property="Background" Value="#3A3A3E"/></Style>
         <Style Selector="Button.AgentModeToggle">
@@ -145,31 +145,44 @@
         <Grid Grid.Row="1" Grid.Column="0" Background="{StaticResource BgPrimary}">
             <Grid.RowDefinitions>
                 <RowDefinition Height="Auto"/>
-                <RowDefinition Height="Auto"/>
-                <RowDefinition Height="Auto"/>
+                <RowDefinition Height="*"/>
                 <RowDefinition Height="Auto"/>
             </Grid.RowDefinitions>
 
-            <TextBlock Grid.Row="0" Text="OpenLMStudio" FontSize="18" FontWeight="SemiBold" Foreground="#4FC3F7" Padding="16,16,16,8"/>
+            <WrapPanel x:Name="LeftTabButtonsPanel" Margin="4,0,4,0">
+                <!-- Settings button at beginning of tab row -->
+                <Button x:Name="SettingsButton"
+                        Content="&#x2699;&#xFE0E;"
+                        Classes="toolTab"
+                        Padding="12,6"
+                        Margin="0,0,2,0"
+                        Background="{StaticResource BgTertiary}"
+                        Foreground="{StaticResource TextPrimary}"
+                        BorderThickness="2,0,0,0"
+                        BorderBrush="Transparent"
+                        FontSize="12"
+                        Height="24"
+                        MinWidth="24"
+                        Cursor="Hand"/>
+                <!-- Tab buttons -->
+                <ToggleButton x:Name="ChatTab" Content="Chats" Classes="toolTab" IsChecked="True" MinHeight="24"/>
+                <ToggleButton x:Name="ServerTab" Content="Server" Classes="toolTab" MinHeight="24"/>
+                <ToggleButton x:Name="ModelsTab" Content="Models" Classes="toolTab" MinHeight="24"/>
+                <ToggleButton x:Name="DevicesTab" Content="Devices" Classes="toolTab" MinHeight="24"/>
+                <ToggleButton x:Name="ContextTab" Content="Context" Classes="toolTab" MinHeight="24"/>
+                <ToggleButton x:Name="TasksTab" Content="Tasks" Classes="toolTab" MinHeight="24"/>
+                <ToggleButton x:Name="AgentTab" Content="Agent" Classes="toolTab" MinHeight="24"/>
+                <ToggleButton x:Name="GamesTab" Content="Games" Classes="toolTab" MinHeight="24"/>
+                <ToggleButton x:Name="PinguTab" Content="Pingu" Classes="toolTab" MinHeight="24"/>
+                <ToggleButton x:Name="ImageGenTab" Content="ImageGen" Classes="toolTab" MinHeight="24"/>
+                <ToggleButton x:Name="AnalysisTab" Content="Analysis" Classes="toolTab" MinHeight="24"/>
+            </WrapPanel>
 
             <Grid Grid.Row="1">
                 <Grid.RowDefinitions>
                     <RowDefinition Height="Auto"/>
                     <RowDefinition Height="*"/>
                 </Grid.RowDefinitions>
-                <WrapPanel Grid.Row="0" x:Name="LeftTabButtonsPanel" Margin="4,0,4,0" HorizontalAlignment="Left">
-                    <ToggleButton x:Name="ChatTab" Content="Chats" Classes="toolTab" IsChecked="True"/>
-                    <ToggleButton x:Name="ServerTab" Content="Server" Classes="toolTab"/>
-                    <ToggleButton x:Name="ModelsTab" Content="Models" Classes="toolTab"/>
-                    <ToggleButton x:Name="DevicesTab" Content="Devices" Classes="toolTab"/>
-                    <ToggleButton x:Name="ContextTab" Content="Context" Classes="toolTab"/>
-                    <ToggleButton x:Name="TasksTab" Content="Tasks" Classes="toolTab"/>
-                    <ToggleButton x:Name="AgentTab" Content="Agent" Classes="toolTab"/>
-                    <ToggleButton x:Name="GamesTab" Content="Games" Classes="toolTab"/>
-                    <ToggleButton x:Name="PinguTab" Content="Pingu" Classes="toolTab"/>
-                    <ToggleButton x:Name="ImageGenTab" Content="ImageGen" Classes="toolTab"/>
-                    <ToggleButton x:Name="AnalysisTab" Content="Analysis" Classes="toolTab"/>
-                </WrapPanel>
                 <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Auto">
                     <StackPanel x:Name="LeftTabContentPanel">
                         <!-- Chat tab content -->
@@ -182,6 +195,10 @@
                             </StackPanel>
                             <Border Background="{StaticResource BgSecondary}" CornerRadius="4" Margin="0,16,0,0">
                                 <TextBlock Text="Folders" FontWeight="SemiBold" Foreground="#4FC3F7" Padding="8,8"/>
+                            </Border>
+                            <!-- + New Chat button moved into Chats container -->
+                            <Border Background="{StaticResource BgSecondary}" CornerRadius="4" Margin="8,16,8,8">
+                                <Button x:Name="NewChatButton" Content="+ New Chat" Background="#0E639C" Foreground="White" Padding="12,6" FontSize="13" HorizontalAlignment="Stretch" Height="36"/>
                             </Border>
                         </StackPanel>
 
@@ -445,9 +462,7 @@
             </Grid>
 
         <!-- Bottom buttons -->
-            <StackPanel Grid.Row="3" Orientation="Horizontal" Margin="8,4,8,8">
-                <Button x:Name="NewChatButton" Content="+ New Chat" Background="#0E639C" Foreground="White" Padding="8,4" Height="36" Margin="0,0,4,0"/>
-                <Button x:Name="SettingsButton" Content="&#x2699;&#xFE0E;" Background="#252529" Foreground="{StaticResource TextPrimary}" Padding="8,4" Height="36"/>
+            <StackPanel Grid.Row="2" Orientation="Horizontal" Margin="8,4,8,8">
             </StackPanel>
         </Grid>
 
@@ -498,7 +513,7 @@
                             <Border Background="{StaticResource BgTertiary}" CornerRadius="6" Padding="8,0" Margin="0,0,4,0">
                                 <StackPanel Orientation="Horizontal" HorizontalAlignment="Center" VerticalAlignment="Center">
                                     <!-- Agent emoji with floating turns count -->
-                                    <Grid Width="44" Height="44" Margin="0,0,6,0">
+                                    <Grid Width="44" Height="44" Margin="0,0,2,0">
                                         <Button x:Name="AgentModeToggle" Content="&#x1F916;" FontSize="34" Padding="0" Classes="AgentModeToggle" Foreground="{StaticResource AccentBlue}" Cursor="Hand"
                                                 HorizontalAlignment="Center" VerticalAlignment="Center"
                                                 HorizontalContentAlignment="Center" VerticalContentAlignment="Center"/>
@@ -526,7 +541,7 @@
                             </Border>
 
                             <!-- Plan/Act Toggle -->
-                            <Border Background="{StaticResource BgTertiary}" CornerRadius="6" Padding="8,0" Margin="0,0,4,0">
+                            <Border Background="{StaticResource BgTertiary}" CornerRadius="6" Padding="0,0" Margin="0,0,4,0">
                                 <StackPanel Orientation="Horizontal" HorizontalAlignment="Center" VerticalAlignment="Center" Height="36">
                                     <Border Background="{StaticResource BgTertiary}" CornerRadius="6" Padding="6,0" Width="130" Height="36" HorizontalAlignment="Center" VerticalAlignment="Center">
                                         <StackPanel x:Name="PlanActPanel" Orientation="Horizontal" HorizontalAlignment="Center" VerticalAlignment="Center">
@@ -534,7 +549,6 @@
                                                     Content="Plan"
                                                     Width="55" Height="32"
                                                     Click="OnPlanClicked"
-                                                    Padding="0,0"
                                                     Classes="active"
                                                     HorizontalContentAlignment="Center"
                                                     VerticalContentAlignment="Center">

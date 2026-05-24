@@ -23,7 +23,8 @@
                 DockPanel.Dock="Top"
                 Background="#1E1E22"
                 CornerRadius="4"
-                Padding="0"/>
+                Padding="4"
+                MaxHeight="500"/>
 
         <!-- Close button -->
         <Button x:Name="CloseGameButton"

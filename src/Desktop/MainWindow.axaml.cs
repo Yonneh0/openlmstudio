@@ -239,8 +239,10 @@ public partial class MainWindow : Window
             AgentTurnsBadge.Click += OnAgentTurnsBadgeClicked;
 
         // Plan/Act toggle
-        if (PlanActToggle != null)
-            PlanActToggle.Click += OnPlanActToggleClicked;
+        if (PlanButton != null)
+            PlanButton.Click += OnPlanClicked;
+        if (ActButton != null)
+            ActButton.Click += OnActClicked;
 
         // Safety toggles (WWW, Read, Edit, Exec)
         if (SafetyWWW != null)
@@ -679,32 +681,25 @@ public partial class MainWindow : Window
 
     /// <summary>
     /// Toggles between Plan and Act modes.
-    /// Plan shows "Plan" in gray; Act shows "Act" in blue.
     /// Modes are mutually exclusive — enabling one disables the other.
     /// </summary>
-    private void OnPlanActToggleClicked(object? sender, RoutedEventArgs e)
+    private void OnPlanClicked(object? sender, RoutedEventArgs e)
     {
-        if (PlanActToggle == null)
-            return;
+        PlanButton?.Classes.Add("active");
+        ActButton?.Classes.Remove("active");
+        _logger?.LogInformation("Plan/Act mode toggled to: Plan");
+    }
 
-        var isActive = PlanActToggle.Classes.Contains("active");
-        if (isActive)
-        {
-            PlanActToggle.Classes.Remove("active");
-            PlanActToggle.Content = "Plan";
-        }
-        else
-        {
-            PlanActToggle.Classes.Add("active");
-            PlanActToggle.Content = "Act";
-        }
-
-        _logger?.LogInformation("Plan/Act mode toggled to: {Mode}", !isActive ? "Act" : "Plan");
+    private void OnActClicked(object? sender, RoutedEventArgs e)
+    {
+        ActButton?.Classes.Add("active");
+        PlanButton?.Classes.Remove("active");
+        _logger?.LogInformation("Plan/Act mode toggled to: Act");
     }
 
     /// <summary>
     /// Handles clicks on the safety toggles.
-    /// Exec or Edit being enabled enables Read automatically.
+    /// Read is a prerequisite: Exec or Edit cannot be on without Read.
     /// </summary>
     private void OnSafetyToggleClicked(object? sender, RoutedEventArgs e)
     {
@@ -717,25 +712,30 @@ public partial class MainWindow : Window
             {
                 // Exec enables Read
                 if (name == nameof(SafetyExec) && SafetyRead != null)
-                    SafetyRead.IsChecked = true;
+                    SafetyRead.SetValue(ToggleButton.IsCheckedProperty, true);
 
                 // Edit enables Read
                 if (name == nameof(SafetyEdit) && SafetyRead != null)
-                    SafetyRead.IsChecked = true;
+                    SafetyRead.SetValue(ToggleButton.IsCheckedProperty, true);
             }
             else
             {
-                // If both Exec and Edit are unchecked, disable Read
-                if (name == nameof(SafetyExec) && SafetyEdit != null)
+                // Read disabled: disable Exec and Edit as well
+                if (name == nameof(SafetyRead))
                 {
-                    if (SafetyEdit.IsChecked != true)
-                        SafetyRead?.SetValue(ToggleButton.IsCheckedProperty, false);
+                    if (SafetyExec != null)
+                        SafetyExec.SetValue(ToggleButton.IsCheckedProperty, false);
+                    if (SafetyEdit != null)
+                        SafetyEdit.SetValue(ToggleButton.IsCheckedProperty, false);
                 }
-                if (name == nameof(SafetyEdit) && SafetyExec != null)
-                {
-                    if (SafetyExec.IsChecked != true)
-                        SafetyRead?.SetValue(ToggleButton.IsCheckedProperty, false);
-                }
+
+                // Exec disabled: disable Read as well
+                if (name == nameof(SafetyExec) && SafetyRead != null)
+                    SafetyRead.SetValue(ToggleButton.IsCheckedProperty, false);
+
+                // Edit disabled: disable Read as well
+                if (name == nameof(SafetyEdit) && SafetyRead != null)
+                    SafetyRead.SetValue(ToggleButton.IsCheckedProperty, false);
             }
 
             _logger?.LogDebug("Safety toggle {Name} set to {State}", name, isChecked);
