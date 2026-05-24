@@ -28,6 +28,37 @@ public partial class SystemModelSelector : UserControl
     public SystemModelSelector()
     {
         InitializeComponent();
+        // Resolve dependencies from the app service provider if not set via DI
+        try
+        {
+            var sp = GetAppServiceProvider();
+            if (sp != null)
+            {
+                _modelDownloader = sp.GetService(typeof(GgufModelDownloader)) as GgufModelDownloader
+                    ?? throw new InvalidOperationException("GgufModelDownloader not registered in DI");
+                _logViewer = sp.GetService(typeof(LogViewerService)) as LogViewerService
+                    ?? throw new InvalidOperationException("LogViewerService not registered in DI");
+            }
+        }
+        catch
+        {
+            // If DI resolution fails, use null (controls will gracefully handle nulls)
+        }
+    }
+
+    /// <summary>
+    /// Gets the application service provider.
+    /// </summary>
+    private static IServiceProvider? GetAppServiceProvider()
+    {
+        try
+        {
+            return App.ApplicationServices;
+        }
+        catch
+        {
+            return null;
+        }
     }
 
     /// <summary>
@@ -89,13 +120,18 @@ public partial class SystemModelSelector : UserControl
         try
         {
             var models = await _modelDownloader.DiscoverModelsAsync();
-            foreach (var model in models)
+            // Models are auto-discovered; update the UI with the first model if available
+            if (models.Any())
             {
-                var item = new ComboBoxItem
+                Avalonia.Threading.Dispatcher.UIThread.Post(() =>
                 {
-                    Content = $"{model.Name} ({FormatSize(model.FileSizeBytes)})",
-                    Tag = model.FilePath
-                };
+                    var firstModel = models.First();
+                    if (ModelNameText != null)
+                    {
+                        ModelNameText.Text = firstModel.Name;
+                        ModelPathText.Text = firstModel.FilePath;
+                    }
+                });
             }
         }
         catch { /* silently handle */ }
@@ -111,16 +147,6 @@ public partial class SystemModelSelector : UserControl
 
     private void UpdateStateDisplay(SystemAIStateChanged e)
     {
-        var statusColor = e.NewState switch
-        {
-            SystemAIState.Running => "#4CAF50",
-            SystemAIState.Stopped => "#FF6B6B",
-            SystemAIState.Starting => "#FF9800",
-            SystemAIState.Stopping => "#FF9800",
-            SystemAIState.Error => "#FF6B6B",
-            _ => "#888888"
-        };
-
         var accentRed = (ISolidColorBrush)(this.FindResource("AccentRed") ?? Brushes.Gray);
         var accentGreen = (ISolidColorBrush)(this.FindResource("AccentGreen") ?? Brushes.Green);
         StatusBadge.Background = e.NewState == SystemAIState.Running ? accentGreen : accentRed;
@@ -143,6 +169,17 @@ public partial class SystemModelSelector : UserControl
         {
             ModelNameText.Text = System.IO.Path.GetFileNameWithoutExtension(e.ModelPath);
             ModelPathText.Text = e.ModelPath;
+        }
+
+        // Update engine info and settings
+        if (_systemAIManager != null)
+        {
+            var settings = _systemAIManager.CurrentSettings;
+            var backend = _systemAIManager.CurrentBackend;
+            EngineInfoText.Text = $"{backend} | llama-server";
+            GpuLayersText.Text = $"GPU: {settings?.GpuLayers ?? 0}";
+            CtxSizeText.Text = $"Ctx: {settings?.ContextSize ?? 4096}";
+            BatchSizeText.Text = $"Batch: {settings?.BatchSize ?? 2048}";
         }
     }
 
@@ -183,6 +220,21 @@ public partial class SystemModelSelector : UserControl
     private void OnAdvancedSettingsClicked(object? sender, RoutedEventArgs e)
     {
         // TODO: Show advanced settings dialog
+        Avalonia.Threading.Dispatcher.UIThread.Post(() =>
+        {
+            var panel = new StackPanel
+            {
+                HorizontalAlignment = Avalonia.Layout.HorizontalAlignment.Center,
+                VerticalAlignment = Avalonia.Layout.VerticalAlignment.Center
+            };
+            panel.Children.Add(new TextBlock
+            {
+                Text = "Advanced settings coming soon!",
+                Foreground = Avalonia.Media.Brushes.White,
+                FontSize = 14
+            });
+            // TODO: Implement proper advanced settings panel
+        });
     }
 
     private void OnLogEntryReceived(object? sender, LogEntry e)
@@ -197,8 +249,9 @@ public partial class SystemModelSelector : UserControl
     {
         return bytes switch
         {
-            < 1024 * 1024 => $"{bytes / 1024} MB",
-            < 1024 * 1024 * 1024 => $"{bytes / (1024.0 * 1024):F1} GB",
+            < 1024 => $"{bytes} B",
+            < 1024 * 1024 => $"{bytes / (1024.0):F1} KB",
+            < 1024 * 1024 * 1024 => $"{bytes / (1024.0 * 1024):F1} MB",
             _ => $"{bytes / (1024.0 * 1024 * 1024):F1} GB"
         };
     }

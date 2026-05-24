@@ -8,6 +8,7 @@ using Avalonia.Interactivity;
 using Avalonia.Media;
 using Avalonia.Platform.Storage;
 using Avalonia.Styling;
+using Microsoft.Extensions.Logging;
 using OpenLMStudio.Domain.Models.LLamaCpp;
 using OpenLMStudio.Infrastructure.Services;
 
@@ -21,6 +22,7 @@ public partial class MainModelSelector : UserControl
     private MainAIManager? _mainAIManager;
     private readonly GgufModelDownloader _modelDownloader;
     private readonly LogViewerService _logViewer;
+    private readonly ILogger<MainModelSelector>? _logger;
 
     /// <summary>
     /// Default parameterless constructor for XAML instantiation.
@@ -28,6 +30,38 @@ public partial class MainModelSelector : UserControl
     public MainModelSelector()
     {
         InitializeComponent();
+        // Resolve dependencies from the app service provider if not set via DI
+        try
+        {
+            var sp = GetAppServiceProvider();
+            if (sp != null)
+            {
+                _modelDownloader = sp.GetService(typeof(GgufModelDownloader)) as GgufModelDownloader
+                    ?? throw new InvalidOperationException("GgufModelDownloader not registered in DI");
+                _logViewer = sp.GetService(typeof(LogViewerService)) as LogViewerService
+                    ?? throw new InvalidOperationException("LogViewerService not registered in DI");
+                _logger = sp.GetService(typeof(ILogger<MainModelSelector>)) as ILogger<MainModelSelector>;
+            }
+        }
+        catch
+        {
+            // If DI resolution fails, use null (controls will gracefully handle nulls)
+        }
+    }
+
+    /// <summary>
+    /// Gets the application service provider.
+    /// </summary>
+    private static IServiceProvider? GetAppServiceProvider()
+    {
+        try
+        {
+            return App.ApplicationServices;
+        }
+        catch
+        {
+            return null;
+        }
     }
 
     /// <summary>
@@ -89,13 +123,18 @@ public partial class MainModelSelector : UserControl
         try
         {
             var models = await _modelDownloader.DiscoverModelsAsync();
-            foreach (var model in models)
+            // Models are auto-discovered; update the UI with the first model if available
+            if (models.Any())
             {
-                var item = new ComboBoxItem
+                Avalonia.Threading.Dispatcher.UIThread.Post(() =>
                 {
-                    Content = $"{model.Name} ({FormatSize(model.FileSizeBytes)})",
-                    Tag = model.FilePath
-                };
+                    var firstModel = models.First();
+                    if (ModelNameText != null)
+                    {
+                        ModelNameText.Text = firstModel.Name;
+                        ModelPathText.Text = firstModel.FilePath;
+                    }
+                });
             }
         }
         catch
@@ -114,16 +153,6 @@ public partial class MainModelSelector : UserControl
 
     private void UpdateStateDisplay(MainAIStateChanged state)
     {
-        var statusColor = state.NewState switch
-        {
-            MainAIState.Running => "#4CAF50",
-            MainAIState.Stopped => "#FF6B6B",
-            MainAIState.Starting => "#FF9800",
-            MainAIState.Stopping => "#FF9800",
-            MainAIState.Error => "#FF6B6B",
-            _ => "#888888"
-        };
-
         var accentRed = (ISolidColorBrush)(this.FindResource("AccentRed") ?? Brushes.Gray);
         var accentGreen = (ISolidColorBrush)(this.FindResource("AccentGreen") ?? Brushes.Green);
         StatusBadge.Background = state.NewState == MainAIState.Running ? accentGreen : accentRed;
@@ -146,6 +175,17 @@ public partial class MainModelSelector : UserControl
         {
             ModelNameText.Text = System.IO.Path.GetFileNameWithoutExtension(state.ModelPath);
             ModelPathText.Text = state.ModelPath;
+        }
+
+        // Update engine info and settings
+        if (_mainAIManager != null)
+        {
+            var settings = _mainAIManager.CurrentSettings;
+            var backend = _mainAIManager.CurrentBackend;
+            EngineInfoText.Text = $"{backend} | llama-server";
+            GpuLayersText.Text = $"GPU: {settings?.GpuLayers ?? 0}";
+            CtxSizeText.Text = $"Ctx: {settings?.ContextSize ?? 4096}";
+            BatchSizeText.Text = $"Batch: {settings?.BatchSize ?? 2048}";
         }
     }
 
@@ -186,13 +226,14 @@ public partial class MainModelSelector : UserControl
     private void OnAdvancedSettingsClicked(object? sender, RoutedEventArgs e)
     {
         // TODO: Show advanced settings dialog
+        _logger?.LogInformation("Advanced settings clicked");
     }
 
     private void OnLogEntryReceived(object? sender, LogEntry e)
     {
         Avalonia.Threading.Dispatcher.UIThread.Post(() =>
         {
-            // Update log display
+            // Update log display - could add to a log viewer panel
         });
     }
 
@@ -200,8 +241,9 @@ public partial class MainModelSelector : UserControl
     {
         return bytes switch
         {
-            < 1024 * 1024 => $"{bytes / 1024} MB",
-            < 1024 * 1024 * 1024 => $"{bytes / (1024.0 * 1024):F1} GB",
+            < 1024 => $"{bytes} B",
+            < 1024 * 1024 => $"{bytes / (1024.0):F1} KB",
+            < 1024 * 1024 * 1024 => $"{bytes / (1024.0 * 1024):F1} MB",
             _ => $"{bytes / (1024.0 * 1024 * 1024):F1} GB"
         };
     }

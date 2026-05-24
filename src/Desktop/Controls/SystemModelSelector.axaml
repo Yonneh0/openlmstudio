@@ -16,9 +16,9 @@
         <SolidColorBrush x:Key="AccentOrange" Color="#FF9800"/>
     </UserControl.Resources>
 
-    <StackPanel>
-        <Border Background="{StaticResource BgSecondary}" CornerRadius="6" Padding="8">
-            <StackPanel>
+    <StackPanel HorizontalAlignment="Stretch">
+        <Border Background="{StaticResource BgSecondary}" CornerRadius="6" Padding="8" HorizontalAlignment="Stretch">
+            <StackPanel HorizontalAlignment="Stretch">
                 <DockPanel Margin="0,0,0,6">
                     <TextBlock x:Name="ModelNameText" Text="No Model" Foreground="{StaticResource TextPrimary}" FontWeight="SemiBold" FontSize="12" DockPanel.Dock="Left"/>
                     <Border x:Name="StatusBadge" Background="{StaticResource AccentRed}" CornerRadius="2" Padding="6,2" DockPanel.Dock="Right">
@@ -33,6 +33,9 @@
                     </Border>
                     <Border Background="{StaticResource BgTertiary}" CornerRadius="3" Padding="6,2" Margin="0,0,4,0">
                         <TextBlock x:Name="CtxSizeText" Text="Ctx: --" FontSize="9" Foreground="{StaticResource TextSecondary}"/>
+                    </Border>
+                    <Border Background="{StaticResource BgTertiary}" CornerRadius="3" Padding="6,2">
+                        <TextBlock x:Name="BatchSizeText" Text="Batch: --" FontSize="9" Foreground="{StaticResource TextSecondary}"/>
                     </Border>
                 </StackPanel>
                 <StackPanel Orientation="Horizontal" Margin="0,4,0,0">

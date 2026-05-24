@@ -9,15 +9,16 @@
         <SolidColorBrush x:Key="BgTertiary" Color="#2D2D30"/>
         <SolidColorBrush x:Key="TextPrimary" Color="#CCCCCC"/>
         <SolidColorBrush x:Key="TextSecondary" Color="#888888"/>
+        <SolidColorBrush x:Key="TextMuted" Color="#666666"/>
         <SolidColorBrush x:Key="AccentBlue" Color="#4FC3F7"/>
         <SolidColorBrush x:Key="AccentGreen" Color="#4CAF50"/>
         <SolidColorBrush x:Key="AccentRed" Color="#FF6B6B"/>
         <SolidColorBrush x:Key="AccentOrange" Color="#FF9800"/>
     </UserControl.Resources>
 
-    <StackPanel>
-        <Border Background="{StaticResource BgSecondary}" CornerRadius="6" Padding="8">
-            <StackPanel>
+    <StackPanel HorizontalAlignment="Stretch">
+        <Border Background="{StaticResource BgSecondary}" CornerRadius="6" Padding="8" HorizontalAlignment="Stretch">
+            <StackPanel HorizontalAlignment="Stretch">
                 <!-- Model name and status row -->
                 <DockPanel Margin="0,0,0,6">
                     <TextBlock x:Name="ModelNameText" Text="No Model" Foreground="{StaticResource TextPrimary}" FontWeight="SemiBold" FontSize="12" DockPanel.Dock="Left"/>
