@@ -271,12 +271,15 @@ public partial class SystemModelSelector : UserControl
         if (window == null) return;
 
         // Show download progress
-        if (DownloadProgressArea != null)
-            DownloadProgressArea.IsVisible = true;
-        if (DownloadProgressText != null)
-            DownloadProgressText.Text = "Selecting model...";
-        if (DownloadProgressBar != null)
-            DownloadProgressBar.Value = 0;
+        Avalonia.Threading.Dispatcher.UIThread.Post(() =>
+        {
+            if (DownloadProgressArea != null)
+                DownloadProgressArea.IsVisible = true;
+            if (DownloadProgressText != null)
+                DownloadProgressText.Text = "Selecting model...";
+            if (DownloadProgressBar != null)
+                DownloadProgressBar.Value = 0;
+        });
 
         var files = await window.StorageProvider.OpenFilePickerAsync(new Avalonia.Platform.Storage.FilePickerOpenOptions
         {
@@ -289,10 +292,13 @@ public partial class SystemModelSelector : UserControl
         {
             var modelPath = files.First().Path.LocalPath;
 
-            if (DownloadProgressText != null)
-                DownloadProgressText.Text = "Loading model...";
-            if (DownloadProgressBar != null)
-                DownloadProgressBar.Value = 50;
+            Avalonia.Threading.Dispatcher.UIThread.Post(() =>
+            {
+                if (DownloadProgressText != null)
+                    DownloadProgressText.Text = "Loading model...";
+                if (DownloadProgressBar != null)
+                    DownloadProgressBar.Value = 50;
+            });
 
             if (_systemAIManager != null)
             {
@@ -316,8 +322,11 @@ public partial class SystemModelSelector : UserControl
         }
         else
         {
-            if (DownloadProgressArea != null)
-                DownloadProgressArea.IsVisible = false;
+            Avalonia.Threading.Dispatcher.UIThread.Post(() =>
+            {
+                if (DownloadProgressArea != null)
+                    DownloadProgressArea.IsVisible = false;
+            });
         }
     }
 
