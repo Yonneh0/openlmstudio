@@ -1162,14 +1162,17 @@ public partial class MainWindow : Window
                 return;
             }
 
-            // Find the ExampleChats directory (relative to the app's base directory)
+            // Check AppData first (C:\Users\Yonneh\AppData\Roaming\OpenLMStudio\ExampleChats)
+            var appData = Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData);
+            var appDataExampleChats = Path.Combine(appData, "OpenLMStudio", "ExampleChats");
+
+            // Fall back to the app's own ExampleChats directory
             var appDir = AppContext.BaseDirectory;
             var exampleChatsDir = Path.Combine(appDir, "ExampleChats");
 
-            if (!Directory.Exists(exampleChatsDir))
+            if (Directory.Exists(appDataExampleChats))
             {
-                // Try looking in the project directory (for development)
-                exampleChatsDir = Path.Combine(Directory.GetParent(appDir)?.Parent?.Parent?.FullName ?? appDir, "ExampleChats");
+                exampleChatsDir = appDataExampleChats;
             }
 
             if (!Directory.Exists(exampleChatsDir))
