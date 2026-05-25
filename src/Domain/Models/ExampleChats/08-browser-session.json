@@ -1,0 +1,131 @@
+{
+  "Id": "77777777-8888-9999-aaaa-bbbbbbbbbbbb",
+  "Name": "Browser Session - Researching a Topic",
+  "Description": "Agent opens a browser, navigates to websites, extracts data, and summarizes findings",
+  "StoragePath": "",
+  "ModelId": null,
+  "SystemPrompt": "You are a research assistant. You can browse the web, extract information, and provide detailed summaries.",
+  "Temperature": 0.6,
+  "MaxTokens": 8192,
+  "IsActive": false,
+  "CreatedAt": "2026-05-23T13:00:00.0000000Z",
+  "LastMessageAt": "2026-05-23T14:30:00.0000000Z",
+  "UpdatedAt": "2026-05-23T14:30:00.0000000Z",
+  "TotalTokenCount": 6800,
+  "MessageCount": 10,
+  "Tags": ["browser", "research", "web", "agentic"],
+  "Messages": [
+    {
+      "Id": "g6666661",
+      "Role": "User",
+      "Content": "Can you research the latest developments in LLM inference optimization? I need a summary of the top approaches as of mid-2026.",
+      "ToolCalls": [],
+      "TokenCount": 72,
+      "CreatedAt": "2026-05-23T13:00:00.0000000Z"
+    },
+    {
+      "Id": "g6666662",
+      "Role": "Assistant",
+      "Content": "I'll research this for you. Let me start by browsing the latest articles and papers on LLM inference.",
+      "ToolCalls": [
+        {
+          "Id": "browser-001",
+          "FunctionName": "browser_navigate",
+          "ArgumentsJson": "{\"url\": \"https://arxiv.org/search/?query=LLM+inference+optimization&searchtype=all\"}",
+          "Result": "Navigated to arXiv search results for LLM inference optimization"
+        }
+      ],
+      "TokenCount": 110,
+      "CreatedAt": "2026-05-23T13:01:00.0000000Z"
+    },
+    {
+      "Id": "g6666663",
+      "Role": "Assistant",
+      "Content": "Found some interesting papers. Let me also check the latest blog posts and benchmarks.",
+      "ToolCalls": [
+        {
+          "Id": "browser-002",
+          "FunctionName": "browser_navigate",
+          "ArgumentsJson": "{\"url\": \"https://huggingface.co/blog/llm-inference-optimization-2026\"}",
+          "Result": "Found Hugging Face blog post on LLM inference optimization"
+        },
+        {
+          "Id": "browser-003",
+          "FunctionName": "browser_navigate",
+          "ArgumentsJson": "{\"url\": \"https://blog.openai.com/llm-inference-benchmarks\"}",
+          "Result": "Found OpenAI blog post with inference benchmarks"
+        }
+      ],
+      "TokenCount": 140,
+      "CreatedAt": "2026-05-23T13:03:00.0000000Z"
+    },
+    {
+      "Id": "g6666664",
+      "Role": "Assistant",
+      "Content": "Let me also search for recent benchmarks and comparisons.",
+      "ToolCalls": [
+        {
+          "Id": "browser-004",
+          "FunctionName": "browser_navigate",
+          "ArgumentsJson": "{\"url\": \"https://www.lambdalabs.com/blog/llm-inference-benchmarks-2026\"}",
+          "Result": "Found Lambda Labs benchmark comparison"
+        },
+        {
+          "Id": "browser-005",
+          "FunctionName": "browser_navigate",
+          "ArgumentsJson": "{\"url\": \"https://docs.vllm.ai/en/latest/serving/deployment_modes.html\"}",
+          "Result": "Found vLLM documentation on deployment modes"
+        }
+      ],
+      "TokenCount": 150,
+      "CreatedAt": "2026-05-23T13:06:00.0000000Z"
+    },
+    {
+      "Id": "g6666665",
+      "Role": "Assistant",
+      "Content": "Now let me compile my findings into a comprehensive summary.",
+      "ToolCalls": [],
+      "TokenCount": 60,
+      "CreatedAt": "2026-05-23T13:10:00.0000000Z"
+    },
+    {
+      "Id": "g6666666",
+      "Role": "Assistant",
+      "Content": "Here's my research on **LLM Inference Optimization** (as of mid-2026):\n\n## Top Approaches\n\n### 1. **Speculative Decoding**\n- **Medusa** and **Eagle** models predict multiple tokens ahead\n- Speedups of 2-3x on 7B models, 1.5-2x on 70B models\n- New 2026 paper: \"FastDraft\" achieves 4x speedup with minimal training\n\n### 2. **KV Cache Optimization**\n- **PagedAttention** (vLLM) — now standard in most serving systems\n- **FlashAttention-3** — improved memory bandwidth utilization\n- **KV cache quantization** to 4-bit — 4x memory savings\n\n### 3. **Quantization**\n- **AWQ** (Activation-aware Weight Quantization) — 4-bit with minimal accuracy loss\n- **GGUF** format — now supports up to 70B models with Q4_K_M\n- **SmoothQuant** — handles outliers in activations\n\n### 4. **Kernel Fusion**\n- **Triton** kernels replacing CUDA operations\n- **FlashInfer** — faster attention kernels\n- **TensorRT-LLM** — NVIDIA's optimized inference engine\n\n### 5. **Batching Strategies**\n- **Continuous batching** (vLLM, TGI)\n- **Dynamic batching** for variable-length sequences\n- **Multi-modal batching** for vision-language models\n\n## Benchmarks (mid-2026)\n\n| Model | vLLM | TensorRT-LLM | llama.cpp | \n|-------|------|-------------|-----------|\n| Llama 3.1 70B | 142 tok/s | 168 tok/s | 89 tok/s |\n| Mixtral 8x7B | 210 tok/s | 195 tok/s | 145 tok/s |\n| Qwen 2 72B | 156 tok/s | 178 tok/s | 102 tok/s |\n\n## Recommendations for OpenLMStudio\n\n1. **Default to GGUF** for local inference (fast loading, low memory)\n2. **Support multiple backends** (llama.cpp, vLLM, ONNX Runtime)\n3. **KV cache quantization** for 70B+ models\n4. **Speculative decoding** as an optional feature\n\nI've captured all the URLs in this conversation for your reference!",
+      "ToolCalls": [],
+      "TokenCount": 520,
+      "CreatedAt": "2026-05-23T13:15:00.0000000Z"
+    },
+    {
+      "Id": "g6666667",
+      "Role": "User",
+      "Content": "This is excellent! Can you also check what the latest llama.cpp release has in terms of new features?",
+      "ToolCalls": [],
+      "TokenCount": 62,
+      "CreatedAt": "2026-05-23T13:30:00.0000000Z"
+    },
+    {
+      "Id": "g6666668",
+      "Role": "Assistant",
+      "Content": "Let me check the latest llama.cpp release notes.",
+      "ToolCalls": [
+        {
+          "Id": "browser-006",
+          "FunctionName": "browser_navigate",
+          "ArgumentsJson": "{\"url\": \"https://github.com/ggerganov/llama.cpp/releases\"}",
+          "Result": "Found llama.cpp releases page"
+        }
+      ],
+      "TokenCount": 100,
+      "CreatedAt": "2026-05-23T13:31:00.0000000Z"
+    },
+    {
+      "Id": "g6666669",
+      "Role": "Assistant",
+      "Content": "The latest llama.cpp release (v0.1.0, May 2026) includes:\n\n1. **GPU offloading improvements** — up to 16 layers can now be offloaded per GPU, with better memory management\n2. **New quantization types** — Q5_K_S and Q6_K_L for better quality\n3. **WebGPU support** — browser-based inference\n4. **MGLA (Multi-GPU Linear Acceleration)** — automatic multi-GPU distribution\n5. **Improved GGUF format** — supports metadata for model cards\n\nThis is great news for OpenLMStudio — the GGUF format is maturing rapidly!\n\nI've captured all the links from my research. Would you like me to format this into a document?",
+      "ToolCalls": [],
+      "TokenCount": 220,
+      "CreatedAt": "2026-05-23T14:30:00.0000000Z"
+    }
+  ]
+}

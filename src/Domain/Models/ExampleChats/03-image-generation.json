@@ -1,0 +1,209 @@
+{
+  "Id": "22222222-3333-4444-5555-666666666666",
+  "Name": "Image Generation - Logo Design",
+  "Description": "User asks AI to generate logos, AI uses image generation tools with different prompts and parameters",
+  "StoragePath": "",
+  "ModelId": "stable-diffusion-xl-v1",
+  "SystemPrompt": "You are an expert graphic designer who can generate images. When the user asks for a design, use image generation tools to create it.",
+  "Temperature": 0.8,
+  "MaxTokens": 4096,
+  "IsActive": false,
+  "CreatedAt": "2026-05-22T11:00:00.0000000Z",
+  "LastMessageAt": "2026-05-22T12:15:00.0000000Z",
+  "UpdatedAt": "2026-05-22T12:15:00.0000000Z",
+  "TotalTokenCount": 6200,
+  "MessageCount": 10,
+  "Tags": ["image-generation", "logo", "design"],
+  "Messages": [
+    {
+      "Id": "b1111111",
+      "Role": "User",
+      "Content": "I need a logo for my coffee shop called 'Midnight Brew'. It should feel dark, cozy, and modern. Can you generate some options?",
+      "ToolCalls": [],
+      "TokenCount": 62,
+      "CreatedAt": "2026-05-22T11:00:00.0000000Z"
+    },
+    {
+      "Id": "b1111112",
+      "Role": "Assistant",
+      "Content": "I'll generate a few logo variations for 'Midnight Brew'. Let me start with a dark, elegant design with a coffee cup and moon motif.",
+      "ToolCalls": [
+        {
+          "Id": "img-001",
+          "FunctionName": "generate_image",
+          "ArgumentsJson": "{\"prompt\": \"A modern minimalist coffee shop logo for 'Midnight Brew'. Dark navy and gold color scheme. A crescent moon intertwined with a steaming coffee cup. Clean typography. Vector style, white background.\", \"width\": 1024, \"height\": 1024, \"cfgScale\": 7.5, \"steps\": 30, \"seed\": 42}",
+          "Result": "Generated image (1024x1024, seed: 42)"
+        }
+      ],
+      "TokenCount": 120,
+      "CreatedAt": "2026-05-22T11:01:00.0000000Z"
+    },
+    {
+      "Id": "b1111113",
+      "Role": "Assistant",
+      "Content": "Here's the first option! Let me generate a couple more variations with different styles.",
+      "ToolCalls": [
+        {
+          "Id": "img-002",
+          "FunctionName": "generate_image",
+          "ArgumentsJson": "{\"prompt\": \"A vintage-style coffee shop logo for 'Midnight Brew'. Deep brown and cream colors. An old-fashioned coffee pot with steam forming a star shape. Circular badge design with decorative borders. Retro typography.\", \"width\": 1024, \"height\": 1024, \"cfgScale\": 8.0, \"steps\": 40, \"seed\": 137}",
+          "Result": "Generated image (1024x1024, seed: 137)"
+        },
+        {
+          "Id": "img-003",
+          "FunctionName": "generate_image",
+          "ArgumentsJson": "{\"prompt\": \"A modern geometric coffee shop logo for 'Midnight Brew'. Dark purple and electric blue gradient. Abstract coffee bean shape forming a night sky. Sleek sans-serif typography. Flat design, minimalist.\", \"width\": 1024, \"height\": 1024, \"cfgScale\": 7.0, \"steps\": 25, \"seed\": 256}",
+          "Result": "Generated image (1024x1024, seed: 256)"
+        }
+      ],
+      "TokenCount": 180,
+      "CreatedAt": "2026-05-22T11:03:00.0000000Z"
+    },
+    {
+      "Id": "b1111114",
+      "Role": "User",
+      "Content": "I love the first one! Can you make a version with a slightly different font? And maybe try a horizontal layout too?",
+      "ToolCalls": [],
+      "TokenCount": 58,
+      "CreatedAt": "2026-05-22T11:10:00.0000000Z"
+    },
+    {
+      "Id": "b1111115",
+      "Role": "Assistant",
+      "Content": "Great choice! Let me create those variations for you.",
+      "ToolCalls": [
+        {
+          "Id": "img-004",
+          "FunctionName": "generate_image",
+          "ArgumentsJson": "{\"prompt\": \"A modern minimalist coffee shop logo for 'Midnight Brew'. Dark navy and gold color scheme. A crescent moon intertwined with a steaming coffee cup. Elegant serif typography, similar to Playfair Display. Vector style, white background.\", \"width\": 1024, \"height\": 1024, \"cfgScale\": 7.5, \"steps\": 30, \"seed\": 420}",
+          "Result": "Generated image (1024x1024, seed: 420)"
+        },
+        {
+          "Id": "img-005",
+          "FunctionName": "generate_image",
+          "ArgumentsJson": "{\"prompt\": \"A modern minimalist horizontal coffee shop logo for 'Midnight Brew'. Dark navy and gold color scheme. A crescent moon intertwined with a steaming coffee cup on the left, text 'Midnight Brew' in clean sans-serif to the right. Vector style, white background.\", \"width\": 1024, \"height\": 512, \"cfgScale\": 7.5, \"steps\": 30, \"seed\": 421}",
+          "Result": "Generated image (1024x512, seed: 421)"
+        }
+      ],
+      "TokenCount": 175,
+      "CreatedAt": "2026-05-22T11:15:00.0000000Z"
+    },
+    {
+      "Id": "b1111116",
+      "Role": "User",
+      "Content": "Perfect! I'll go with the horizontal version. Can you also generate a dark variant for use on dark backgrounds?",
+      "ToolCalls": [],
+      "TokenCount": 62,
+      "CreatedAt": "2026-05-22T11:20:00.0000000Z"
+    },
+    {
+      "Id": "b1111117",
+      "Role": "Assistant",
+      "Content": "Of course! Here's a dark variant with inverted colors.",
+      "ToolCalls": [
+        {
+          "Id": "img-006",
+          "FunctionName": "generate_image",
+          "ArgumentsJson": "{\"prompt\": \"A modern minimalist horizontal coffee shop logo for 'Midnight Brew'. Dark charcoal and warm gold color scheme. A crescent moon intertwined with a steaming coffee cup on the left, text 'Midnight Brew' in clean sans-serif to the right. Vector style, dark charcoal background.\", \"width\": 1024, \"height\": 512, \"cfgScale\": 7.5, \"steps\": 30, \"seed\": 422}",
+          "Result": "Generated image (1024x512, seed: 422)"
+        }
+      ],
+      "TokenCount": 130,
+      "CreatedAt": "2026-05-22T11:25:00.0000000Z"
+    },
+    {
+      "Id": "b1111118",
+      "Role": "Assistant",
+      "Content": "Here are all the logo options I've generated for 'Midnight Brew':\n\n1. **Original** (1024x1024) - Crescent moon + coffee cup, serif font\n2. **Vintage** (1024x1024) - Badge style with decorative borders\n3. **Geometric** (1024x1024) - Modern, abstract, purple/blue gradient\n4. **Elegant** (1024x1024) - Same as #1 but with serif typography\n5. **Horizontal** (1024x512) - Your chosen design, clean and versatile\n6. **Dark variant** (1024x512) - Inverted colors for dark backgrounds\n\nAll images are included in this conversation. You can download them from the image outputs below each message. Would you like any adjustments to any of these?",
+      "ToolCalls": [],
+      "TokenCount": 185,
+      "CreatedAt": "2026-05-22T12:15:00.0000000Z"
+    }
+  ],
+  "ImageOutputs": [
+    {
+      "Id": "img-001",
+      "ImageData": "iVBORw0KGgoAAAANSUhEUgAABAAAAA...",
+      "MimeType": "image/png",
+      "Width": 1024,
+      "Height": 1024,
+      "Seed": 42,
+      "CfgScale": 7.5,
+      "Steps": 30,
+      "ModelId": "stable-diffusion-xl-v1",
+      "GeneratedAt": "2026-05-22T11:01:00.0000000Z",
+      "Prompt": "A modern minimalist coffee shop logo for 'Midnight Brew'. Dark navy and gold color scheme. A crescent moon intertwined with a steaming coffee cup. Clean typography. Vector style, white background.",
+      "NegativePrompt": null
+    },
+    {
+      "Id": "img-002",
+      "ImageData": "iVBORw0KGgoAAAANSUhEUgAABAAAAA...",
+      "MimeType": "image/png",
+      "Width": 1024,
+      "Height": 1024,
+      "Seed": 137,
+      "CfgScale": 8.0,
+      "Steps": 40,
+      "ModelId": "stable-diffusion-xl-v1",
+      "GeneratedAt": "2026-05-22T11:02:00.0000000Z",
+      "Prompt": "A vintage-style coffee shop logo for 'Midnight Brew'. Deep brown and cream colors. An old-fashioned coffee pot with steam forming a star shape. Circular badge design with decorative borders. Retro typography.",
+      "NegativePrompt": null
+    },
+    {
+      "Id": "img-003",
+      "ImageData": "iVBORw0KGgoAAAANSUhEUgAABAAAAA...",
+      "MimeType": "image/png",
+      "Width": 1024,
+      "Height": 1024,
+      "Seed": 256,
+      "CfgScale": 7.0,
+      "Steps": 25,
+      "ModelId": "stable-diffusion-xl-v1",
+      "GeneratedAt": "2026-05-22T11:03:00.0000000Z",
+      "Prompt": "A modern geometric coffee shop logo for 'Midnight Brew'. Dark purple and electric blue gradient. Abstract coffee bean shape forming a night sky. Sleek sans-serif typography. Flat design, minimalist.",
+      "NegativePrompt": null
+    },
+    {
+      "Id": "img-004",
+      "ImageData": "iVBORw0KGgoAAAANSUhEUgAABAAAAA...",
+      "MimeType": "image/png",
+      "Width": 1024,
+      "Height": 1024,
+      "Seed": 420,
+      "CfgScale": 7.5,
+      "Steps": 30,
+      "ModelId": "stable-diffusion-xl-v1",
+      "GeneratedAt": "2026-05-22T11:14:00.0000000Z",
+      "Prompt": "A modern minimalist coffee shop logo for 'Midnight Brew'. Dark navy and gold color scheme. A crescent moon intertwined with a steaming coffee cup. Elegant serif typography, similar to Playfair Display. Vector style, white background.",
+      "NegativePrompt": null
+    },
+    {
+      "Id": "img-005",
+      "ImageData": "iVBORw0KGgoAAAANSUhEUgAABAAAAA...",
+      "MimeType": "image/png",
+      "Width": 1024,
+      "Height": 512,
+      "Seed": 421,
+      "CfgScale": 7.5,
+      "Steps": 30,
+      "ModelId": "stable-diffusion-xl-v1",
+      "GeneratedAt": "2026-05-22T11:15:00.0000000Z",
+      "Prompt": "A modern minimalist horizontal coffee shop logo for 'Midnight Brew'. Dark navy and gold color scheme. A crescent moon intertwined with a steaming coffee cup on the left, text 'Midnight Brew' in clean sans-serif to the right. Vector style, white background.",
+      "NegativePrompt": null
+    },
+    {
+      "Id": "img-006",
+      "ImageData": "iVBORw0KGgoAAAANSUhEUgAABAAAAA...",
+      "MimeType": "image/png",
+      "Width": 1024,
+      "Height": 512,
+      "Seed": 422,
+      "CfgScale": 7.5,
+      "Steps": 30,
+      "ModelId": "stable-diffusion-xl-v1",
+      "GeneratedAt": "2026-05-22T11:25:00.0000000Z",
+      "Prompt": "A modern minimalist horizontal coffee shop logo for 'Midnight Brew'. Dark charcoal and warm gold color scheme. A crescent moon intertwined with a steaming coffee cup on the left, text 'Midnight Brew' in clean sans-serif to the right. Vector style, dark charcoal background.",
+      "NegativePrompt": null
+    }
+  ]
+}

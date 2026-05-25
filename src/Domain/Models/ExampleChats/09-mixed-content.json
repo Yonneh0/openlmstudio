@@ -1,0 +1,165 @@
+{
+  "Id": "88888888-9999-aaaa-bbbb-cccccccccccc",
+  "Name": "Mixed Content - Building a Feature",
+  "Description": "Long conversation covering code blocks, image generation, tool calls, and user interactions",
+  "StoragePath": "",
+  "ModelId": null,
+  "SystemPrompt": "You are a versatile developer assistant. You can code, design, debug, and explain.",
+  "Temperature": 0.7,
+  "MaxTokens": 8192,
+  "IsActive": true,
+  "CreatedAt": "2026-05-24T09:00:00.0000000Z",
+  "LastMessageAt": "2026-05-24T11:30:00.0000000Z",
+  "UpdatedAt": "2026-05-24T11:30:00.0000000Z",
+  "TotalTokenCount": 12500,
+  "MessageCount": 20,
+  "Tags": ["mixed", "feature", "full-stack"],
+  "Messages": [
+    {
+      "Id": "h7777771",
+      "Role": "User",
+      "Content": "I want to add a plugin system to OpenLMStudio. Can you help me design it?",
+      "ToolCalls": [],
+      "TokenCount": 58,
+      "CreatedAt": "2026-05-24T09:00:00.0000000Z"
+    },
+    {
+      "Id": "h7777772",
+      "Role": "Assistant",
+      "Content": "I'd love to help! Let me think about the architecture.\n\nFor a plugin system, I'd recommend:\n\n1. **Plugin interface** — define what plugins can do\n2. **Plugin registry** — manage loading/unloading\n3. **Plugin manifest** — metadata (name, version, dependencies)\n4. **Plugin loader** — discover and instantiate plugins\n\nLet me sketch out the core interfaces:\n\n```csharp\n// Plugin contract\npublic interface IPlugin\n{\n    string Name { get; }\n    string Version { get; }\n    Task InitializeAsync();\n    Task<T> InvokeAsync<T>(string method, object[] args);\n}\n\n// Plugin manifest\npublic record PluginManifest(\n    string Id,\n    string Name,\n    string Version,\n    List<string> Dependencies,\n    Dictionary<string, ToolDefinition> Tools\n);\n\n// Plugin registry\npublic interface IPluginRegistry\n{\n    Task LoadPluginAsync(PluginManifest manifest);\n    Task UnloadPluginAsync(string pluginId);\n    IReadOnlyList<IPlugin> GetAllPlugins();\n    T? GetPlugin<T>() where T : IPlugin;\n}\n```\n\nDoes this architecture make sense for your use case?",
+      "ToolCalls": [],
+      "TokenCount": 420,
+      "CreatedAt": "2026-05-24T09:02:00.0000000Z"
+    },
+    {
+      "Id": "h7777773",
+      "Role": "User",
+      "Content": "That looks good! I'd also want plugins to be able to add UI elements. Can we support that?",
+      "ToolCalls": [],
+      "TokenCount": 62,
+      "CreatedAt": "2026-05-24T09:05:00.0000000Z"
+    },
+    {
+      "Id": "h7777774",
+      "Role": "Assistant",
+      "Content": "Absolutely! For UI plugins, we can use Avalonia's `IView` interface:\n\n```csharp\n// UI plugin contract\npublic interface IViewPlugin : IPlugin\n{\n    string TargetView { get; }  // e.g., \"MainWindow\", \"SettingsWindow\"\n    int Priority { get; }  // Controls placement order\n    IView View { get; }\n}\n\n// Plugin host for UI\npublic interface IPluginHost\n{\n    void RegisterView(IViewPlugin plugin);\n    void UnregisterView(string pluginId);\n}\n```\n\nFor the UI, plugins can register:\n- **Panels** (sidebar, dockable)\n- **Menu items**\n- **Toolbars**\n- **Dialogs**\n\nLet me also add a plugin manifest example:\n\n```json\n{\n  \"id\": \"my-awesome-plugin\",\n  \"name\": \"My Awesome Plugin\",\n  \"version\": \"1.0.0\",\n  \"dependencies\": [\"core-chat\", \"model-loader\"],\n  \"tools\": {\n    \"my_tool\": {\n      \"name\": \"my_tool\",\n      \"description\": \"Does something cool\",\n      \"parameters\": {\n        \"arg1\": { \"type\": \"string\", \"description\": \"First argument\" }\n      }\n    }\n  },\n  \"ui\": {\n    \"panels\": [\"MyPluginPanel\"],\n    \"menuItems\": [\n      { \"text\": \"Run Plugin\", \"command\": \"RunPluginCommand\" }\n    ]\n  }\n}\n```\n\nNow let me search for the existing plugin infrastructure in the codebase.",
+      "ToolCalls": [
+        {
+          "Id": "tool-201",
+          "FunctionName": "search_files",
+          "ArgumentsJson": "{\"path\": \"src\", \"regex\": \"interface.*Plugin|class.*Plugin\", \"file_pattern\": \"*.cs\"}",
+          "Result": "Found existing plugin interfaces in:\n- src/Domain/Interfaces/IPlugin.cs\n- src/Domain/Interfaces/IPluginHost.cs\n- src/Infrastructure/Services/PluginRegistry.cs\n- src/Infrastructure/Services/PluginLoader.cs"
+        }
+      ],
+      "TokenCount": 280,
+      "CreatedAt": "2026-05-24T09:07:00.0000000Z"
+    },
+    {
+      "Id": "h7777775",
+      "Role": "Assistant",
+      "Content": "I see there's already some plugin infrastructure. Let me read the existing interfaces to see what we can build on.",
+      "ToolCalls": [
+        {
+          "Id": "tool-202",
+          "FunctionName": "read_file",
+          "ArgumentsJson": "{\"path\": \"src/Domain/Interfaces/IPlugin.cs\"}",
+          "Result": "IPlugin.cs (45 lines)\n- Defines IPlugin with Name, Version, InitializeAsync\n- PluginState enum\n- PluginDependency record"
+        }
+      ],
+      "TokenCount": 100,
+      "CreatedAt": "2026-05-24T09:08:00.0000000Z"
+    },
+    {
+      "Id": "h7777776",
+      "Role": "User",
+      "Content": "Can you also generate a sample plugin that adds a 'Dark Mode' toggle to the settings?",
+      "ToolCalls": [],
+      "TokenCount": 62,
+      "CreatedAt": "2026-05-24T09:15:00.0000000Z"
+    },
+    {
+      "Id": "h7777777",
+      "Role": "Assistant",
+      "Content": "Here's a Dark Mode plugin:\n\n```csharp\npublic class DarkModePlugin : IViewPlugin\n{\n    public string Name => \"Dark Mode Toggle\";\n    public string Version => \"1.0.0\";\n    public string TargetView => \"SettingsWindow\";\n    public int Priority => 10;\n    \n    public IView View => new DarkModePanel();\n    \n    private bool _isDarkMode;\n    \n    public Task InitializeAsync()\n    {\n        _isDarkMode = SettingsService.LoadDarkMode();\n        return Task.CompletedTask;\n    }\n    \n    public void Toggle()\n    {\n        _isDarkMode = !_isDarkMode;\n        SettingsService.SaveDarkMode(_isDarkMode);\n        ThemeService.ApplyTheme(_isDarkMode ? Theme.Dark : Theme.Light);\n    }\n}\n\n// The panel XAML\n<Border Style=\"{StaticResource SettingsPanelStyle}\">\n    <StackPanel>\n        <TextBlock Text=\"Dark Mode\" Style=\"{StaticResource SettingsLabelStyle}\"/>\n        <ToggleButton \n            Content=\"{Binding IsDarkMode, Converter={StaticResource BoolToTextConverter}}\" \n            IsChecked=\"{Binding IsDarkMode}\" \n            Style=\"{StaticResource SettingsToggleStyle}\"/>\n    </StackPanel>\n</Border>\n```\n\nThe plugin will:\n1. Load the current dark mode setting\n2. Display a toggle in the settings panel\n3. Apply the theme when toggled\n4. Persist the setting to disk\n\nI've included the C# class and the Avalonia XAML. Want me to create a full plugin project template?",
+      "ToolCalls": [],
+      "TokenCount": 480,
+      "CreatedAt": "2026-05-24T09:20:00.0000000Z"
+    },
+    {
+      "Id": "h7777778",
+      "Role": "User",
+      "Content": "Yes! And also generate a preview of what the settings panel would look like.\n\n[image: iVBORw0KGgoAAAANSUhEUgAABAAAAA...]",
+      "ToolCalls": [],
+      "TokenCount": 78,
+      "CreatedAt": "2026-05-24T09:30:00.0000000Z"
+    },
+    {
+      "Id": "h7777779",
+      "Role": "Assistant",
+      "Content": "Looking at your screenshot, I can see the current settings panel layout. Here's the Dark Mode plugin integrated:\n\nThe toggle appears in the 'Appearance' section with a clean design matching your existing style. The toggle is on the right side with the label on the left, consistent with your other settings.\n\nNow let me create the full plugin project template.",
+      "ToolCalls": [
+        {
+          "Id": "tool-203",
+          "FunctionName": "write_to_file",
+          "ArgumentsJson": "{\"path\": \"src/Plugins/Template/MyPlugin.csproj\", \"content\": \"<Project Sdk=\\\"Microsoft.NET.Sdk\\\">\\n  <PropertyGroup>\\n    <TargetFramework>net8.0</TargetFramework>\\n    <Nullable>enable</Nullable>\\n  </PropertyGroup>\\n  <ItemGroup>\\n    <ProjectReference Include=\\\"../Domain/OpenLMStudio.Domain.csproj\" />\\n    <ProjectReference Include=\\\"../Application/OpenLMStudio.Application.csproj\" />\\n  </ItemGroup>\\n</Project>\"}",
+          "Result": "Created src/Plugins/Template/MyPlugin.csproj"
+        },
+        {
+          "Id": "tool-204",
+          "FunctionName": "write_to_file",
+          "ArgumentsJson": "{\"path\": \"src/Plugins/Template/MyPlugin.cs\", \"content\": \"namespace MyPlugin;\\n\\npublic class MyPlugin : IPlugin\\n{\\n    public string Name => \\\"My Plugin\\\";\\n    public string Version => \\\"1.0.0\\\";\\n    \\n    public Task InitializeAsync() => Task.CompletedTask;\\n    public Task<T> InvokeAsync<T>(string method, object[] args) => Task.FromResult<T>(default!);\\n}\"}",
+          "Result": "Created src/Plugins/Template/MyPlugin.cs"
+        }
+      ],
+      "TokenCount": 240,
+      "CreatedAt": "2026-05-24T09:35:00.0000000Z"
+    },
+    {
+      "Id": "h7777780",
+      "Role": "User",
+      "Content": "Perfect! One more thing — can you generate a dark mode preview image too?\n\n[image: iVBORw0KGgoAAAANSUhEUgAABAAAAA...]",
+      "ToolCalls": [],
+      "TokenCount": 72,
+      "CreatedAt": "2026-05-24T10:00:00.0000000Z"
+    },
+    {
+      "Id": "h7777781",
+      "Role": "Assistant",
+      "Content": "Here's the dark mode preview:\n\nThe settings panel looks great in dark mode! The toggle is clearly visible and the overall aesthetic matches your design language. The dark theme uses a subtle gray (#1E1E1E) background with light text (#F0F0F0).\n\nLet me also generate a side-by-side comparison image.",
+      "ToolCalls": [
+        {
+          "Id": "img-301",
+          "FunctionName": "generate_image",
+          "ArgumentsJson": "{\"prompt\": \"Side by side comparison of a settings panel in light mode and dark mode. Left side: light gray background with dark text. Right side: dark charcoal background with light text. Both show a toggle switch for 'Dark Mode'. Clean, modern UI design.\", \"width\": 1024, \"height\": 512, \"cfgScale\": 7.5, \"steps\": 30, \"seed\": 777}",
+          "Result": "Generated side-by-side preview (1024x512)"
+        }
+      ],
+      "TokenCount": 180,
+      "CreatedAt": "2026-05-24T10:05:00.0000000Z"
+    },
+    {
+      "Id": "h7777782",
+      "Role": "Assistant",
+      "Content": "I've generated the side-by-side preview! Here's what we've built today:\n\n**Plugin System Design:**\n1. ✅ Core interfaces (IPlugin, IViewPlugin)\n2. ✅ Plugin registry and manifest\n3. ✅ Dark Mode plugin implementation\n4. ✅ Plugin project template\n5. ✅ UI integration (settings panel)\n6. ✅ Light/dark mode previews\n\n**Files created:**\n- `src/Domain/Interfaces/IPlugin.cs`\n- `src/Domain/Interfaces/IViewPlugin.cs`\n- `src/Infrastructure/Services/PluginRegistry.cs`\n- `src/Plugins/Template/MyPlugin.cs`\n- `src/Plugins/Template/MyPlugin.csproj`\n\nThe plugin system is ready for you to extend with more plugins!",
+      "ToolCalls": [],
+      "TokenCount": 220,
+      "CreatedAt": "2026-05-24T11:30:00.0000000Z"
+    }
+  ],
+  "ImageOutputs": [
+    {
+      "Id": "img-301",
+      "ImageData": "iVBORw0KGgoAAAANSUhEUgAABAAAAA...",
+      "MimeType": "image/png",
+      "Width": 1024,
+      "Height": 512,
+      "Seed": 777,
+      "CfgScale": 7.5,
+      "Steps": 30,
+      "ModelId": "stable-diffusion-xl-v1",
+      "GeneratedAt": "2026-05-24T10:05:00.0000000Z",
+      "Prompt": "Side by side comparison of a settings panel in light mode and dark mode. Left side: light gray background with dark text. Right side: dark charcoal background with light text. Both show a toggle switch for 'Dark Mode'. Clean, modern UI design.",
+      "NegativePrompt": null
+    }
+  ]
+}

@@ -1,0 +1,67 @@
+{
+  "Id": "55555555-6666-7777-8888-999999999999",
+  "Name": "Code Review - Pull Request Analysis",
+  "Description": "AI reviews a pull request with detailed inline comments on code changes",
+  "StoragePath": "",
+  "ModelId": null,
+  "SystemPrompt": "You are a senior code reviewer. Review code changes carefully, focusing on correctness, style, and best practices. Be honest but constructive.",
+  "Temperature": 0.6,
+  "MaxTokens": 8192,
+  "IsActive": false,
+  "CreatedAt": "2026-05-23T16:00:00.0000000Z",
+  "LastMessageAt": "2026-05-23T17:00:00.0000000Z",
+  "UpdatedAt": "2026-05-23T17:00:00.0000000Z",
+  "TotalTokenCount": 5600,
+  "MessageCount": 6,
+  "Tags": ["code-review", "pr", "quality"],
+  "Messages": [
+    {
+      "Id": "e4444441",
+      "Role": "User",
+      "Content": "Could you review this PR? It adds a new plugin system to OpenLMStudio.\n\n```diff\n--- a/src/Infrastructure/Services/PluginRegistry.cs\n+++ b/src/Infrastructure/Services/PluginRegistry.cs\n@@ -1,10 +1,15 @@\n+using System.IO;\n+using System.Threading.Tasks;\n+using Newtonsoft.Json;\n+\n namespace OpenLMStudio.Infrastructure.Services\n {\n     public class PluginRegistry\n     {\n-        private readonly List<PluginInfo> _plugins;\n+        private readonly Dictionary<string, PluginInfo> _plugins;\n+        private readonly string _pluginsPath;\n\n-        public PluginRegistry()\n+        public PluginRegistry(string pluginsPath)\n         {\n-            _plugins = new List<PluginInfo>();\n+            _pluginsPath = pluginsPath;\n+            LoadPlugins();\n         }\n\n+        private void LoadPlugins()\n+        {\n+            var json = File.ReadAllText(Path.Combine(_pluginsPath, \"plugins.json\"));\n+            _plugins = JsonConvert.DeserializeObject<Dictionary<string, PluginInfo>>(json);\n+        }\n+\n         public void AddPlugin(PluginInfo plugin)\n         {\n-            _plugins.Add(plugin);\n+            _plugins[plugin.Id] = plugin;\n         }\n\n         public PluginInfo? GetPlugin(string id)\n         {\n-            return _plugins.FirstOrDefault(p => p.Id == id);\n+            _plugins.TryGetValue(id, out var plugin);\n+            return plugin;\n         }\n     }\n }\n```\n\nAny issues you can spot?",
+      "ToolCalls": [],
+      "TokenCount": 420,
+      "CreatedAt": "2026-05-23T16:00:00.0000000Z"
+    },
+    {
+      "Id": "e4444442",
+      "Role": "Assistant",
+      "Content": "I've reviewed the PR. Here are my findings:\n\n## Issues Found\n\n### 1. **Missing null check in LoadPlugins** (Medium)\n```csharp\nvar json = File.ReadAllText(Path.Combine(_pluginsPath, \"plugins.json\"));\n```\nIf `plugins.json` doesn't exist, this will throw. Consider:\n```csharp\nif (!File.Exists(jsonPath)) { _plugins = new(); return; }\n```\n\n### 2. **No error handling in LoadPlugins** (Medium)\nIf the JSON is malformed, the entire registry becomes unusable. Consider wrapping in try-catch.\n\n### 3. **Missing using statements** (Low)\nThe diff adds `using System.IO;` and `using Newtonsoft.Json;` but doesn't add `using System.Linq;` which is needed for `FirstOrDefault` — wait, actually `TryGetValue` replaces `FirstOrDefault`, so `System.Linq` is no longer needed. That's actually an improvement.\n\n### 4. **Dictionary initialization** (Low)\n`_plugins` is not initialized before `LoadPlugins` is called. If an exception occurs, the constructor will leave the object in an inconsistent state.\n\n### 5. **No disposal of file handles** (Low)\n`File.ReadAllText` doesn't require explicit disposal, but if you switch to `StreamReader`, you'll need `using`.\n\n## Positive Observations\n\n1. **Dictionary over List** — Good choice! O(1) lookups vs O(n).\n2. **Constructor injection** of `pluginsPath` is clean.\n3. **`TryGetValue`** is a nice touch — avoids double dictionary access.\n\n## Suggested Improvements\n\n```csharp\npublic PluginRegistry(string pluginsPath)\n{\n    _plugins = new();  // Initialize before use\n    _pluginsPath = pluginsPath;\n    LoadPlugins();\n}\n\nprivate void LoadPlugins()\n{\n    try\n    {\n        var jsonPath = Path.Combine(_pluginsPath, \"plugins.json\");\n        if (!File.Exists(jsonPath))\n        {\n            _plugins = new();\n            return;\n        }\n        var json = File.ReadAllText(jsonPath);\n        _plugins = JsonConvert.DeserializeObject<Dictionary<string, PluginInfo>>(json) ?? new();\n    }\n    catch (Exception ex)\n    {\n        // Log and use empty dictionary\n        _logger.LogError(ex, \"Failed to load plugins\");\n        _plugins = new();\n    }\n}\n```\n\n## Overall: Approved with comments\n\nSolid PR. The dictionary refactor is a clear improvement. Just add the null/error handling and you're good to go.",
+      "ToolCalls": [],
+      "TokenCount": 580,
+      "CreatedAt": "2026-05-23T16:05:00.0000000Z"
+    },
+    {
+      "Id": "e4444443",
+      "Role": "User",
+      "Content": "Great review! I've applied the fixes. One question: should I also add unit tests for LoadPlugins?",
+      "ToolCalls": [],
+      "TokenCount": 62,
+      "CreatedAt": "2026-05-23T16:30:00.0000000Z"
+    },
+    {
+      "Id": "e4444444",
+      "Role": "Assistant",
+      "Content": "Yes, I'd recommend adding tests for these scenarios:\n\n1. **Missing plugins.json** — should create an empty registry\n2. **Malformed JSON** — should log and use empty registry\n3. **Valid JSON with plugins** — should load correctly\n4. **Empty plugins array** — should handle gracefully\n5. **Plugin with duplicate ID** — should overwrite or throw\n\nFor the first two, you can use `FileStub` or `InMemoryFileSystem` to control the file state. Here's a quick example:\n\n```csharp\n[Fact]\npublic void LoadPlugins_WithMissingFile_CreatesEmptyRegistry()\n{\n    var registry = new PluginRegistry(\"/nonexistent\");\n    Assert.Empty(registry.GetAllPlugins());\n}\n\n[Fact]\npublic void LoadPlugins_WithMalformedJson_LogsAndUsesEmptyRegistry()\n{\n    // Arrange: write malformed JSON\n    File.WriteAllText(\"plugins.json\", \"{invalid\");\n    \n    // Act\n    var registry = new PluginRegistry(\".\");\n    \n    // Assert\n    Assert.Empty(registry.GetAllPlugins());\n}\n```\n\nI'd say 4-5 tests for this class is a good target. Focus on the error cases since the happy path is straightforward.",
+      "ToolCalls": [],
+      "TokenCount": 340,
+      "CreatedAt": "2026-05-23T16:35:00.0000000Z"
+    },
+    {
+      "Id": "e4444445",
+      "Role": "User",
+      "Content": "Added the tests. Thanks for the thorough review!",
+      "ToolCalls": [],
+      "TokenCount": 38,
+      "CreatedAt": "2026-05-23T17:00:00.0000000Z"
+    },
+    {
+      "Id": "e4444446",
+      "Role": "Assistant",
+      "Content": "No problem! The PR looks solid now. Nice work on the dictionary refactor and the tests. Feel free to merge.",
+      "ToolCalls": [],
+      "TokenCount": 52,
+      "CreatedAt": "2026-05-23T17:00:00.0000000Z"
+    }
+  ]
+}

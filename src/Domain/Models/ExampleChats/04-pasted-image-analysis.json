@@ -1,0 +1,113 @@
+{
+  "Id": "33333333-4444-5555-6666-777777777777",
+  "Name": "Pasted Image - Debugging a UI Bug",
+  "Description": "User pastes a screenshot into chat, AI analyzes it and identifies a UI bug",
+  "StoragePath": "",
+  "ModelId": "llava-v1.6-vicuna-7b",
+  "SystemPrompt": "You are a helpful assistant that can analyze images, code, and help debug issues. When users paste images, analyze them carefully and provide detailed feedback.",
+  "Temperature": 0.5,
+  "MaxTokens": 4096,
+  "IsActive": false,
+  "CreatedAt": "2026-05-23T08:00:00.0000000Z",
+  "LastMessageAt": "2026-05-23T09:30:00.0000000Z",
+  "UpdatedAt": "2026-05-23T09:30:00.0000000Z",
+  "TotalTokenCount": 4800,
+  "MessageCount": 8,
+  "Tags": ["image-analysis", "debugging", "ui"],
+  "Messages": [
+    {
+      "Id": "c2222221",
+      "Role": "User",
+      "Content": "I'm working on this WPF window and the layout looks wrong. Can you tell me what's off?\n\n[image: iVBORw0KGgoAAAANSUhEUgAABAAAAA...]",
+      "ToolCalls": [],
+      "TokenCount": 72,
+      "CreatedAt": "2026-05-23T08:00:00.0000000Z"
+    },
+    {
+      "Id": "c2222222",
+      "Role": "Assistant",
+      "Content": "I can see the screenshot. There are several issues with the layout:\n\n1. **Button alignment** - The 'Save' and 'Cancel' buttons are not centered within their container. They appear to be left-aligned instead.\n\n2. **Padding inconsistency** - The top section has generous padding (~24px), but the bottom section where the buttons are crammed tight with only ~8px padding.\n\n3. **Vertical spacing** - The 'Submit' button at the bottom is overlapping with the status bar.\n\n4. **Text truncation** - The 'Description' field text is being cut off. It should either wrap or have an ellipsis.\n\nCan you share the XAML for this window so I can suggest specific fixes?",
+      "ToolCalls": [],
+      "TokenCount": 210,
+      "CreatedAt": "2026-05-23T08:01:00.0000000Z"
+    },
+    {
+      "Id": "c2222223",
+      "Role": "User",
+      "Content": "Here's the XAML:\n\n```xml\n<Window x:Class=\"MyApp.MainWindow\"\n        xmlns=\"http://schemas.microsoft.com/winfx/2006/xaml/presentation\"\n        Height=\"500\" Width=\"800\">\n    <Grid>\n        <Grid.RowDefinitions>\n            <RowDefinition Height=\"*\"/>\n            <RowDefinition Height=\"Auto\"/>\n            <RowDefinition Height=\"Auto\"/>\n            <RowDefinition Height=\"Auto\"/>\n        </Grid.RowDefinitions>\n\n        <TextBox Grid.Row=\"0\" Text=\"Description\" Padding=\"24\"/>\n        <StackPanel Grid.Row=\"1\" Margin=\"8\">\n            <Button Content=\"Save\"/>\n            <Button Content=\"Cancel\"/>\n        </StackPanel>\n        <Button Grid.Row=\"2\" Content=\"Submit\"/>\n        <StatusBar Grid.Row=\"3\" Content=\"Status\"/>\n    </Grid>\n</Window>\n```\n\nWhat should I change?",
+      "ToolCalls": [],
+      "TokenCount": 280,
+      "CreatedAt": "2026-05-23T08:05:00.0000000Z"
+    },
+    {
+      "Id": "c2222224",
+      "Role": "Assistant",
+      "Content": "I see the issues now. Here are the fixes:\n\n```xml\n<Window x:Class=\"MyApp.MainWindow\"\n        xmlns=\"http://schemas.microsoft.com/winfx/2006/xaml/presentation\"\n        Height=\"500\" Width=\"800\">\n    <Grid>\n        <Grid.RowDefinitions>\n            <RowDefinition Height=\"*\"/>\n            <RowDefinition Height=\"Auto\"/>\n            <RowDefinition Height=\"Auto\"/>\n            <RowDefinition Height=\"Auto\"/>\n        </Grid.RowDefinitions>\n\n        <!-- Fix 1: Add TextWrapping -->\n        <TextBox Grid.Row=\"0\" \n                 Text=\"Description\" \n                 Padding=\"24\"\n                 TextWrapping=\"Wrap\"/>\n\n        <!-- Fix 2: Center the button panel and add proper margins -->\n        <StackPanel Grid.Row=\"1\" \n                    Margin=\"24\" \n                    HorizontalAlignment=\"Center\"\n                    Orientation=\"Horizontal\"\n                    Spacing=\"12\">\n            <Button Content=\"Save\" Width=\"80\"/>\n            <Button Content=\"Cancel\" Width=\"80\"/>\n        </StackPanel>\n\n        <!-- Fix 3: Add margin to prevent overlap -->\n        <Button Grid.Row=\"2\" \n                Content=\"Submit\" \n                Margin=\"24\" \n                HorizontalAlignment=\"Stretch\"/>\n\n        <!-- Fix 4: Use proper status bar -->\n        <StatusBar Grid.Row=\"3\" Content=\"Status\"/>\n    </Grid>\n</Window>\n```\n\n**Key changes:**\n1. Added `TextWrapping=\"Wrap\"` to the TextBox\n2. Set `HorizontalAlignment=\"Center\"` and `Margin=\"24\"` on the button panel\n3. Changed to `Orientation=\"Horizontal\"` with `Spacing=\"12\"` for even button spacing\n4. Added `Margin=\"24\"` to the Submit button to prevent overlap with the status bar\n5. Added explicit `Width=\"80\"` to Save/Cancel for consistency\n\nThe layout should now look much better!",
+      "ToolCalls": [],
+      "TokenCount": 480,
+      "CreatedAt": "2026-05-23T08:07:00.0000000Z"
+    },
+    {
+      "Id": "c2222225",
+      "Role": "User",
+      "Content": "That worked! One more thing - can you also make the buttons look a bit more polished? The current style is very default.\n\n[image: iVBORw0KGgoAAAANSUhEUgAABAAAAA...]",
+      "ToolCalls": [],
+      "TokenCount": 78,
+      "CreatedAt": "2026-05-23T08:30:00.0000000Z"
+    },
+    {
+      "Id": "c2222226",
+      "Role": "Assistant",
+      "Content": "Looking at the new screenshot, the buttons are in the right place but they do look quite plain. Here's a polished style:\n\n```xml\n<Window.Resources>\n    <Style TargetType=\"Button\">\n        <Setter Property=\"Padding\" Value=\"16,8\"/>\n        <Setter Property=\"FontSize\" Value=\"14\"/>\n        <Setter Property=\"FontWeight\" Value=\"SemiBold\"/>\n        <Setter Property=\"BorderThickness\" Value=\"0\"/>\n        <Setter Property=\"Background\" Value=\"#0078D4\"/>\n        <Setter Property=\"Foreground\" Value=\"White\"/>\n        <Setter Property=\"Cursor\" Value=\"Hand\"/>\n        <Setter Property=\"Template\">\n            <Setter.Value>\n                <ControlTemplate TargetType=\"Button\">\n                    <Border Background=\"{TemplateBinding Background}\"\n                            CornerRadius=\"4\">\n                        <ContentPresenter HorizontalAlignment=\"Center\"\n                                          VerticalAlignment=\"Center\"/>\n                    </Border>\n                </ControlTemplate>\n            </Setter.Value>\n        </Setter>\n        <Style.Triggers>\n            <Trigger Property=\"IsMouseOver\" Value=\"True\">\n                <Setter Property=\"Background\" Value=\"#1084DE\"/>\n            </Trigger>\n            <Trigger Property=\"IsPressed\" Value=\"True\">\n                <Setter Property=\"Background\" Value=\"#006CBE\"/>\n            </Trigger>\n        </Style.Triggers>\n    </Style>\n</Window.Resources>\n```\n\nThis gives you:\n- Rounded corners (4px radius)\n- Blue accent color (#0078D4 - Windows 11 accent)\n- Hover and pressed states\n- Semi-bold font\n- Hand cursor on hover\n\nIf you want to use this in Avalonia instead, the XAML structure is nearly identical!",
+      "ToolCalls": [],
+      "TokenCount": 420,
+      "CreatedAt": "2026-05-23T08:33:00.0000000Z"
+    },
+    {
+      "Id": "c2222227",
+      "Role": "User",
+      "Content": "Perfect! Thanks for the detailed analysis and fixes. This was super helpful.",
+      "ToolCalls": [],
+      "TokenCount": 42,
+      "CreatedAt": "2026-05-23T09:30:00.0000000Z"
+    },
+    {
+      "Id": "c2222228",
+      "Role": "Assistant",
+      "Content": "You're welcome! Happy to help. Feel free to come back if you run into any more UI issues. The two screenshots you shared were really helpful for diagnosing the problems.",
+      "ToolCalls": [],
+      "TokenCount": 78,
+      "CreatedAt": "2026-05-23T09:30:00.0000000Z"
+    }
+  ],
+  "ImageOutputs": [
+    {
+      "Id": "img-pasted-001",
+      "ImageData": "iVBORw0KGgoAAAANSUhEUgAABAAAAA...",
+      "MimeType": "image/png",
+      "Width": 1200,
+      "Height": 800,
+      "Seed": 0,
+      "CfgScale": 0,
+      "Steps": 0,
+      "ModelId": null,
+      "GeneratedAt": "2026-05-23T08:00:00.0000000Z",
+      "Prompt": "User-pasted screenshot 1",
+      "NegativePrompt": null
+    },
+    {
+      "Id": "img-pasted-002",
+      "ImageData": "iVBORw0KGgoAAAANSUhEUgAABAAAAA...",
+      "MimeType": "image/png",
+      "Width": 1200,
+      "Height": 800,
+      "Seed": 0,
+      "CfgScale": 0,
+      "Steps": 0,
+      "ModelId": null,
+      "GeneratedAt": "2026-05-23T08:30:00.0000000Z",
+      "Prompt": "User-pasted screenshot 2",
+      "NegativePrompt": null
+    }
+  ]
+}
