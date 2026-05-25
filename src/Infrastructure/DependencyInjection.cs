@@ -446,6 +446,56 @@ public static class DependencyInjection
         // ServerLoadTestService performs load testing of server endpoints under concurrent requests
         services.AddSingleton<Services.ServerLoadTestService>();
 
+        // ---- Agent Tool Infrastructure Services ----
+
+        // FileSystemService handles file operations (write, read, search, list, replace) with .agentignore validation
+        services.AddSingleton<Domain.Interfaces.IFileSystemService, Services.Agent.FileSystemService>();
+
+        // PatchService applies V4A diff format patches to files
+        services.AddSingleton<Services.Agent.PatchService>();
+
+        // WebFetchService fetches content from URLs with HTTP/HTTPS support
+        services.AddSingleton<Services.Agent.WebFetchService>();
+
+        // QuestionService implements interactive question dialogs
+        services.AddSingleton<Services.Agent.QuestionService>();
+
+        // CommandExecutor executes CLI commands on the system
+        services.AddSingleton<Domain.Interfaces.ICommandExecutor, Services.Agent.CommandExecutor>();
+
+        // BrowserService handles browser_action tool operations
+        services.AddSingleton<Domain.Interfaces.IBrowserService, Services.Agent.BrowserService>();
+
+        // McpService manages MCP tool/resource operations
+        services.AddSingleton<Domain.Interfaces.IMcpService, Services.Agent.McpService>();
+
+        // WebSearchService provides web search and fetch operations
+        services.AddSingleton<Domain.Interfaces.IWebSearchService, Services.Agent.WebSearchService>();
+
+        // PlanModeRespond handles plan mode responses
+        services.AddSingleton<Services.Agent.PlanModeRespond>();
+
+        // ActModeRespond handles act mode responses
+        services.AddSingleton<Services.Agent.ActModeRespond>();
+
+        // AttemptCompletion presents final results to the user
+        services.AddSingleton<Services.Agent.AttemptCompletion>();
+
+        // NewTask creates new tasks with preloaded context
+        services.AddSingleton<Services.Agent.NewTask>();
+
+        // UseSkill activates skills
+        services.AddSingleton<Services.Agent.UseSkill>();
+
+        // UseSubagents runs parallel subagents
+        services.AddSingleton<Services.Agent.UseSubagents>();
+
+        // AgentToolExecutor orchestrates all agent tool execution
+        services.AddSingleton<Domain.Interfaces.IAgentToolExecutor, Application.Services.Agent.AgentToolExecutor>();
+
+        // AgentSessionService manages agent session lifecycle
+        services.AddSingleton<Application.Services.Agent.AgentSessionService>();
+
         return services;
     }
 
