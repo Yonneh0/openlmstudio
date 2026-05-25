@@ -90,18 +90,20 @@
                     <StackPanel Margin="0,0,0,6">
                         <TextBlock Text="OpenLMStudio" FontSize="20" FontWeight="SemiBold" Foreground="{StaticResource AccentBlue}" TextAlignment="Center" Margin="0,0,0,2"/>
                         <TextBlock Text="Local LLM Studio" FontSize="10" Foreground="{StaticResource TextSecondary}" TextAlignment="Center" Margin="0,0,0,4"/>
-                        <!-- Version badge -->
-                        <Border Background="{StaticResource BgTertiary}" CornerRadius="3" Padding="8,4" Margin="0,0,0,6">
-                            <StackPanel Orientation="Horizontal" HorizontalAlignment="Center">
-                                <TextBlock x:Name="VersionText" Text="v1.0.0" Foreground="{StaticResource AccentGreen}" FontSize="10" FontWeight="SemiBold"/>
-                                <TextBlock Text="  ·  " Foreground="{StaticResource TextMuted}" FontSize="10"/>
-                                <TextBlock x:Name="CommitText" Text="c58b6a2" Foreground="{StaticResource TextMuted}" FontSize="10"/>
-                                <TextBlock Text="  ·  " Foreground="{StaticResource TextMuted}" FontSize="10"/>
-                                <TextBlock x:Name="BranchText" Text="main" Foreground="{StaticResource TextMuted}" FontSize="10"/>
-                                <TextBlock Text="  ·  " Foreground="{StaticResource TextMuted}" FontSize="10"/>
-                                <TextBlock x:Name="BuildTypeText" Text="Release" Foreground="{StaticResource AccentOrange}" FontSize="10"/>
-                            </StackPanel>
-                        </Border>
+                    <!-- Version badge -->
+                    <Border Background="{StaticResource BgTertiary}" CornerRadius="3" Padding="8,4" Margin="0,0,0,6" Cursor="Hand" PointerPressed="OnVersionBadgeClicked">
+                        <StackPanel Orientation="Horizontal" HorizontalAlignment="Center">
+                            <TextBlock x:Name="VersionText" Text="v1.0.0" Foreground="{StaticResource AccentGreen}" FontSize="10" FontWeight="SemiBold"/>
+                            <TextBlock Text="  ·  " Foreground="{StaticResource TextMuted}" FontSize="10"/>
+                            <TextBlock x:Name="CommitText" Text="c58b6a2" Foreground="{StaticResource TextMuted}" FontSize="10"/>
+                            <TextBlock Text="  ·  " Foreground="{StaticResource TextMuted}" FontSize="10"/>
+                            <TextBlock x:Name="BranchText" Text="main" Foreground="{StaticResource TextMuted}" FontSize="10"/>
+                            <TextBlock Text="  ·  " Foreground="{StaticResource TextMuted}" FontSize="10"/>
+                            <TextBlock x:Name="BuildTypeText" Text="Release" Foreground="{StaticResource AccentOrange}" FontSize="10"/>
+                            <TextBlock Text="  ·  " Foreground="{StaticResource TextMuted}" FontSize="10"/>
+                            <TextBlock x:Name="DirtyText" Foreground="{StaticResource AccentOrange}" FontSize="10"/>
+                        </StackPanel>
+                    </Border>
                         <TextBlock Text="A cross-platform desktop application for running local AI models — text, images, and beyond." Foreground="{StaticResource TextSecondary}" FontSize="9" TextAlignment="Center" TextWrapping="Wrap" Margin="0,0,0,2"/>
                         <TextBlock Text="Built with ❤️ for the local AI community" Foreground="{StaticResource TextMuted}" FontSize="8" TextAlignment="Center"/>
                     </StackPanel>

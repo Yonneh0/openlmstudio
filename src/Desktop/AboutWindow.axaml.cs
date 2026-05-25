@@ -4,6 +4,7 @@ using System.Globalization;
 using System.Linq;
 using System.Reflection;
 using System.Runtime.InteropServices;
+using System.Text;
 using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Interactivity;
@@ -33,20 +34,14 @@ public partial class AboutWindow : Window
         VersionText.Text = $"v{versionStr}";
         AppVersionText.Text = versionStr;
 
-        // Git commit (set at build time by MSBuild)
-        var commit = typeof(AboutWindow).Assembly.GetCustomAttribute<AssemblyInformationalVersionAttribute>()
-            ?.InformationalVersion
-            ?.Split('+')
-            .FirstOrDefault();
+        // Git info from AssemblyInfo
+        CommitText.Text = GitInfo.Commit;
+        BranchText.Text = GitInfo.Branch;
 
-        if (string.IsNullOrEmpty(commit))
-        {
-            // Fallback: try to get from git
-            commit = GetGitCommit();
-        }
-
-        CommitText.Text = commit ?? "unknown";
-        BranchText.Text = GetGitBranch() ?? "unknown";
+        // Dirty indicator
+        DirtyText.Text = string.Equals(GitInfo.Dirty, "true", StringComparison.OrdinalIgnoreCase)
+            ? "⦿"
+            : "●";
 
         // Build type
         var configuration = typeof(AboutWindow).Assembly.GetCustomAttribute<AssemblyConfigurationAttribute>()
@@ -126,6 +121,87 @@ public partial class AboutWindow : Window
     private void OnMinimizeClicked(object? sender, RoutedEventArgs e)
     {
         WindowState = WindowState.Minimized;
+    }
+
+    private void OnVersionBadgeClicked(object? sender, PointerPressedEventArgs e)
+    {
+        // Show the full git log popup
+        var log = GetGitLog(7);
+        var sb = new StringBuilder();
+
+        sb.Append($"OpenLMStudio {GitInfo.FullName}");
+        if (!string.Equals(GitInfo.Dirty, "true", StringComparison.OrdinalIgnoreCase))
+            sb.Append(" (clean)");
+        sb.AppendLine();
+        sb.AppendLine("Recent commits:");
+        foreach (var line in log.Split(new[] { '\n' }, StringSplitOptions.RemoveEmptyEntries))
+        {
+            sb.AppendLine(line.Trim());
+        }
+
+        // Create a popup to show the git log
+        var popup = new Popup
+        {
+            Width = 600,
+            Height = 400,
+            Placement = PlacementMode.Center,
+            HorizontalOffset = -126.0,
+            VerticalOffset = -44.0,
+            IsOpen = true,
+            PlacementTarget = this,
+            Child = new Border
+            {
+                Background = new SolidColorBrush(Color.FromRgb(37, 37, 41)),
+                BorderBrush = new SolidColorBrush(Color.FromRgb(51, 51, 56)),
+                BorderThickness = new Thickness(1),
+                CornerRadius = new CornerRadius(4),
+                Padding = new Thickness(12),
+                Child = new ScrollViewer
+                {
+                    HorizontalScrollBarVisibility = ScrollBarVisibility.Disabled,
+                    VerticalScrollBarVisibility = ScrollBarVisibility.Auto,
+                    Content = new TextBlock
+                    {
+                        Text = sb.ToString(),
+                        Foreground = new SolidColorBrush(Color.FromRgb(204, 204, 204)),
+                        FontSize = 12,
+                        TextWrapping = TextWrapping.Wrap,
+                        Margin = new Thickness(8)
+                    }
+                }
+            }
+        };
+
+        // Auto-close popup when clicking outside
+        popup.Closed += (s, _) => popup.Close();
+    }
+
+    private static string GetGitLog(int count)
+    {
+        try
+        {
+            var startInfo = new ProcessStartInfo
+            {
+                FileName = "git",
+                Arguments = $"log -{count} --pretty=format:'%h · %s'",
+                RedirectStandardOutput = true,
+                UseShellExecute = false
+            };
+
+            using var process = Process.Start(startInfo);
+            if (process != null)
+            {
+                var output = process.StandardOutput.ReadToEnd();
+                var lines = output.Split(new char[] { '\r', '\n' }, StringSplitOptions.RemoveEmptyEntries);
+                return string.Join("\n", lines.Select(l => l.Trim()));
+            }
+        }
+        catch
+        {
+            // Ignore errors
+        }
+
+        return string.Empty;
     }
 
     protected override void OnLoaded(RoutedEventArgs e)
