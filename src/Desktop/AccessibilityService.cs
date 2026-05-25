@@ -4,9 +4,11 @@ using System.Linq;
 using System.Threading.Tasks;
 using Avalonia;
 using Avalonia.Controls;
+using Avalonia.Controls.ApplicationLifetimes;
 using Avalonia.Input;
 using Avalonia.Interactivity;
 using Avalonia.LogicalTree;
+using Avalonia.Threading;
 using Microsoft.Extensions.Logging;
 
 namespace OpenLMStudio.Desktop;
@@ -30,12 +32,16 @@ public class AccessibilityService : IAccessibilityService
     {
         get
         {
-            // Check if the system is using high contrast mode via OS-level settings
-            // Avalonia exposes this via the OS theme detection
             try
             {
-                var theme = Application.Current?.ActualTheme;
-                return theme == ThemeVariant.Dark;
+                // Get the current window's theme via the classic desktop lifetime
+                if (Avalonia.Application.Current is IClassicDesktopStyleApplicationLifetime lifetime)
+                {
+                    var mainWin = lifetime.MainWindow;
+                    // Check the string representation of the theme variant for "Dark"
+                    return mainWin != null && mainWin.RequestedThemeVariant?.ToString().Contains("Dark", StringComparison.OrdinalIgnoreCase) == true;
+                }
+                return false;
             }
             catch
             {

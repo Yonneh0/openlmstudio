@@ -163,6 +163,23 @@ public partial class MainWindow : Window
         SetAgentTurns(0);
     }
 
+    /// <summary>
+    /// Initializes the Pingu avatar control in the bottom-right corner.
+    /// </summary>
+    private void InitializePingu()
+    {
+        if (_pinguStore != null && _pinguAvatar == null)
+        {
+            _pinguAvatar = new PinguAvatar(_pinguStore);
+            // Find a suitable panel to host the avatar (e.g., a Border/Panel in the XAML)
+            // Try PinguCornerPanel first, fall back to the window's content
+            var target = this.FindControl<Panel>("PinguCornerPanel");
+            if (target != null)
+                target.Children.Add(_pinguAvatar);
+            // If no panel found, the PinguCornerPanel will be defined in XAML
+        }
+    }
+
     private void SetupEventHandlers()
     {
         // New chat button
@@ -1107,6 +1124,29 @@ public partial class MainWindow : Window
             "ask_followup_question" => "❓",
             _ => "🔧"
         };
+    }
+
+    /// <summary>
+    /// Opens the app data folder in the file explorer.
+    /// </summary>
+    private async void OnStatusFolderClicked(object? sender, RoutedEventArgs e)
+    {
+        try
+        {
+            var appData = Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData);
+            var openPath = appData;
+            var psi = new ProcessStartInfo
+            {
+                FileName = openPath,
+                UseShellExecute = true
+            };
+            Process.Start(psi);
+        }
+        catch (Exception ex)
+        {
+            _logger?.LogError(ex, "Failed to open app folder");
+            ShowError($"Failed to open app folder: {ex.Message}");
+        }
     }
 
 }
