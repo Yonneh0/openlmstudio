@@ -446,49 +446,49 @@ public static class DependencyInjection
         // ServerLoadTestService performs load testing of server endpoints under concurrent requests
         services.AddSingleton<Services.ServerLoadTestService>();
 
-        // ---- Agent Tool Infrastructure Services ----
+        // ---- Agent Tool Services (Application layer) ----
 
         // FileSystemService handles file operations (write, read, search, list, replace) with .agentignore validation
-        services.AddSingleton<Domain.Interfaces.IFileSystemService, Services.Agent.FileSystemService>();
+        services.AddSingleton<Domain.Interfaces.IFileSystemService, Application.Services.FileSystemService>();
 
         // PatchService applies V4A diff format patches to files
-        services.AddSingleton<Services.Agent.PatchService>();
+        services.AddSingleton<Application.Services.PatchService>();
 
         // WebFetchService fetches content from URLs with HTTP/HTTPS support
-        services.AddSingleton<Services.Agent.WebFetchService>();
+        services.AddSingleton<Application.Services.WebFetchService>();
 
         // QuestionService implements interactive question dialogs
-        services.AddSingleton<Services.Agent.QuestionService>();
+        services.AddSingleton<Application.Services.QuestionService>();
 
         // CommandExecutor executes CLI commands on the system
-        services.AddSingleton<Domain.Interfaces.ICommandExecutor, Services.Agent.CommandExecutor>();
+        services.AddSingleton<Domain.Interfaces.ICommandExecutor, Application.Services.CommandExecutor>();
 
         // BrowserService handles browser_action tool operations
-        services.AddSingleton<Domain.Interfaces.IBrowserService, Services.Agent.BrowserService>();
+        services.AddSingleton<Domain.Interfaces.IBrowserService, Application.Services.BrowserService>();
 
         // McpService manages MCP tool/resource operations
-        services.AddSingleton<Domain.Interfaces.IMcpService, Services.Agent.McpService>();
+        services.AddSingleton<Domain.Interfaces.IMcpService, Application.Services.McpService>();
 
         // WebSearchService provides web search and fetch operations
-        services.AddSingleton<Domain.Interfaces.IWebSearchService, Services.Agent.WebSearchService>();
+        services.AddSingleton<Domain.Interfaces.IWebSearchService, Application.Services.WebSearchService>();
 
         // PlanModeRespond handles plan mode responses
-        services.AddSingleton<Services.Agent.PlanModeRespond>();
+        services.AddSingleton<Application.Services.PlanModeRespond>();
 
         // ActModeRespond handles act mode responses
-        services.AddSingleton<Services.Agent.ActModeRespond>();
+        services.AddSingleton<Application.Services.ActModeRespond>();
 
         // AttemptCompletion presents final results to the user
-        services.AddSingleton<Services.Agent.AttemptCompletion>();
+        services.AddSingleton<Application.Services.AttemptCompletion>();
 
         // NewTask creates new tasks with preloaded context
-        services.AddSingleton<Services.Agent.NewTask>();
+        services.AddSingleton<Application.Services.NewTask>();
 
         // UseSkill activates skills
-        services.AddSingleton<Services.Agent.UseSkill>();
+        services.AddSingleton<Application.Services.UseSkill>();
 
         // UseSubagents runs parallel subagents
-        services.AddSingleton<Services.Agent.UseSubagents>();
+        services.AddSingleton<Application.Services.UseSubagents>();
 
         // AgentToolExecutor orchestrates all agent tool execution
         services.AddSingleton<Domain.Interfaces.IAgentToolExecutor, Application.Services.Agent.AgentToolExecutor>();

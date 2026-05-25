@@ -1,4 +1,4 @@
-namespace OpenLMStudio.Infrastructure.Services.Agent;
+namespace OpenLMStudio.Application.Services.Agent;
 
 using System.Net.Http;
 using Microsoft.Extensions.Logging;

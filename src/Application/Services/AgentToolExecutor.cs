@@ -5,7 +5,7 @@ using Microsoft.Extensions.Logging;
 using OpenLMStudio.Application.Types.Agent;
 using OpenLMStudio.Domain.Interfaces;
 using OpenLMStudio.Domain.Models;
-using OpenLMStudio.Infrastructure.Services.Agent;
+using OpenLMStudio.Application.Services;
 
 /// <summary>
 /// Orchestrates tool execution for the agent.
