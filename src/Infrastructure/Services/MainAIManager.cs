@@ -333,8 +333,6 @@ public class MainAIManager : IDisposable
             Port: activePort,
             Temperature: settings.GpuLayers,
             TopP: settings.ContextSize,
-            BatchSize: settings.BatchSize,
-            Threads: settings.Threads,
             RecommendedBackend: CurrentBackend.ToString(),
             LastDownloadedBackend: null);
 
