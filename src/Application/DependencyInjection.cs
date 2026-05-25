@@ -114,6 +114,9 @@ public static class DependencyInjection
         services.AddSingleton<ContextSnapshotManager>();
         services.AddSingleton<SystemPromptGenerator>();
 
+        // NOTE: ITaskContextReinjectionService, ITaskContextInheritor, ITaskContextPruner
+        // are registered in Infrastructure.DependencyInjection, not here.
+
         return services;
     }
 }

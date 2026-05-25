@@ -60,8 +60,13 @@ public class ContextCompressionService : IContextCompressionService
     {
         var totalChars = messages.Sum(m => m.Content?.Length ?? 0);
         var totalTokens = EstimateTokens(totalChars);
-        var existingSummaryIds = compressedHistory.Select(e => e.Summary).ToList();
-        var activeMessages = messages.Where(m => !existingSummaryIds.Contains(m.Content)).ToArray();
+
+        // Track which messages have already been compressed by their Id (not Summary string)
+        var compressedMessageIds = compressedHistory.SelectMany(e => e.KeyDecisions)
+            .Concat(compressedHistory.SelectMany(e => e.FilesModified))
+            .ToHashSet();
+
+        var activeMessages = messages.Where(m => m.Content != null && !compressedMessageIds.Contains(m.Content)).ToArray();
         var activeTokens = EstimateTokens(activeMessages.Sum(m => m.Content?.Length ?? 0));
         var compressedChars = compressedHistory.Sum(e =>
             e.Summary.Length +

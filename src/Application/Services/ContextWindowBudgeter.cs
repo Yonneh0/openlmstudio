@@ -119,15 +119,24 @@ public class ContextWindowBudgeter : IContextWindowBudgeter
     {
         lock (_lock)
         {
-            var budget = _budgets.GetOrAdd(chatId, _ => new ChatBudgetStateDto
+            if (maxTokens <= 0)
+                throw new ArgumentException("Max tokens must be positive.", nameof(maxTokens));
+
+            var existing = _budgets.GetOrAdd(chatId, _ => new ChatBudgetStateDto
             {
                 MaximumTokens = maxTokens,
                 RemainingTokens = maxTokens,
             });
+
+            // Preserve remaining tokens proportionally when expanding; clamp when shrinking
+            var newRemaining = maxTokens > existing.MaximumTokens
+                ? existing.RemainingTokens + (maxTokens - existing.MaximumTokens)
+                : Math.Max(0, existing.RemainingTokens - (existing.MaximumTokens - maxTokens));
+
             _budgets[chatId] = new ChatBudgetStateDto
             {
                 MaximumTokens = maxTokens,
-                RemainingTokens = Math.Min(budget.RemainingTokens, maxTokens),
+                RemainingTokens = newRemaining,
             };
         }
     }

@@ -160,7 +160,7 @@ public class ContextBudgetIndicator
     /// <summary>Percentage of budget used (0-100).</summary>
     public float PercentageUsed { get; set; }
 
-    /// <summary>Color zone for UI display: Green ≥80% free, Yellow 5-20% free, Red <5% free.</summary>
+    /// <summary>Color zone for UI display: Green <80% used, Yellow 80-95% used, Red >95% used.</summary>
     public ContextBudgetColorZone ColorZone { get; set; }
 
     /// <summary>The current compression strategy applied to this chat's context.</summary>
@@ -174,16 +174,16 @@ public class ContextBudgetIndicator
     { MaximumTokens = 0, UsedTokens = 0, RemainingTokens = 0, PercentageUsed = 0f };
 }
 
-/// <summary>Color zones for UI display of context budget indicator.</summary>
+/// <summary>Color zones for UI display of context budget indicator (based on % used).</summary>
 public enum ContextBudgetColorZone
 {
-    /// <summary>>20% remaining — green zone</summary>
+    /// <summary><80% used — plenty of budget remaining (green)</summary>
     Green,
 
-    /// <summary>5-20% remaining — yellow/warning zone</summary>
+    /// <summary>80-95% used — approaching budget limit (yellow)</summary>
     Yellow,
 
-    /// <summary><5% remaining — red/critical zone</summary>
+    /// <summary>>95% used — budget nearly exhausted (red)</summary>
     Red
 }
 

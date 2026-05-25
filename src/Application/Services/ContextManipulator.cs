@@ -15,6 +15,21 @@ public class ContextManipulator : IContextManipulator
     private readonly ILogger<ContextManipulator> _logger;
     private readonly object _lock = new();
 
+    /// <summary>
+    /// Fired when any segment state changes (pin, suppress, add, remove).
+    /// </summary>
+    public event Action<ContextManipulationEvent>? OnStateChanged;
+
+    /// <summary>
+    /// Represents a change event in context segment state.
+    /// </summary>
+    public record ContextManipulationEvent(
+        Guid ChatId,
+        Guid? SegmentId,
+        ContextManipulationAction Action,
+        DateTime Timestamp,
+        List<ContextSegment>? AffectedSegments);
+
     public ContextManipulator(
         ILogger<ContextManipulator>? logger = null)
     {
@@ -37,7 +52,7 @@ public class ContextManipulator : IContextManipulator
         {
             var segmentList = _segments.GetOrAdd(request.ChatId, _ => new List<ContextSegment>());
 
-            return request.Action switch
+            ContextSegment? result = request.Action switch
             {
                 ContextManipulationAction.Pin => PinSegment(segmentList, request.SegmentId),
                 ContextManipulationAction.Unpin => UnpinSegment(segmentList, request.SegmentId),
@@ -46,6 +61,16 @@ public class ContextManipulator : IContextManipulator
                 ContextManipulationAction.AddCustomContext => AddCustomContext(segmentList, request.Content!, request.InjectionType),
                 _ => null,
             };
+
+            // Fire event for UI listeners
+            OnStateChanged?.Invoke(new ContextManipulationEvent(
+                request.ChatId,
+                request.SegmentId,
+                request.Action,
+                DateTime.UtcNow,
+                new List<ContextSegment>(segmentList)));
+
+            return result;
         }
         catch (Exception ex)
         {

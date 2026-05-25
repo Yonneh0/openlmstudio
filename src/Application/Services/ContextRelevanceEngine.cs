@@ -57,7 +57,7 @@ public class ContextRelevanceEngine : IContextRelevanceEngine
     public double CalculateRelevanceThreshold(int conversationLength, long remainingBudget)
     {
         var baseThreshold = 0.3;
-        var lengthFactor = Math.Min(conversationLength / 100.0, 0.3);
+        var lengthFactor = Math.Min(conversationLength / 1000.0, 0.3);
         var budgetFactor = remainingBudget < 4096 ? 0.2 : 0;
         return Math.Min(baseThreshold + lengthFactor + budgetFactor, 0.8);
     }

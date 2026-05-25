@@ -74,12 +74,12 @@ public class ConversationContextCompressor : IContextCompressor, IDisposable
     /// <inheritdoc />
     public Task<string?> DecompressAsync(ContextSegment compressedSegment)
     {
-        // Returns null because context compression is lossy — there is no way to reverse it.
-        // The summary IS the compressed form; original content cannot be recovered.
+        // Context compression is lossy — the Content field IS the compressed form.
+        // Return it so callers can use the compressed content as a fallback.
         _logger?.LogDebug("DecompressAsync called for segment {SegmentId} with role {Role}",
             compressedSegment.Id, compressedSegment.Role);
 
-        return Task.FromResult<string?>(null);
+        return Task.FromResult<string?>(compressedSegment.Content);
     }
 
     public void Dispose()
