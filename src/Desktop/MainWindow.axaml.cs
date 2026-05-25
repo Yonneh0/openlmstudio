@@ -31,6 +31,7 @@ using OpenLMStudio.Application.Services.Agent;
 using OpenLMStudio.Domain.Interfaces;
 using OpenLMStudio.Domain.Models;
 using OpenLMStudio.Desktop.Controls;
+using OpenLMStudio.Desktop;
 
 namespace OpenLMStudio.Desktop;
 
@@ -651,6 +652,18 @@ public partial class MainWindow : Window
     /// Wipes the AppData settings directory (C:\Users\Yonneh\AppData\Roaming\OpenLMStudio\) — clearing all logs and chats — then restarts the app.
     /// Preserves the entire models/ folder (except settings.json).
     /// </summary>
+    /// <summary>
+    /// Opens the About dialog.
+    /// </summary>
+    private void OnStatusAboutClicked(object? sender, RoutedEventArgs e)
+    {
+        var about = new AboutWindow();
+        var parent = global::Avalonia.Application.Current?.ApplicationLifetime is IClassicDesktopStyleApplicationLifetime desktop
+            ? desktop.MainWindow
+            : null;
+        about.ShowDialog(parent);
+    }
+
     private void OnStatusResetClicked(object? sender, RoutedEventArgs e)
     {
         try

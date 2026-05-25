@@ -789,6 +789,21 @@
                             </Style>
                         </Button.Styles>
                     </Button>
+                    <Button x:Name="StatusAboutButton"
+                            Content="&#x3F;"
+                            Background="Transparent"
+                            Foreground="{StaticResource TextMuted}"
+                            Padding="8,0"
+                            FontSize="14"
+                            Cursor="Hand"
+                            Click="OnStatusAboutClicked">
+                        <Button.Styles>
+                            <Style Selector="Button:pointerover">
+                                <Setter Property="Background" Value="{StaticResource BgTertiary}"/>
+                                <Setter Property="Foreground" Value="{StaticResource TextPrimary}"/>
+                            </Style>
+                        </Button.Styles>
+                    </Button>
                 </StackPanel>
             </DockPanel>
         </Border>
