@@ -2,16 +2,18 @@
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         x:Class="OpenLMStudio.Desktop.AboutWindow"
         x:CompileBindings="True"
-        Width="640" Height="680"
-        MinWidth="520" MinHeight="560"
-        MaxWidth="800" MaxHeight="800"
+        Width="640" Height="853"
+        MinWidth="520" MinHeight="693"
+        MaxWidth="800" MaxHeight="1066"
         WindowStartupLocation="CenterOwner"
+        WindowState="Normal"
         Title="About OpenLMStudio">
 
     <Window.Resources>
         <SolidColorBrush x:Key="BgPrimary" Color="#1E1E22"/>
         <SolidColorBrush x:Key="BgSecondary" Color="#252529"/>
         <SolidColorBrush x:Key="BgTertiary" Color="#2D2D30"/>
+        <SolidColorBrush x:Key="BgTitleBar" Color="#2A2A2E"/>
         <SolidColorBrush x:Key="TextPrimary" Color="#CCCCCC"/>
         <SolidColorBrush x:Key="TextSecondary" Color="#888888"/>
         <SolidColorBrush x:Key="TextMuted" Color="#666666"/>
@@ -29,6 +31,17 @@
             <Setter Property="BorderThickness" Value="0"/>
         </Style>
         <Style Selector="Button.closeBtn:pointerover">
+            <Setter Property="Background" Value="#3A3A3E"/>
+            <Setter Property="Foreground" Value="{StaticResource TextPrimary}"/>
+        </Style>
+        <Style Selector="Button.minimizeBtn">
+            <Setter Property="Background" Value="Transparent"/>
+            <Setter Property="Foreground" Value="{StaticResource TextSecondary}"/>
+            <Setter Property="Padding" Value="8,4"/>
+            <Setter Property="FontSize" Value="14"/>
+            <Setter Property="BorderThickness" Value="0"/>
+        </Style>
+        <Style Selector="Button.minimizeBtn:pointerover">
             <Setter Property="Background" Value="#3A3A3E"/>
             <Setter Property="Foreground" Value="{StaticResource TextPrimary}"/>
         </Style>
@@ -69,231 +82,243 @@
         </Style>
     </Window.Styles>
 
-    <Border Classes="aboutCard" Padding="24">
-        <StackPanel Margin="12">
-            <!-- Header -->
-            <StackPanel Margin="0,0,0,16">
-                <!-- Close button -->
-                <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,0,0,12">
-                    <Button x:Name="CloseButton" Content="✕" Classes="closeBtn"/>
-                </StackPanel>
-
-                <!-- Logo / Title -->
-                <TextBlock Text="OpenLMStudio" FontSize="28" FontWeight="SemiBold" Foreground="{StaticResource AccentBlue}" TextAlignment="Center" Margin="0,0,0,4"/>
-                <TextBlock Text="Local LLM Studio" FontSize="14" Foreground="{StaticResource TextSecondary}" TextAlignment="Center" Margin="0,0,0,8"/>
-
-                <!-- Version badge -->
-                <Border Background="{StaticResource BgTertiary}" CornerRadius="4" Padding="12,6" Margin="0,0,0,12">
-                    <StackPanel Orientation="Horizontal" HorizontalAlignment="Center">
-                        <TextBlock x:Name="VersionText" Text="v1.0.0" Foreground="{StaticResource AccentGreen}" FontSize="13" FontWeight="SemiBold"/>
-                        <TextBlock Text="  ·  " Foreground="{StaticResource TextMuted}" FontSize="13"/>
-                        <TextBlock x:Name="CommitText" Text="c58b6a2" Foreground="{StaticResource TextMuted}" FontSize="13"/>
-                        <TextBlock Text="  ·  " Foreground="{StaticResource TextMuted}" FontSize="13"/>
-                        <TextBlock x:Name="BranchText" Text="main" Foreground="{StaticResource TextMuted}" FontSize="13"/>
-                        <TextBlock Text="  ·  " Foreground="{StaticResource TextMuted}" FontSize="13"/>
-                        <TextBlock x:Name="BuildTypeText" Text="Release" Foreground="{StaticResource AccentOrange}" FontSize="13"/>
+    <Border Classes="aboutCard">
+        <DockPanel>
+            <!-- Custom Title Bar -->
+            <Border DockPanel.Dock="Top" Background="{StaticResource BgTitleBar}" Height="40">
+                <DockPanel>
+                    <TextBlock Text="About OpenLMStudio" Foreground="{StaticResource TextPrimary}" FontSize="13"
+                               VerticalAlignment="Center" Margin="16,0,0,0" DockPanel.Dock="Left"/>
+                    <StackPanel Orientation="Horizontal" DockPanel.Dock="Right">
+                        <Button Content="—" Width="46" Height="32" Classes="minimizeBtn"
+                                Click="OnMinimizeClicked"/>
+                        <Button x:Name="CloseButton" Content="✕" Width="46" Height="32" Classes="closeBtn"
+                                Click="OnCloseClicked"/>
                     </StackPanel>
-                </Border>
-
-                <TextBlock Text="A cross-platform desktop application for running local AI models — text, images, and beyond." Foreground="{StaticResource TextSecondary}" FontSize="12" TextAlignment="Center" TextWrapping="Wrap" Margin="0,0,0,4"/>
-                <TextBlock Text="Built with ❤️ for the local AI community" Foreground="{StaticResource TextMuted}" FontSize="11" TextAlignment="Center"/>
-            </StackPanel>
-
-            <!-- Divider -->
-            <Border Background="#333338" Height="1" Margin="0,4,0,16"/>
-
-            <!-- Application Details -->
-            <TextBlock Text="Application" Classes="sectionTitle"/>
-            <Border Classes="sectionCard" Padding="16">
-                <StackPanel>
-                    <Grid>
-                        <Grid.RowDefinitions>
-                            <RowDefinition Height="Auto"/>
-                            <RowDefinition Height="Auto"/>
-                            <RowDefinition Height="Auto"/>
-                            <RowDefinition Height="Auto"/>
-                            <RowDefinition Height="Auto"/>
-                        </Grid.RowDefinitions>
-                        <Grid.ColumnDefinitions>
-                            <ColumnDefinition Width="160"/>
-                            <ColumnDefinition Width="*"/>
-                        </Grid.ColumnDefinitions>
-                        <TextBlock Grid.Row="0" Grid.Column="0" Text="Product" Classes="techName"/>
-                        <TextBlock Grid.Row="0" Grid.Column="1" Text="OpenLMStudio" Classes="techValue"/>
-
-                        <TextBlock Grid.Row="1" Grid.Column="0" Text="Version" Classes="techName" Margin="0,6,0,0"/>
-                        <TextBlock Grid.Row="1" Grid.Column="1" x:Name="AppVersionText" Text="1.0.0" Classes="techValue" Margin="0,6,0,0"/>
-
-                        <TextBlock Grid.Row="2" Grid.Column="0" Text="Runtime" Classes="techName" Margin="0,6,0,0"/>
-                        <TextBlock Grid.Row="2" Grid.Column="1" x:Name="RuntimeText" Text=".NET 8.0" Classes="techValue" Margin="0,6,0,0"/>
-
-                        <TextBlock Grid.Row="3" Grid.Column="0" Text="OS" Classes="techName" Margin="0,6,0,0"/>
-                        <TextBlock Grid.Row="3" Grid.Column="1" x:Name="OsText" Text="Windows" Classes="techValue" Margin="0,6,0,0"/>
-
-                        <TextBlock Grid.Row="4" Grid.Column="0" Text="Architecture" Classes="techName" Margin="0,6,0,0"/>
-                        <TextBlock Grid.Row="4" Grid.Column="1" x:Name="ArchitectureText" Text="x64" Classes="techValue" Margin="0,6,0,0"/>
-                    </Grid>
-                </StackPanel>
+                </DockPanel>
             </Border>
 
-            <!-- Divider -->
-            <Border Background="#333338" Height="1" Margin="0,16,0,16"/>
+            <!-- Scrollable Content -->
+            <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
+                <StackPanel Margin="24,16,24,20">
+                    <!-- Header -->
+                    <StackPanel Margin="0,0,0,16">
+                        <!-- Logo / Title -->
+                        <TextBlock Text="OpenLMStudio" FontSize="28" FontWeight="SemiBold" Foreground="{StaticResource AccentBlue}" TextAlignment="Center" Margin="0,0,0,4"/>
+                        <TextBlock Text="Local LLM Studio" FontSize="14" Foreground="{StaticResource TextSecondary}" TextAlignment="Center" Margin="0,0,0,8"/>
 
-            <!-- Tech Stack -->
-            <TextBlock Text="Tech Stack" Classes="sectionTitle"/>
-            <Border Classes="sectionCard" Padding="16">
-                <ScrollViewer VerticalScrollBarVisibility="Auto" MaxHeight="200">
-                    <StackPanel>
-                        <Grid>
-                            <Grid.ColumnDefinitions>
-                                <ColumnDefinition Width="180"/>
-                                <ColumnDefinition Width="*"/>
-                            </Grid.ColumnDefinitions>
-                            <TextBlock Grid.Column="0" Text="Language / Framework" Classes="techName"/>
-                            <TextBlock Grid.Column="1" Text="C# / .NET 8" Classes="techValue"/>
-                        </Grid>
-                        <Grid>
-                            <Grid.ColumnDefinitions>
-                                <ColumnDefinition Width="180"/>
-                                <ColumnDefinition Width="*"/>
-                            </Grid.ColumnDefinitions>
-                            <TextBlock Grid.Column="0" Text="UI Framework" Classes="techName"/>
-                            <TextBlock Grid.Column="1" Text="Avalonia UI 11.2.5" Classes="techValue"/>
-                        </Grid>
-                        <Grid>
-                            <Grid.ColumnDefinitions>
-                                <ColumnDefinition Width="180"/>
-                                <ColumnDefinition Width="*"/>
-                            </Grid.ColumnDefinitions>
-                            <TextBlock Grid.Column="0" Text="HTTP Server" Classes="techName"/>
-                            <TextBlock Grid.Column="1" Text="ASP.NET Core Minimal APIs (Kestrel)" Classes="techValue"/>
-                        </Grid>
-                        <Grid>
-                            <Grid.ColumnDefinitions>
-                                <ColumnDefinition Width="180"/>
-                                <ColumnDefinition Width="*"/>
-                            </Grid.ColumnDefinitions>
-                            <TextBlock Grid.Column="0" Text="Text Inference" Classes="techName"/>
-                            <TextBlock Grid.Column="1" Text="llama-cpp-net (GGUF)" Classes="techValue"/>
-                        </Grid>
-                        <Grid>
-                            <Grid.ColumnDefinitions>
-                                <ColumnDefinition Width="180"/>
-                                <ColumnDefinition Width="*"/>
-                            </Grid.ColumnDefinitions>
-                            <TextBlock Grid.Column="0" Text="Image Generation" Classes="techName"/>
-                            <TextBlock Grid.Column="1" Text="ONNX Runtime + diffusers" Classes="techValue"/>
-                        </Grid>
-                        <Grid>
-                            <Grid.ColumnDefinitions>
-                                <ColumnDefinition Width="180"/>
-                                <ColumnDefinition Width="*"/>
-                            </Grid.ColumnDefinitions>
-                            <TextBlock Grid.Column="0" Text="Embeddings" Classes="techName"/>
-                            <TextBlock Grid.Column="1" Text="ONNX Runtime + safetensors" Classes="techValue"/>
-                        </Grid>
-                        <Grid>
-                            <Grid.ColumnDefinitions>
-                                <ColumnDefinition Width="180"/>
-                                <ColumnDefinition Width="*"/>
-                            </Grid.ColumnDefinitions>
-                            <TextBlock Grid.Column="0" Text="Database" Classes="techName"/>
-                            <TextBlock Grid.Column="1" Text="SQLite" Classes="techValue"/>
-                        </Grid>
-                        <Grid>
-                            <Grid.ColumnDefinitions>
-                                <ColumnDefinition Width="180"/>
-                                <ColumnDefinition Width="*"/>
-                            </Grid.ColumnDefinitions>
-                            <TextBlock Grid.Column="0" Text="GPU Monitoring" Classes="techName"/>
-                            <TextBlock Grid.Column="1" Text="Vulkan.NET + nvidia-ml-net" Classes="techValue"/>
-                        </Grid>
-                        <Grid>
-                            <Grid.ColumnDefinitions>
-                                <ColumnDefinition Width="180"/>
-                                <ColumnDefinition Width="*"/>
-                            </Grid.ColumnDefinitions>
-                            <TextBlock Grid.Column="0" Text="Security" Classes="techName"/>
-                            <TextBlock Grid.Column="1" Text="AES-256, SHA256" Classes="techValue"/>
-                        </Grid>
-                        <Grid>
-                            <Grid.ColumnDefinitions>
-                                <ColumnDefinition Width="180"/>
-                                <ColumnDefinition Width="*"/>
-                            </Grid.ColumnDefinitions>
-                            <TextBlock Grid.Column="0" Text="MVVM Toolkit" Classes="techName"/>
-                            <TextBlock Grid.Column="1" Text="CommunityToolkit.Mvvm" Classes="techValue"/>
-                        </Grid>
-                        <Grid>
-                            <Grid.ColumnDefinitions>
-                                <ColumnDefinition Width="180"/>
-                                <ColumnDefinition Width="*"/>
-                            </Grid.ColumnDefinitions>
-                            <TextBlock Grid.Column="0" Text="DI Container" Classes="techName"/>
-                            <TextBlock Grid.Column="1" Text="Microsoft.Extensions.DependencyInjection" Classes="techValue"/>
-                        </Grid>
-                        <Grid>
-                            <Grid.ColumnDefinitions>
-                                <ColumnDefinition Width="180"/>
-                                <ColumnDefinition Width="*"/>
-                            </Grid.ColumnDefinitions>
-                            <TextBlock Grid.Column="0" Text="XAML Behaviors" Classes="techName"/>
-                            <TextBlock Grid.Column="1" Text="Avalonia.Xaml.Behaviors" Classes="techValue"/>
-                        </Grid>
-                    </StackPanel>
-                </ScrollViewer>
-            </Border>
+                        <!-- Version badge -->
+                        <Border Background="{StaticResource BgTertiary}" CornerRadius="4" Padding="12,6" Margin="0,0,0,12">
+                            <StackPanel Orientation="Horizontal" HorizontalAlignment="Center">
+                                <TextBlock x:Name="VersionText" Text="v1.0.0" Foreground="{StaticResource AccentGreen}" FontSize="13" FontWeight="SemiBold"/>
+                                <TextBlock Text="  ·  " Foreground="{StaticResource TextMuted}" FontSize="13"/>
+                                <TextBlock x:Name="CommitText" Text="c58b6a2" Foreground="{StaticResource TextMuted}" FontSize="13"/>
+                                <TextBlock Text="  ·  " Foreground="{StaticResource TextMuted}" FontSize="13"/>
+                                <TextBlock x:Name="BranchText" Text="main" Foreground="{StaticResource TextMuted}" FontSize="13"/>
+                                <TextBlock Text="  ·  " Foreground="{StaticResource TextMuted}" FontSize="13"/>
+                                <TextBlock x:Name="BuildTypeText" Text="Release" Foreground="{StaticResource AccentOrange}" FontSize="13"/>
+                            </StackPanel>
+                        </Border>
 
-            <!-- Divider -->
-            <Border Background="#333338" Height="1" Margin="0,16,0,16"/>
+                        <TextBlock Text="A cross-platform desktop application for running local AI models — text, images, and beyond." Foreground="{StaticResource TextSecondary}" FontSize="12" TextAlignment="Center" TextWrapping="Wrap" Margin="0,0,0,4"/>
+                        <TextBlock Text="Built with ❤️ for the local AI community" Foreground="{StaticResource TextMuted}" FontSize="11" TextAlignment="Center"/>
+                    </StackPanel>
 
-            <!-- Links -->
-            <TextBlock Text="Links" Classes="sectionTitle"/>
-            <Border Classes="sectionCard" Padding="16">
-                <StackPanel>
-                    <StackPanel Orientation="Horizontal" Margin="0,0,0,8">
-                        <TextBlock Text="🔗" Margin="0,0,8,0"/>
-                        <TextBlock Text="GitHub:" FontWeight="SemiBold" Foreground="{StaticResource TextPrimary}" FontSize="12" Margin="0,0,8,0"/>
-                        <TextBlock Text="https://github.com/Yonneh0/openlmstudio" Classes="linkLabel"/>
-                    </StackPanel>
-                    <StackPanel Orientation="Horizontal" Margin="0,0,0,8">
-                        <TextBlock Text="📖" Margin="0,0,8,0"/>
-                        <TextBlock Text="User Guide:" FontWeight="SemiBold" Foreground="{StaticResource TextPrimary}" FontSize="12" Margin="0,0,8,0"/>
-                        <TextBlock Text="docs/USER_GUIDE.md" Classes="linkLabel"/>
-                    </StackPanel>
-                    <StackPanel Orientation="Horizontal" Margin="0,0,0,8">
-                        <TextBlock Text="🎨" Margin="0,0,8,0"/>
-                        <TextBlock Text="Avalonia Docs:" FontWeight="SemiBold" Foreground="{StaticResource TextPrimary}" FontSize="12" Margin="0,0,8,0"/>
-                        <TextBlock Text="https://docs.avaloniaui.net/" Classes="linkLabel"/>
-                    </StackPanel>
-                    <StackPanel Orientation="Horizontal" Margin="0,0,0,8">
-                        <TextBlock Text="📚" Margin="0,0,8,0"/>
-                        <TextBlock Text="Avalonia API:" FontWeight="SemiBold" Foreground="{StaticResource TextPrimary}" FontSize="12" Margin="0,0,8,0"/>
-                        <TextBlock Text="https://api-docs.avaloniaui.net/" Classes="linkLabel"/>
-                    </StackPanel>
-                    <StackPanel Orientation="Horizontal" Margin="0,0,0,8">
-                        <TextBlock Text="🏝️" Margin="0,0,8,0"/>
-                        <TextBlock Text="Avalonia Samples:" FontWeight="SemiBold" Foreground="{StaticResource TextPrimary}" FontSize="12" Margin="0,0,8,0"/>
-                        <TextBlock Text="https://github.com/AvaloniaUI/Avalonia.Samples" Classes="linkLabel"/>
-                    </StackPanel>
-                    <StackPanel Orientation="Horizontal" Margin="0,0,0,8">
-                        <TextBlock Text="🎮" Margin="0,0,8,0"/>
-                        <TextBlock Text="Avalonia Playground:" FontWeight="SemiBold" Foreground="{StaticResource TextPrimary}" FontSize="12" Margin="0,0,8,0"/>
-                        <TextBlock Text="https://play.avaloniaui.net/" Classes="linkLabel"/>
-                    </StackPanel>
-                    <StackPanel Orientation="Horizontal" Margin="0,0,0,0">
-                        <TextBlock Text="⚡" Margin="0,0,8,0"/>
-                        <TextBlock Text=".NET 8 Docs:" FontWeight="SemiBold" Foreground="{StaticResource TextPrimary}" FontSize="12" Margin="0,0,8,0"/>
-                        <TextBlock Text="https://learn.microsoft.com/en-us/dotnet/core/" Classes="linkLabel"/>
+                    <!-- Divider -->
+                    <Border Background="#333338" Height="1" Margin="0,4,0,16"/>
+
+                    <!-- Application Details -->
+                    <TextBlock Text="Application" Classes="sectionTitle"/>
+                    <Border Classes="sectionCard" Padding="16">
+                        <StackPanel>
+                            <Grid>
+                                <Grid.RowDefinitions>
+                                    <RowDefinition Height="Auto"/>
+                                    <RowDefinition Height="Auto"/>
+                                    <RowDefinition Height="Auto"/>
+                                    <RowDefinition Height="Auto"/>
+                                    <RowDefinition Height="Auto"/>
+                                </Grid.RowDefinitions>
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="160"/>
+                                    <ColumnDefinition Width="*"/>
+                                </Grid.ColumnDefinitions>
+                                <TextBlock Grid.Row="0" Grid.Column="0" Text="Product" Classes="techName"/>
+                                <TextBlock Grid.Row="0" Grid.Column="1" Text="OpenLMStudio" Classes="techValue"/>
+
+                                <TextBlock Grid.Row="1" Grid.Column="0" Text="Version" Classes="techName" Margin="0,8,0,0"/>
+                                <TextBlock Grid.Row="1" Grid.Column="1" x:Name="AppVersionText" Text="1.0.0" Classes="techValue" Margin="0,8,0,0"/>
+
+                                <TextBlock Grid.Row="2" Grid.Column="0" Text="Runtime" Classes="techName" Margin="0,8,0,0"/>
+                                <TextBlock Grid.Row="2" Grid.Column="1" x:Name="RuntimeText" Text=".NET 8.0" Classes="techValue" Margin="0,8,0,0"/>
+
+                                <TextBlock Grid.Row="3" Grid.Column="0" Text="OS" Classes="techName" Margin="0,8,0,0"/>
+                                <TextBlock Grid.Row="3" Grid.Column="1" x:Name="OsText" Text="Windows" Classes="techValue" Margin="0,8,0,0"/>
+
+                                <TextBlock Grid.Row="4" Grid.Column="0" Text="Architecture" Classes="techName" Margin="0,8,0,0"/>
+                                <TextBlock Grid.Row="4" Grid.Column="1" x:Name="ArchitectureText" Text="x64" Classes="techValue" Margin="0,8,0,0"/>
+                            </Grid>
+                        </StackPanel>
+                    </Border>
+
+                    <!-- Divider -->
+                    <Border Background="#333338" Height="1" Margin="0,16,0,16"/>
+
+                    <!-- Tech Stack -->
+                    <TextBlock Text="Tech Stack" Classes="sectionTitle"/>
+                    <Border Classes="sectionCard" Padding="16">
+                        <StackPanel>
+                            <Grid>
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="180"/>
+                                    <ColumnDefinition Width="*"/>
+                                </Grid.ColumnDefinitions>
+                                <TextBlock Grid.Column="0" Text="Language / Framework" Classes="techName"/>
+                                <TextBlock Grid.Column="1" Text="C# / .NET 8" Classes="techValue"/>
+                            </Grid>
+                            <Grid Margin="0,8,0,0">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="180"/>
+                                    <ColumnDefinition Width="*"/>
+                                </Grid.ColumnDefinitions>
+                                <TextBlock Grid.Column="0" Text="UI Framework" Classes="techName"/>
+                                <TextBlock Grid.Column="1" Text="Avalonia UI 11.2.5" Classes="techValue"/>
+                            </Grid>
+                            <Grid Margin="0,8,0,0">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="180"/>
+                                    <ColumnDefinition Width="*"/>
+                                </Grid.ColumnDefinitions>
+                                <TextBlock Grid.Column="0" Text="HTTP Server" Classes="techName"/>
+                                <TextBlock Grid.Column="1" Text="ASP.NET Core Minimal APIs (Kestrel)" Classes="techValue"/>
+                            </Grid>
+                            <Grid Margin="0,8,0,0">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="180"/>
+                                    <ColumnDefinition Width="*"/>
+                                </Grid.ColumnDefinitions>
+                                <TextBlock Grid.Column="0" Text="Text Inference" Classes="techName"/>
+                                <TextBlock Grid.Column="1" Text="llama-cpp-net (GGUF)" Classes="techValue"/>
+                            </Grid>
+                            <Grid Margin="0,8,0,0">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="180"/>
+                                    <ColumnDefinition Width="*"/>
+                                </Grid.ColumnDefinitions>
+                                <TextBlock Grid.Column="0" Text="Image Generation" Classes="techName"/>
+                                <TextBlock Grid.Column="1" Text="ONNX Runtime + diffusers" Classes="techValue"/>
+                            </Grid>
+                            <Grid Margin="0,8,0,0">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="180"/>
+                                    <ColumnDefinition Width="*"/>
+                                </Grid.ColumnDefinitions>
+                                <TextBlock Grid.Column="0" Text="Embeddings" Classes="techName"/>
+                                <TextBlock Grid.Column="1" Text="ONNX Runtime + safetensors" Classes="techValue"/>
+                            </Grid>
+                            <Grid Margin="0,8,0,0">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="180"/>
+                                    <ColumnDefinition Width="*"/>
+                                </Grid.ColumnDefinitions>
+                                <TextBlock Grid.Column="0" Text="Database" Classes="techName"/>
+                                <TextBlock Grid.Column="1" Text="SQLite" Classes="techValue"/>
+                            </Grid>
+                            <Grid Margin="0,8,0,0">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="180"/>
+                                    <ColumnDefinition Width="*"/>
+                                </Grid.ColumnDefinitions>
+                                <TextBlock Grid.Column="0" Text="GPU Monitoring" Classes="techName"/>
+                                <TextBlock Grid.Column="1" Text="Vulkan.NET + nvidia-ml-net" Classes="techValue"/>
+                            </Grid>
+                            <Grid Margin="0,8,0,0">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="180"/>
+                                    <ColumnDefinition Width="*"/>
+                                </Grid.ColumnDefinitions>
+                                <TextBlock Grid.Column="0" Text="Security" Classes="techName"/>
+                                <TextBlock Grid.Column="1" Text="AES-256, SHA256" Classes="techValue"/>
+                            </Grid>
+                            <Grid Margin="0,8,0,0">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="180"/>
+                                    <ColumnDefinition Width="*"/>
+                                </Grid.ColumnDefinitions>
+                                <TextBlock Grid.Column="0" Text="MVVM Toolkit" Classes="techName"/>
+                                <TextBlock Grid.Column="1" Text="CommunityToolkit.Mvvm" Classes="techValue"/>
+                            </Grid>
+                            <Grid Margin="0,8,0,0">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="180"/>
+                                    <ColumnDefinition Width="*"/>
+                                </Grid.ColumnDefinitions>
+                                <TextBlock Grid.Column="0" Text="DI Container" Classes="techName"/>
+                                <TextBlock Grid.Column="1" Text="Microsoft.Extensions.DependencyInjection" Classes="techValue"/>
+                            </Grid>
+                            <Grid Margin="0,8,0,0">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="180"/>
+                                    <ColumnDefinition Width="*"/>
+                                </Grid.ColumnDefinitions>
+                                <TextBlock Grid.Column="0" Text="XAML Behaviors" Classes="techName"/>
+                                <TextBlock Grid.Column="1" Text="Avalonia.Xaml.Behaviors" Classes="techValue"/>
+                            </Grid>
+                        </StackPanel>
+                    </Border>
+
+                    <!-- Divider -->
+                    <Border Background="#333338" Height="1" Margin="0,16,0,16"/>
+
+                    <!-- Links -->
+                    <TextBlock Text="Links" Classes="sectionTitle"/>
+                    <Border Classes="sectionCard" Padding="16">
+                        <StackPanel>
+                            <StackPanel Orientation="Horizontal" Margin="0,0,0,8">
+                                <TextBlock Text="🔗" Margin="0,0,8,0"/>
+                                <TextBlock Text="GitHub:" FontWeight="SemiBold" Foreground="{StaticResource TextPrimary}" FontSize="12" Margin="0,0,8,0"/>
+                                <TextBlock Text="https://github.com/Yonneh0/openlmstudio" Classes="linkLabel"/>
+                            </StackPanel>
+                            <StackPanel Orientation="Horizontal" Margin="0,0,0,8">
+                                <TextBlock Text="📖" Margin="0,0,8,0"/>
+                                <TextBlock Text="User Guide:" FontWeight="SemiBold" Foreground="{StaticResource TextPrimary}" FontSize="12" Margin="0,0,8,0"/>
+                                <TextBlock Text="docs/USER_GUIDE.md" Classes="linkLabel"/>
+                            </StackPanel>
+                            <StackPanel Orientation="Horizontal" Margin="0,0,0,8">
+                                <TextBlock Text="🎨" Margin="0,0,8,0"/>
+                                <TextBlock Text="Avalonia Docs:" FontWeight="SemiBold" Foreground="{StaticResource TextPrimary}" FontSize="12" Margin="0,0,8,0"/>
+                                <TextBlock Text="https://docs.avaloniaui.net/" Classes="linkLabel"/>
+                            </StackPanel>
+                            <StackPanel Orientation="Horizontal" Margin="0,0,0,8">
+                                <TextBlock Text="📚" Margin="0,0,8,0"/>
+                                <TextBlock Text="Avalonia API:" FontWeight="SemiBold" Foreground="{StaticResource TextPrimary}" FontSize="12" Margin="0,0,8,0"/>
+                                <TextBlock Text="https://api-docs.avaloniaui.net/" Classes="linkLabel"/>
+                            </StackPanel>
+                            <StackPanel Orientation="Horizontal" Margin="0,0,0,8">
+                                <TextBlock Text="🏝️" Margin="0,0,8,0"/>
+                                <TextBlock Text="Avalonia Samples:" FontWeight="SemiBold" Foreground="{StaticResource TextPrimary}" FontSize="12" Margin="0,0,8,0"/>
+                                <TextBlock Text="https://github.com/AvaloniaUI/Avalonia.Samples" Classes="linkLabel"/>
+                            </StackPanel>
+                            <StackPanel Orientation="Horizontal" Margin="0,0,0,8">
+                                <TextBlock Text="🎮" Margin="0,0,8,0"/>
+                                <TextBlock Text="Avalonia Playground:" FontWeight="SemiBold" Foreground="{StaticResource TextPrimary}" FontSize="12" Margin="0,0,8,0"/>
+                                <TextBlock Text="https://play.avaloniaui.net/" Classes="linkLabel"/>
+                            </StackPanel>
+                            <StackPanel Orientation="Horizontal" Margin="0,0,0,0">
+                                <TextBlock Text="⚡" Margin="0,0,8,0"/>
+                                <TextBlock Text=".NET 8 Docs:" FontWeight="SemiBold" Foreground="{StaticResource TextPrimary}" FontSize="12" Margin="0,0,8,0"/>
+                                <TextBlock Text="https://learn.microsoft.com/en-us/dotnet/core/" Classes="linkLabel"/>
+                            </StackPanel>
+                        </StackPanel>
+                    </Border>
+
+                    <!-- Footer -->
+                    <StackPanel Margin="0,20,0,0" HorizontalAlignment="Center">
+                        <TextBlock Text="© 2026 OpenLMStudio" Foreground="{StaticResource TextMuted}" FontSize="11" TextAlignment="Center"/>
+                        <TextBlock Text="GGUF · GGML · Safetensors · ONNX Runtime · llama-cpp" Foreground="{StaticResource TextMuted}" FontSize="10" TextAlignment="Center" Margin="0,4,0,0"/>
                     </StackPanel>
                 </StackPanel>
-            </Border>
-
-            <!-- Footer -->
-            <StackPanel Margin="0,20,0,0" HorizontalAlignment="Center">
-                <TextBlock Text="© 2026 OpenLMStudio" Foreground="{StaticResource TextMuted}" FontSize="11" TextAlignment="Center"/>
-                <TextBlock Text="GGUF · GGML · Safetensors · ONNX Runtime · llama-cpp" Foreground="{StaticResource TextMuted}" FontSize="10" TextAlignment="Center" Margin="0,4,0,0"/>
-            </StackPanel>
-        </StackPanel>
+            </ScrollViewer>
+        </DockPanel>
     </Border>
 </Window>

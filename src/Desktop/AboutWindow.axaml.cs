@@ -123,9 +123,15 @@ public partial class AboutWindow : Window
         Close();
     }
 
+    private void OnMinimizeClicked(object? sender, RoutedEventArgs e)
+    {
+        WindowState = WindowState.Minimized;
+    }
+
     protected override void OnLoaded(RoutedEventArgs e)
     {
         base.OnLoaded(e);
+        // Close button is in the title bar
         if (CloseButton != null)
             CloseButton.Click += OnCloseClicked;
     }
