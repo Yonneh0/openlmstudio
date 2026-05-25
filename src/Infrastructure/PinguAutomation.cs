@@ -1,6 +1,5 @@
 using OpenLMStudio.Application.Interfaces;
 using OpenLMStudio.Domain.Models;
-using OpenLMStudio.Domain.Models;
 using OpenLMStudio.Infrastructure;
 
 namespace OpenLMStudio.Infrastructure;

@@ -15,7 +15,6 @@ using Avalonia.Media.TextFormatting;
 using Avalonia.Threading;
 using Microsoft.Extensions.Logging;
 using OpenLMStudio.Domain.Models;
-using OpenLMStudio.Domain.Models;
 
 namespace OpenLMStudio.Desktop;
 

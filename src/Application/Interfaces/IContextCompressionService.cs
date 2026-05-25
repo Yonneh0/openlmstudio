@@ -1,5 +1,4 @@
 using OpenLMStudio.Domain.Models;
-using OpenLMStudio.Domain.Models;
 
 namespace OpenLMStudio.Application.Interfaces;
 

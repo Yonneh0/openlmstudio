@@ -11,7 +11,6 @@ using Avalonia.Interactivity;
 using Avalonia.Media;
 using Microsoft.Extensions.Logging;
 using OpenLMStudio.Domain.Models;
-using OpenLMStudio.Domain.Models;
 using OpenLMStudio.Application.Interfaces;
 using OpenLMStudio.Application.Types;
 

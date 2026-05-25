@@ -27,7 +27,6 @@ using Microsoft.Extensions.Logging;
 using OpenLMStudio.Application.Interfaces;
 using OpenLMStudio.Application.Types;
 using OpenLMStudio.Domain.Models;
-using OpenLMStudio.Domain.Models;
 using OpenLMStudio.Desktop.Controls;
 
 namespace OpenLMStudio.Desktop;

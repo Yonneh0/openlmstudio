@@ -13,7 +13,6 @@ using Avalonia.Threading;
 using Microsoft.Extensions.Logging;
 using OpenLMStudio.Application.Types;
 using OpenLMStudio.Domain.Models;
-using OpenLMStudio.Domain.Models;
 
 namespace OpenLMStudio.Desktop;
 

@@ -1,6 +1,5 @@
 using Microsoft.Extensions.Logging;
 using OpenLMStudio.Domain.Models;
-using OpenLMStudio.Domain.Models;
 using AppEngineType = OpenLMStudio.Application.Interfaces.EngineType;
 using DomainEngineType = OpenLMStudio.Domain.Models.EngineType;
 using DomainLogLevel = OpenLMStudio.Domain.Models.LogLevel;
