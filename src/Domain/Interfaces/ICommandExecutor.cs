@@ -17,4 +17,9 @@ public interface ICommandExecutor
     /// <param name="workingDirectory">Working directory for command execution.</param>
     /// <returns>Tool result with command output.</returns>
     Task<ToolResult> ExecuteAsync(string command, bool requiresApproval, int? timeoutSeconds = null, string? workingDirectory = null);
+
+    /// <summary>
+    /// Cancels the currently running command.
+    /// </summary>
+    Task<bool> CancelAsync();
 }

@@ -25,4 +25,14 @@ public interface IAgentToolExecutor
     /// Checks if a tool is available in the current mode.
     /// </summary>
     bool IsToolAvailable(string toolName, bool isPlanMode);
+
+    /// <summary>
+    /// Executes a command tool.
+    /// </summary>
+    Task<string> ExecuteCommandAsync(string command, int timeoutSeconds, Dictionary<string, object>? options);
+
+    /// <summary>
+    /// Cancels a running command.
+    /// </summary>
+    Task<bool> CancelRunningCommandAsync();
 }

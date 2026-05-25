@@ -77,6 +77,44 @@ public interface IAgentTaskManager : IDisposable
     /// Switches to Plan mode.
     /// </summary>
     Task SwitchToPlanModeAsync();
+
+    /// <summary>
+    /// Executes a command tool.
+    /// </summary>
+    /// <param name="command">The command to execute.</param>
+    /// <param name="timeoutSeconds">Timeout in seconds.</param>
+    /// <param name="options">Optional execution options.</param>
+    Task<(bool rejected, string result)> ExecuteCommandToolAsync(string command, int timeoutSeconds = 30, Dictionary<string, object>? options = null);
+
+    /// <summary>
+    /// Cancels a running command tool.
+    /// </summary>
+    Task<bool> CancelRunningCommandToolAsync();
+
+    /// <summary>
+    /// Checks if the latest task completion has new changes.
+    /// </summary>
+    Task<bool> DoesLatestTaskCompletionHaveNewChangesAsync();
+
+    /// <summary>
+    /// Updates the focus chain list from a tool response.
+    /// </summary>
+    Task UpdateFCListFromToolResponseAsync(AgentTaskProgress progress);
+
+    /// <summary>
+    /// Says a message and creates a missing parameter error.
+    /// </summary>
+    Task<string> SayAndCreateMissingParamErrorAsync(string toolName, string parameterName, string? relativePath);
+
+    /// <summary>
+    /// Removes the last partial message if it exists with a specific type.
+    /// </summary>
+    Task RemoveLastPartialMessageIfExistsWithTypeAsync(string messageType, string askOrSay);
+
+    /// <summary>
+    /// Applies the latest browser settings.
+    /// </summary>
+    Task ApplyLatestBrowserSettingsAsync();
 }
 
 /// <summary>

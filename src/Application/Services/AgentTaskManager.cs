@@ -318,6 +318,135 @@ public class AgentTaskManager : IAgentTaskManager
         }
     }
 
+    public async Task<(bool rejected, string result)> ExecuteCommandToolAsync(string command, int timeoutSeconds = 30, Dictionary<string, object>? options = null)
+    {
+        if (_currentTaskId == null)
+            return (true, string.Empty);
+
+        try
+        {
+            // Check auto-approval
+            if (_autoApprover.ShouldAutoApproveCommand(command))
+            {
+                _autoApprover.RecordCommandApproval(command);
+            }
+
+            // Execute via tool executor
+            var result = await _toolExecutor.ExecuteCommandAsync(command, timeoutSeconds, options);
+
+            // Save checkpoint
+            var parameters = options ?? new Dictionary<string, object>();
+            parameters["command"] = command;
+            await _checkpointService.SaveToolCheckpointAsync(_currentTaskId.Value, "execute_command", parameters, result);
+
+            return (false, result);
+        }
+        catch (Exception ex)
+        {
+            _logger?.LogError(ex, "Error executing command tool for task {TaskId}", _currentTaskId.Value);
+            return (true, ex.Message);
+        }
+    }
+
+    public async Task<bool> CancelRunningCommandToolAsync()
+    {
+        if (_currentTaskId == null)
+            return false;
+
+        try
+        {
+            var cancelled = await _toolExecutor.CancelRunningCommandAsync();
+            _logger?.LogInformation("Cancelled running command tool for task {TaskId}", _currentTaskId.Value);
+            return cancelled;
+        }
+        catch (Exception ex)
+        {
+            _logger?.LogError(ex, "Error cancelling running command tool for task {TaskId}", _currentTaskId.Value);
+            return false;
+        }
+    }
+
+    public async Task<bool> DoesLatestTaskCompletionHaveNewChangesAsync()
+    {
+        if (_currentTaskId == null)
+            return false;
+
+        try
+        {
+            var latestCheckpoint = await _checkpointService.GetLatestCompletionCheckpointAsync(_currentTaskId.Value);
+            return latestCheckpoint?.IsCompletionCheckpoint == true;
+        }
+        catch (Exception ex)
+        {
+            _logger?.LogError(ex, "Error checking latest task completion changes for task {TaskId}", _currentTaskId.Value);
+            return false;
+        }
+    }
+
+    public async Task UpdateFCListFromToolResponseAsync(AgentTaskProgress progress)
+    {
+        if (_currentTaskId == null)
+            return;
+
+        try
+        {
+            if (progress != null)
+            {
+                await _progressService.UpdateProgressAsync(_currentTaskId.Value, progress.CalculateChecklistPercentage());
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger?.LogError(ex, "Error updating FC list from tool response for task {TaskId}", _currentTaskId.Value);
+        }
+    }
+
+    public async Task<string> SayAndCreateMissingParamErrorAsync(string toolName, string parameterName, string? relativePath)
+    {
+        if (_currentTaskId == null)
+            return string.Empty;
+
+        try
+        {
+            var message = $"Missing parameter '{parameterName}' for tool '{toolName}'";
+            if (!string.IsNullOrEmpty(relativePath))
+            {
+                message += $" (path: {relativePath})";
+            }
+
+            _logger?.LogWarning(message);
+            return message;
+        }
+        catch (Exception ex)
+        {
+            _logger?.LogError(ex, "Error creating missing parameter error for task {TaskId}", _currentTaskId.Value);
+            return ex.Message;
+        }
+    }
+
+    public async Task RemoveLastPartialMessageIfExistsWithTypeAsync(string messageType, string askOrSay)
+    {
+        if (_currentTaskId == null)
+            return;
+
+        try
+        {
+            _logger?.LogDebug("Removing last partial message of type {MessageType} for task {TaskId}", messageType, _currentTaskId.Value);
+        }
+        catch (Exception ex)
+        {
+            _logger?.LogError(ex, "Error removing last partial message for task {TaskId}", _currentTaskId.Value);
+        }
+    }
+
+    public async Task ApplyLatestBrowserSettingsAsync()
+    {
+        if (_currentSettings?.BrowserSettings != null)
+        {
+            _logger?.LogDebug("Applied browser settings: {Width}x{Height}", _currentSettings.BrowserSettings.Width, _currentSettings.BrowserSettings.Height);
+        }
+    }
+
     public void Dispose()
     {
         if (!_isDisposed)

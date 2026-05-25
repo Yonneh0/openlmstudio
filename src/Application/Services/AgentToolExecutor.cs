@@ -393,4 +393,30 @@ public class AgentToolExecutor : IAgentToolExecutor
             question?.ToString() ?? string.Empty,
             options);
     }
+
+    public async Task<string> ExecuteCommandAsync(string command, int timeoutSeconds, Dictionary<string, object>? options)
+    {
+        try
+        {
+            var result = await _commandExecutor.ExecuteAsync(command, false, timeoutSeconds, null);
+            return result.Output ?? string.Empty;
+        }
+        catch (Exception ex)
+        {
+            return $"Error executing command: {ex.Message}";
+        }
+    }
+
+    public async Task<bool> CancelRunningCommandAsync()
+    {
+        try
+        {
+            await _commandExecutor.CancelAsync();
+            return true;
+        }
+        catch
+        {
+            return false;
+        }
+    }
 }

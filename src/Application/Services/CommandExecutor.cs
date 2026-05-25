@@ -24,9 +24,32 @@ public class CommandExecutor : ICommandExecutor
 {
     private readonly ILogger<CommandExecutor> _logger;
 
+    private bool _isRunning;
+    private Process? _currentProcess;
+
     public CommandExecutor(ILogger<CommandExecutor>? logger = null)
     {
         _logger = logger ?? NullLogger<CommandExecutor>.Instance;
+    }
+
+    /// <summary>
+    /// Cancels the currently running command.
+    /// </summary>
+    public async Task<bool> CancelAsync()
+    {
+        if (_currentProcess == null || !_currentProcess.HasExited)
+        {
+            try
+            {
+                _currentProcess?.Kill();
+                return true;
+            }
+            catch
+            {
+                return false;
+            }
+        }
+        return false;
     }
 
     /// <summary>
