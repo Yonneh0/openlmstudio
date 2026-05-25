@@ -349,19 +349,18 @@ public partial class MainWindow : Window
     /// <summary>
     /// Resolves AgentToolExecutor from the application service provider.
     /// </summary>
-    private IAgentToolExecutor ResolveAgentToolExecutorFromAppServices()
+    private IAgentToolExecutor? ResolveAgentToolExecutorFromAppServices()
     {
         try
         {
             var sp = GetAppServiceProvider();
             return sp?.GetService(typeof(IAgentToolExecutor)) as IAgentToolExecutor
-                ?? sp?.GetService<IAgentToolExecutor>()
-                ?? throw new InvalidOperationException("AgentToolExecutor not registered in DI");
+                ?? sp?.GetService<IAgentToolExecutor>();
         }
         catch (Exception ex)
         {
             _logger?.LogWarning(ex, "Failed to resolve AgentToolExecutor from app services");
-            throw;
+            return null;
         }
     }
 
