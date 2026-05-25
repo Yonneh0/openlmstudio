@@ -9,7 +9,7 @@
         WindowState="Normal"
         CanResize="False"
         ExtendClientAreaToDecorationsHint="True"
-        ExtendClientAreaTitleBarHeightHint="32"
+        ExtendClientAreaTitleBarHeightHint="0"
         Title="About OpenLMStudio">
 
     <Window.Resources>
