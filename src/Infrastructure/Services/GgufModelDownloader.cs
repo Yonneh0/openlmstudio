@@ -46,6 +46,15 @@ public class GgufModelDownloader : IDisposable
     public async Task<IReadOnlyList<GgufModelInfo>> DiscoverModelsAsync(CancellationToken ct = default)
     {
         var models = new List<GgufModelInfo>();
+
+        // Handle missing download directory gracefully
+        if (!Directory.Exists(_downloadDirectory))
+        {
+            Directory.CreateDirectory(_downloadDirectory);
+            _logger.LogDebug("Created missing download directory: {Directory}", _downloadDirectory);
+            return models;
+        }
+
         var ggufFiles = Directory.GetFiles(_downloadDirectory, "*.gguf", SearchOption.AllDirectories);
 
         foreach (var file in ggufFiles)
@@ -139,8 +148,12 @@ public class GgufModelDownloader : IDisposable
     {
         var name = Path.GetFileNameWithoutExtension(filePath);
         var parts = name.Split('-', StringSplitOptions.RemoveEmptyEntries);
-        var modelName = parts.Length > 1 ? string.Join("-", parts.Take(parts.Length - 1)) : name;
-        var quantization = parts.Length > 0 ? parts[^1] : null;
+
+        // Infer quantization from filename patterns (more robust than simple last-part check)
+        var quantization = InferQuantizationFromFilename(filePath);
+
+        // Model name is everything except the quantization suffix
+        var modelName = InferModelNameFromFilename(filePath, quantization);
 
         var header = await _ggufParser.ParseHeaderAsync(filePath, ct).ConfigureAwait(false);
         var fileSize = new FileInfo(filePath).Length;
@@ -163,10 +176,96 @@ public class GgufModelDownloader : IDisposable
             LastUsed: null,
             UsageCount: null);
 
+        _logger.LogDebug("Parsed model info: {Id} (name={Name}, quant={Quant}, arch={Arch})", name, modelName, quantization, architecture);
+
         lock (_lock)
             _modelCache[name] = info;
 
         return info;
+    }
+
+    /// <summary>
+    /// Infers the quantization type from the filename using pattern matching.
+    /// More robust than simple last-part splitting.
+    /// </summary>
+    private static string? InferQuantizationFromFilename(string filePath)
+    {
+        var name = Path.GetFileNameWithoutExtension(filePath).ToLowerInvariant();
+
+        // Known quantization patterns — order matters: check longer patterns first
+        var quantPatterns = new[]
+        {
+            "q8_0", "q8_1", "q8_0_q4_0", "q8_0_q4_1",
+            "q6_k", "q6_k_l",
+            "q5_k_m", "q5_k_s", "q5_k_l", "q5_0", "q5_1",
+            "q4_k_m", "q4_k_s", "q4_k_l", "q4_0", "q4_1",
+            "q3_k_m", "q3_k_s", "q3_k_l",
+            "q2_k", "q2_k_l",
+            "q2_xxs", "q2_xs", "q2_xl", "q2_xm",
+            "q3_xxs", "q3_xs",
+            "q2_s", "q2_l",
+            "q2_m",
+            "bf16",
+            "f32", "f16", "f16_f16", "f16_k",
+            "i8", "i4", "iq2_xs", "iq2_xxs", "iq2_s", "iq2_m", "iq2_l",
+            "iq3_xxs", "iq3_xs", "iq3_s", "iq3_l",
+            "iq1_s", "iq4_xs", "iq4_xl", "iq4_nl", "iq4_nxl",
+            "iq1_s", "iq1_nxl",
+        };
+
+        foreach (var pattern in quantPatterns)
+        {
+            if (name.Contains(pattern))
+                return pattern.ToUpperInvariant();
+        }
+
+        return null;
+    }
+
+    /// <summary>
+    /// Infers the model name by stripping the quantization suffix from the filename.
+    /// </summary>
+    private static string InferModelNameFromFilename(string filePath, string? quantization)
+    {
+        var name = Path.GetFileNameWithoutExtension(filePath);
+
+        if (string.IsNullOrEmpty(quantization))
+            return name;
+
+        var quantLower = quantization.ToLowerInvariant();
+
+        // Remove quantization suffix from the end of the name
+        foreach (var pattern in new[]
+        {
+            "_q8_0", "_q8_1", "_q6_k", "_q5_k_m", "_q5_k_s", "_q4_k_m", "_q4_k_s",
+            "_q4_0", "_q4_1", "_q3_k_m", "_q3_k_s", "_q2_k", "_q2_s",
+            "_bf16", "_f32", "_f16", "_f16_f16",
+            "_iq2_xs", "_iq2_xxs", "_iq2_s", "_iq2_m", "_iq2_l",
+            "_iq3_xxs", "_iq3_xs", "_iq3_s",
+            "_iq1_s", "_iq4_xs", "_iq4_nl",
+        })
+        {
+            var suffix = pattern.ToLowerInvariant();
+            if (name.EndsWith(suffix))
+                return name[..^suffix.Length];
+        }
+
+        // Fallback: try splitting on '-' and removing the last segment
+        var parts = name.Split('-', StringSplitOptions.RemoveEmptyEntries);
+        if (parts.Length > 1)
+        {
+            var lastPart = parts[^1].ToLowerInvariant();
+            if (IsLikelyQuantization(lastPart))
+                return string.Join("-", parts.Take(parts.Length - 1));
+        }
+
+        return name;
+    }
+
+    private static bool IsLikelyQuantization(string part)
+    {
+        var lower = part.ToLowerInvariant();
+        return lower.StartsWith("q") || lower.StartsWith("iq") || lower.StartsWith("f") || lower.StartsWith("b");
     }
 
     public void Dispose()

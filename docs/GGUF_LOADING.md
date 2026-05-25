@@ -4,14 +4,15 @@
 
 OpenLMStudio loads local LLM models in GGUF (GPT-Generated Unified Format) through a multi-layered pipeline:
 
-1. **GgufParser** — Reads GGUF headers from `.gguf` files to extract metadata
-2. **GgufModelDownloader** — Discovers local models and downloads from HuggingFace
-3. **EngineBinaryDownloader** — Downloads llama-server binaries from GitHub releases
+1. **GgufParser** — Reads GGUF headers from `.gguf` files to extract metadata (types, architecture, quantization)
+2. **GgufModelDownloader** — Discovers local models and downloads from HuggingFace with robust quantization detection
+3. **EngineBinaryDownloader** — Downloads llama-server binaries from GitHub releases with checksum verification
 4. **SystemAIManager** — Manages SystemAI (system-level AI) with a dedicated port (8082)
-5. **MainAIManager** — Orchestrates engine binary download, model loading, and server start
+5. **MainAIManager** — Orchestrates engine binary download, model loading, and server start with multi-model support
 6. **MainModelSelector** — UI component for MainAI model management
 7. **SystemModelSelector** — UI component for SystemAI model management
 8. **LlamaCppChatCompletionService** — Chat completion service that manages loaded model instances
+9. **GgufChatCompletionLoader** — Adapter that makes LlamaCppChatCompletionService implement IModelLoader
 
 ## GGUF Format
 
@@ -86,6 +87,25 @@ The parser handles keys for the following architectures:
 - **gemma** (Gemma and compatible models)
 - **deepseek** (DeepSeek and compatible models)
 
+### Type Mapping
+
+The parser correctly maps all 12 GGUF v2+ value types:
+
+| Type | Name | Description |
+|------|------|-------------|
+| 0 | uint8 | Unsigned 8-bit integer |
+| 1 | int8 | Signed 8-bit integer |
+| 2 | uint16 | Unsigned 16-bit integer |
+| 3 | int16 | Signed 16-bit integer |
+| 4 | uint32 | Unsigned 32-bit integer |
+| 5 | int32 | Signed 32-bit integer |
+| 6 | uint64 | Unsigned 64-bit integer |
+| 7 | int64 | Signed 64-bit integer |
+| 8 | float32 | 32-bit floating point |
+| 9 | bool | Boolean (1 byte) |
+| 10 | string | UTF-8 encoded string |
+| 11 | array | Typed array of elements |
+
 ### Cancellation Support
 
 All async operations accept a `CancellationToken` for graceful cancellation during shutdown or user-initiated aborts.
@@ -99,6 +119,8 @@ GgufModelDownloader
 ├── DiscoverModelsAsync()    — Find all .gguf files in download directory
 ├── DownloadFromHuggingFaceAsync() — Download from HuggingFace Hub
 ├── GetRecommendation()      — Get recommended settings
+├── InferQuantizationFromFilename() — Robust quantization detection
+├── InferModelNameFromFilename() — Extract model name from filename
 └── UpdateLastUsedAsync()    — Update usage metadata
 ```
 
@@ -111,6 +133,24 @@ Default: `%APPDATA%/OpenLMStudio/models`
 When downloading from HuggingFace, the downloader prefixes filenames with the repo ID to prevent collisions:
 - `model.gguf` from `org1` → `org1_model.gguf`
 - `model.gguf` from `org2` → `org2_model.gguf`
+
+### Quantization Detection
+
+The `InferQuantizationFromFilename` method uses pattern matching to detect quantization types:
+- Checks longer patterns first (e.g., `q8_0` before `q8`)
+- Supports all common quantization types: Q2_K through Q8_0, IQ1_S through IQ4_XS, BF16, F16, F32
+- Returns `null` if no quantization is detected (defaults to F16)
+
+### Model Name Inference
+
+The `InferModelNameFromFilename` method strips the quantization suffix from the filename:
+- `llama-3.2-3b-q4_k_m.gguf` → name: `llama-3.2-3b`, quant: `Q4_K_M`
+- `qwen2.5-7b-q8_0.gguf` → name: `qwen2.5-7b`, quant: `Q8_0`
+- `llama-3.2-3b.gguf` → name: `llama-3.2-3b`, quant: `F16` (default)
+
+### Missing Directory Handling
+
+`DiscoverModelsAsync` gracefully handles missing download directories by creating them automatically.
 
 ### Cancellation Support
 
@@ -125,7 +165,9 @@ EngineBinaryDownloader
 ├── DownloadForBackendAsync()    — Download for specific backend (CPU, CUDA, Metal, Vulkan)
 ├── CheckForUpdateAsync()        — Check for new releases
 ├── FindExtractedBinary()        — Locate binary in extracted archive
-└── ValidateBinaryLocallyAsync() — Run --help to validate
+├── ValidateBinaryLocallyAsync() — Run --help to validate
+├── CleanupStaleTempFiles()      — Clean up temp files from failed downloads
+└── ExtractZipAsync/TarGzAsync() — Extract downloaded archives
 ```
 
 ### Backend Detection
@@ -142,6 +184,13 @@ After downloading and extracting, the binary is validated by running `--help`:
 - Cleans up on failure
 - Uses async `WaitForExitAsync()` for non-blocking validation
 - Timeout of 5 seconds for synchronous validation
+- Returns `true` only if the task completes successfully (avoids deadlock on failed tasks)
+
+### Archive Extraction
+
+- **Windows**: Extracts `.zip` archives using PowerShell `Expand-Archive`
+- **Linux/macOS**: Extracts `.tar.gz` archives using native `tar` command
+- Searches recursively for the binary in the extracted directory
 
 ### GitHub API Rate Limiting
 
@@ -172,6 +221,14 @@ SystemAIManager
 - Runs on a dedicated port (**8082**)
 - Single model at a time
 - Supports cancellation tokens
+
+### Settings Persistence
+
+Settings are saved with proper field mappings:
+- `GpuLayers` → `Temperature`
+- `ContextSize` → `TopP`
+- `BatchSize` → `BatchSize`
+- `Threads` → `Threads`
 
 ## MainAIManager
 
@@ -211,8 +268,8 @@ Each loaded model runs on its own llama-server instance with a unique port.
 ### Settings Persistence
 
 When settings are saved, they are stored with the correct field mappings:
-- `GpuLayers` → `Temperature` (direct value, not divided)
-- `ContextSize` → `TopP` (direct value, not divided)
+- `GpuLayers` → `Temperature`
+- `ContextSize` → `TopP`
 - `BatchSize` → `BatchSize`
 - `Threads` → `Threads`
 
@@ -257,7 +314,7 @@ SystemModelSelector
 ├── DiscoverModelsAsync()    — Auto-discover models on load
 ├── OnLoadModelClicked()     — Open file picker for GGUF
 ├── OnStopClicked()          — Stop SystemAI
-├── OnRestartClicked()       — Restart SystemAI
+├── OnRestartClicked()       — Restart SystemAI (stops existing instance first)
 └── OnAdvancedSettingsClicked() — Open settings dialog
 ```
 
@@ -268,6 +325,10 @@ The settings dialog properly applies settings from Slider and TextBox controls a
 ### Port Display
 
 SystemAI always uses port **8082** (fixed), displayed in the UI.
+
+### Restart Behavior
+
+The restart button now properly stops the existing instance before restarting to prevent multiple concurrent instances.
 
 ## Model Recommendation
 
@@ -359,7 +420,8 @@ LlamaCppChatCompletionService
 ├── UnloadModelAsync()    — Remove model from tracked list
 ├── GetLoadedModelsAsync() — Return all tracked loaded models
 ├── GetCompletionAsync()  — Generate completion for a chat request
-└── GetStreamingCompletionAsync() — Stream token-by-token responses
+├── GetStreamingCompletionAsync() — Stream token-by-token responses
+└── GenerateResponse()    — Generate response with native/simulated mode detection
 ```
 
 ### Model Tracking
@@ -371,9 +433,28 @@ The service maintains an internal `_loadedModels` list that tracks:
 
 ### Inference Modes
 
-- **Native mode**: When `libllama.dll`/`libllama.so`/`libllama.dylib` is available
+- **Native mode**: When `libllama.dll`/`libllama.so`/`libllama.dylib` is available — responses include native indicator
 - **Simulated mode**: Returns placeholder responses with model info
 - **Streaming mode**: Streams character-by-character chunks for simulated responses
+
+### Response Format
+
+The `GenerateResponse` method now distinguishes between native and simulated responses:
+- `[Native (libllama available)]` when the native library is detected
+- `[Simulated]` when running without native bindings
+
+## GgufChatCompletionLoader
+
+Adapter that makes LlamaCppChatCompletionService implement IModelLoader for text generation models:
+
+```
+GgufChatCompletionLoader
+├── LoadModelAsync()      — Load model via chat service
+├── UnloadModelAsync()    — Unload model via chat service
+├── GetModelMetadataAsync() — Get metadata for a specific model
+├── ListAvailableModelsAsync() — List all available models
+└── GetEstimatedModelSizeBytes() — Estimate model size
+```
 
 ## Architecture
 
@@ -387,6 +468,7 @@ src/
 │       ├── MainAIManager.cs           — Main AI lifecycle (multi-model)
 │       ├── SystemAIManager.cs         — System AI lifecycle (single model)
 │       ├── LlamaCppChatCompletionService.cs — Chat completion
+│       ├── GgufChatCompletionLoader.cs  — Model loader adapter
 │       └── ModelRecommendationService.cs   — Settings recommendations
 ├── Desktop/
 │   └── Controls/

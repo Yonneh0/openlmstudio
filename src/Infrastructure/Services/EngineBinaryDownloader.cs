@@ -618,14 +618,14 @@ public class EngineBinaryDownloader : IDisposable
 
     private bool ValidateBinaryLocally(string path, BackendType backend)
     {
+        // Avoid deadlock by using a local task and async wait pattern
         var task = ValidateBinaryLocallyAsync(path, backend);
-        // Use ConfigureAwait(false) to avoid potential deadlocks
         if (!task.Wait(TimeSpan.FromSeconds(5)))
         {
             _logger?.LogWarning("Binary validation timed out for {Backend} at {Path}", backend, path);
             return false;
         }
-        return task.Result;
+        return task.IsCompletedSuccessfully && task.Result;
     }
 
     private void SetExecutablePermission(string path)

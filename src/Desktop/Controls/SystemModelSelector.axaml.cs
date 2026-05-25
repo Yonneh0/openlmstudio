@@ -338,10 +338,14 @@ public partial class SystemModelSelector : UserControl
         _systemAIManager?.Stop();
     }
 
-    private void OnRestartClicked(object? sender, RoutedEventArgs e)
+    private async void OnRestartClicked(object? sender, RoutedEventArgs e)
     {
         if (_systemAIManager?.CurrentModelPath != null)
         {
+            // Stop existing instance before restarting to prevent multiple instances
+            _systemAIManager.Stop();
+            // Small delay to allow the process to fully terminate
+            await Task.Delay(500);
             _ = _systemAIManager.StartAsync(_systemAIManager.CurrentModelPath);
         }
     }

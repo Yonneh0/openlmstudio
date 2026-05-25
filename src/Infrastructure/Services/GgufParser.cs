@@ -316,15 +316,12 @@ public class GgufParser : IDisposable
                         SetMetadataProperty(metadata, mappedKey, value);
                         break;
 
-                    case 1: // Bool
-                        var boolByte = new byte[1];
-                        if (await stream.ReadAsync(boolByte, 0, 1, cancellationToken) != 1)
+                    case 1: // int8
+                        var int8Byte = new byte[1];
+                        if (await stream.ReadAsync(int8Byte, 0, 1, cancellationToken) != 1)
                             break;
-                        var boolVal = boolByte[0] != 0;
-                        if (mappedKey == "architecture")
-                            metadata.Architecture = boolVal ? "gpu" : "cpu";
-                        else
-                            SetMetadataProperty(metadata, mappedKey, boolVal ? "true" : "false");
+                        var int8Val = (sbyte)int8Byte[0];
+                        SetMetadataProperty(metadata, mappedKey, int8Val.ToString());
                         break;
 
                     default:

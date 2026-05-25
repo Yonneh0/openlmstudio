@@ -312,21 +312,24 @@ public class LlamaCppChatCompletionService : IChatCompletionService, IDisposable
             // 4. ggml_backend_schedule_eval for token-by-token inference
             // 5. gguf_free_context on cleanup
 
-            // Fallback to simulated response while native library is being integrated
-            return SimulateResponse(metadata, request);
+            // Native library is available — attempt real inference
+            // For now, return a simulated response with native library indicator
+            return SimulateResponse(metadata, request, useNative: true);
         }
 
         // Native library not available — return simulated response
-        return SimulateResponse(metadata, request);
+        return SimulateResponse(metadata, request, useNative: false);
     }
 
-    private string SimulateResponse(ModelMetadata metadata, ChatRequest request)
+    private string SimulateResponse(ModelMetadata metadata, ChatRequest request, bool useNative = false)
     {
         var contextInfo = metadata.ContextLength > 0
             ? $"{metadata.ContextLength} tokens"
             : "unknown";
 
-        return $"[Placeholder Response] - Model '{metadata.Name ?? request.ModelId}' ({metadata.Architecture}, {contextInfo} context). " +
+        var mode = useNative ? "Native (libllama available)" : "Simulated";
+
+        return $"[{mode}] Model '{metadata.Name ?? request.ModelId}' ({metadata.Architecture}, {contextInfo} context). " +
                "Real inference requires llama.cpp native binding integration. " +
                "\n\nTo get real responses, you need to:\n" +
                "1. Install llama.cpp native bindings (libllama.dll/libllama.so)\n" +

@@ -85,12 +85,14 @@ public class GgufChatCompletionLoader : IModelLoader, IDisposable
     public async Task<IEnumerable<ModelMetadata>> ListAvailableModelsAsync(CancellationToken cancellationToken = default)
     {
         // Delegate to the chat service — returns loaded models only.
+        // TODO: Return all available models from the repository, not just loaded ones.
         return await _chatService.GetLoadedModelsAsync()
             .ContinueWith(t => t.Result.Select(m => m.Metadata), cancellationToken);
     }
 
     public long GetEstimatedModelSizeBytes()
     {
+        // Use synchronous call for this simple operation (metadata is already cached)
         var meta = _currentModelId != null ? GetModelMetadataAsync(_currentModelId).GetAwaiter().GetResult() : null;
         return meta?.FileSizeBytes > 0 || meta?.EstimatedSizeBytes > 0 ? Math.Max(meta.FileSizeBytes, meta.EstimatedSizeBytes ?? 0) : -1;
     }
