@@ -2,6 +2,7 @@ namespace OpenLMStudio.Application.Services.Agent;
 
 using System.IO.Abstractions;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Logging.Abstractions;
 using OpenLMStudio.Application.Types.Agent;
 using OpenLMStudio.Domain.Interfaces;
 using OpenLMStudio.Domain.Models;
@@ -47,7 +48,7 @@ public class AgentToolExecutor : IAgentToolExecutor
         _webFetchService = webFetchService;
         _questionService = questionService;
         _toolRegistry = toolRegistry;
-        _logger = logger;
+        _logger = logger ?? NullLogger<AgentToolExecutor>.Instance;
     }
 
     /// <summary>

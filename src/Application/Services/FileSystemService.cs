@@ -1,10 +1,11 @@
-namespace OpenLMStudio.Application.Services.Agent;
+namespace OpenLMStudio.Application.Services;
 
 using System.IO;
 using IOAbstractions = System.IO.Abstractions;
 using System.Text;
 using System.Text.RegularExpressions;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Logging.Abstractions;
 using OpenLMStudio.Domain.Interfaces;
 using OpenLMStudio.Domain.Models;
 
@@ -23,7 +24,7 @@ public class FileSystemService : IFileSystemService
     public FileSystemService(IOAbstractions.IFileSystem? fileSystem = null, ILogger<FileSystemService>? logger = null)
     {
         _fileSystem = fileSystem ?? new IOAbstractions.FileSystem();
-        _logger = logger;
+        _logger = logger ?? NullLogger<FileSystemService>.Instance;
     }
 
     /// <summary>

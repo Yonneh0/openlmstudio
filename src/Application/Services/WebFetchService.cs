@@ -1,7 +1,8 @@
-namespace OpenLMStudio.Application.Services.Agent;
+namespace OpenLMStudio.Application.Services;
 
 using System.Net.Http;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Logging.Abstractions;
 using OpenLMStudio.Domain.Interfaces;
 using OpenLMStudio.Domain.Models;
 
@@ -17,7 +18,7 @@ public class WebFetchService
     public WebFetchService(IHttpClientFactory? httpClientFactory = null, ILogger<WebFetchService>? logger = null)
     {
         _httpClient = httpClientFactory?.CreateClient("AgentWeb") ?? new HttpClient();
-        _logger = logger;
+        _logger = logger ?? NullLogger<WebFetchService>.Instance;
     }
 
     /// <summary>

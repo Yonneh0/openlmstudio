@@ -1,6 +1,7 @@
-namespace OpenLMStudio.Application.Services.Agent;
+namespace OpenLMStudio.Application.Services;
 
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Logging.Abstractions;
 using OpenLMStudio.Domain.Interfaces;
 using OpenLMStudio.Domain.Models;
 
@@ -28,7 +29,7 @@ public class BrowserService : IBrowserService
 
     public BrowserService(ILogger<BrowserService>? logger = null)
     {
-        _logger = logger;
+        _logger = logger ?? NullLogger<BrowserService>.Instance;
     }
 
     /// <summary>

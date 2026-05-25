@@ -1,8 +1,9 @@
-namespace OpenLMStudio.Application.Services.Agent;
+namespace OpenLMStudio.Application.Services;
 
 using System.Diagnostics;
 using System.Text;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Logging.Abstractions;
 using OpenLMStudio.Domain.Interfaces;
 using OpenLMStudio.Domain.Models;
 
@@ -25,7 +26,7 @@ public class CommandExecutor : ICommandExecutor
 
     public CommandExecutor(ILogger<CommandExecutor>? logger = null)
     {
-        _logger = logger;
+        _logger = logger ?? NullLogger<CommandExecutor>.Instance;
     }
 
     /// <summary>

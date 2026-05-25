@@ -56,7 +56,7 @@ public class AgentSessionService
         lock (_lock)
         {
             var active = _sessions.FirstOrDefault(s => s.IsActive);
-            active?.UpdateState(Domain.Models.AgentState.Paused);
+            active?.UpdateState(AgentState.Paused);
         }
     }
 

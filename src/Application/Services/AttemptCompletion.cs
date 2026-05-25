@@ -1,6 +1,7 @@
-namespace OpenLMStudio.Application.Services.Agent;
+namespace OpenLMStudio.Application.Services;
 
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Logging.Abstractions;
 using OpenLMStudio.Domain.Interfaces;
 using OpenLMStudio.Domain.Models;
 
@@ -21,7 +22,7 @@ public class AttemptCompletion
 
     public AttemptCompletion(ILogger<AttemptCompletion>? logger = null)
     {
-        _logger = logger;
+        _logger = logger ?? NullLogger<AttemptCompletion>.Instance;
     }
 
     /// <summary>

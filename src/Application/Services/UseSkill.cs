@@ -1,6 +1,7 @@
-namespace OpenLMStudio.Application.Services.Agent;
+namespace OpenLMStudio.Application.Services;
 
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Logging.Abstractions;
 using OpenLMStudio.Domain.Interfaces;
 using OpenLMStudio.Domain.Models;
 
@@ -19,7 +20,7 @@ public class UseSkill
 
     public UseSkill(ILogger<UseSkill>? logger = null)
     {
-        _logger = logger;
+        _logger = logger ?? NullLogger<UseSkill>.Instance;
     }
 
     public async Task<ToolResult> ActivateAsync(string skillName)

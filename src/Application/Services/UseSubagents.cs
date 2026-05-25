@@ -1,6 +1,7 @@
-namespace OpenLMStudio.Application.Services.Agent;
+namespace OpenLMStudio.Application.Services;
 
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Logging.Abstractions;
 using OpenLMStudio.Domain.Interfaces;
 using OpenLMStudio.Domain.Models;
 
@@ -19,7 +20,7 @@ public class UseSubagents
 
     public UseSubagents(ILogger<UseSubagents>? logger = null)
     {
-        _logger = logger;
+        _logger = logger ?? NullLogger<UseSubagents>.Instance;
     }
 
     public async Task<ToolResult> RunAsync(List<string> prompts)
