@@ -52,21 +52,21 @@
 
   <!-- Avalonia UI packages for cross-platform support -->
   <ItemGroup>
-    <PackageReference Include="Avalonia" Version="11.2.5" />
-    <PackageReference Include="Avalonia.Desktop" Version="11.2.5" />
-    <PackageReference Include="Avalonia.Themes.Fluent" Version="11.2.5" />
-    <PackageReference Include="Avalonia.Fonts.Inter" Version="11.2.5" />
+    <PackageReference Include="Avalonia" Version="12.0.3" />
+    <PackageReference Include="Avalonia.Desktop" Version="12.0.3" />
+    <PackageReference Include="Avalonia.Themes.Fluent" Version="12.0.3" />
+    <PackageReference Include="Avalonia.Fonts.Inter" Version="12.0.3" />
     <!-- Conditional compilation for Windows-only Avalonia features -->
     <PackageReference Condition="$([MSBuild]::IsOsPlatform(Windows))" 
-                      Include="Avalonia.Win32" Version="11.2.5" />
+                      Include="Avalonia.Win32" Version="12.0.3" />
     <!-- Conditional for macOS -->
     <PackageReference Condition="$([MSBuild]::IsOsPlatform(OSX))" 
-                      Include="Avalonia.MacOS" Version="11.2.5" />
+                      Include="Avalonia.MacOS" Version="12.0.3" />
   </ItemGroup>
 
   <!-- DI support for Avalonia apps -->
   <ItemGroup>
-    <PackageReference Include="Avalonia.Xaml.Behaviors" Version="11.2.0.4" />
+    <PackageReference Include="Avalonia.Xaml.Behaviors" Version="11.3.0.6" />
     <PackageReference Include="Microsoft.Extensions.DependencyInjection" Version="8.0.1" />
     <PackageReference Include="CommunityToolkit.Mvvm" Version="8.3.2" />
   </ItemGroup>

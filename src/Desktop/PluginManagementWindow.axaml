@@ -93,7 +93,7 @@
             <TextBox x:Name="PluginSearchBox"
                      Classes="pluginSearch"
                      Width="300"
-                     Watermark="Search plugins..."
+                     PlaceholderText="Search plugins..."
                      Margin="0,0,8,0"/>
             <Button x:Name="RefreshPluginsBtn"
                     Content="Refresh"

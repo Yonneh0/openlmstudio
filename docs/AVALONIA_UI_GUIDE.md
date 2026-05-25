@@ -1,6 +1,6 @@
 # Avalonia UI Guide for OpenLMStudio
 
-**Version:** Avalonia 11.2.5 (project actual version)
+**Version:** Avalonia 12.0.3 (project actual version)
 
 ## Project Structure
 - **Namespace:** `Avalonia` (root)
@@ -1445,6 +1445,7 @@ public partial class MainWindow : Window
 ## Resources
 - API Reference: https://api-docs.avaloniaui.net/
 - Main Docs: https://docs.avaloniaui.net/ (Avalonia 12 docs)
+- v12 Docs: https://v12.docs.avaloniaui.net/
 - v11 Docs: https://v11.docs.avaloniaui.net/
-- Current version: 11.2.5
+- Current version: 12.0.3
 - Avalonia 12 Breaking Changes: https://docs.avaloniaui.net/docs/avalonia12-breaking-changes

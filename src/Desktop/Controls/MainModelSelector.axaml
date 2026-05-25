@@ -1,6 +1,7 @@
 <UserControl x:Class="OpenLMStudio.Desktop.Controls.MainModelSelector"
              xmlns="https://github.com/avaloniaui"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:local="clr-namespace:OpenLMStudio.Desktop.Controls"
              Width="280"
              Padding="12,8">
     <UserControl.Resources>
@@ -85,7 +86,7 @@
                         <TextBlock Text="Loaded Models" Foreground="{StaticResource TextSecondary}" FontSize="10" FontWeight="SemiBold" Margin="0,0,0,4"/>
                         <ItemsControl x:Name="ModelsItemsControl" MaxHeight="120">
                             <ItemsControl.ItemTemplate>
-                                <DataTemplate>
+                                <DataTemplate x:DataType="local:MainModelItem">
                                     <StackPanel Orientation="Horizontal" Margin="0,1,0,1">
                                         <TextBlock Text="●" Foreground="{StaticResource AccentGreen}" FontSize="8" Margin="0,0,4,0" VerticalAlignment="Center"/>
                                         <TextBlock Text="{Binding Name}" Foreground="{StaticResource TextPrimary}" FontSize="10" TextTrimming="CharacterEllipsis" MaxWidth="180" VerticalAlignment="Center"/>

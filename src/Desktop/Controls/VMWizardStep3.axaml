@@ -1,7 +1,7 @@
 <UserControl x:Class="OpenLMStudio.Desktop.Controls.VMWizardStep3"
     xmlns="https://github.com/avaloniaui"
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-    xmlns:qemu="clr-namespace:OpenLMStudio.Domain.Models.QEMU;assembly=OpenLMStudio.Domain">
+    xmlns:qemu="clr-namespace:OpenLMStudio.Domain.Models;assembly=OpenLMStudio.Domain">
 
     <StackPanel>
         <TextBlock Text="Step 3 of 5: Disk Images"
@@ -18,7 +18,7 @@
                  Height="200"
                  Background="#FFF">
             <ListBox.ItemTemplate>
-                <DataTemplate>
+                <DataTemplate x:DataType="qemu:DiskImageConfig">
                     <StackPanel Orientation="Horizontal">
                         <TextBlock Text="{Binding Format}" Width="60"/>
                         <TextBlock Text="{Binding Media}" Width="60"/>
