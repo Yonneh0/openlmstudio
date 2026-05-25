@@ -25,7 +25,9 @@ public partial class SystemModelSelector : UserControl
     private GgufModelDownloader? _modelDownloader;
     private LogViewerService? _logViewer;
     private readonly ILogger<SystemModelSelector>? _logger;
+#pragma warning disable CS0414 // Field is assigned but its value is never used — reserved for future re-initialization guard
     private bool _isInitialized;
+#pragma warning restore CS0414
     private bool _buttonsWired;
 
     /// <summary>

@@ -93,7 +93,10 @@ public class AgentSessionService
         {
             var session = _sessions.FirstOrDefault(s => s.Id == sessionId);
             session?.Dispose();
-            _sessions.Remove(session);
+            if (session != null)
+            {
+                _sessions.Remove(session);
+            }
         }
     }
 

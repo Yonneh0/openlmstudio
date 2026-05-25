@@ -25,7 +25,9 @@ using OpenLMStudio.Domain.Models;
 public class BrowserService : IBrowserService
 {
     private readonly ILogger<BrowserService> _logger;
+#pragma warning disable CS0169 // Field is never used - reserved for future PuppeteerSharp integration
     private BrowserSession? _currentSession;
+#pragma warning restore CS0169
 
     public BrowserService(ILogger<BrowserService>? logger = null)
     {

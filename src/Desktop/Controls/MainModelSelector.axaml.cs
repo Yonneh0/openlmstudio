@@ -27,7 +27,9 @@ public partial class MainModelSelector : UserControl
     private LogViewerService? _logViewer;
     private readonly ILogger<MainModelSelector>? _logger;
     private readonly ObservableCollection<MainModelItem> _modelItems = new();
+#pragma warning disable CS0414 // Field is assigned but its value is never used — reserved for future re-initialization guard
     private bool _isInitialized; // Set in OnLoaded to prevent re-initialization
+#pragma warning restore CS0414
     private bool _buttonsWired;
 
     /// <summary>
