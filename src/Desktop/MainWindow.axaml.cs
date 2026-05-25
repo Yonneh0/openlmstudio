@@ -1127,14 +1127,14 @@ public partial class MainWindow : Window
     }
 
     /// <summary>
-    /// Opens the app data folder in the file explorer.
+    /// Opens the app data folder (C:\Users\Yonneh\AppData\Roaming\OpenLMStudio) in the file explorer.
     /// </summary>
     private async void OnStatusFolderClicked(object? sender, RoutedEventArgs e)
     {
         try
         {
             var appData = Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData);
-            var openPath = appData;
+            var openPath = Path.Combine(appData, "OpenLMStudio");
             var psi = new ProcessStartInfo
             {
                 FileName = openPath,
