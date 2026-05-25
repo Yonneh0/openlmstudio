@@ -163,48 +163,6 @@ public partial class MainWindow : Window
         SetAgentTurns(0);
     }
 
-    /// <summary>
-    /// Shows an error dialog with a simplified fallback chain.
-    /// </summary>
-    private void ShowError(string message)
-    {
-        try
-        {
-            // Use the current window as owner (most reliable path)
-            var owner = this;
-            if (owner == null && Application.Current != null)
-                owner = Application.Current.ApplicationLifetime as ITopLevel;
-
-            var errorWin = new Window
-            {
-                Title = "OpenLMStudio - Error",
-                Width = 400,
-                Height = 250,
-                Content = new Border
-                {
-                    Background = new Avalonia.Media.SolidColorBrush(Avalonia.Media.Color.FromRgb(37, 37, 41)),
-                    Child = new TextBlock
-                    {
-                        Text = message,
-                        Foreground = new Avalonia.Media.SolidColorBrush(Avalonia.Media.Color.FromRgb(255, 255, 255)),
-                        Padding = new Thickness(20),
-                        FontSize = 14,
-                        TextWrapping = Avalonia.Media.TextWrapping.Wrap
-                    }
-                }
-            };
-
-            if (owner is Window w)
-                errorWin.ShowDialog(w);
-            else
-                errorWin.ShowDialog();
-        }
-        catch
-        {
-            System.Diagnostics.Debug.WriteLine($"Error: {message}");
-        }
-    }
-
     private void SetupEventHandlers()
     {
         // New chat button
