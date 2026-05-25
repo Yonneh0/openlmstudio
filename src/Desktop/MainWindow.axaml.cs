@@ -1190,6 +1190,29 @@ public partial class MainWindow : Window
             // Create the folder if it doesn't exist
             Directory.CreateDirectory(exampleChatsDir);
 
+            // Copy from project's ExampleChats if AppData's is empty
+            if (!Directory.GetFiles(exampleChatsDir, "*.json").Any())
+            {
+                var appDir = AppContext.BaseDirectory;
+                var projectExampleChats = Path.Combine(appDir, "ExampleChats");
+                if (Directory.Exists(projectExampleChats) && Directory.GetFiles(projectExampleChats, "*.json").Any())
+                {
+                    foreach (var file in Directory.GetFiles(projectExampleChats, "*.json"))
+                    {
+                        try
+                        {
+                            var dest = Path.Combine(exampleChatsDir, Path.GetFileName(file));
+                            File.Copy(file, dest, true);
+                            _logger?.LogDebug("Copied example chat {File} to {Dest}", file, dest);
+                        }
+                        catch (Exception ex)
+                        {
+                            _logger?.LogWarning(ex, "Failed to copy example chat {File}", file);
+                        }
+                    }
+                }
+            }
+
             if (!Directory.Exists(exampleChatsDir))
             {
                 _logger?.LogWarning("ExampleChats directory not found at {Dir}", exampleChatsDir);
