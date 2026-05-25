@@ -75,7 +75,7 @@ public partial class AboutWindow : Window
             if (process != null)
             {
                 var output = process.StandardOutput.ReadLine();
-                return output?.Trim();
+                return output?.Trim() ?? "unknown";
             }
         }
         catch
@@ -83,7 +83,7 @@ public partial class AboutWindow : Window
             // Ignore errors
         }
 
-        return null;
+        return "unknown";
     }
 
     private static string GetGitBranch()
@@ -102,7 +102,7 @@ public partial class AboutWindow : Window
             if (process != null)
             {
                 var output = process.StandardOutput.ReadLine();
-                return output?.Trim();
+                return output?.Trim() ?? "unknown";
             }
         }
         catch
@@ -110,7 +110,7 @@ public partial class AboutWindow : Window
             // Ignore errors
         }
 
-        return null;
+        return "unknown";
     }
 
     private void OnCloseClicked(object? sender, RoutedEventArgs e)

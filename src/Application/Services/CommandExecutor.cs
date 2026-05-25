@@ -24,8 +24,13 @@ public class CommandExecutor : ICommandExecutor
 {
     private readonly ILogger<CommandExecutor> _logger;
 
+#pragma warning disable CS0169 // Field is never used (stub for future Process.Start() implementation)
     private bool _isRunning;
+#pragma warning restore CS0169
+
+#pragma warning disable CS0649 // Field is never assigned to (stub for future Process.Start() implementation)
     private Process? _currentProcess;
+#pragma warning restore CS0649
 
     public CommandExecutor(ILogger<CommandExecutor>? logger = null)
     {

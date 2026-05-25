@@ -661,7 +661,7 @@ public partial class MainWindow : Window
         var parent = global::Avalonia.Application.Current?.ApplicationLifetime is IClassicDesktopStyleApplicationLifetime desktop
             ? desktop.MainWindow
             : null;
-        about.ShowDialog(parent);
+        about.ShowDialog(parent ?? this);
     }
 
     private void OnStatusResetClicked(object? sender, RoutedEventArgs e)
