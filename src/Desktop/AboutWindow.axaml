@@ -9,7 +9,7 @@
         WindowState="Normal"
         CanResize="False"
         ExtendClientAreaToDecorationsHint="True"
-        ExtendClientAreaTitleBarHeightHint="0"
+        ExtendClientAreaTitleBarHeightHint="32"
         Title="About OpenLMStudio">
 
     <Window.Resources>
@@ -77,17 +77,10 @@
         <DockPanel>
             <!-- Custom Title Bar -->
             <Border DockPanel.Dock="Top" Background="{StaticResource BgTertiary}" Height="32">
-                <DockPanel>
-                    <TextBlock Text="About OpenLMStudio" Foreground="{StaticResource TextPrimary}" FontSize="11"
-                               VerticalAlignment="Center" Margin="12,0,0,0" DockPanel.Dock="Left"/>
-                    <StackPanel Orientation="Horizontal" DockPanel.Dock="Right">
-                        <Button Content="─" Width="36" Height="28"
-                                Foreground="{StaticResource TextSecondary}"
-                                Click="OnMinimizeClicked"/>
-                        <Button x:Name="CloseButton" Content="✕" Width="36" Height="28" Classes="closeBtn"
-                                Click="OnCloseClicked"/>
-                    </StackPanel>
-                </DockPanel>
+                <StackPanel Orientation="Horizontal" DockPanel.Dock="Right">
+                    <Button x:Name="CloseButton" Content="✕" Width="36" Height="28" Classes="closeBtn"
+                            Click="OnCloseClicked"/>
+                </StackPanel>
             </Border>
 
             <!-- Scrollable Content -->
