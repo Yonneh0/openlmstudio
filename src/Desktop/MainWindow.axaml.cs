@@ -1171,7 +1171,7 @@ public partial class MainWindow : Window
     }
 
     /// <summary>
-    /// Loads all example chats from the ExampleChats folder and switches to the chat view.
+    /// Loads all example chats from the ExampleChats folder (in AppData) and switches to the chat view.
     /// </summary>
     private async void OnStatusNewChatClicked(object? sender, RoutedEventArgs e)
     {
@@ -1183,18 +1183,12 @@ public partial class MainWindow : Window
                 return;
             }
 
-            // Check AppData first (C:\Users\Yonneh\AppData\Roaming\OpenLMStudio\ExampleChats)
+            // Always use AppData for ExampleChats (C:\Users\Yonneh\AppData\Roaming\OpenLMStudio\ExampleChats)
             var appData = Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData);
-            var appDataExampleChats = Path.Combine(appData, "OpenLMStudio", "ExampleChats");
+            var exampleChatsDir = Path.Combine(appData, "OpenLMStudio", "ExampleChats");
 
-            // Fall back to the app's own ExampleChats directory
-            var appDir = AppContext.BaseDirectory;
-            var exampleChatsDir = Path.Combine(appDir, "ExampleChats");
-
-            if (Directory.Exists(appDataExampleChats))
-            {
-                exampleChatsDir = appDataExampleChats;
-            }
+            // Create the folder if it doesn't exist
+            Directory.CreateDirectory(exampleChatsDir);
 
             if (!Directory.Exists(exampleChatsDir))
             {
