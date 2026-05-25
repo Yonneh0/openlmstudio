@@ -1,0 +1,15 @@
+<Project>
+  <!--
+    Directory.Build.props is imported early by MSBuild, before Microsoft.Common.props,
+    so setting BaseOutputPath and BaseIntermediateOutputPath here avoids the MSB3539 warning
+    and ensures all projects share a common output location.
+  -->
+  <PropertyGroup>
+    <!-- All compiled binaries go to build/bin/ at the repo root -->
+    <BaseOutputPath>$(MSBuildThisFileDirectory)build\bin\</BaseOutputPath>
+    <!-- Per-project obj folders under build/obj/ to avoid attribute conflicts -->
+    <BaseIntermediateOutputPath>$(MSBuildThisFileDirectory)build\obj\$(MSBuildProjectName)\</BaseIntermediateOutputPath>
+    <!-- Force MSBuildProjectExtensionsPath to the same path (before SDK imports) -->
+    <MSBuildProjectExtensionsPath Condition="'$(MSBuildProjectExtensionsPath)' == ''">$(BaseIntermediateOutputPath)</MSBuildProjectExtensionsPath>
+  </PropertyGroup>
+</Project>
