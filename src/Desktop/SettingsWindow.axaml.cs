@@ -58,21 +58,21 @@ public partial class SettingsWindow : Window
 
     private void OnTabChanged(object? sender, RoutedEventArgs e)
     {
-        // Show/hide panels based on active tab
-        if (ServerTabButton.IsChecked == true)
-            SetPanelVisibility(ServerSettingsPanel, ModelSettingsPanel);
-        else if (ModelTabButton.IsChecked == true)
-            SetPanelVisibility(ModelSettingsPanel, ServerSettingsPanel);
-        else if (AgentTabButton.IsChecked == true)
-            SetPanelVisibility(AgentSettingsPanel, ServerSettingsPanel);
-        else if (PluginTabButton.IsChecked == true)
-            SetPanelVisibility(PluginSettingsPanel, ServerSettingsPanel);
-    }
+        // Hide all panels first, then show the active one
+        ServerSettingsPanel.IsVisible = false;
+        ModelSettingsPanel.IsVisible = false;
+        AgentSettingsPanel.IsVisible = false;
+        PluginSettingsPanel.IsVisible = false;
 
-    private static void SetPanelVisibility(StackPanel activePanel, StackPanel inactivePanel)
-    {
-        activePanel.IsVisible = true;
-        inactivePanel.IsVisible = false;
+        // Show the active panel based on which tab is checked
+        if (ServerTabButton.IsChecked == true)
+            ServerSettingsPanel.IsVisible = true;
+        else if (ModelTabButton.IsChecked == true)
+            ModelSettingsPanel.IsVisible = true;
+        else if (AgentTabButton.IsChecked == true)
+            AgentSettingsPanel.IsVisible = true;
+        else if (PluginTabButton.IsChecked == true)
+            PluginSettingsPanel.IsVisible = true;
     }
 
     private void LoadSettings()

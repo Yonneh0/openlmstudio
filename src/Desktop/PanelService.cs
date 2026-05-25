@@ -24,6 +24,11 @@ public class PanelService : IPanelService
         ["ImageGeneration"] = "ImageGenerationTabContent",
         ["Pingu"] = "RightPinguContent",
         ["Games"] = "RightGamesContent",
+        ["Chat"] = "ChatTabContent",
+        ["Server"] = "ServerTabContent",
+        ["Models"] = "ModelsTabContent",
+        ["Devices"] = "DevicesTabContent",
+        ["PinguTab"] = "PinguTabContent",
     };
 
     public static void SetWindow(MainWindow window) => _window = window;

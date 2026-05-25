@@ -11,7 +11,7 @@ namespace OpenLMStudio.Desktop.Controls;
 /// <summary>
 /// Interactive Pingu avatar that reacts to Pingu state changes.
 /// </summary>
-public partial class PinguAvatar : UserControl
+public partial class PinguAvatar : UserControl, IDisposable
 {
     private readonly IPinguStore _pingu;
     private readonly Timer? _mouthTimer;
@@ -24,6 +24,15 @@ public partial class PinguAvatar : UserControl
         _pingu.OnStateChanged += OnPinguStateChanged;
 
         _mouthTimer = new Timer(OnMouthTick, null, Timeout.Infinite, Timeout.Infinite);
+    }
+
+    /// <summary>
+    /// Disposes the timer and unregisters from Pingu state changes.
+    /// </summary>
+    public void Dispose()
+    {
+        _pingu.OnStateChanged -= OnPinguStateChanged;
+        _mouthTimer?.Dispose();
     }
 
     private void OnPinguStateChanged(object? sender, PinguStateChangedEventArgs e)
@@ -86,7 +95,10 @@ public partial class PinguAvatar : UserControl
     private void OnMouthTick(object? state)
     {
         _mouthFrame = (_mouthFrame + 1) % 4;
-        Mouth.Height = 4 + _mouthFrame * 2;
+        Avalonia.Threading.Dispatcher.UIThread.InvokeAsync(() =>
+        {
+            Mouth.Height = 4 + _mouthFrame * 2;
+        });
     }
 
     private void OnPointerPressed(object? sender, PointerPressedEventArgs e)

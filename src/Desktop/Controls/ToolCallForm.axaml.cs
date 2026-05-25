@@ -325,7 +325,10 @@ public partial class ToolCallForm : UserControl, IDisposable
 
     private T GetResource<T>(string name) where T : Avalonia.Media.IBrush
     {
-        return (T)(this.FindResource(name) ?? Avalonia.Media.Brushes.Gray);
+        var result = (T)(this.FindResource(name) ?? Avalonia.Media.Brushes.Gray);
+        if (result == null)
+            System.Diagnostics.Debug.WriteLine($"[ToolCallForm] Resource '{name}' not found, using default");
+        return result;
     }
 
     private static string GetToolIcon(string toolName)

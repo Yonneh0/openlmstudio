@@ -164,44 +164,44 @@ public partial class MainWindow : Window
     }
 
     /// <summary>
-    /// Initializes the Pingu avatar control and wires up state change events.
+    /// Shows an error dialog with a simplified fallback chain.
     /// </summary>
-    private void InitializePingu()
+    private void ShowError(string message)
     {
         try
         {
-            var sp = GetAppServiceProvider();
-            var pinguStore = sp?.GetService<IPinguStore>();
-            if (pinguStore != null)
+            // Use the current window as owner (most reliable path)
+            var owner = this;
+            if (owner == null && Application.Current != null)
+                owner = Application.Current.ApplicationLifetime as ITopLevel;
+
+            var errorWin = new Window
             {
-                _pinguAvatar = new PinguAvatar(pinguStore);
-                _pinguAvatar.PointerPressed += OnPinguAvatarClicked;
-
-                // Try to find the main Grid in the visual tree and add Pingu as a child
-                try
+                Title = "OpenLMStudio - Error",
+                Width = 400,
+                Height = 250,
+                Content = new Border
                 {
-                    var mainGrid = FindGridInVisualTree(this);
-                    if (mainGrid != null)
-                        mainGrid.Children.Add(_pinguAvatar);
+                    Background = new Avalonia.Media.SolidColorBrush(Avalonia.Media.Color.FromRgb(37, 37, 41)),
+                    Child = new TextBlock
+                    {
+                        Text = message,
+                        Foreground = new Avalonia.Media.SolidColorBrush(Avalonia.Media.Color.FromRgb(255, 255, 255)),
+                        Padding = new Thickness(20),
+                        FontSize = 14,
+                        TextWrapping = Avalonia.Media.TextWrapping.Wrap
+                    }
                 }
-                catch
-                {
-                    // Ignore errors adding Pingu to the visual tree
-                }
-            }
-        }
-        catch (Exception ex)
-        {
-            _logger?.LogWarning(ex, "Failed to initialize Pingu avatar");
-        }
-    }
+            };
 
-    private void OnPinguAvatarClicked(object? sender, PointerPressedEventArgs e)
-    {
-        // Toggle Pingu menu on click
-        if (_pinguStore != null)
+            if (owner is Window w)
+                errorWin.ShowDialog(w);
+            else
+                errorWin.ShowDialog();
+        }
+        catch
         {
-            _ = _pinguStore.ToggleMenuAsync();
+            System.Diagnostics.Debug.WriteLine($"Error: {message}");
         }
     }
 
@@ -374,8 +374,9 @@ public partial class MainWindow : Window
         if (AgentTurnsText == null)
             return;
 
-        // Use badge visibility as the source of truth for whether Agent Mode is on
-        var isOn = AgentTurnsBadge != null && AgentTurnsBadge.IsVisible;
+        // Use turns count as the source of truth for whether Agent Mode is on
+        var currentTurns = ParseInt(AgentTurnsText.Text, 0);
+        var isOn = currentTurns > 0;
 
         if (isOn)
         {
@@ -551,6 +552,7 @@ public partial class MainWindow : Window
     /// <summary>
     /// Toggles the chat title between display mode and edit mode.
     /// Uses Task.Run to avoid blocking the UI thread (prevents freeze).
+    /// Sets _titleEditSaving = true BEFORE the async operation to prevent race conditions.
     /// </summary>
     private void OnChatTitleClicked(object? sender, PointerPressedEventArgs e)
     {
@@ -564,6 +566,9 @@ public partial class MainWindow : Window
 
             if (ChatTitleDisplay == null || ChatTitleEdit == null)
                 return;
+
+            // Set the flag BEFORE starting the async operation to prevent race conditions
+            _titleEditSaving = true;
 
             var chatId = _selectedChatId.Value;
             var mgr = _conversationManager;
@@ -660,47 +665,10 @@ public partial class MainWindow : Window
                     ChatTitleDisplay.Text = "New Chat";
                 }
             }
+            // Reset _titleEditSaving so subsequent clicks work correctly
+            _titleEditSaving = false;
             ChatTitleEdit.IsVisible = false;
             ChatTitleDisplay.IsVisible = true;
-        }
-    }
-
-    /// <summary>
-    /// Called when ChatTitleEdit loses focus while the window is not focused.
-    /// </summary>
-    private void OnChatTitleEditLostFocusWhileNotFocused(object? sender, RoutedEventArgs e)
-    {
-        // Always save and exit when this fires
-        OnChatTitleLostFocus(sender, e);
-    }
-
-    // =========================================================================
-    // Status bar button handlers
-    // =========================================================================
-
-    /// <summary>
-    /// Opens the OpenLMStudio data folder (AppData directory) in the native file explorer.
-    /// </summary>
-    private void OnStatusFolderClicked(object? sender, RoutedEventArgs e)
-    {
-        try
-        {
-            // Try to get the data folder from the DI container (AppDataDirectoryResolver)
-            var sp = GetAppServiceProvider();
-            var resolver = sp?.GetService<Infrastructure.Services.AppDataDirectoryResolver>();
-            var dataDir = resolver?.GetAppDataDirectory() ?? Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData);
-
-            var psi = new ProcessStartInfo
-            {
-                FileName = dataDir,
-                UseShellExecute = true
-            };
-            Process.Start(psi);
-        }
-        catch (Exception ex)
-        {
-            _logger?.LogError(ex, "Failed to open folder");
-            ShowError($"Failed to open folder: {ex.Message}");
         }
     }
 
@@ -892,6 +860,7 @@ public partial class MainWindow : Window
 
     /// <summary>
     /// Wires up ToggleButton click handlers for the left sidebar tabs.
+    /// Each button is only wired once (AttachTabClickHandlers handles the same buttons via PointerPressed).
     /// </summary>
     private void WireUpLeftTabClickHandlers()
     {
@@ -908,15 +877,26 @@ public partial class MainWindow : Window
 
         foreach (var (button, tabName) in tabs)
         {
+            // Only wire once - detach any existing handler to avoid double-firing
             if (button != null)
             {
-                button.Click += (sender, e) =>
-                {
-                    if (tabName == "Context")
-                        UpdateRightSidebarTab("Context");
-                    ShowTab(tabName);
-                };
+                // Remove the handler if it was already added by AttachTabClickHandlers
+                button.Click -= OnLeftTabClicked;
+                button.Click += OnLeftTabClicked;
             }
+        }
+    }
+
+    /// <summary>
+    /// Handles clicks on the left sidebar ToggleButton tabs.
+    /// </summary>
+    private void OnLeftTabClicked(object? sender, RoutedEventArgs e)
+    {
+        if (sender is ToggleButton tab && tab.Tag is string tabName)
+        {
+            if (tabName == "Context")
+                UpdateRightSidebarTab("Context");
+            ShowTab(tabName);
         }
     }
 
@@ -1236,33 +1216,42 @@ public static class KeyboardService
     }
 
     /// <summary>
+    /// Caches the cached tab items to avoid repeated visual tree traversal.
+    /// </summary>
+    private static List<TabItem>? _cachedTabItems;
+    private static DateTime _lastCacheTime;
+    private static readonly TimeSpan CacheTtl = TimeSpan.FromSeconds(2);
+
+    /// <summary>
     /// Cycles the active tab by the given direction (+1 for forward, -1 for backward).
-    /// Uses Avalonia visual tree to find TabControls.
+    /// Uses cached tab items to avoid repeated visual tree traversal.
     /// </summary>
     public static void CycleTab(int direction)
     {
         if (_mainWindow == null) return;
 
-        // Search all TabControls in the visual tree
-        var allTabs = _mainWindow.GetVisualDescendants()
-            .OfType<TabControl>()
-            .SelectMany(tc => tc.Items.Cast<TabItem>())
-            .Where(t => t.IsSelected)
-            .ToList();
-
-        if (allTabs.Count == 1)
+        // Invalidate cache if it's stale
+        if (_cachedTabItems == null || DateTime.UtcNow - _lastCacheTime > CacheTtl)
         {
-            // Find the TabControl that contains the selected item
-            var selected = allTabs[0];
-            var parent = selected.GetVisualParent<TabControl>();
-            if (parent == null) return;
-
-            var items = parent.Items.Cast<TabItem>().ToList();
-            var index = items.IndexOf(selected);
-            if (index < 0) return;
-
-            var nextIndex = (index + direction + items.Count) % items.Count;
-            items[nextIndex].IsSelected = true;
+            _cachedTabItems = _mainWindow.GetVisualDescendants()
+                .OfType<TabControl>()
+                .SelectMany(tc => tc.Items.Cast<TabItem>())
+                .ToList();
+            _lastCacheTime = DateTime.UtcNow;
         }
+
+        // Find the currently selected tab
+        var selected = _cachedTabItems?.FirstOrDefault(t => t.IsSelected);
+        if (selected == null) return;
+
+        var parent = selected.GetVisualParent<TabControl>();
+        if (parent == null) return;
+
+        var items = parent.Items.Cast<TabItem>().ToList();
+        var index = items.IndexOf(selected);
+        if (index < 0) return;
+
+        var nextIndex = (index + direction + items.Count) % items.Count;
+        items[nextIndex].IsSelected = true;
     }
 }

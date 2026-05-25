@@ -32,7 +32,15 @@ public class AccessibilityService : IAccessibilityService
         {
             // Check if the system is using high contrast mode via OS-level settings
             // Avalonia exposes this via the OS theme detection
-            return false;
+            try
+            {
+                var theme = Application.Current?.ActualTheme;
+                return theme == ThemeVariant.Dark;
+            }
+            catch
+            {
+                return false;
+            }
         }
     }
 

@@ -31,11 +31,53 @@ public class TabService : ITabService
     {
         get
         {
+            // Try MainTabControl first
             var tabControl = Window.Find<TabControl>("MainTabControl");
             if (tabControl?.SelectedItem is TabItem selected && selected.Header is string header)
                 return header.ToString();
+
+            // Fall back to _activeTab field from MainWindow
+            try
+            {
+                var activeTabField = typeof(MainWindow).GetField("_activeTab", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
+                if (activeTabField?.GetValue(Window) is string activeTab)
+                    return activeTab;
+            }
+            catch { /* Ignore reflection errors */ }
+
             return "Chat";
         }
+    }
+
+    /// <summary>
+    /// Switches the active tab using the WrapPanel + ToggleButton approach in MainWindow.
+    /// </summary>
+    private bool SwitchTabViaToggleButton(string tabName)
+    {
+        var tabs = new (string tabName, string buttonName)[]
+        {
+            ("Chat", "ChatTab"),
+            ("Server", "ServerTab"),
+            ("Models", "ModelsTab"),
+            ("Devices", "DevicesTab"),
+            ("Context", "ContextTab"),
+            ("Pingu", "PinguTab"),
+            ("ImageGen", "ImageGenTab"),
+            ("Image Generation", "ImageGenTab"),
+        };
+
+        var target = tabs.FirstOrDefault(t => t.tabName.Equals(tabName, System.StringComparison.Ordinal));
+        if (target.buttonName == null)
+            return false;
+
+        var button = Window.Find<ToggleButton>(target.buttonName);
+        if (button != null)
+        {
+            button.IsChecked = true;
+            return true;
+        }
+
+        return false;
     }
 
     public async Task<bool> SwitchTabAsync(string tabName)
@@ -43,21 +85,22 @@ public class TabService : ITabService
         if (string.IsNullOrWhiteSpace(tabName))
             return false;
 
+        // Try MainTabControl first
         var tabControl = Window.Find<TabControl>("MainTabControl");
-        if (tabControl == null)
-            return false;
-
-        // Find the matching TabItem by header text
-        foreach (var child in tabControl.Items)
+        if (tabControl != null)
         {
-            if (child is TabItem tab && tab.Header is string header && header.Equals(tabName, StringComparison.Ordinal))
+            foreach (var child in tabControl.Items)
             {
-                tabControl.SelectedItem = tab;
-                return true;
+                if (child is TabItem tab && tab.Header is string header && header.Equals(tabName, StringComparison.Ordinal))
+                {
+                    tabControl.SelectedItem = tab;
+                    return true;
+                }
             }
         }
 
-        return false;
+        // Fall back to ToggleButton approach
+        return SwitchTabViaToggleButton(tabName);
     }
 
     public IReadOnlyList<string> GetAvailableTabs() => _availableTabs.AsReadOnly();

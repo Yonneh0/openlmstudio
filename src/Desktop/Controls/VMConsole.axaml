@@ -44,8 +44,6 @@
                           VerticalScrollBarVisibility="Auto"
                           HorizontalScrollBarVisibility="Auto">
                 <Canvas x:Name="TerminalCanvas"
-                        Width="800"
-                        Height="350"
                         Background="#0C0C0C"/>
             </ScrollViewer>
         </Grid>

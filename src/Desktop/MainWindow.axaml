@@ -528,7 +528,7 @@
                                                 Foreground="White">
                                             <Button.Styles>
                                                 <Style Selector="Button:pointerover">
-                                                    <Setter Property="Background" Value="{Binding (Button.Background), RelativeSource={RelativeSource Self}}"/>
+                                                    <Setter Property="Background" Value="{Binding Background, RelativeSource={RelativeSource Self}}"/>
                                                 </Style>
                                             </Button.Styles>
                                             <TextBlock x:Name="AgentTurnsText" Text="0" Foreground="White" FontSize="12" FontWeight="Bold" TextAlignment="Center"/>

@@ -30,6 +30,7 @@
         <!-- Blink overlay (hides eyes when blinking) -->
         <Border x:Name="BlinkOverlay"
                 Width="70" Height="70"
+                Background="White"
                 IsHitTestVisible="False"/>
     </Panel>
 </UserControl>
