@@ -117,8 +117,9 @@ public class ServerService : IServerService, IDisposable
             // Listen on the configured port, with HTTPS if enabled
             if (Configuration.UseHttps)
             {
-                var httpsCertPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "dev-cert.pfx");
-                var keyPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "dev-key.pem");
+                var appData = Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData);
+                var httpsCertPath = Path.Combine(appData, "OpenLMStudio", "dev-cert.pfx");
+                var keyPath = Path.Combine(appData, "OpenLMStudio", "dev-key.pem");
 
                 // If HTTPS is enabled but no cert exists yet, try to auto-generate one
                 if (!File.Exists(httpsCertPath))

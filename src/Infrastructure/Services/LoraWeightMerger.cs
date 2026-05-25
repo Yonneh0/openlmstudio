@@ -133,7 +133,8 @@ public class LoraWeightMerger : IDisposable
             }
 
             // Write merged model to a new safetensors file
-            var outputDir = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "models", "lora", "merged");
+            var appData = Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData);
+            var outputDir = Path.Combine(appData, "OpenLMStudio", "models", "lora", "merged");
             Directory.CreateDirectory(outputDir);
 
             var outputFileName = $"{adapterModelId}_merged_{DateTimeOffset.UtcNow:yyyyMMdd_HHmmss}.safetensors";

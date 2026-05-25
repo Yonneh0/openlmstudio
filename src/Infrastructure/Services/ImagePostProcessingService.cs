@@ -339,10 +339,12 @@ public class ImagePostProcessingService : IImagePostProcessingService, IDisposab
             else
             {
                 // Fallback: search common directories for the model
+                var appData = Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData);
+                var dataDir = Path.Combine(appData, "OpenLMStudio");
                 var searchPaths = new[]
                 {
-                    Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "models", "upscale"),
-                    Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "models", "controlnet"),
+                    Path.Combine(dataDir, "models", "upscale"),
+                    Path.Combine(dataDir, "models", "controlnet"),
                 };
 
                 filePath = null;

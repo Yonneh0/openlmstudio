@@ -50,7 +50,8 @@ public class LlamaCppChatCompletionService : IChatCompletionService, IDisposable
     {
         try
         {
-            var searchPaths = new[] { AppDomain.CurrentDomain.BaseDirectory };
+            var appData = Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData);
+            var searchPaths = new[] { appData, AppDomain.CurrentDomain.BaseDirectory };
             var libName = Environment.OSVersion.Platform switch
             {
                 PlatformID.Win32NT => "libllama.dll",

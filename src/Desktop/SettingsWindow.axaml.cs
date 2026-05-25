@@ -20,7 +20,7 @@ public partial class SettingsWindow : Window
     private readonly ILogger<SettingsWindow>? _logger;
 
     /// <summary>Path to the settings.json file used to persist settings.</summary>
-    private static string SettingsPath => Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "settings.json");
+    private static string SettingsPath => Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "OpenLMStudio", "settings.json");
 
     public SettingsWindow(ILogger<SettingsWindow>? logger = null)
     {
