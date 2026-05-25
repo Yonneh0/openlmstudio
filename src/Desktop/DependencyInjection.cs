@@ -25,7 +25,6 @@ public static class DependencyInjection
         services.AddSingleton<IPinguStore, InfraServices.PinguStore>();
         services.AddSingleton<IWindowSettings, InfraServices.WindowSettingsService>();
         services.AddSingleton<IEngineLogger, InfraServices.EngineLogger>();
-        services.AddSingleton<IGamesPanel, GamesPanelService>();
         services.AddSingleton<PanelService>();
         services.AddSingleton<TabService>();
         services.AddSingleton<InfraServices.AvaloniaMarkdownRenderer>();

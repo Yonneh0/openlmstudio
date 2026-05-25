@@ -196,9 +196,6 @@ public static class DependencyInjection
         // PinguModelLoad tool for loading/unloading models
         services.AddSingleton<ITool, Services.PinguModelLoadTool>();
 
-        // PinguGame tool for launching/stopping built-in games
-        services.AddSingleton<ITool, Services.PinguGameTool>();
-
         // PinguWandering tool for autonomous exploratory behavior
         services.AddSingleton<ITool, Services.PinguWanderingTool>();
 

@@ -94,13 +94,8 @@
     <ProjectReference Include="..\Infrastructure\OpenLMStudio.Infrastructure.csproj" />
   </ItemGroup>
 
-  <!-- Avalonia resources for mini-games and VM wizard -->
+  <!-- Avalonia resources for VM wizard -->
   <ItemGroup>
-    <AvaloniaResource Remove="Controls\MinesweeperGame.axaml" />
-    <AvaloniaResource Remove="Controls\TetrisGame.axaml" />
-    <AvaloniaResource Remove="Controls\SnakeGame.axaml" />
-    <AvaloniaResource Remove="Controls\JezzballGame.axaml" />
-    <AvaloniaResource Remove="Controls\SolitaireGame.axaml" />
     <AvaloniaResource Remove="Controls\VMConsole.axaml" />
     <AvaloniaResource Remove="Windows\VMWizardWindow.axaml" />
   </ItemGroup>

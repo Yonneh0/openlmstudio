@@ -22,7 +22,7 @@ public class TabService : ITabService
 
     private readonly string[] _availableTabs =
     [
-        "Chat", "Server", "Models", "Devices", "Context", "Agent", "Image Generation"
+        "Chat", "Server", "Models", "Devices", "Context", "Image Generation"
     ];
 
     public TabService() { }

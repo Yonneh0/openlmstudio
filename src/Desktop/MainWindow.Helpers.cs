@@ -574,87 +574,6 @@ public partial class MainWindow
 
     private void OnRightAnalysisTabClick(object? sender, RoutedEventArgs e) { }
 
-    // ---- AI Analysis Context Panel ----
-
-    /// <summary>
-    /// Refreshes the AI Analysis Context Panel with the latest analysis data from the task context store.
-    /// </summary>
-    private async Task RefreshAnalysisContextAsync()
-    {
-        try
-        {
-            var sp = GetAppServiceProvider();
-            if (sp == null) return;
-
-            // Get the latest task context snapshot from the task store
-            var taskStore = sp.GetService<OpenLMStudio.Application.Interfaces.ITaskContextStore>();
-            if (taskStore == null) return;
-
-            var tasks = await taskStore.ListArchivedAsync();
-            var latestTask = tasks.OrderByDescending(t => t.UpdatedAt).FirstOrDefault();
-
-            if (latestTask == null || latestTask.AiAnalysis == null)
-            {
-                // No analysis data available
-                if (AnalysisTimestampText != null) AnalysisTimestampText.Text = "N/A";
-                if (AnalysisTokenCountText != null) AnalysisTokenCountText.Text = "0";
-                if (AnalysisHistoryText != null) AnalysisHistoryText.Text = "No compressed history";
-                if (AnalysisProjectStateText != null) AnalysisProjectStateText.Text = "No project state";
-                if (AnalysisSegmentsText != null) AnalysisSegmentsText.Text = "N/A";
-                return;
-            }
-
-            var analysis = latestTask.AiAnalysis;
-            AnalysisTimestampText.Text = analysis.AnalyzedAt.ToString("yyyy-MM-dd HH:mm:ss");
-            AnalysisTokenCountText.Text = analysis.AnalysisTokenCount.ToString();
-
-            // Compressed history
-            if (AnalysisHistoryText != null)
-            {
-                if (analysis.AnalyzedChatHistory != null && analysis.AnalyzedChatHistory.Any())
-                {
-                    var history = string.Join("\n", analysis.AnalyzedChatHistory.Take(10).Select(s => s.Content ?? "(empty)"));
-                    AnalysisHistoryText.Text = history.Length > 500 ? history[..500] + "..." : history;
-                }
-                else
-                {
-                    AnalysisHistoryText.Text = "No compressed history";
-                }
-            }
-
-            // Project state
-            if (AnalysisProjectStateText != null)
-            {
-                if (!string.IsNullOrEmpty(analysis.ProjectStateAtTimeOfAnalysis))
-                {
-                    var state = analysis.ProjectStateAtTimeOfAnalysis;
-                    AnalysisProjectStateText.Text = state.Length > 500 ? state[..500] + "..." : state;
-                }
-                else
-                {
-                    AnalysisProjectStateText.Text = "No project state";
-                }
-            }
-
-            // Relevant segment IDs
-            if (AnalysisSegmentsText != null)
-            {
-                if (analysis.RelevantContextSegmentIds != null && analysis.RelevantContextSegmentIds.Any())
-                {
-                    AnalysisSegmentsText.Text = string.Join(", ", analysis.RelevantContextSegmentIds.Take(5));
-                }
-                else
-                {
-                    AnalysisSegmentsText.Text = "N/A";
-                }
-            }
-        }
-        catch (Exception ex)
-        {
-            _logger?.LogDebug("Error refreshing analysis context: {Message}", ex.Message);
-        }
-    }
-
     // ---- Settings Window ----
 
     private void OnSettingsClicked(object? sender, RoutedEventArgs e)
@@ -801,7 +720,7 @@ public partial class MainWindow
         _contextManager?.Dispose();
     }
 
-    // ---- Game Menu Handlers ----
+    // ---- Game Menu Handlers (no-op — games removed) ----
 
     private void OnOpenModelClicked(object? sender, RoutedEventArgs e)
     {
@@ -827,41 +746,26 @@ public partial class MainWindow
 
     private void OnOpenMinesweeperClicked(object? sender, RoutedEventArgs e)
     {
-        if (LeftGamesPanel != null)
-        {
-            try { LeftGamesPanel.ActivateGame("minesweeper"); } catch { }
-        }
+        // Games removed — no-op
     }
 
     private void OnOpenTetrisClicked(object? sender, RoutedEventArgs e)
     {
-        if (LeftGamesPanel != null)
-        {
-            try { LeftGamesPanel.ActivateGame("tetris"); } catch { }
-        }
+        // Games removed — no-op
     }
 
     private void OnOpenSnakeClicked(object? sender, RoutedEventArgs e)
     {
-        if (LeftGamesPanel != null)
-        {
-            try { LeftGamesPanel.ActivateGame("snake"); } catch { }
-        }
+        // Games removed — no-op
     }
 
     private void OnOpenJezzballClicked(object? sender, RoutedEventArgs e)
     {
-        if (LeftGamesPanel != null)
-        {
-            try { LeftGamesPanel.ActivateGame("jezzball"); } catch { }
-        }
+        // Games removed — no-op
     }
 
     private void OnOpenSolitaireClicked(object? sender, RoutedEventArgs e)
     {
-        if (LeftGamesPanel != null)
-        {
-            try { LeftGamesPanel.ActivateGame("solitaire"); } catch { }
-        }
+        // Games removed — no-op
     }
 }

@@ -43,7 +43,6 @@ public partial class MainWindow : Window
     private readonly IServerService? _serverService;
     private readonly IModelRepository? _modelRepository;
     private readonly IChatCompletionService? _chatCompletionService;
-    private readonly IAgent? _agentService;
 
     private readonly IChatContextManager? _contextManager;
     private readonly IContextWindowBudgeter? _budgeter;
@@ -83,7 +82,6 @@ public partial class MainWindow : Window
         IServerService? serverService = null,
         IModelRepository? modelRepository = null,
         IChatCompletionService? chatCompletionService = null,
-        IAgent? agentService = null,
         IChatContextManager? contextManager = null,
         IContextWindowBudgeter? budgeter = null,
         IPinguStore? pinguStore = null,
@@ -116,7 +114,6 @@ public partial class MainWindow : Window
         _chatCompletionService = chatCompletionService ?? ResolveChatCompletionServiceFromAppServices();
         _contextManager = contextManager ?? ResolveContextManagerFromAppServices();
         _budgeter = budgeter ?? ResolveBudgeterFromAppServices();
-        _agentService = agentService;
         _pinguStore = pinguStore;
         _windowSettings = windowSettings ?? ResolveWindowSettingsFromAppServices();
 
@@ -232,15 +229,6 @@ public partial class MainWindow : Window
         if (RandomSeedButton != null)
             RandomSeedButton.Click += OnRandomSeedClicked;
 
-        // Agent tab handlers
-        if (AgentStartButton != null)
-            AgentStartButton.Click += OnAgentStartClicked;
-
-        if (AgentStopButton != null)
-            AgentStopButton.Click += OnAgentStopClicked;
-
-        if (AgentMaxIterationsSlider != null)
-            AgentMaxIterationsSlider.ValueChanged += OnAgentMaxIterationsValueChanged;
 
         // Agent mode toggle button
         if (AgentModeToggle != null)
@@ -266,15 +254,6 @@ public partial class MainWindow : Window
         if (SafetyExec != null)
             SafetyExec.Click += OnSafetyToggleClicked;
 
-        // Task tab handlers
-        if (CreateTaskButton != null)
-            CreateTaskButton.Click += OnCreateTaskClicked;
-
-        if (TasksTabContent != null)
-        {
-            var firstChild = TasksTabContent.Children.OfType<Control>().FirstOrDefault();
-            firstChild?.AddHandler(Control.PointerPressedEvent, (_, _) => ShowTab("Tasks"));
-        }
 
         // Image generation generate button
         if (ImageGenGenerateBtn != null)
@@ -352,79 +331,6 @@ public partial class MainWindow : Window
         }
     }
 
-    // =========================================================================
-    // Agent tab handlers
-    // =========================================================================
-
-    private void OnAgentTabPointerPressed(object? sender, PointerPressedEventArgs e)
-    {
-        ShowTab("Agent");
-    }
-
-    private void OnAgentStartClicked(object? sender, RoutedEventArgs e)
-    {
-        var taskDescription = AgentTaskInput?.Text ?? string.Empty;
-        if (string.IsNullOrWhiteSpace(taskDescription))
-        {
-            _logger?.LogWarning("Agent task description is empty");
-            return;
-        }
-
-        var maxIterations = (int)(AgentMaxIterationsSlider?.Value ?? 50);
-        _logger?.LogInformation("Starting agent task: {Task}, max iterations: {Max}", taskDescription, maxIterations);
-
-        AgentStartButton?.SetValue(Button.IsEnabledProperty, false);
-        AgentStopButton?.SetValue(Button.IsVisibleProperty, true);
-
-        if (_agentService != null)
-        {
-            try
-            {
-                var taskRequest = new AgentTaskRequest(
-                    Guid.NewGuid(),
-                    taskDescription,
-                    MaxIterations: maxIterations);
-
-                _ = Task.Run(async () => await _agentService.ExecuteAsync(taskRequest, CancellationToken.None));
-            }
-            catch (Exception ex)
-            {
-                _logger?.LogError(ex, "Failed to start agent task");
-                AgentStartButton?.SetValue(Button.IsEnabledProperty, true);
-                AgentStopButton?.SetValue(Button.IsVisibleProperty, false);
-            }
-        }
-        else
-        {
-            _logger?.LogWarning("IAgent service not available");
-            AgentStartButton?.SetValue(Button.IsEnabledProperty, true);
-            AgentStopButton?.SetValue(Button.IsVisibleProperty, false);
-        }
-    }
-
-    private void OnAgentStopClicked(object? sender, RoutedEventArgs e)
-    {
-        _logger?.LogInformation("Stopping agent");
-        if (_agentService != null)
-        {
-            try
-            {
-                _ = _agentService.AbortAsync();
-            }
-            catch (Exception ex)
-            {
-                _logger?.LogError(ex, "Failed to abort agent");
-            }
-        }
-        AgentStartButton?.SetValue(Button.IsEnabledProperty, true);
-        AgentStopButton?.SetValue(Button.IsVisibleProperty, false);
-    }
-
-    private void OnAgentMaxIterationsValueChanged(object? sender, RangeBaseValueChangedEventArgs e)
-    {
-        if (AgentMaxIterationsText != null)
-            AgentMaxIterationsText.Text = ((int)(AgentMaxIterationsSlider?.Value ?? 50)).ToString();
-    }
 
     /// <summary>
     /// Toggles Agent Mode on/off.
@@ -528,108 +434,6 @@ public partial class MainWindow : Window
         return defaultValue;
     }
 
-    // =========================================================================
-    // Task tab handlers
-    // =========================================================================
-
-    private void OnTasksTabPointerPressed(object? sender, PointerPressedEventArgs e)
-    {
-        ShowTab("Tasks");
-    }
-
-    private void OnCreateTaskClicked(object? sender, RoutedEventArgs e)
-    {
-        var description = NewTaskDescriptionInput?.Text;
-        if (string.IsNullOrWhiteSpace(description))
-        {
-            _logger?.LogWarning("Task description is empty");
-            return;
-        }
-
-        var priorityText = TaskPrioritySelector?.SelectedItem as TextBlock;
-        var priority = priorityText?.Text switch
-        {
-            "Low" => TaskPriority.Low,
-            "High" => TaskPriority.High,
-            "Critical" => TaskPriority.Critical,
-            _ => TaskPriority.Normal
-        };
-
-        _logger?.LogInformation("Creating task: {Description}, priority: {Priority}", description, priority);
-
-        // Use TaskService to create the task
-        var sp = GetAppServiceProvider();
-        var taskService = sp?.GetService<OpenLMStudio.Application.Interfaces.ITaskService>();
-        if (taskService != null)
-        {
-            _ = Task.Run(async () =>
-            {
-                var task = await taskService.CreateTaskAsync(description, priority: priority);
-                // Refresh task list on the UI thread
-                await Dispatcher.UIThread.InvokeAsync(() => RefreshTaskListAsync());
-            });
-        }
-    }
-
-    private void RefreshTaskListAsync()
-    {
-        var sp = GetAppServiceProvider();
-        var taskService = sp?.GetService<OpenLMStudio.Application.Interfaces.ITaskService>();
-        if (taskService == null || TaskListPanel == null)
-            return;
-
-        TaskListPanel.Children.Clear();
-
-        var tasks = taskService.GetTasks();
-        if (!tasks.Any())
-        {
-            TaskListPanel.Children.Add(new TextBlock
-            {
-                Text = "No tasks created",
-                Foreground = (SolidColorBrush)(this.FindResource("TextMuted") ?? Avalonia.Media.Brushes.Gray),
-                Padding = new Thickness(12, 8),
-                FontSize = 12
-            });
-            return;
-        }
-
-        foreach (var task in tasks)
-        {
-            var statusColor = task.Status switch
-            {
-                Domain.Models.TaskStatus.Completed => "#4CAF50",
-                Domain.Models.TaskStatus.Running => "#FF9800",
-                Domain.Models.TaskStatus.Failed => "#FF6B6B",
-                Domain.Models.TaskStatus.Cancelled => "#888888",
-                _ => "#888888"
-            };
-
-            var statusText = task.Summary ?? task.Status.ToString();
-
-            var stack = new StackPanel
-            {
-                Margin = new Thickness(0, 0, 0, 6)
-            };
-
-            stack.Children.Add(new TextBlock
-            {
-                Text = task.Description,
-                Foreground = (SolidColorBrush)(this.FindResource("TextPrimary") ?? Avalonia.Media.Brushes.White),
-                FontSize = 12,
-                FontWeight = Avalonia.Media.FontWeight.SemiBold
-            });
-
-            stack.Children.Add(new TextBlock
-            {
-                Text = $"[{task.Priority}] {statusText}",
-                Foreground = new Avalonia.Media.SolidColorBrush(Avalonia.Media.Color.Parse(statusColor)),
-                FontSize = 10,
-                Margin = new Thickness(0, 2, 0, 0)
-            });
-
-            TaskListPanel.Children.Add(stack);
-        }
-    }
 
     /// <summary>
     /// Initializes the status bar with the current git commit hash and wires up click handler.
@@ -1065,12 +869,8 @@ public partial class MainWindow : Window
             (ModelsTab, "Models"),
             (DevicesTab, "Devices"),
             (ContextTab, "Context"),
-            (TasksTab, "Tasks"),
-            (AgentTab, "Agent"),
-            (GamesTab, "Games"),
             (PinguTab, "Pingu"),
             (ImageGenTab, "ImageGen"),
-            (AnalysisTab, "Analysis"),
         };
 
         foreach (var (button, tabName) in tabs)
