@@ -1058,8 +1058,8 @@ public partial class MainWindow : Window
             var btn = new Button
             {
                 Content = $"{GetToolIcon(tool.Name)}  {tool.Name}",
-                Background = (SolidColorBrush)this.FindResource("BgTertiary"),
-                Foreground = (SolidColorBrush)this.FindResource("TextPrimary"),
+                Background = (SolidColorBrush)(this.FindResource("BgTertiary") ?? Avalonia.Media.Brushes.Gray),
+                Foreground = (SolidColorBrush)(this.FindResource("TextPrimary") ?? Avalonia.Media.Brushes.Gray),
                 Padding = new Thickness(10, 6),
                 Margin = new Thickness(0, 2, 0, 2),
                 HorizontalAlignment = Avalonia.Layout.HorizontalAlignment.Stretch,

@@ -237,7 +237,7 @@ public partial class ToolCallForm : UserControl, IDisposable
             Margin = new Thickness(0, 4, 0, 0),
             FontSize = 11
         };
-        numeric.AddHandler(NumericUpDown.ValueChangedEvent, (s, e) => _parameterValues[paramName] = (long)((NumericUpDown)s!).Value);
+        numeric.AddHandler(NumericUpDown.ValueChangedEvent, (s, e) => _parameterValues[paramName] = ((NumericUpDown)s!).Value!);
         return numeric;
     }
 

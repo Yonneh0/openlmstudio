@@ -789,44 +789,46 @@
         </Popup>
 
         <!-- Tool call popup (opens upward from the Tools button) -->
-        <Popup x:Name="ToolCallPopup"
-               PlacementTarget="{Binding ElementName=ToolsButton}"
-               Placement="Bottom"
-               HorizontalOffset="0"
-               VerticalOffset="0"
-               IsOpen="False">
-            <Border Background="{StaticResource BgSecondary}"
-                    BorderBrush="#333338"
-                    BorderThickness="1"
-                    CornerRadius="8"
-                    Width="440"
-                    MaxHeight="500">
-                <StackPanel>
-                    <!-- Tool list header -->
-                    <Border Background="{StaticResource BgTertiary}"
-                            CornerRadius="8,8,0,0"
-                            Padding="12,8">
-                        <Grid>
-                            <Grid.ColumnDefinitions>
-                                <ColumnDefinition Width="*"/>
-                                <ColumnDefinition Width="Auto"/>
-                            </Grid.ColumnDefinitions>
-                            <TextBlock Grid.Column="0" Text="Select a Tool" FontWeight="SemiBold" Foreground="{StaticResource AccentBlue}" FontSize="13"/>
-                            <Button Grid.Column="1" x:Name="CloseToolPopup"
-                                    Content="✕"
-                                    Background="Transparent"
-                                    Foreground="{StaticResource TextSecondary}"
-                                    Padding="6,2"
-                                    FontSize="12"
-                                    Click="OnCloseToolPopupClicked"/>
-                        </Grid>
-                    </Border>
-                    <!-- Tool list -->
-                    <ScrollViewer VerticalScrollBarVisibility="Auto" MaxHeight="350">
-                        <StackPanel x:Name="ToolListPanel" Margin="8,4,8,8"/>
-                    </ScrollViewer>
-                </StackPanel>
-            </Border>
-        </Popup>
+        <Canvas Grid.Row="2" Grid.ColumnSpan="3">
+            <Popup x:Name="ToolCallPopup"
+                   PlacementTarget="{Binding ElementName=ToolsButton}"
+                   Placement="Bottom"
+                   HorizontalOffset="0"
+                   VerticalOffset="0"
+                   IsOpen="False">
+                <Border Background="{StaticResource BgSecondary}"
+                        BorderBrush="#333338"
+                        BorderThickness="1"
+                        CornerRadius="8"
+                        Width="440"
+                        MaxHeight="500">
+                    <StackPanel>
+                        <!-- Tool list header -->
+                        <Border Background="{StaticResource BgTertiary}"
+                                CornerRadius="8,8,0,0"
+                                Padding="12,8">
+                            <Grid>
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*"/>
+                                    <ColumnDefinition Width="Auto"/>
+                                </Grid.ColumnDefinitions>
+                                <TextBlock Grid.Column="0" Text="Select a Tool" FontWeight="SemiBold" Foreground="{StaticResource AccentBlue}" FontSize="13"/>
+                                <Button Grid.Column="1" x:Name="CloseToolPopup"
+                                        Content="✕"
+                                        Background="Transparent"
+                                        Foreground="{StaticResource TextSecondary}"
+                                        Padding="6,2"
+                                        FontSize="12"
+                                        Click="OnCloseToolPopupClicked"/>
+                            </Grid>
+                        </Border>
+                        <!-- Tool list -->
+                        <ScrollViewer VerticalScrollBarVisibility="Auto" MaxHeight="350">
+                            <StackPanel x:Name="ToolListPanel" Margin="8,4,8,8"/>
+                        </ScrollViewer>
+                    </StackPanel>
+                </Border>
+            </Popup>
+        </Canvas>
     </Grid>
 </Window>
