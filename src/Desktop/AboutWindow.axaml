@@ -79,7 +79,8 @@
                     <TextBlock Text="About OpenLMStudio" Foreground="{StaticResource TextPrimary}" FontSize="11"
                                VerticalAlignment="Center" Margin="12,0,0,0" DockPanel.Dock="Left"/>
                     <StackPanel Orientation="Horizontal" DockPanel.Dock="Right">
-                        <Button Content="—" Width="36" Height="28"
+                        <Button Content="─" Width="36" Height="28"
+                                Foreground="{StaticResource TextSecondary}"
                                 Click="OnMinimizeClicked"/>
                         <Button x:Name="CloseButton" Content="✕" Width="36" Height="28" Classes="closeBtn"
                                 Click="OnCloseClicked"/>
@@ -296,6 +297,7 @@
                     <StackPanel Margin="0,12,0,0" HorizontalAlignment="Center">
                         <TextBlock Text="© 2026 OpenLMStudio" Foreground="{StaticResource TextMuted}" FontSize="9" TextAlignment="Center"/>
                         <TextBlock Text="GGUF · GGML · Safetensors · ONNX Runtime · llama-cpp" Foreground="{StaticResource TextMuted}" FontSize="8" TextAlignment="Center" Margin="0,2,0,0"/>
+                        <TextBlock Text="Written in Visual Studio Code, by Qwen 3.6. Yonneh watched." Foreground="{StaticResource TextMuted}" FontSize="9" TextAlignment="Center" Margin="0,8,0,0" FontStyle="Italic"/>
                     </StackPanel>
                 </StackPanel>
             </ScrollViewer>
