@@ -649,6 +649,7 @@ public partial class MainWindow : Window
 
     /// <summary>
     /// Wipes the AppData settings directory (C:\Users\Yonneh\AppData\Roaming\OpenLMStudio\) — clearing all logs and chats — then restarts the app.
+    /// Preserves the entire models/ folder (except settings.json).
     /// </summary>
     private void OnStatusResetClicked(object? sender, RoutedEventArgs e)
     {
@@ -664,8 +665,28 @@ public partial class MainWindow : Window
                 return;
             }
 
-            // Collect files to delete (everything inside AppData/OpenLMStudio)
-            var filesToDelete = Directory.EnumerateFiles(settingsDir, "*", SearchOption.AllDirectories).ToList();
+            // Ensure the models/safetensors subfolder exists
+            var modelsDir = Path.Combine(settingsDir, "models");
+            var safetensorsDir = Path.Combine(modelsDir, "safetensors");
+            Directory.CreateDirectory(modelsDir);
+            Directory.CreateDirectory(safetensorsDir);
+
+            // Collect files to delete (everything inside AppData/OpenLMStudio, except models/ folder)
+            var filesToDelete = new List<string>();
+
+            foreach (var file in Directory.EnumerateFiles(settingsDir, "*", SearchOption.AllDirectories))
+            {
+                // Skip files in the models/ folder
+                if (file.StartsWith(modelsDir + Path.DirectorySeparatorChar) || file.StartsWith(modelsDir + '\\'))
+                    continue;
+
+                // Skip settings.json (it will be preserved)
+                var fileName = Path.GetFileName(file);
+                if (fileName == "settings.json")
+                    continue;
+
+                filesToDelete.Add(file);
+            }
 
             // Delete collected files
             foreach (var file in filesToDelete)
@@ -680,16 +701,24 @@ public partial class MainWindow : Window
                 }
             }
 
-            // Delete empty directories
+            // Delete empty directories (except models/)
             foreach (var dir in Directory.EnumerateDirectories(settingsDir, "*", SearchOption.AllDirectories).Reverse())
             {
+                // Skip the models/ folder itself
+                if (dir == modelsDir)
+                    continue;
+
+                // Skip subdirectories of models/
+                if (dir.StartsWith(modelsDir))
+                    continue;
+
                 if (Directory.GetFiles(dir).Length == 0 && Directory.GetDirectories(dir).Length == 0)
                 {
                     try { Directory.Delete(dir); } catch { /* ignore */ }
                 }
             }
 
-            _logger?.LogInformation("Wiped settings directory: {Dir}", settingsDir);
+            _logger?.LogInformation("Wiped settings directory (preserved models/): {Dir}", settingsDir);
 
             // Restart the app
             var exePath = Environment.ProcessPath ?? AppContext.BaseDirectory;
