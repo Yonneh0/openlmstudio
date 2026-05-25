@@ -1175,7 +1175,7 @@ public partial class MainWindow : Window
             if (!Directory.Exists(exampleChatsDir))
             {
                 _logger?.LogWarning("ExampleChats directory not found at {Dir}", exampleChatsDir);
-                ShowError("Example chats directory not found.");
+                ShowError($"Example chats directory not found.\n\nExpected: {exampleChatsDir}");
                 return;
             }
 
