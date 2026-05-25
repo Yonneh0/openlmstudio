@@ -920,7 +920,7 @@ public partial class MainWindow : Window
             }
 
             // Restart the app
-            var exePath = Environment.ProcessPath ?? typeof(MainWindow).Assembly.Location;
+            var exePath = Environment.ProcessPath ?? AppContext.BaseDirectory;
             var psi = new ProcessStartInfo
             {
                 FileName = exePath,
