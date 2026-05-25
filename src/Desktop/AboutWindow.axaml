@@ -70,7 +70,7 @@
     </Window.Styles>
 
     <Border Classes="aboutCard" Padding="24">
-        <StackPanel>
+        <StackPanel Margin="12">
             <!-- Header -->
             <StackPanel Margin="0,0,0,16">
                 <!-- Close button -->
@@ -107,24 +107,31 @@
             <Border Classes="sectionCard" Padding="16">
                 <StackPanel>
                     <Grid>
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="Auto"/>
+                            <RowDefinition Height="Auto"/>
+                            <RowDefinition Height="Auto"/>
+                            <RowDefinition Height="Auto"/>
+                            <RowDefinition Height="Auto"/>
+                        </Grid.RowDefinitions>
                         <Grid.ColumnDefinitions>
                             <ColumnDefinition Width="160"/>
                             <ColumnDefinition Width="*"/>
                         </Grid.ColumnDefinitions>
-                        <TextBlock Grid.Column="0" Text="Product" Classes="techName"/>
-                        <TextBlock Grid.Column="1" Text="OpenLMStudio" Classes="techValue"/>
+                        <TextBlock Grid.Row="0" Grid.Column="0" Text="Product" Classes="techName"/>
+                        <TextBlock Grid.Row="0" Grid.Column="1" Text="OpenLMStudio" Classes="techValue"/>
 
-                        <TextBlock Grid.Row="1" Grid.Column="0" Text="Version" Classes="techName" Margin="0,8,0,0"/>
-                        <TextBlock Grid.Row="1" Grid.Column="1" x:Name="AppVersionText" Text="1.0.0" Classes="techValue" Margin="0,8,0,0"/>
+                        <TextBlock Grid.Row="1" Grid.Column="0" Text="Version" Classes="techName"/>
+                        <TextBlock Grid.Row="1" Grid.Column="1" x:Name="AppVersionText" Text="1.0.0" Classes="techValue"/>
 
-                        <TextBlock Grid.Row="2" Grid.Column="0" Text="Runtime" Classes="techName" Margin="0,8,0,0"/>
-                        <TextBlock Grid.Row="2" Grid.Column="1" x:Name="RuntimeText" Text=".NET 8.0" Classes="techValue" Margin="0,8,0,0"/>
+                        <TextBlock Grid.Row="2" Grid.Column="0" Text="Runtime" Classes="techName"/>
+                        <TextBlock Grid.Row="2" Grid.Column="1" x:Name="RuntimeText" Text=".NET 8.0" Classes="techValue"/>
 
-                        <TextBlock Grid.Row="3" Grid.Column="0" Text="OS" Classes="techName" Margin="0,8,0,0"/>
-                        <TextBlock Grid.Row="3" Grid.Column="1" x:Name="OsText" Text="Windows" Classes="techValue" Margin="0,8,0,0"/>
+                        <TextBlock Grid.Row="3" Grid.Column="0" Text="OS" Classes="techName"/>
+                        <TextBlock Grid.Row="3" Grid.Column="1" x:Name="OsText" Text="Windows" Classes="techValue"/>
 
-                        <TextBlock Grid.Row="4" Grid.Column="0" Text="Architecture" Classes="techName" Margin="0,8,0,0"/>
-                        <TextBlock Grid.Row="4" Grid.Column="1" x:Name="ArchitectureText" Text="x64" Classes="techValue" Margin="0,8,0,0"/>
+                        <TextBlock Grid.Row="4" Grid.Column="0" Text="Architecture" Classes="techName"/>
+                        <TextBlock Grid.Row="4" Grid.Column="1" x:Name="ArchitectureText" Text="x64" Classes="techValue"/>
                     </Grid>
                 </StackPanel>
             </Border>
