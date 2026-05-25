@@ -648,34 +648,24 @@ public partial class MainWindow : Window
     }
 
     /// <summary>
-    /// Wipes the OpenLMStudio root folder (except models/*.gguf) and restarts the app.
+    /// Wipes the AppData settings directory (C:\Users\Yonneh\AppData\Roaming\OpenLMStudio\) — clearing all logs and chats — then restarts the app.
     /// </summary>
     private void OnStatusResetClicked(object? sender, RoutedEventArgs e)
     {
         try
         {
-            var appDir = AppContext.BaseDirectory;
-            var rootDir = Directory.GetParent(appDir)?.Parent?.Parent?.FullName ?? appDir;
+            // Use the AppData directory (same location as ExampleChats)
+            var appData = Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData);
+            var settingsDir = Path.Combine(appData, "OpenLMStudio");
 
-            // Collect files to delete (everything except models/*.gguf)
-            var filesToDelete = new List<string>();
-            foreach (var file in Directory.EnumerateFiles(rootDir, "*", SearchOption.AllDirectories))
+            if (!Directory.Exists(settingsDir))
             {
-                var relativePath = Path.GetRelativePath(rootDir, file);
-                // Keep models/*.gguf files
-                if (relativePath.StartsWith("models" + Path.DirectorySeparatorChar) &&
-                    string.Equals(Path.GetExtension(file), ".gguf", StringComparison.OrdinalIgnoreCase))
-                {
-                    continue;
-                }
-                // Keep the app's own executable and DLLs
-                if (file.EndsWith(".exe", StringComparison.OrdinalIgnoreCase) ||
-                    file.EndsWith(".dll", StringComparison.OrdinalIgnoreCase))
-                {
-                    continue;
-                }
-                filesToDelete.Add(file);
+                ShowError($"Settings directory not found:\n\n{settingsDir}");
+                return;
             }
+
+            // Collect files to delete (everything inside AppData/OpenLMStudio)
+            var filesToDelete = Directory.EnumerateFiles(settingsDir, "*", SearchOption.AllDirectories).ToList();
 
             // Delete collected files
             foreach (var file in filesToDelete)
@@ -691,13 +681,15 @@ public partial class MainWindow : Window
             }
 
             // Delete empty directories
-            foreach (var dir in Directory.EnumerateDirectories(rootDir, "*", SearchOption.AllDirectories).Reverse())
+            foreach (var dir in Directory.EnumerateDirectories(settingsDir, "*", SearchOption.AllDirectories).Reverse())
             {
                 if (Directory.GetFiles(dir).Length == 0 && Directory.GetDirectories(dir).Length == 0)
                 {
                     try { Directory.Delete(dir); } catch { /* ignore */ }
                 }
             }
+
+            _logger?.LogInformation("Wiped settings directory: {Dir}", settingsDir);
 
             // Restart the app
             var exePath = Environment.ProcessPath ?? AppContext.BaseDirectory;
