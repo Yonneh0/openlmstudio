@@ -1149,6 +1149,65 @@ public partial class MainWindow : Window
         }
     }
 
+    /// <summary>
+    /// Loads all example chats from the ExampleChats folder and switches to the chat view.
+    /// </summary>
+    private async void OnStatusNewChatClicked(object? sender, RoutedEventArgs e)
+    {
+        try
+        {
+            if (_conversationManager == null)
+            {
+                _logger?.LogWarning("ConversationManager not available");
+                return;
+            }
+
+            // Find the ExampleChats directory (relative to the app's base directory)
+            var appDir = AppContext.BaseDirectory;
+            var exampleChatsDir = Path.Combine(appDir, "ExampleChats");
+
+            if (!Directory.Exists(exampleChatsDir))
+            {
+                // Try looking in the project directory (for development)
+                exampleChatsDir = Path.Combine(Directory.GetParent(appDir)?.Parent?.Parent?.FullName ?? appDir, "ExampleChats");
+            }
+
+            if (!Directory.Exists(exampleChatsDir))
+            {
+                _logger?.LogWarning("ExampleChats directory not found at {Dir}", exampleChatsDir);
+                ShowError("Example chats directory not found.");
+                return;
+            }
+
+            var chatFiles = Directory.GetFiles(exampleChatsDir, "*.json");
+            var loaded = 0;
+
+            foreach (var file in chatFiles)
+            {
+                try
+                {
+                    await _conversationManager.ImportChatAsync(file);
+                    loaded++;
+                }
+                catch (Exception ex)
+                {
+                    _logger?.LogWarning(ex, "Failed to load example chat {File}", file);
+                }
+            }
+
+            // Switch to chat tab and refresh the list
+            ShowTab("Chat");
+            RefreshChatListAsync();
+
+            _logger?.LogInformation("Loaded {Count} example chats", loaded);
+        }
+        catch (Exception ex)
+        {
+            _logger?.LogError(ex, "Failed to load example chats");
+            ShowError($"Failed to load example chats: {ex.Message}");
+        }
+    }
+
 }
 
 // =========================================================================

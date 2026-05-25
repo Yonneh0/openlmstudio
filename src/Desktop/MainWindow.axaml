@@ -759,6 +759,21 @@
                             </Style>
                         </Button.Styles>
                     </Button>
+                    <Button x:Name="StatusNewChatButton"
+                            Content="&#x1F4DC;"
+                            Background="Transparent"
+                            Foreground="{StaticResource TextMuted}"
+                            Padding="8,0"
+                            FontSize="14"
+                            Cursor="Hand"
+                            Click="OnStatusNewChatClicked">
+                        <Button.Styles>
+                            <Style Selector="Button:pointerover">
+                                <Setter Property="Background" Value="{StaticResource BgTertiary}"/>
+                                <Setter Property="Foreground" Value="{StaticResource TextPrimary}"/>
+                            </Style>
+                        </Button.Styles>
+                    </Button>
                     <Button x:Name="StatusResetButton"
                             Content="&#x274C;"
                             Background="Transparent"
@@ -774,7 +789,6 @@
                             </Style>
                         </Button.Styles>
                     </Button>
-                    <TextBlock Text="OpenLMStudio" Foreground="{StaticResource TextMuted}" FontSize="11" VerticalAlignment="Center" Padding="12,0"/>
                 </StackPanel>
             </DockPanel>
         </Border>
