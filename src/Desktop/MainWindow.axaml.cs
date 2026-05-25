@@ -648,18 +648,30 @@ public partial class MainWindow : Window
 
     /// <summary>
     /// Opens the OpenLMStudio root folder in the native file explorer.
+    /// Walks up from the executable to find the project root (where .git or OpenLMStudio.sln exists).
     /// </summary>
     private void OnStatusFolderClicked(object? sender, RoutedEventArgs e)
     {
         try
         {
-            var appDir = AppContext.BaseDirectory;
-            // Navigate up to find the root (appDir is typically bin\Debug\net8.0)
-            var rootDir = Directory.GetParent(appDir)?.Parent?.Parent?.FullName ?? appDir;
+            var exePath = Environment.ProcessPath ?? AppContext.BaseDirectory;
+            var dir = Directory.GetParent(exePath)?.FullName ?? exePath;
+
+            // Walk up looking for the project root (where .git or OpenLMStudio.sln lives)
+            for (var i = 0; i < 10; i++)
+            {
+                if (Directory.Exists(Path.Combine(dir, ".git")) ||
+                    File.Exists(Path.Combine(dir, "OpenLMStudio.sln")) ||
+                    File.Exists(Path.Combine(dir, "README.md")))
+                    break;
+                var parent = Directory.GetParent(dir);
+                if (parent == null || parent.FullName == dir) break;
+                dir = parent.FullName;
+            }
 
             var psi = new ProcessStartInfo
             {
-                FileName = rootDir,
+                FileName = dir,
                 UseShellExecute = true
             };
             Process.Start(psi);
