@@ -265,25 +265,39 @@ public class EngineBinaryDownloader : IDisposable
                 : $"https://api.github.com/repos/{GitHubRepo}/releases/tags/{version}";
 
             _logger.LogDebug("Fetching release from {Url}", url);
-            using var response = await _httpClient.GetAsync(url).ConfigureAwait(false);
-            response.EnsureSuccessStatusCode();
 
-            var json = await response.Content.ReadAsStringAsync().ConfigureAwait(false);
-            using var doc = JsonDocument.Parse(json);
-            var root = doc.RootElement;
+            // Retry on rate limiting (403)
+            for (var retry = 0; retry < 3; retry++)
+            {
+                using var response = await _httpClient.GetAsync(url).ConfigureAwait(false);
+                if (response.StatusCode == System.Net.HttpStatusCode.Forbidden)
+                {
+                    _logger.LogWarning("GitHub API rate limited (403), retrying ({Retry}/3)...", retry + 1);
+                    await Task.Delay(TimeSpan.FromSeconds(Math.Pow(2, retry))).ConfigureAwait(false);
+                    continue;
+                }
+                response.EnsureSuccessStatusCode();
 
-            var assets = root.GetProperty("assets").EnumerateArray()
-                .Select(a => new GithubAsset(
-                    a.GetProperty("name").GetString() ?? "",
-                    a.GetProperty("browser_download_url").GetString() ?? "",
-                    a.TryGetProperty("digest", out var digest) && digest.ValueKind == JsonValueKind.String
-                        ? ExtractChecksumFromDigest(digest.GetString() ?? "")
-                        : null))
-                .ToList();
+                var json = await response.Content.ReadAsStringAsync().ConfigureAwait(false);
+                using var doc = JsonDocument.Parse(json);
+                var root = doc.RootElement;
 
-            return new GithubRelease(
-                root.GetProperty("tag_name").GetString() ?? "",
-                assets);
+                var assets = root.GetProperty("assets").EnumerateArray()
+                    .Select(a => new GithubAsset(
+                        a.GetProperty("name").GetString() ?? "",
+                        a.GetProperty("browser_download_url").GetString() ?? "",
+                        a.TryGetProperty("digest", out var digest) && digest.ValueKind == JsonValueKind.String
+                            ? ExtractChecksumFromDigest(digest.GetString() ?? "")
+                            : null))
+                    .ToList();
+
+                return new GithubRelease(
+                    root.GetProperty("tag_name").GetString() ?? "",
+                    assets);
+            }
+
+            _logger.LogWarning("Failed to fetch release after retries: {Url}", url);
+            return null;
         }
         catch (Exception ex)
         {
@@ -419,10 +433,13 @@ public class EngineBinaryDownloader : IDisposable
     private static async Task ExtractZipAsync(string archivePath, string extractDir, string targetPath, BackendType backend)
     {
         // Use PowerShell to extract the ZIP (cross-platform compatible)
+        // Escape single quotes in paths for PowerShell
+        var escapedArchive = archivePath.Replace("'", "''");
+        var escapedExtractDir = extractDir.Replace("'", "''");
         var psi = new ProcessStartInfo
         {
             FileName = "powershell",
-            Arguments = $"-NoProfile -Command \"Expand-Archive -Path '{archivePath}' -DestinationPath '{extractDir}' -Force\"",
+            Arguments = $"-NoProfile -Command \"Expand-Archive -Path '{escapedArchive}' -DestinationPath '{escapedExtractDir}' -Force\"",
             UseShellExecute = false,
             RedirectStandardOutput = true,
             RedirectStandardError = true,
@@ -602,7 +619,12 @@ public class EngineBinaryDownloader : IDisposable
     private bool ValidateBinaryLocally(string path, BackendType backend)
     {
         var task = ValidateBinaryLocallyAsync(path, backend);
-        task.Wait(TimeSpan.FromSeconds(5));
+        // Use ConfigureAwait(false) to avoid potential deadlocks
+        if (!task.Wait(TimeSpan.FromSeconds(5)))
+        {
+            _logger?.LogWarning("Binary validation timed out for {Backend} at {Path}", backend, path);
+            return false;
+        }
         return task.Result;
     }
 

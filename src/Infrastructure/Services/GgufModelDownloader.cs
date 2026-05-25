@@ -81,7 +81,7 @@ public class GgufModelDownloader : IDisposable
             : $"https://huggingface.co/{repoId}/resolve/main/{fileName}";
 
         // Use a unique filename that includes the repo ID to avoid collisions
-        var safeRepoId = repoId.Replace("/", "_");
+        var safeRepoId = repoId.Replace("/", "_").Replace("\\", "_");
         var localFileName = fileName ?? Path.GetFileName(url);
         var localPath = Path.Combine(_downloadDirectory, $"{safeRepoId}_{localFileName}");
         await Task.Yield(); // Ensure async continuation
@@ -142,7 +142,7 @@ public class GgufModelDownloader : IDisposable
         var modelName = parts.Length > 1 ? string.Join("-", parts.Take(parts.Length - 1)) : name;
         var quantization = parts.Length > 0 ? parts[^1] : null;
 
-        var header = await _ggufParser.ParseHeaderAsync(filePath).ConfigureAwait(false);
+        var header = await _ggufParser.ParseHeaderAsync(filePath, ct).ConfigureAwait(false);
         var fileSize = new FileInfo(filePath).Length;
 
         var chatTemplate = header?.Metadata.GetValueOrDefault("chat_template")?.ToString();

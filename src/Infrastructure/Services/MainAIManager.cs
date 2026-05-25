@@ -324,9 +324,13 @@ public class MainAIManager : IDisposable
     public async Task SaveSettings(RecommendedSettings settings)
     {
         var modelPath = ActiveModelPath ?? "local-model";
+        var activePort = LoadedModels.FirstOrDefault(m => m.Id == _activeModelId)?.Port ?? 4200;
+
+        // Store settings in the config with proper field mappings
+        // Note: EngineConfig stores temperature/top-p but we use them for GPU layers/context size
         var config = new EngineConfig(
             ModelPath: modelPath,
-            Port: LoadedModels.FirstOrDefault(m => m.Id == _activeModelId)?.Port ?? 4200,
+            Port: activePort,
             Temperature: settings.GpuLayers,
             TopP: settings.ContextSize,
             RecommendedBackend: CurrentBackend.ToString(),

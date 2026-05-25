@@ -27,7 +27,7 @@ public partial class MainModelSelector : UserControl
     private LogViewerService? _logViewer;
     private readonly ILogger<MainModelSelector>? _logger;
     private readonly ObservableCollection<MainModelItem> _modelItems = new();
-    private bool _isInitialized;
+    private bool _isInitialized; // Set in OnLoaded to prevent re-initialization
     private bool _buttonsWired;
 
     /// <summary>
@@ -325,13 +325,25 @@ public partial class MainModelSelector : UserControl
 
             if (_mainAIManager != null)
             {
-                var success = await _mainAIManager.LoadModelAsync(modelPath);
-                if (success)
+                try
                 {
+                    var success = await _mainAIManager.LoadModelAsync(modelPath);
+                    if (success)
+                    {
+                        Avalonia.Threading.Dispatcher.UIThread.Post(() =>
+                        {
+                            UpdateUI();
+                            _logger?.LogInformation("Model loaded: {Model}", modelPath);
+                        });
+                    }
+                }
+                catch (Exception ex)
+                {
+                    _logger?.LogError(ex, "Failed to load model: {Model}", modelPath);
                     Avalonia.Threading.Dispatcher.UIThread.Post(() =>
                     {
-                        UpdateUI();
-                        _logger?.LogInformation("Model loaded: {Model}", modelPath);
+                        if (DownloadProgressText != null)
+                            DownloadProgressText.Text = "Error loading model";
                     });
                 }
             }
@@ -362,6 +374,7 @@ public partial class MainModelSelector : UserControl
     {
         if (_mainAIManager?.ActiveModelPath != null)
         {
+            // Restart on a new port (don't reuse the old one)
             _ = _mainAIManager.LoadModelAsync(_mainAIManager.ActiveModelPath);
         }
     }

@@ -159,7 +159,7 @@ public class GgufParser : IDisposable
             {
                 try
                 {
-                    var kvInfo = await ReadKeyValuePairAsync(stream, cancellationToken);
+                    var kvInfo = await ReadKeyValuePairAsync(stream, cancellationToken).ConfigureAwait(false);
                     if (kvInfo is (var key, var value))
                     {
                         metadata[key] = value ?? "";
@@ -202,11 +202,11 @@ public class GgufParser : IDisposable
     /// <summary>
     /// Parses the full GGUF model file and extracts complete metadata.
     /// Reads all key-value pairs using little-endian byte order per GGUF spec.
-    /// Uses the same async FileStream-based I/O as ParseHeaderAsync for consistency.
     /// </summary>
     /// <param name="modelPath">The full path to the GGUF file.</param>
+    /// <param name="cancellationToken">Cancellation token.</param>
     /// <returns>Awaitable task returning the extracted model metadata, or null if parsing fails.</returns>
-    public async Task<Domain.Models.ModelMetadata?> ParseAsync(string modelPath)
+    public async Task<Domain.Models.ModelMetadata?> ParseAsync(string modelPath, CancellationToken cancellationToken = default)
     {
         if (!File.Exists(modelPath))
             return null;
@@ -225,16 +225,16 @@ public class GgufParser : IDisposable
 
             // Read magic number (first 4 bytes) - little-endian per GGUF spec
             var magicBytes = new byte[4];
-            if (await fileStream.ReadAsync(magicBytes, 0, 4) != 4)
+            if (await fileStream.ReadAsync(magicBytes, 0, 4, cancellationToken) != 4)
                 return null;
 
             var magicNumber = BinaryPrimitives.ReadUInt32LittleEndian(magicBytes);
             if (magicNumber != GgufMagicNumber)
                 return null; // Not a valid GGUF file
 
-            // Read version (4 bytes) - LITTLE-ENDIAN per GGUF spec (was incorrectly using BigEndian before)
+            // Read version (4 bytes) - LITTLE-ENDIAN per GGUF spec
             var versionBytes = new byte[4];
-            if (await fileStream.ReadAsync(versionBytes, 0, 4) != 4)
+            if (await fileStream.ReadAsync(versionBytes, 0, 4, cancellationToken) != 4)
                 return null;
 
             var version = BinaryPrimitives.ReadUInt32LittleEndian(versionBytes);
@@ -242,7 +242,7 @@ public class GgufParser : IDisposable
             // Parse key-value pairs based on version
             if (version >= 2)
             {
-                await ParseKeyValuePairsV2(fileStream, metadata);
+                await ParseKeyValuePairsV2(fileStream, metadata, cancellationToken).ConfigureAwait(false);
             }
             else
             {
@@ -260,38 +260,39 @@ public class GgufParser : IDisposable
 
     /// <summary>
     /// Parses key-value pairs from GGUF format version 2+ using little-endian byte order.
-    /// Uses async FileStream-based I/O consistent with ParseHeaderAsync.
     /// </summary>
-    private async Task ParseKeyValuePairsV2(Stream stream, Domain.Models.ModelMetadata metadata)
+    private async Task ParseKeyValuePairsV2(Stream stream, Domain.Models.ModelMetadata metadata, CancellationToken cancellationToken = default)
     {
         // Read number of key-value pairs (8 bytes - uint64, little-endian per GGUF spec)
         var countBytes = new byte[8];
-        if (await stream.ReadAsync(countBytes, 0, 8) != 8)
+        if (await stream.ReadAsync(countBytes, 0, 8, cancellationToken) != 8)
             return;
 
         var pairCount = BinaryPrimitives.ReadUInt64LittleEndian(countBytes);
 
         for (ulong i = 0; i < Math.Min(pairCount, 256UL); i++) // Limit to prevent DoS
         {
+            cancellationToken.ThrowIfCancellationRequested();
+
             try
             {
                 // Read key length (8 bytes)
                 var keyLenBytes = new byte[8];
-                if (await stream.ReadAsync(keyLenBytes, 0, 8) != 8)
+                if (await stream.ReadAsync(keyLenBytes, 0, 8, cancellationToken) != 8)
                     break;
 
                 var keyLength = BinaryPrimitives.ReadUInt64LittleEndian(keyLenBytes);
                 if (keyLength > 1024) break; // Safety limit
 
                 var keyBytes = new byte[keyLength];
-                if (await stream.ReadAsync(keyBytes, 0, (int)keyLength) != (int)keyLength)
+                if (await stream.ReadAsync(keyBytes, 0, (int)keyLength, cancellationToken) != (int)keyLength)
                     break;
 
                 var key = System.Text.Encoding.UTF8.GetString(keyBytes);
 
                 // Read value type (4 bytes - uint32, little-endian per GGUF spec)
                 var valueTypeBytes = new byte[4];
-                if (await stream.ReadAsync(valueTypeBytes, 0, 4) != 4)
+                if (await stream.ReadAsync(valueTypeBytes, 0, 4, cancellationToken) != 4)
                     break;
 
                 var valueType = BinaryPrimitives.ReadUInt32LittleEndian(valueTypeBytes);
@@ -301,14 +302,14 @@ public class GgufParser : IDisposable
                 {
                     case 0: // String value
                         var stringLenBytes = new byte[8];
-                        if (await stream.ReadAsync(stringLenBytes, 0, 8) != 8)
+                        if (await stream.ReadAsync(stringLenBytes, 0, 8, cancellationToken) != 8)
                             break;
 
                         var strLen = BinaryPrimitives.ReadUInt64LittleEndian(stringLenBytes);
                         if (strLen > 10240) break;
 
                         var valBytes = new byte[strLen];
-                        if (await stream.ReadAsync(valBytes, 0, (int)strLen) != (int)strLen)
+                        if (await stream.ReadAsync(valBytes, 0, (int)strLen, cancellationToken) != (int)strLen)
                             break;
 
                         var value = System.Text.Encoding.UTF8.GetString(valBytes);
@@ -317,7 +318,7 @@ public class GgufParser : IDisposable
 
                     case 1: // Bool
                         var boolByte = new byte[1];
-                        if (await stream.ReadAsync(boolByte, 0, 1) != 1)
+                        if (await stream.ReadAsync(boolByte, 0, 1, cancellationToken) != 1)
                             break;
                         var boolVal = boolByte[0] != 0;
                         if (mappedKey == "architecture")
@@ -330,7 +331,7 @@ public class GgufParser : IDisposable
                         // Skip unknown value types (advance stream past value)
                         // GGUF v2+ value types: 0=uint8, 1=int8, 2=uint16, 3=int16, 4=uint32, 5=int32,
                         // 6=uint64, 7=int64, 8=float32, 9=bool, 10=string, 11=array
-                        SkipUnknownValueType(stream, valueType);
+                        await SkipUnknownValueType(stream, valueType, cancellationToken).ConfigureAwait(false);
                         break;
                 }
             }
@@ -342,7 +343,7 @@ public class GgufParser : IDisposable
 
         // Read tensor data type (4 bytes - uint32, little-endian per GGUF spec)
         var dataTypeBytes = new byte[4];
-        if (await stream.ReadAsync(dataTypeBytes, 0, 4) == 4)
+        if (await stream.ReadAsync(dataTypeBytes, 0, 4, cancellationToken) == 4)
         {
             var dataType = BinaryPrimitives.ReadUInt32LittleEndian(dataTypeBytes);
             metadata.TensorDataType = GetTensorDataTypeName(dataType);
@@ -524,7 +525,7 @@ public class GgufParser : IDisposable
         var valueType = BinaryPrimitives.ReadUInt32LittleEndian(typeBytes);
 
         // Read value based on type
-        object? value = ReadValueByType(stream, valueType, ct);
+        object? value = await ReadValueByTypeAsync(stream, valueType, ct).ConfigureAwait(false);
 
         return new(key, value);
     }
@@ -534,7 +535,7 @@ public class GgufParser : IDisposable
     /// Types: 0=uint8, 1=int8, 2=uint16, 3=int16, 4=uint32, 5=int32, 
     ///        6=uint64, 7=int64, 8=float32, 9=bool, 10=string
     /// </summary>
-    private object? ReadValueByType(Stream stream, uint type, CancellationToken ct)
+    private async Task<object?> ReadValueByTypeAsync(Stream stream, uint type, CancellationToken ct)
     {
         return type switch
         {
@@ -548,8 +549,46 @@ public class GgufParser : IDisposable
             7 => ReadInt64Aligned(stream),          // int64 — 8 bytes
             8 => ReadFloat32(stream),               // float32 — 4 bytes
             9 => ReadBoolAligned(stream),           // bool stored as byte
-            10 => ReadStringAligned(stream),        // string value
+            10 => await ReadStringAligned(stream, ct).ConfigureAwait(false),        // string value
+            11 => await ReadArrayAligned(stream, ct).ConfigureAwait(false),         // array type
             _ => null
+        };
+    }
+
+    /// <summary>
+    /// Reads an array value from the GGUF stream.
+    /// </summary>
+    private async Task<object?> ReadArrayAligned(Stream stream, CancellationToken ct)
+    {
+        // Read array type (uint8)
+        var arrayType = ReadUInt8(stream);
+
+        // Read array length (uint64)
+        var arrayLen = ReadUInt64Aligned(stream);
+
+        // Read array elements based on type
+        var length = (int)Math.Min(arrayLen, 1000000UL); // Safety limit
+        var buffer = new byte[length * GetArrayElementSize(arrayType)];
+
+        if (buffer.Length > 0 && await stream.ReadAsync(buffer, 0, buffer.Length, ct) != buffer.Length)
+            return null;
+
+        // Return raw bytes for array values
+        return buffer;
+    }
+
+    private static int GetArrayElementSize(uint arrayType)
+    {
+        return arrayType switch
+        {
+            0 or 1 => 1,
+            2 or 3 => 2,
+            4 or 5 => 4,
+            6 or 7 => 8,
+            8 => 4,
+            9 => 1,
+            10 => 0, // String arrays — handled specially
+            _ => 0
         };
     }
 
@@ -640,24 +679,28 @@ public class GgufParser : IDisposable
         return (byte)byteVal != 0;
     }
 
-    private string? ReadStringAligned(Stream stream)
+    private async Task<string?> ReadStringAligned(Stream stream, CancellationToken ct)
     {
         var lenBytes = new byte[8];
-        stream.Read(lenBytes, 0, 8);
+        if (await stream.ReadAsync(lenBytes, 0, 8, ct) != 8)
+            return null;
+
         var length = BinaryPrimitives.ReadUInt64LittleEndian(lenBytes);
 
         if (length > 1024 * 1024) // Sanity: max 1MB string
             return null;
 
         var buffer = new byte[length];
-        stream.Read(buffer, 0, (int)length);
+        if (await stream.ReadAsync(buffer, 0, (int)length, ct) != (int)length)
+            return null;
+
         return Encoding.UTF8.GetString(buffer);
     }
 
     /// <summary>
     /// Skips an unknown value type in the stream by reading the appropriate number of bytes.
     /// </summary>
-    private void SkipUnknownValueType(Stream stream, uint valueType)
+    private async Task SkipUnknownValueType(Stream stream, uint valueType, CancellationToken ct)
     {
         switch (valueType)
         {
@@ -671,25 +714,29 @@ public class GgufParser : IDisposable
             case 7: ReadInt64Aligned(stream); break;
             case 8: ReadFloat32(stream); break;
             case 9: ReadBoolAligned(stream); break;
-            case 10: ReadStringAligned(stream); break;
+            case 10: await ReadStringAligned(stream, ct).ConfigureAwait(false); break;
             case 11:
                 // Array type — read array type (uint8) and length (uint64), then skip
                 var arrayType = ReadUInt8(stream);
                 var arrayLen = ReadUInt64Aligned(stream);
                 // Skip array elements based on type
-                var elementSize = arrayType switch
-                {
-                    0 or 1 => 1,
-                    2 or 3 => 2,
-                    4 or 5 => 4,
-                    6 or 7 => 8,
-                    8 => 4,
-                    9 => 1,
-                    10 => 0, // String arrays — complex, skip conservatively
-                    _ => 0
-                };
+                var elementSize = GetArrayElementSize(arrayType);
                 if (elementSize > 0)
-                    stream.Seek((long)arrayLen * elementSize, SeekOrigin.Current);
+                {
+                    var skipBytes = (long)arrayLen * elementSize;
+                    if (skipBytes > 0)
+                    {
+                        var skipBuffer = new byte[Math.Min(skipBytes, 65536)];
+                        long remaining = skipBytes;
+                        while (remaining > 0)
+                        {
+                            var toRead = (int)Math.Min(skipBuffer.Length, remaining);
+                            var read = await stream.ReadAsync(skipBuffer, 0, toRead, ct).ConfigureAwait(false);
+                            if (read == 0) break;
+                            remaining -= read;
+                        }
+                    }
+                }
                 break;
             default:
                 // Unknown type — skip conservatively (assume no data follows)
@@ -701,11 +748,25 @@ public class GgufParser : IDisposable
     {
         0 => "F32",
         1 => "F16",
-        9 => "Q4_0",
-        10 => "Q4_1",
-        12 => "Q5_0",
-        13 => "Q5_1",
-        14 => "Q8_0",
+        2 => "Q4_0",
+        3 => "Q4_1",
+        4 => "Q4_1",
+        5 => "IQ4_NL",
+        6 => "I8",
+        7 => "F8_E5M2",
+        8 => "F8_E4M3",
+        9 => "Q3_K",
+        10 => "Q5_K",
+        11 => "Q6_K",
+        12 => "IQ2_XS",
+        13 => "IQ2_S",
+        14 => "IQ3_XXS",
+        15 => "IQ3_S",
+        16 => "IQ1_S",
+        17 => "IQ4_XS",
+        18 => "IQ4_NL",
+        19 => "IQ2_M",
+        20 => "IQ2_L",
         _ => $"Unknown({dataType})"
     };
 
@@ -816,7 +877,7 @@ public record GgufHeaderInfo
     /// </summary>
     public ModelMetadata ToModelMetadata()
     {
-        var name = ModelName ?? System.IO.Path.GetFileNameWithoutExtension(FilePath);
+        var name = ModelName ?? Path.GetFileNameWithoutExtension(FilePath);
 
         return new ModelMetadata
         {
@@ -825,7 +886,7 @@ public record GgufHeaderInfo
             FilePath = FilePath,
             Architecture = Architecture ?? "unknown",
             Quantization = QuantizationType ?? "unknown",
-            TensorDataType = "F16", // Default for GGUF files
+            TensorDataType = "F16",
             ContextLength = ContextLength ?? 0,
             VocabularySize = VocabularySize ?? 0,
             AttentionHeads = AttentionHeads ?? 0,

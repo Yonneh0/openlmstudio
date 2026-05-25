@@ -7,9 +7,11 @@ OpenLMStudio loads local LLM models in GGUF (GPT-Generated Unified Format) throu
 1. **GgufParser** — Reads GGUF headers from `.gguf` files to extract metadata
 2. **GgufModelDownloader** — Discovers local models and downloads from HuggingFace
 3. **EngineBinaryDownloader** — Downloads llama-server binaries from GitHub releases
-4. **MainAIManager** — Orchestrates engine binary download, model loading, and server start
-5. **MainModelSelector** — UI component that handles user interaction
-6. **LlamaCppChatCompletionService** — Chat completion service that manages loaded model instances
+4. **SystemAIManager** — Manages SystemAI (system-level AI) with a dedicated port (8082)
+5. **MainAIManager** — Orchestrates engine binary download, model loading, and server start
+6. **MainModelSelector** — UI component for MainAI model management
+7. **SystemModelSelector** — UI component for SystemAI model management
+8. **LlamaCppChatCompletionService** — Chat completion service that manages loaded model instances
 
 ## GGUF Format
 
@@ -29,6 +31,7 @@ GGUF is a binary format for storing LLM model weights and metadata. The format s
 | Key length | 4 bytes | 8 bytes (uint64) |
 | Value type | String only (64 bytes) | Multiple types (0-11) |
 | KV pair count | 8 bytes (uint64) | 8 bytes (uint64) |
+| Tensor count | Not present | 8 bytes (uint64) |
 | Endianness | Little-endian | Little-endian |
 
 ### Value Types (v2+)
@@ -83,6 +86,10 @@ The parser handles keys for the following architectures:
 - **gemma** (Gemma and compatible models)
 - **deepseek** (DeepSeek and compatible models)
 
+### Cancellation Support
+
+All async operations accept a `CancellationToken` for graceful cancellation during shutdown or user-initiated aborts.
+
 ## GgufModelDownloader
 
 Manages model discovery and downloading:
@@ -134,6 +141,13 @@ After downloading and extracting, the binary is validated by running `--help`:
 - Captures stdout/stderr for diagnostics
 - Cleans up on failure
 - Uses async `WaitForExitAsync()` for non-blocking validation
+- Timeout of 5 seconds for synchronous validation
+
+### GitHub API Rate Limiting
+
+The downloader includes automatic retry on GitHub API rate limiting (HTTP 403):
+- Up to 3 retries with exponential backoff (1s, 2s, 4s)
+- Handles both `sha256:` digest format and raw checksums
 
 ### Port Allocation
 
@@ -141,6 +155,23 @@ Each loaded model gets a unique port from the range **4200–4400**:
 - Ports are allocated sequentially
 - Port reuse detection prevents conflicts
 - Port wraps around when the range is exhausted
+
+## SystemAIManager
+
+Manages the SystemAI (system-level AI) lifecycle:
+
+```
+SystemAIManager
+├── StartAsync()          — Start SystemAI with a GGUF model
+├── Stop()                — Stop SystemAI
+├── SwitchModelAsync()    — Switch to a different model
+├── SaveSettings()        — Persist settings to disk
+└── GetRecommendedSettings() — Get model-specific recommendations
+```
+
+- Runs on a dedicated port (**8082**)
+- Single model at a time
+- Supports cancellation tokens
 
 ## MainAIManager
 
@@ -173,6 +204,10 @@ Built from `RecommendedSettings`:
 --threads 8 --threads-batch 8 --flash-attn --mmap
 ```
 
+### Multi-Model Support
+
+Each loaded model runs on its own llama-server instance with a unique port.
+
 ### Settings Persistence
 
 When settings are saved, they are stored with the correct field mappings:
@@ -183,7 +218,7 @@ When settings are saved, they are stored with the correct field mappings:
 
 ## MainModelSelector (UI)
 
-The Avalonia UI control for model management:
+The Avalonia UI control for MainAI model management:
 
 ```
 MainModelSelector
@@ -202,6 +237,12 @@ MainModelSelector
 - **GPU memory bar** — Visual indicator of GPU memory usage
 - **Download progress** — Shows download progress for new models
 - **Model list** — Lists all loaded models with ports
+
+### Error Handling
+
+- File picker errors are caught and logged
+- Model loading errors display in the progress area
+- Progress display auto-hides after 1 second
 
 ### Settings Dialog
 
@@ -223,6 +264,10 @@ SystemModelSelector
 ### Settings Dialog
 
 The settings dialog properly applies settings from Slider and TextBox controls and persists them via `SystemAIManager.SaveSettings()`.
+
+### Port Display
+
+SystemAI always uses port **8082** (fixed), displayed in the UI.
 
 ## Model Recommendation
 
@@ -336,11 +381,11 @@ The service maintains an internal `_loadedModels` list that tracks:
 src/
 ├── Infrastructure/
 │   └── Services/
-│       ├── GgufParser.cs              — GGUF file parsing
+│       ├── GgufParser.cs              — GGUF file parsing (v1 and v2+)
 │       ├── GgufModelDownloader.cs     — Model discovery & download
 │       ├── EngineBinaryDownloader.cs  — llama-server binary download
-│       ├── MainAIManager.cs           — Main AI lifecycle
-│       ├── SystemAIManager.cs         — System AI lifecycle
+│       ├── MainAIManager.cs           — Main AI lifecycle (multi-model)
+│       ├── SystemAIManager.cs         — System AI lifecycle (single model)
 │       ├── LlamaCppChatCompletionService.cs — Chat completion
 │       └── ModelRecommendationService.cs   — Settings recommendations
 ├── Desktop/

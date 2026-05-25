@@ -107,6 +107,14 @@ public class SystemAIManager : IDisposable
     /// <returns>True if the model was loaded successfully.</returns>
     public async Task<bool> StartAsync(string modelPath, BackendType? backend = null)
     {
+        return await StartAsync(modelPath, backend, CancellationToken.None).ConfigureAwait(false);
+    }
+
+    /// <summary>
+    /// Starts SystemAI with the given GGUF model, with cancellation support.
+    /// </summary>
+    public async Task<bool> StartAsync(string modelPath, BackendType? backend, CancellationToken ct)
+    {
         lock (_lock)
         {
             if (_serverProcess != null && !_serverProcess.HasExited)
@@ -178,6 +186,14 @@ public class SystemAIManager : IDisposable
     /// </summary>
     public async Task<bool> SwitchModelAsync(string modelPath, BackendType? backend = null)
     {
+        return await SwitchModelAsync(modelPath, backend, CancellationToken.None).ConfigureAwait(false);
+    }
+
+    /// <summary>
+    /// Switches to a different model without restarting the server, with cancellation support.
+    /// </summary>
+    public async Task<bool> SwitchModelAsync(string modelPath, BackendType? backend, CancellationToken ct)
+    {
         _currentModelPath = modelPath;
         _currentBackend = backend ?? _currentBackend;
 
@@ -229,6 +245,11 @@ public class SystemAIManager : IDisposable
             UsageCount: null);
         return _recommendationService.GetRecommendation(modelInfo).Settings;
     }
+
+    /// <summary>
+    /// Gets the current port SystemAI is using.
+    /// </summary>
+    public int CurrentPort => DefaultPort;
 
     /// <summary>
     /// Gets all available settings from llama-server --help.
