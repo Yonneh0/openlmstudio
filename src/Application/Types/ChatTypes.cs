@@ -209,3 +209,34 @@ internal record AnthropicRequestWithModelType(
     string? System = null,
     /// <summary>Model type for multi-engine routing: text (default), image, embedding.</summary>
     string? ModelType = null);
+
+// ============================================================================
+// Context Management Types (Application-specific types that complement Domain types)
+// ============================================================================
+
+/// <summary>
+/// Request for context segment manipulation operations.
+/// </summary>
+public record ContextManipulationRequest(
+    Guid ChatId,
+    ContextManipulationAction Action,
+    Guid? SegmentId = null,
+    string? Content = null,
+    OpenLMStudio.Domain.Models.ContextInjectionType InjectionType = OpenLMStudio.Domain.Models.ContextInjectionType.CustomInjection);
+
+/// <summary>
+/// Available context manipulation actions.
+/// </summary>
+public enum ContextManipulationAction
+{
+    /// <summary>Pin a segment to prevent eviction.</summary>
+    Pin,
+    /// <summary>Unpin a segment.</summary>
+    Unpin,
+    /// <summary>Toggle suppression of a segment.</summary>
+    SuppressToggle,
+    /// <summary>Remove a segment from context.</summary>
+    RemoveFromContext,
+    /// <summary>Add custom context.</summary>
+    AddCustomContext,
+}

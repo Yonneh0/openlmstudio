@@ -1,35 +1,35 @@
 namespace OpenLMStudio.Application.Services;
 
 using System.Collections.Concurrent;
-using System.Collections.Generic;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
 using OpenLMStudio.Application.Interfaces;
-using OpenLMStudio.Domain.Models;
 
 /// <summary>
 /// Manages agent task hooks for lifecycle events.
 /// </summary>
 public class AgentTaskHookService : IAgentTaskHookService
 {
-    private readonly ConcurrentDictionary<string, List<Func<CancellationToken, Task>>> _hooks;
-    private readonly ConcurrentDictionary<string, List<Func<object, CancellationToken, Task>>> _parameterizedHooks;
+    private readonly ConcurrentDictionary<Guid, ConcurrentDictionary<string, List<Delegate>>> _hooks;
     private readonly ConcurrentDictionary<Guid, string> _activeHookExecutions;
     private readonly ILogger<AgentTaskHookService> _logger;
     private readonly object _lock = new();
 
-    public AgentTaskHookService(ILogger<AgentTaskHookService>? logger = null)
+    public AgentTaskHookService(
+        ILogger<AgentTaskHookService>? logger = null)
     {
-        _hooks = new ConcurrentDictionary<string, List<Func<CancellationToken, Task>>>();
-        _parameterizedHooks = new ConcurrentDictionary<string, List<Func<object, CancellationToken, Task>>>();
+        _hooks = new ConcurrentDictionary<Guid, ConcurrentDictionary<string, List<Delegate>>>();
         _activeHookExecutions = new ConcurrentDictionary<Guid, string>();
         _logger = logger ?? NullLogger<AgentTaskHookService>.Instance;
     }
 
     public void Dispose()
     {
+        foreach (var hooks in _hooks)
+        {
+            hooks.Value.Clear();
+        }
         _hooks.Clear();
-        _parameterizedHooks.Clear();
         _activeHookExecutions.Clear();
     }
 
@@ -37,23 +37,21 @@ public class AgentTaskHookService : IAgentTaskHookService
     {
         try
         {
-            _logger?.LogInformation("Running TaskComplete hook for task {TaskId}", taskId);
-
-            if (_hooks.TryGetValue("TaskComplete", out var hooks))
+            var taskHooks = _hooks.GetOrAdd(taskId, _ => new ConcurrentDictionary<string, List<Delegate>>());
+            if (taskHooks.TryGetValue("TaskComplete", out var callbacks))
             {
-                foreach (var hook in hooks)
+                foreach (var callback in callbacks)
                 {
-                    await hook(ct);
+                    if (callback is Func<CancellationToken, Task> func)
+                    {
+                        await func(ct);
+                    }
                 }
             }
-
-            // Default TaskComplete behavior
-            _logger?.LogInformation("TaskComplete hook completed for task {TaskId}", taskId);
         }
         catch (Exception ex)
         {
             _logger?.LogError(ex, "Error running TaskComplete hook for task {TaskId}", taskId);
-            throw;
         }
     }
 
@@ -61,24 +59,23 @@ public class AgentTaskHookService : IAgentTaskHookService
     {
         try
         {
-            _logger?.LogDebug("Running UserPromptSubmit hook for task {TaskId}", taskId);
-
-            var result = new HookResult(true, userContent, null);
-
-            if (_parameterizedHooks.TryGetValue("UserPromptSubmit", out var hooks))
+            var taskHooks = _hooks.GetOrAdd(taskId, _ => new ConcurrentDictionary<string, List<Delegate>>());
+            if (taskHooks.TryGetValue("UserPromptSubmit", out var callbacks))
             {
-                foreach (var hook in hooks)
+                foreach (var callback in callbacks)
                 {
-                    await hook(userContent, ct);
+                    if (callback is Func<string, CancellationToken, Task> func)
+                    {
+                        await func(userContent, ct);
+                    }
                 }
             }
-
-            return result;
+            return new HookResult(true, userContent, null);
         }
         catch (Exception ex)
         {
             _logger?.LogError(ex, "Error running UserPromptSubmit hook for task {TaskId}", taskId);
-            return new HookResult(false, null, ex.Message);
+            return new HookResult(false, userContent, ex.Message);
         }
     }
 
@@ -86,20 +83,21 @@ public class AgentTaskHookService : IAgentTaskHookService
     {
         try
         {
-            _logger?.LogDebug("Running ToolCall hook for task {TaskId} tool {ToolName}", taskId, toolName);
-
-            if (_hooks.TryGetValue("ToolCall", out var hooks))
+            var taskHooks = _hooks.GetOrAdd(taskId, _ => new ConcurrentDictionary<string, List<Delegate>>());
+            if (taskHooks.TryGetValue("ToolCall", out var callbacks))
             {
-                foreach (var hook in hooks)
+                foreach (var callback in callbacks)
                 {
-                    await hook(ct);
+                    if (callback is Func<string, Dictionary<string, object>, CancellationToken, Task> func)
+                    {
+                        await func(toolName, parameters, ct);
+                    }
                 }
             }
         }
         catch (Exception ex)
         {
-            _logger?.LogError(ex, "Error running ToolCall hook for task {TaskId}", taskId);
-            throw;
+            _logger?.LogError(ex, "Error running ToolCall hook for task {TaskId}, tool {ToolName}", taskId, toolName);
         }
     }
 
@@ -107,45 +105,40 @@ public class AgentTaskHookService : IAgentTaskHookService
     {
         try
         {
-            _logger?.LogDebug("Running StateChange hook for task {TaskId}: {OldState} -> {NewState}", taskId, oldState, newState);
-
-            if (_hooks.TryGetValue("StateChange", out var hooks))
+            var taskHooks = _hooks.GetOrAdd(taskId, _ => new ConcurrentDictionary<string, List<Delegate>>());
+            if (taskHooks.TryGetValue("StateChange", out var callbacks))
             {
-                foreach (var hook in hooks)
+                foreach (var callback in callbacks)
                 {
-                    await hook(ct);
+                    if (callback is Func<string, string, CancellationToken, Task> func)
+                    {
+                        await func(oldState, newState, ct);
+                    }
                 }
             }
         }
         catch (Exception ex)
         {
             _logger?.LogError(ex, "Error running StateChange hook for task {TaskId}", taskId);
-            throw;
         }
     }
 
     public void RegisterHook(string hookName, Func<CancellationToken, Task> callback)
     {
-        var hooks = _hooks.GetOrAdd(hookName, _ => new List<Func<CancellationToken, Task>>());
-        lock (_lock)
-        {
-            hooks.Add(callback);
-        }
+        var taskId = Guid.NewGuid();
+        RegisterHookForTask(taskId, hookName, callback);
     }
 
     public void RegisterHook<T>(string hookName, Func<T, CancellationToken, Task> callback)
     {
-        var parameterizedHooks = _parameterizedHooks.GetOrAdd(hookName, _ => new List<Func<object, CancellationToken, Task>>());
-        lock (_lock)
-        {
-            parameterizedHooks.Add((obj, ct) => callback((T)obj, ct));
-        }
+        var taskId = Guid.NewGuid();
+        RegisterHookForTask(taskId, hookName, callback);
     }
 
     public void UnregisterHook(string hookName)
     {
-        _hooks.TryRemove(hookName, out _);
-        _parameterizedHooks.TryRemove(hookName, out _);
+        var taskId = Guid.NewGuid();
+        UnregisterHookForTask(taskId, hookName);
     }
 
     public string? GetActiveHookExecution(Guid taskId)
@@ -161,5 +154,23 @@ public class AgentTaskHookService : IAgentTaskHookService
     public void ClearActiveHookExecution(Guid taskId)
     {
         _activeHookExecutions.TryRemove(taskId, out _);
+    }
+
+    private void RegisterHookForTask(Guid taskId, string hookName, Delegate callback)
+    {
+        lock (_lock)
+        {
+            var taskHooks = _hooks.GetOrAdd(taskId, _ => new ConcurrentDictionary<string, List<Delegate>>());
+            var callbacks = taskHooks.GetOrAdd(hookName, _ => new List<Delegate>());
+            callbacks.Add(callback);
+        }
+    }
+
+    private void UnregisterHookForTask(Guid taskId, string hookName)
+    {
+        if (_hooks.TryRemove(taskId, out var taskHooks))
+        {
+            taskHooks.TryRemove(hookName, out _);
+        }
     }
 }

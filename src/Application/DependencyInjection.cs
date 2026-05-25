@@ -55,6 +55,15 @@ public static class DependencyInjection
         services.AddTransient<IAgentTaskContextManager, AgentTaskContextManager>();
         services.AddTransient<IAgentTaskHookService, AgentTaskHookService>();
 
+        // Context management services
+        services.AddTransient<IContextWindowBudgeter, ContextWindowBudgeter>();
+        services.AddTransient<ITokenEstimator, TokenEstimator>();
+        services.AddTransient<IContextCompressor, ContextCompressor>();
+        services.AddTransient<IContextRelevanceEngine, ContextRelevanceEngine>();
+        services.AddTransient<IContextManipulator, ContextManipulator>();
+        services.AddSingleton<ContextSnapshotManager>();
+        services.AddSingleton<SystemPromptGenerator>();
+
         // Additional agent services
         services.AddSingleton<AgentSessionService>();
         services.AddSingleton<AgentToolExecutor>();
@@ -95,6 +104,15 @@ public static class DependencyInjection
         services.AddTransient<IAgentTaskAutoApprover, AgentTaskAutoApprover>();
         services.AddTransient<IAgentTaskContextManager, AgentTaskContextManager>();
         services.AddTransient<IAgentTaskHookService, AgentTaskHookService>();
+
+        // Register context management services
+        services.AddTransient<IContextWindowBudgeter, ContextWindowBudgeter>();
+        services.AddTransient<ITokenEstimator, TokenEstimator>();
+        services.AddTransient<IContextCompressor, ContextCompressor>();
+        services.AddTransient<IContextRelevanceEngine, ContextRelevanceEngine>();
+        services.AddTransient<IContextManipulator, ContextManipulator>();
+        services.AddSingleton<ContextSnapshotManager>();
+        services.AddSingleton<SystemPromptGenerator>();
 
         return services;
     }
