@@ -8,6 +8,8 @@
         WindowStartupLocation="CenterOwner"
         WindowState="Normal"
         CanResize="False"
+        ExtendClientAreaToDecorationsHint="True"
+        ExtendClientAreaTitleBarHeightHint="32"
         Title="About OpenLMStudio">
 
     <Window.Resources>
@@ -163,7 +165,7 @@
                                     <ColumnDefinition Width="*"/>
                                 </Grid.ColumnDefinitions>
                                 <TextBlock Grid.Column="0" Text="UI Framework" Classes="techName"/>
-                                <TextBlock Grid.Column="1" Text="Avalonia UI 11.2.5" Classes="techValue"/>
+                                <TextBlock Grid.Column="1" Text="Avalonia UI 12.0.3" Classes="techValue"/>
                             </Grid>
                             <Grid Margin="0,4,0,0">
                                 <Grid.ColumnDefinitions>
