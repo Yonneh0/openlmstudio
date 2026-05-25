@@ -672,20 +672,47 @@
                                 </StackPanel>
                             </Border>
                         </StackPanel>
-                                <Button x:Name="SendButton" Content="Send" Grid.Row="2" Grid.Column="0" Width="60" Height="36" HorizontalAlignment="Right" VerticalAlignment="Bottom" Margin="16,0,16,8" Background="{StaticResource AccentBlue}" Foreground="White">
-                                    <Button.Styles>
-                                        <Style Selector="Button">
-                                            <Setter Property="Background" Value="{StaticResource AccentBlue}"/>
-                                            <Setter Property="Foreground" Value="White"/>
-                                        </Style>
-                                    </Button.Styles>
-                                    <Button.ContextMenu>
-                                        <ContextMenu>
-                                            <MenuItem Header="MainAI" Click="OnSendTargetSelected" Tag="MainAI"/>
-                                            <MenuItem Header="Pingu" Click="OnSendTargetSelected" Tag="Pingu"/>
-                                        </ContextMenu>
-                                    </Button.ContextMenu>
-                                </Button>
+                                <StackPanel Grid.Row="2" Grid.Column="0" Orientation="Horizontal" HorizontalAlignment="Right" VerticalAlignment="Bottom" Margin="16,0,16,8">
+                                    <Button x:Name="ToolsButton"
+                                            Content="🔧"
+                                            Width="60" Height="36"
+                                            Background="{StaticResource BgTertiary}"
+                                            Foreground="{StaticResource TextPrimary}"
+                                            Padding="0"
+                                            Click="OnToolsButtonClicked"
+                                            Cursor="Hand">
+                                        <Button.Styles>
+                                            <Style Selector="Button">
+                                                <Setter Property="Background" Value="{StaticResource BgTertiary}"/>
+                                                <Setter Property="Foreground" Value="{StaticResource TextPrimary}"/>
+                                            </Style>
+                                            <Style Selector="Button:pointerover">
+                                                <Setter Property="Background" Value="#3A3A3E"/>
+                                            </Style>
+                                        </Button.Styles>
+                                    </Button>
+                                    <Button x:Name="SendButton"
+                                            Content="Send"
+                                            Width="60" Height="36"
+                                            Background="{StaticResource AccentBlue}"
+                                            Foreground="White"
+                                            Padding="0"
+                                            Click="OnSendMessageClicked"
+                                            Cursor="Hand">
+                                        <Button.Styles>
+                                            <Style Selector="Button">
+                                                <Setter Property="Background" Value="{StaticResource AccentBlue}"/>
+                                                <Setter Property="Foreground" Value="White"/>
+                                            </Style>
+                                        </Button.Styles>
+                                        <Button.ContextMenu>
+                                            <ContextMenu>
+                                                <MenuItem Header="MainAI" Click="OnSendTargetSelected" Tag="MainAI"/>
+                                                <MenuItem Header="Pingu" Click="OnSendTargetSelected" Tag="Pingu"/>
+                                            </ContextMenu>
+                                        </Button.ContextMenu>
+                                    </Button>
+                                </StackPanel>
                     </Grid>
                 </Border>
             </Grid>
@@ -758,6 +785,47 @@
                 <ScrollViewer HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Auto">
                     <TextBlock x:Name="GitLogContent" Text="Git log" Foreground="{StaticResource TextPrimary}" Padding="12" FontSize="12" TextWrapping="Wrap" Margin="8"/>
                 </ScrollViewer>
+            </Border>
+        </Popup>
+
+        <!-- Tool call popup (opens upward from the Tools button) -->
+        <Popup x:Name="ToolCallPopup"
+               PlacementTarget="{Binding ElementName=ToolsButton}"
+               Placement="Bottom"
+               HorizontalOffset="0"
+               VerticalOffset="0"
+               IsOpen="False">
+            <Border Background="{StaticResource BgSecondary}"
+                    BorderBrush="#333338"
+                    BorderThickness="1"
+                    CornerRadius="8"
+                    Width="440"
+                    MaxHeight="500">
+                <StackPanel>
+                    <!-- Tool list header -->
+                    <Border Background="{StaticResource BgTertiary}"
+                            CornerRadius="8,8,0,0"
+                            Padding="12,8">
+                        <Grid>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*"/>
+                                <ColumnDefinition Width="Auto"/>
+                            </Grid.ColumnDefinitions>
+                            <TextBlock Grid.Column="0" Text="Select a Tool" FontWeight="SemiBold" Foreground="{StaticResource AccentBlue}" FontSize="13"/>
+                            <Button Grid.Column="1" x:Name="CloseToolPopup"
+                                    Content="✕"
+                                    Background="Transparent"
+                                    Foreground="{StaticResource TextSecondary}"
+                                    Padding="6,2"
+                                    FontSize="12"
+                                    Click="OnCloseToolPopupClicked"/>
+                        </Grid>
+                    </Border>
+                    <!-- Tool list -->
+                    <ScrollViewer VerticalScrollBarVisibility="Auto" MaxHeight="350">
+                        <StackPanel x:Name="ToolListPanel" Margin="8,4,8,8"/>
+                    </ScrollViewer>
+                </StackPanel>
             </Border>
         </Popup>
     </Grid>

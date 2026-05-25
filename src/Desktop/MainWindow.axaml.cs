@@ -26,6 +26,9 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using OpenLMStudio.Application.Interfaces;
 using OpenLMStudio.Application.Types;
+using OpenLMStudio.Application.Types.Agent;
+using OpenLMStudio.Application.Services.Agent;
+using OpenLMStudio.Domain.Interfaces;
 using OpenLMStudio.Domain.Models;
 using OpenLMStudio.Desktop.Controls;
 
@@ -49,9 +52,12 @@ public partial class MainWindow : Window
     private readonly IWindowSettings? _windowSettings;
     private readonly Infrastructure.Services.MainAIManager? _mainAIManager;
     private readonly Infrastructure.Services.SystemAIManager? _systemAIManager;
+    private readonly IAgentToolExecutor? _agentToolExecutor;
 
     /// <summary>Flag to prevent duplicate title saves when both LostFocus and overlay click fire.</summary>
     private bool _titleEditSaving = false;
+    /// <summary>Currently visible ToolCallForm popup (or null if closed).</summary>
+    private ToolCallForm? _activeToolCallForm;
 
     /// <summary>Pingu avatar control for the bottom-right corner of the main window.</summary>
     private PinguAvatar? _pinguAvatar;
@@ -86,12 +92,14 @@ public partial class MainWindow : Window
         IPinguStore? pinguStore = null,
         IWindowSettings? windowSettings = null,
         Infrastructure.Services.MainAIManager? mainAIManager = null,
-        Infrastructure.Services.SystemAIManager? systemAIManager = null)
+        Infrastructure.Services.SystemAIManager? systemAIManager = null,
+        IAgentToolExecutor? agentToolExecutor = null)
     {
         InitializeComponent();
         _logger = logger;
         _mainAIManager = mainAIManager ?? ResolveMainAIManagerFromAppServices();
         _systemAIManager = systemAIManager ?? ResolveSystemAIManagerFromAppServices();
+        _agentToolExecutor = agentToolExecutor ?? ResolveAgentToolExecutorFromAppServices();
 
         // Wire up model selector controls
         WireUpModelSelectors();
@@ -270,6 +278,14 @@ public partial class MainWindow : Window
         if (GitStatusBorder != null)
             GitStatusBorder.PointerPressed += OnGitStatusClicked;
 
+        // Tools button
+        if (ToolsButton != null)
+            ToolsButton.Click += OnToolsButtonClicked;
+
+        // Close tool popup button
+        if (CloseToolPopup != null)
+            CloseToolPopup.Click += OnCloseToolPopupClicked;
+
     }
 
     /// <summary>
@@ -330,6 +346,24 @@ public partial class MainWindow : Window
         }
     }
 
+    /// <summary>
+    /// Resolves AgentToolExecutor from the application service provider.
+    /// </summary>
+    private IAgentToolExecutor ResolveAgentToolExecutorFromAppServices()
+    {
+        try
+        {
+            var sp = GetAppServiceProvider();
+            return sp?.GetService(typeof(IAgentToolExecutor)) as IAgentToolExecutor
+                ?? sp?.GetService<IAgentToolExecutor>()
+                ?? throw new InvalidOperationException("AgentToolExecutor not registered in DI");
+        }
+        catch (Exception ex)
+        {
+            _logger?.LogWarning(ex, "Failed to resolve AgentToolExecutor from app services");
+            throw;
+        }
+    }
 
     /// <summary>
     /// Toggles Agent Mode on/off.
@@ -976,6 +1010,166 @@ public partial class MainWindow : Window
         _sendTarget = target;
         SendButton?.SetValue(ContentControl.ContentProperty, $"Send ({target})");
         _logger?.LogInformation("Send target changed to: {Target}", target);
+    }
+
+    // =========================================================================
+    // Tool Call Form popup
+    // =========================================================================
+
+    /// <summary>
+    /// Handles clicks on the Tools button — opens the tool call popup.
+    /// </summary>
+    private void OnToolsButtonClicked(object? sender, RoutedEventArgs e)
+    {
+        // Resolve AgentToolExecutor from DI if not already resolved
+        if (_agentToolExecutor == null)
+        {
+            _logger?.LogWarning("AgentToolExecutor not resolved — cannot open tool call popup");
+            return;
+        }
+
+        // Populate the tool list if empty
+        if (ToolListPanel != null && ToolListPanel.Children.Count == 0)
+        {
+            PopulateToolList();
+        }
+
+        // Show the popup
+        if (ToolCallPopup != null)
+            ToolCallPopup.SetValue(Avalonia.Controls.Primitives.Popup.IsOpenProperty, true);
+    }
+
+    /// <summary>
+    /// Populates the ToolListPanel with buttons for each available tool.
+    /// </summary>
+    private void PopulateToolList()
+    {
+        if (ToolListPanel == null)
+            return;
+
+        var executor = _agentToolExecutor as AgentToolExecutor;
+        if (executor == null)
+            return;
+
+        var tools = executor.ListAvailableTools();
+        ToolListPanel.Children.Clear();
+
+        foreach (var tool in tools.OrderBy(t => t.Name))
+        {
+            var btn = new Button
+            {
+                Content = $"{GetToolIcon(tool.Name)}  {tool.Name}",
+                Background = (SolidColorBrush)this.FindResource("BgTertiary"),
+                Foreground = (SolidColorBrush)this.FindResource("TextPrimary"),
+                Padding = new Thickness(10, 6),
+                Margin = new Thickness(0, 2, 0, 2),
+                HorizontalAlignment = Avalonia.Layout.HorizontalAlignment.Stretch,
+                HorizontalContentAlignment = Avalonia.Layout.HorizontalAlignment.Left,
+                FontSize = 12
+            };
+
+            btn.AddHandler(Button.PointerEnteredEvent, (s, ev) =>
+            {
+                if (btn.Background is Avalonia.Media.ISolidColorBrush sb)
+                {
+                    // Keep the existing background style
+                }
+            });
+
+            btn.Click += (s, ev) =>
+            {
+                ShowToolCallForm(tool, executor);
+            };
+
+            ToolListPanel.Children.Add(btn);
+        }
+    }
+
+    /// <summary>
+    /// Shows the ToolCallForm popup for the given tool.
+    /// </summary>
+    private void ShowToolCallForm(ToolDefinition tool, AgentToolExecutor executor)
+    {
+        // Close the tool list popup
+        if (ToolCallPopup != null)
+            ToolCallPopup.SetValue(Avalonia.Controls.Primitives.Popup.IsOpenProperty, false);
+
+        // Dispose any existing ToolCallForm
+        if (_activeToolCallForm != null)
+        {
+            _activeToolCallForm.Dispose();
+        }
+
+        // Create and show the form
+        _activeToolCallForm = new ToolCallForm(tool, executor, OnToolCallFormCancel);
+
+        // Position the form popup below the Tools button
+        var formPopup = new Popup
+        {
+            PlacementTarget = ToolsButton,
+            Placement = PlacementMode.Bottom,
+            IsOpen = true,
+            Child = _activeToolCallForm,
+            HorizontalOffset = 0,
+            VerticalOffset = 0
+        };
+
+        formPopup.SetValue(Avalonia.Controls.Primitives.Popup.IsOpenProperty, true);
+        _activeToolCallForm.PopupReference = formPopup;
+        _activeToolCallForm.Cancelled += () =>
+        {
+            formPopup.SetValue(Avalonia.Controls.Primitives.Popup.IsOpenProperty, false);
+            _activeToolCallForm = null;
+        };
+    }
+
+    /// <summary>
+    /// Called when the ToolCallForm is cancelled.
+    /// </summary>
+    private void OnToolCallFormCancel(ToolCallForm form)
+    {
+        _activeToolCallForm = null;
+    }
+
+    /// <summary>
+    /// Closes the tool call popup.
+    /// </summary>
+    private void OnCloseToolPopupClicked(object? sender, RoutedEventArgs e)
+    {
+        if (ToolCallPopup != null)
+            ToolCallPopup.SetValue(Avalonia.Controls.Primitives.Popup.IsOpenProperty, false);
+    }
+
+    /// <summary>
+    /// Returns the emoji icon for a tool name.
+    /// </summary>
+    private static string GetToolIcon(string toolName)
+    {
+        return toolName switch
+        {
+            "write_to_file" => "📝",
+            "replace_in_file" => "✏️",
+            "read_file" => "📄",
+            "search_files" => "🔍",
+            "list_files" => "📋",
+            "execute_command" => "⚡",
+            "browser_action" => "🌐",
+            "use_mcp_tool" => "🔗",
+            "access_mcp_resource" => "📡",
+            "load_mcp_documentation" => "📚",
+            "plan_mode_respond" => "💭",
+            "act_mode_respond" => "🚀",
+            "attempt_completion" => "✅",
+            "new_task" => "🆕",
+            "use_skill" => "🛠️",
+            "use_subagents" => "🤖",
+            "apply_patch" => "🩹",
+            "generate_explanation" => "🔎",
+            "web_fetch" => "🌍",
+            "web_search" => "🔎",
+            "ask_followup_question" => "❓",
+            _ => "🔧"
+        };
     }
 
 }

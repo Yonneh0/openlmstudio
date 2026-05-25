@@ -1,0 +1,61 @@
+<UserControl x:Class="OpenLMStudio.Desktop.Controls.ToolCallForm"
+    xmlns="https://github.com/avaloniaui"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    Width="420"
+    Background="{DynamicResource SystemControlBackgroundAltHighBrush}">
+
+    <Border Background="{StaticResource BgSecondary}"
+            CornerRadius="8"
+            Margin="8"
+            Padding="0">
+        <StackPanel>
+            <!-- Header: tool name + execute button -->
+            <Grid>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="Auto"/>
+                </Grid.ColumnDefinitions>
+                <StackPanel Grid.Column="0" Orientation="Horizontal" Margin="16,12,0,8">
+                    <TextBlock x:Name="ToolIconText" Text="🔧" FontSize="16" Margin="0,0,8,0"/>
+                    <TextBlock x:Name="ToolNameText" Text="Tool Name" FontWeight="SemiBold" Foreground="{StaticResource AccentBlue}" FontSize="14"/>
+                </StackPanel>
+                <StackPanel Grid.Column="1" Orientation="Horizontal" Margin="0,0,12,0">
+                    <Button x:Name="ExecuteButton"
+                            Content="Execute"
+                            Background="{StaticResource AccentBlue}"
+                            Foreground="White"
+                            Padding="12,6"
+                            Margin="0,0,6,0"
+                            Click="OnExecuteClicked"/>
+                    <Button x:Name="CancelButton"
+                            Content="Cancel"
+                            Background="{StaticResource BgTertiary}"
+                            Foreground="{StaticResource TextPrimary}"
+                            Padding="10,6"
+                            Click="OnCancelClicked"/>
+                </StackPanel>
+            </Grid>
+
+            <!-- Separator -->
+            <Border Background="#3A3A3E" Height="1" Margin="16,0,16,8"/>
+
+            <!-- Parameter form -->
+            <ScrollViewer VerticalScrollBarVisibility="Auto" MaxHeight="350">
+                <StackPanel x:Name="ParameterPanel" Margin="16,0,0,8"/>
+            </ScrollViewer>
+
+            <!-- Result area -->
+            <Border x:Name="ResultBorder"
+                    Background="#2E7D32"
+                    CornerRadius="4"
+                    Margin="16,8,16,12"
+                    Padding="10,8"
+                    IsVisible="False">
+                <TextBlock x:Name="ResultText"
+                           Foreground="White"
+                           FontSize="11"
+                           TextWrapping="Wrap"/>
+            </Border>
+        </StackPanel>
+    </Border>
+</UserControl>
