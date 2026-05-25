@@ -10,33 +10,6 @@ namespace OpenLMStudio.Domain.Models;
 // ============================================================================
 
 /// <summary>
-/// Current status of a task.
-/// </summary>
-public enum TaskStatus
-{
-    /// <summary>Task is pending execution.</summary>
-    Pending = 0,
-
-    /// <summary>Task is currently running.</summary>
-    Running = 1,
-
-    /// <summary>Task is paused.</summary>
-    Paused = 2,
-
-    /// <summary>Task is queued and waiting for dependencies.</summary>
-    Queued = 3,
-
-    /// <summary>Task has failed.</summary>
-    Failed = 4,
-
-    /// <summary>Task has been cancelled.</summary>
-    Cancelled = 5,
-
-    /// <summary>Task has completed successfully.</summary>
-    Completed = 6,
-}
-
-/// <summary>
 /// Priority level for task scheduling.
 /// </summary>
 public enum TaskPriority
@@ -46,27 +19,6 @@ public enum TaskPriority
     Normal = 2,
     High = 3,
     Critical = 4,
-}
-
-/// <summary>
-/// Represents the current phase of a task's lifecycle.
-/// </summary>
-public enum TaskPhase
-{
-    /// <summary>Planning the approach and strategy.</summary>
-    Planning = 1,
-
-    /// <summary>Executing the planned actions.</summary>
-    Acting = 2,
-
-    /// <summary>Reviewing results and validating correctness.</summary>
-    Reviewing = 3,
-
-    /// <summary>Task is complete and finalizing.</summary>
-    Completed = 4,
-
-    /// <summary>Task has failed.</summary>
-    Failed = 5,
 }
 
 /// <summary>
