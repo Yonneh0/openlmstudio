@@ -1175,7 +1175,7 @@ public partial class MainWindow : Window
             if (!Directory.Exists(exampleChatsDir))
             {
                 _logger?.LogWarning("ExampleChats directory not found at {Dir}", exampleChatsDir);
-                ShowError($"Example chats directory not found.\n\nExpected: {exampleChatsDir}");
+                ShowError($"Couldn't find example chats at:\n\n{exampleChatsDir}\n\nPlease copy the ExampleChats folder (with *.json files) into this location.");
                 return;
             }
 
