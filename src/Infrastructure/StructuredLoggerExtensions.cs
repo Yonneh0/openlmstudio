@@ -3,7 +3,7 @@ global using System.Diagnostics;
 global using System.Runtime.CompilerServices;
 global using Microsoft.Extensions.Logging;
 
-namespace OpenLMStudio.Infrastructure.Logging;
+namespace OpenLMStudio.Infrastructure;
 
 /// <summary>
 /// Structured logging extensions for OpenLMStudio services.

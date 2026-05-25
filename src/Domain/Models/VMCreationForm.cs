@@ -1,4 +1,4 @@
-namespace OpenLMStudio.Domain.Models.QEMU;
+namespace OpenLMStudio.Domain.Models;
 
 /// <summary>
 /// Form model for VM creation wizard state.

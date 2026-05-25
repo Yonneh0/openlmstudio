@@ -1,4 +1,4 @@
-<Window x:Class="OpenLMStudio.Desktop.Windows.VMWizardWindow"
+<Window x:Class="OpenLMStudio.Desktop.VMWizardWindow"
     xmlns="https://github.com/avaloniaui"
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
     xmlns:qemu="clr-namespace:OpenLMStudio.Domain.Models.QEMU;assembly=OpenLMStudio.Domain"

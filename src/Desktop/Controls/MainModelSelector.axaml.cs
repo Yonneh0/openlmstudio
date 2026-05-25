@@ -11,7 +11,8 @@ using Avalonia.Media;
 using Avalonia.Platform.Storage;
 using Avalonia.Styling;
 using Microsoft.Extensions.Logging;
-using OpenLMStudio.Domain.Models.LLamaCpp;
+using OpenLMStudio.Domain.Models;
+using OpenLMStudio.Infrastructure;
 using OpenLMStudio.Infrastructure.Services;
 
 namespace OpenLMStudio.Desktop.Controls;

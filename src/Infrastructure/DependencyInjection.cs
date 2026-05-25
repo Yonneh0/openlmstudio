@@ -2,8 +2,8 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging.Abstractions;
 using OpenLMStudio.Application.Interfaces;
 using OpenLMStudio.Application.Services;
+using OpenLMStudio.Infrastructure;
 using OpenLMStudio.Infrastructure.Services;
-using OpenLMStudio.Infrastructure.Services.QEMU;
 
 namespace OpenLMStudio.Infrastructure;
 
@@ -352,10 +352,10 @@ public static class DependencyInjection
         // ---- Phase 10.5: Observability & Diagnostics ----
 
         // ActivityTracer traces agent tool calls with timing and resource consumption
-        services.AddSingleton<Application.Interfaces.IActivityTracer, Tracing.ActivityTracer>();
+        services.AddSingleton<Application.Interfaces.IActivityTracer, ActivityTracer>();
 
         // ModelLifecycleTracer tracks per-model load/unload timing and VRAM allocation
-        services.AddSingleton<Tracing.ModelLifecycleTracer>();
+        services.AddSingleton<ModelLifecycleTracer>();
 
         // WindowSettingsService persists and restores main window state (position, size, active tab)
         services.AddSingleton<IWindowSettings, Services.WindowSettingsService>();
@@ -506,3 +506,4 @@ public static class DependencyInjection
         return services;
     }
 }
+

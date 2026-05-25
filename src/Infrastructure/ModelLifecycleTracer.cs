@@ -5,7 +5,7 @@ global using System.Runtime.CompilerServices;
 global using Microsoft.Extensions.Logging;
 global using MLogLevel = Microsoft.Extensions.Logging.LogLevel;
 
-namespace OpenLMStudio.Infrastructure.Tracing;
+namespace OpenLMStudio.Infrastructure;
 
 /// <summary>
 /// No-op ILogger for when DI is not configured.

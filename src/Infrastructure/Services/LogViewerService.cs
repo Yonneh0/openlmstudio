@@ -1,8 +1,8 @@
 using Microsoft.Extensions.Logging;
-using OpenLMStudio.Domain.Models.LLamaCpp;
-using OpenLMStudio.Domain.Models.ContextCompression;
+using OpenLMStudio.Domain.Models;
+using OpenLMStudio.Domain.Models;
 using OpenLMStudio.Application.Interfaces;
-using DomainLogLevel = OpenLMStudio.Domain.Models.ContextCompression.LogLevel;
+using DomainLogLevel = OpenLMStudio.Domain.Models.LogLevel;
 using DomainEngineType = OpenLMStudio.Application.Interfaces.EngineType;
 using System.Collections.ObjectModel;
 
@@ -70,11 +70,11 @@ public class LogViewerService
     {
         var domainEngine = engine switch
         {
-            DomainEngineType.Primary => OpenLMStudio.Domain.Models.ContextCompression.EngineType.Primary,
-            DomainEngineType.SystemAI => OpenLMStudio.Domain.Models.ContextCompression.EngineType.SystemAI,
-            DomainEngineType.Diffusion => OpenLMStudio.Domain.Models.ContextCompression.EngineType.Diffusion,
-            DomainEngineType.Embedding => OpenLMStudio.Domain.Models.ContextCompression.EngineType.Embedding,
-            _ => OpenLMStudio.Domain.Models.ContextCompression.EngineType.Primary
+            DomainEngineType.Primary => OpenLMStudio.Domain.Models.EngineType.Primary,
+            DomainEngineType.SystemAI => OpenLMStudio.Domain.Models.EngineType.SystemAI,
+            DomainEngineType.Diffusion => OpenLMStudio.Domain.Models.EngineType.Diffusion,
+            DomainEngineType.Embedding => OpenLMStudio.Domain.Models.EngineType.Embedding,
+            _ => OpenLMStudio.Domain.Models.EngineType.Primary
         };
 
         var entry = new LogEntry(

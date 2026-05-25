@@ -4,13 +4,14 @@ using Avalonia.Interactivity;
 using Avalonia.Media;
 using Avalonia.Threading;
 using OpenLMStudio.Application.Interfaces;
-using OpenLMStudio.Domain.Models.QEMU;
+using OpenLMStudio.Domain.Models;
+using OpenLMStudio.Infrastructure;
 using OpenLMStudio.Infrastructure.Services;
 using OpenLMStudio.Desktop.Controls;
 using System;
 using System.Threading.Tasks;
 
-namespace OpenLMStudio.Desktop.Windows;
+namespace OpenLMStudio.Desktop;
 
 /// <summary>
 /// Multi-step VM creation wizard window.

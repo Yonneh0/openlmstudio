@@ -1,4 +1,4 @@
-namespace OpenLMStudio.Domain.Models.ContextCompression;
+namespace OpenLMStudio.Domain.Models;
 
 /// <summary>
 /// Log level for engine logging.

@@ -1,7 +1,7 @@
 using Avalonia.Controls;
 using Avalonia.Interactivity;
 using Avalonia.Platform.Storage;
-using OpenLMStudio.Domain.Models.QEMU;
+using OpenLMStudio.Domain.Models;
 using System;
 using System.Collections.ObjectModel;
 using System.Linq;

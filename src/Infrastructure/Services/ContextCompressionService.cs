@@ -1,7 +1,7 @@
 using Microsoft.Extensions.Logging;
 using OpenLMStudio.Application.Interfaces;
 using OpenLMStudio.Domain.Models;
-using OpenLMStudio.Domain.Models.ContextCompression;
+using OpenLMStudio.Domain.Models;
 
 namespace OpenLMStudio.Infrastructure.Services;
 

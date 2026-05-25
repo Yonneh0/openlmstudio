@@ -1,9 +1,9 @@
 using OpenLMStudio.Application.Interfaces;
-using OpenLMStudio.Domain.Models.QEMU;
+using OpenLMStudio.Domain.Models;
 using System.IO.Compression;
 using System.Text.Json;
 
-namespace OpenLMStudio.Infrastructure.Services;
+namespace OpenLMStudio.Infrastructure;
 
 /// <summary>
 /// Registry for architecture-specific compiler toolchains.

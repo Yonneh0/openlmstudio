@@ -1,7 +1,7 @@
 using OpenLMStudio.Application.Interfaces;
-using OpenLMStudio.Domain.Models.QEMU;
+using OpenLMStudio.Domain.Models;
 
-namespace OpenLMStudio.Infrastructure.Services.QEMU;
+namespace OpenLMStudio.Infrastructure;
 
 /// <summary>
 /// Provides architecture-specific system prompts and cross-compile variables for QEMU VMs.

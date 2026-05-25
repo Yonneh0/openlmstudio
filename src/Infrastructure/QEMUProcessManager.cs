@@ -1,6 +1,6 @@
 using Microsoft.Extensions.Logging;
 using OpenLMStudio.Application.Interfaces;
-using OpenLMStudio.Domain.Models.QEMU;
+using OpenLMStudio.Domain.Models;
 using System.Diagnostics;
 using System.Net;
 using System.Net.Sockets;
@@ -8,7 +8,7 @@ using System.Text;
 using System.Text.Json;
 using System.Text.Json.Nodes;
 
-namespace OpenLMStudio.Infrastructure.Services.QEMU;
+namespace OpenLMStudio.Infrastructure;
 
 /// <summary>
 /// Manages QEMU virtual machine instances with QMP protocol support.

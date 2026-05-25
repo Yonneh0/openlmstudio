@@ -1,4 +1,4 @@
-namespace OpenLMStudio.Domain.Models.Pingu;
+namespace OpenLMStudio.Domain.Models;
 
 /// <summary>
 /// Types of tasks Pingu can be assigned to orchestrate.

@@ -1,4 +1,4 @@
-using OpenLMStudio.Domain.Models.QEMU;
+using OpenLMStudio.Domain.Models;
 
 namespace OpenLMStudio.Application.Interfaces;
 

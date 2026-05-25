@@ -1,7 +1,7 @@
 using Avalonia.Controls;
 using OpenLMStudio.Application.Interfaces;
-using OpenLMStudio.Domain.Models.Pingu;
-using OpenLMStudio.Infrastructure.Services;
+using OpenLMStudio.Domain.Models;
+using OpenLMStudio.Infrastructure;
 
 namespace OpenLMStudio.Desktop.Controls;
 

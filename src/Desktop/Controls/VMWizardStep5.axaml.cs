@@ -1,5 +1,5 @@
 using Avalonia.Controls;
-using OpenLMStudio.Domain.Models.QEMU;
+using OpenLMStudio.Domain.Models;
 using System;
 using System.Text;
 

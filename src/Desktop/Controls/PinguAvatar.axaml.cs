@@ -4,7 +4,7 @@ using Avalonia.Interactivity;
 using Avalonia.Input;
 using Avalonia.Media;
 using OpenLMStudio.Application.Interfaces;
-using OpenLMStudio.Domain.Models.Pingu;
+using OpenLMStudio.Domain.Models;
 
 namespace OpenLMStudio.Desktop.Controls;
 

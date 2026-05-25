@@ -1,9 +1,9 @@
 using System.Text;
 using Microsoft.Extensions.Logging;
 using OpenLMStudio.Application.Interfaces;
-using OpenLMStudio.Domain.Models.Pingu;
+using OpenLMStudio.Domain.Models;
 
-namespace OpenLMStudio.Infrastructure.Services;
+namespace OpenLMStudio.Infrastructure;
 
 /// <summary>
 /// Generates context-aware system prompts for Pingu based on its assigned tasks and current state.

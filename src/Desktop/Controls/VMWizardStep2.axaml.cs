@@ -1,6 +1,6 @@
 using Avalonia;
 using Avalonia.Controls;
-using OpenLMStudio.Domain.Models.QEMU;
+using OpenLMStudio.Domain.Models;
 using System;
 
 namespace OpenLMStudio.Desktop.Controls;

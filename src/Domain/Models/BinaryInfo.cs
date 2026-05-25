@@ -1,4 +1,4 @@
-namespace OpenLMStudio.Domain.Models.LLamaCpp;
+namespace OpenLMStudio.Domain.Models;
 
 /// <summary>
 /// Supported backend types for engine binaries.

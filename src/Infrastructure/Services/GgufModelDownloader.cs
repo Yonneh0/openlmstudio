@@ -1,7 +1,7 @@
 using Microsoft.Extensions.Logging;
 using OpenLMStudio.Application.Interfaces;
 using OpenLMStudio.Domain.Models;
-using OpenLMStudio.Domain.Models.LLamaCpp;
+using OpenLMStudio.Domain.Models;
 using System.Text.Json;
 
 namespace OpenLMStudio.Infrastructure.Services;

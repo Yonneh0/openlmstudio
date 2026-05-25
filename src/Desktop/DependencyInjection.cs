@@ -3,9 +3,10 @@ using System.IO;
 using Microsoft.Extensions.DependencyInjection;
 using OpenLMStudio.Application.Interfaces;
 using OpenLMStudio.Domain.Models;
-using OpenLMStudio.Domain.Models.ContextCompression;
-using OpenLMStudio.Domain.Models.Pingu;
+using OpenLMStudio.Domain.Models;
+using OpenLMStudio.Domain.Models;
 using InfraServices = OpenLMStudio.Infrastructure.Services;
+using InfraTypes = OpenLMStudio.Infrastructure;
 
 namespace OpenLMStudio.Desktop;
 
@@ -22,7 +23,7 @@ public static class DependencyInjection
         services.AddSingleton<IChatCompletionService, InfraServices.LlamaCppChatCompletionService>();
         services.AddSingleton<IChatContextManager, InfraServices.ChatContextManager>();
         services.AddSingleton<IContextWindowBudgeter, InfraServices.ContextWindowBudgeter>();
-        services.AddSingleton<IPinguStore, InfraServices.PinguStore>();
+        services.AddSingleton<IPinguStore, InfraTypes.PinguStore>();
         services.AddSingleton<IWindowSettings, InfraServices.WindowSettingsService>();
         services.AddSingleton<IEngineLogger, InfraServices.EngineLogger>();
         services.AddSingleton<PanelService>();

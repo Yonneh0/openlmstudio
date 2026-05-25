@@ -5,7 +5,7 @@ using global::Microsoft.Extensions.Logging;
 using OpenLMStudio.Application.Interfaces;
 using OpenLMStudio.Application.Types;
 using OpenLMStudio.Domain.Models;
-using OpenLMStudio.Infrastructure.Logging;
+using OpenLMStudio.Infrastructure;
 using System.Collections.Concurrent;
 
 namespace OpenLMStudio.Infrastructure.Services;

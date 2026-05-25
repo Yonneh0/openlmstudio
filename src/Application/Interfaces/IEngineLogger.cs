@@ -1,4 +1,4 @@
-using OpenLMStudio.Domain.Models.ContextCompression;
+using OpenLMStudio.Domain.Models;
 
 namespace OpenLMStudio.Application.Interfaces;
 

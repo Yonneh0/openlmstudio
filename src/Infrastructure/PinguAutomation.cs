@@ -1,9 +1,9 @@
 using OpenLMStudio.Application.Interfaces;
-using OpenLMStudio.Domain.Models.Pingu;
-using OpenLMStudio.Domain.Models.QEMU;
-using OpenLMStudio.Infrastructure.Services.QEMU;
+using OpenLMStudio.Domain.Models;
+using OpenLMStudio.Domain.Models;
+using OpenLMStudio.Infrastructure;
 
-namespace OpenLMStudio.Infrastructure.Services;
+namespace OpenLMStudio.Infrastructure;
 
 /// <summary>
 /// Pingu automation providing action animations and drag-to-pause VM management.

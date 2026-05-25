@@ -31,5 +31,5 @@ public interface ISystemAICoordinator
     /// Gets an existing running VM for the architecture, or creates a new one.
     /// Returns the VM ID.
     /// </summary>
-    Task<string?> GetOrCreateArchVMAsync(Domain.Models.QEMU.ArchitectureType arch);
+    Task<string?> GetOrCreateArchVMAsync(Domain.Models.ArchitectureType arch);
 }

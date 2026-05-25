@@ -1,6 +1,6 @@
-using OpenLMStudio.Domain.Models.ContextCompression;
+using OpenLMStudio.Domain.Models;
 
-namespace OpenLMStudio.Domain.Models.LLamaCpp;
+namespace OpenLMStudio.Domain.Models;
 
 /// <summary>
 /// Represents a single log entry from a llama.cpp engine binary.

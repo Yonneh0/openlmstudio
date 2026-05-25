@@ -1,7 +1,7 @@
 using OpenLMStudio.Application.Interfaces;
-using OpenLMStudio.Domain.Models.QEMU;
+using OpenLMStudio.Domain.Models;
 
-namespace OpenLMStudio.Infrastructure.Services;
+namespace OpenLMStudio.Infrastructure;
 
 /// <summary>
 /// Reactive store for managed VM instances.

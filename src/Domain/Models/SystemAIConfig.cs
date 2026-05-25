@@ -1,4 +1,4 @@
-namespace OpenLMStudio.Domain.Models.SystemAI;
+namespace OpenLMStudio.Domain.Models;
 
 /// <summary>
 /// Configuration for the System AI (llama.cpp) client.

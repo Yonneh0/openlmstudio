@@ -1,5 +1,5 @@
 using Microsoft.Extensions.Logging;
-using OpenLMStudio.Domain.Models.LLamaCpp;
+using OpenLMStudio.Domain.Models;
 
 namespace OpenLMStudio.Infrastructure.Services;
 

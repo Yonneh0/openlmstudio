@@ -1,4 +1,4 @@
-namespace OpenLMStudio.Domain.Models.Pingu;
+namespace OpenLMStudio.Domain.Models;
 
 /// <summary>
 /// Represents the current mood of the Pingu avatar.

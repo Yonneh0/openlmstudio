@@ -1,8 +1,8 @@
 using OpenLMStudio.Application.Interfaces;
-using OpenLMStudio.Domain.Models.QEMU;
-using OpenLMStudio.Infrastructure.Services.QEMU;
+using OpenLMStudio.Domain.Models;
+using OpenLMStudio.Infrastructure;
 
-namespace OpenLMStudio.Infrastructure.Services;
+namespace OpenLMStudio.Infrastructure;
 
 /// <summary>
 /// Resource monitoring with VM-aware allocation.
@@ -65,7 +65,7 @@ public class ResourceManager : IResourceManager, IDisposable
         {
             await _contextCompression.CompressConversationAsync(
                 Array.Empty<OpenLMStudio.Domain.Models.Message>(),
-                Array.Empty<OpenLMStudio.Domain.Models.ContextCompression.CompressedEntry>()).ConfigureAwait(false);
+                Array.Empty<OpenLMStudio.Domain.Models.CompressedEntry>()).ConfigureAwait(false);
         }
     }
 
