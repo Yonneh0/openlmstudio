@@ -401,7 +401,7 @@ public partial class MainModelSelector : UserControl
         var parentWindow = Avalonia.Application.Current?.ApplicationLifetime is IClassicDesktopStyleApplicationLifetime desktop
             ? desktop.MainWindow
             : null;
-        win.ShowDialog(parentWindow ?? this);
+        win.ShowDialog(parentWindow ?? throw new InvalidOperationException("No parent window available"));
     }
 
     private Control CreateSettingsPanel(RecommendedSettings settings, Window dialog)
