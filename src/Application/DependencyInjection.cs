@@ -1,6 +1,8 @@
 using Microsoft.Extensions.DependencyInjection;
 using OpenLMStudio.Application.Interfaces;
 using OpenLMStudio.Application.Types;
+using OpenLMStudio.Application.Services;
+using OpenLMStudio.Application.Services.Agent;
 using OpenLMStudio.Domain.Models;
 
 namespace OpenLMStudio.Application;
@@ -36,6 +38,30 @@ public static class DependencyInjection
         services.AddTransient<AgentMessageExchange>();
         services.AddTransient<AgentPlan>();
 
+        // Agent Task Management types
+        services.AddSingleton<AgentAutoApprovalSettings>();
+        services.AddSingleton<AgentBrowserSettings>();
+        services.AddSingleton<AgentFocusChainSettings>();
+        services.AddSingleton<AgentTaskProgress>();
+        services.AddSingleton<AgentTaskChecklistItem>();
+        services.AddSingleton<HookResult>();
+
+        // Agent Task Management services
+        services.AddTransient<IAgentTaskManager, AgentTaskManager>();
+        services.AddTransient<IAgentTaskCheckpointService, AgentTaskCheckpointService>();
+        services.AddTransient<IAgentTaskStateService, AgentTaskStateService>();
+        services.AddTransient<IAgentTaskProgressService, AgentTaskProgressService>();
+        services.AddTransient<IAgentTaskAutoApprover, AgentTaskAutoApprover>();
+        services.AddTransient<IAgentTaskContextManager, AgentTaskContextManager>();
+        services.AddTransient<IAgentTaskHookService, AgentTaskHookService>();
+
+        // Additional agent services
+        services.AddSingleton<AgentSessionService>();
+        services.AddSingleton<AgentToolExecutor>();
+        services.AddSingleton<AgentTaskAutoApprover>();
+        services.AddSingleton<AttemptCompletion>();
+        services.AddSingleton<NewTask>();
+
         return services;
     }
 
@@ -60,6 +86,15 @@ public static class DependencyInjection
     public static IServiceCollection AddOpenLMStudioServices(this IServiceCollection services)
     {
         services.AddApplicationTypes();
+
+        // Register agent task management services
+        services.AddTransient<IAgentTaskManager, AgentTaskManager>();
+        services.AddTransient<IAgentTaskCheckpointService, AgentTaskCheckpointService>();
+        services.AddTransient<IAgentTaskStateService, AgentTaskStateService>();
+        services.AddTransient<IAgentTaskProgressService, AgentTaskProgressService>();
+        services.AddTransient<IAgentTaskAutoApprover, AgentTaskAutoApprover>();
+        services.AddTransient<IAgentTaskContextManager, AgentTaskContextManager>();
+        services.AddTransient<IAgentTaskHookService, AgentTaskHookService>();
 
         return services;
     }
