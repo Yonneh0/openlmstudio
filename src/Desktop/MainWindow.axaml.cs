@@ -838,6 +838,107 @@ public partial class MainWindow : Window
         OnChatTitleLostFocus(sender, e);
     }
 
+    // =========================================================================
+    // Status bar button handlers
+    // =========================================================================
+
+    /// <summary>
+    /// Opens the OpenLMStudio root folder in the native file explorer.
+    /// </summary>
+    private void OnStatusFolderClicked(object? sender, RoutedEventArgs e)
+    {
+        try
+        {
+            var appDir = AppContext.BaseDirectory;
+            // Navigate up to find the root (appDir is typically bin\Debug\net8.0)
+            var rootDir = Directory.GetParent(appDir)?.Parent?.Parent?.FullName ?? appDir;
+
+            var psi = new ProcessStartInfo
+            {
+                FileName = rootDir,
+                UseShellExecute = true
+            };
+            Process.Start(psi);
+        }
+        catch (Exception ex)
+        {
+            _logger?.LogError(ex, "Failed to open folder: {Folder}", AppContext.BaseDirectory);
+            ShowError($"Failed to open folder: {ex.Message}");
+        }
+    }
+
+    /// <summary>
+    /// Wipes the OpenLMStudio root folder (except models/*.gguf) and restarts the app.
+    /// </summary>
+    private void OnStatusResetClicked(object? sender, RoutedEventArgs e)
+    {
+        try
+        {
+            var appDir = AppContext.BaseDirectory;
+            var rootDir = Directory.GetParent(appDir)?.Parent?.Parent?.FullName ?? appDir;
+
+            // Collect files to delete (everything except models/*.gguf)
+            var filesToDelete = new List<string>();
+            foreach (var file in Directory.EnumerateFiles(rootDir, "*", SearchOption.AllDirectories))
+            {
+                var relativePath = Path.GetRelativePath(rootDir, file);
+                // Keep models/*.gguf files
+                if (relativePath.StartsWith("models" + Path.DirectorySeparatorChar) &&
+                    string.Equals(Path.GetExtension(file), ".gguf", StringComparison.OrdinalIgnoreCase))
+                {
+                    continue;
+                }
+                // Keep the app's own executable and DLLs
+                if (file.EndsWith(".exe", StringComparison.OrdinalIgnoreCase) ||
+                    file.EndsWith(".dll", StringComparison.OrdinalIgnoreCase))
+                {
+                    continue;
+                }
+                filesToDelete.Add(file);
+            }
+
+            // Delete collected files
+            foreach (var file in filesToDelete)
+            {
+                try
+                {
+                    File.Delete(file);
+                }
+                catch (Exception ex)
+                {
+                    _logger?.LogWarning(ex, "Failed to delete {File}", file);
+                }
+            }
+
+            // Delete empty directories
+            foreach (var dir in Directory.EnumerateDirectories(rootDir, "*", SearchOption.AllDirectories).Reverse())
+            {
+                if (Directory.GetFiles(dir).Length == 0 && Directory.GetDirectories(dir).Length == 0)
+                {
+                    try { Directory.Delete(dir); } catch { /* ignore */ }
+                }
+            }
+
+            // Restart the app
+            var exePath = Environment.ProcessPath ?? typeof(MainWindow).Assembly.Location;
+            var psi = new ProcessStartInfo
+            {
+                FileName = exePath,
+                UseShellExecute = true
+            };
+            Process.Start(psi);
+
+            // Close the current instance
+            if (global::Avalonia.Application.Current is IClassicDesktopStyleApplicationLifetime lifetime)
+                lifetime.Shutdown();
+        }
+        catch (Exception ex)
+        {
+            _logger?.LogError(ex, "Failed to reset app");
+            ShowError($"Failed to reset app: {ex.Message}");
+        }
+    }
+
     /// <summary>
     /// Called when the transparent overlay is clicked while the title is being edited.
     /// This ensures the title saves even when focus doesn't propagate properly.

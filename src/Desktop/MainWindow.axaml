@@ -789,7 +789,40 @@
                 <Border DockPanel.Dock="Left" x:Name="GpuStatusBorder" Background="Transparent" Padding="8,0">
                     <TextBlock x:Name="GpuStatusText" Text="GPU: --" Foreground="{StaticResource TextMuted}" FontSize="11" VerticalAlignment="Center"/>
                 </Border>
-                <TextBlock DockPanel.Dock="Right" Text="OpenLMStudio" Foreground="{StaticResource TextMuted}" FontSize="11" VerticalAlignment="Center" Padding="12,0"/>
+                <!-- Status bar buttons (right side) -->
+                <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" HorizontalAlignment="Right">
+                    <Button x:Name="StatusFolderButton"
+                            Content="&#x1F4C1;"
+                            Background="Transparent"
+                            Foreground="{StaticResource TextMuted}"
+                            Padding="8,0"
+                            FontSize="14"
+                            Cursor="Hand"
+                            Click="OnStatusFolderClicked">
+                        <Button.Styles>
+                            <Style Selector="Button:pointerover">
+                                <Setter Property="Background" Value="{StaticResource BgTertiary}"/>
+                                <Setter Property="Foreground" Value="{StaticResource TextPrimary}"/>
+                            </Style>
+                        </Button.Styles>
+                    </Button>
+                    <Button x:Name="StatusResetButton"
+                            Content="&#x274C;"
+                            Background="Transparent"
+                            Foreground="{StaticResource AccentRed}"
+                            Padding="8,0"
+                            FontSize="14"
+                            Cursor="Hand"
+                            Click="OnStatusResetClicked">
+                        <Button.Styles>
+                            <Style Selector="Button:pointerover">
+                                <Setter Property="Background" Value="{StaticResource BgTertiary}"/>
+                                <Setter Property="Foreground" Value="#FF8888"/>
+                            </Style>
+                        </Button.Styles>
+                    </Button>
+                    <TextBlock Text="OpenLMStudio" Foreground="{StaticResource TextMuted}" FontSize="11" VerticalAlignment="Center" Padding="12,0"/>
+                </StackPanel>
             </DockPanel>
         </Border>
 

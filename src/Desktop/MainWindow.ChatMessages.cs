@@ -265,33 +265,45 @@ public partial class MainWindow
             Margin = new Thickness(0)
         };
 
-        // Add role indicator if it's an assistant message with tool calls
+        // Add role indicator and tool call panel if it's an assistant message with tool calls
         if (message.Role == MessageRole.Assistant && message.ToolCalls?.Any() == true)
         {
             var stackPanel = new StackPanel();
 
-            // Role label for assistant messages
-            stackPanel.Children.Add(new TextBlock
+            // Top row: AI label + tool call count badge
+            var topRow = new StackPanel { Orientation = Avalonia.Layout.Orientation.Horizontal };
+            topRow.Children.Add(new TextBlock
             {
                 Text = "AI",
                 Foreground = new SolidColorBrush(Color.FromRgb(79, 195, 247)),
                 FontWeight = FontWeight.SemiBold,
-                Margin = new Thickness(0, 0, 8, 4)
+                Margin = new Thickness(0, 0, 8, 0)
             });
+
+            var toolBadge = new Border
+            {
+                Background = new SolidColorBrush(Color.FromRgb(255, 152, 0)),
+                CornerRadius = new CornerRadius(4),
+                Padding = new Thickness(6, 2),
+                Child = new TextBlock
+                {
+                    Text = $"{message.ToolCalls.Count} tool{(message.ToolCalls.Count > 1 ? "s" : "")}",
+                    Foreground = Avalonia.Media.Brushes.White,
+                    FontSize = 10,
+                    FontWeight = FontWeight.SemiBold
+                }
+            };
+            topRow.Children.Add(toolBadge);
+            stackPanel.Children.Add(topRow);
 
             // Content text block
             stackPanel.Children.Add(textBlock);
 
-            // Tool calls indicator if present
+            // Tool calls panel
             foreach (var toolCall in message.ToolCalls)
             {
-                stackPanel.Children.Add(new TextBlock
-                {
-                    Text = $"Tool: {toolCall.FunctionName}({toolCall.ArgumentsJson})",
-                    Foreground = new SolidColorBrush(Color.FromRgb(255, 152, 0)),
-                    FontSize = 11,
-                    Margin = new Thickness(8)
-                });
+                var toolPanel = CreateToolCallPanel(toolCall);
+                stackPanel.Children.Add(toolPanel);
             }
 
             border.Child = stackPanel;
@@ -421,6 +433,102 @@ public partial class MainWindow
 
     // Dictionary to track custom context segments → Border for removal (avoids visual tree traversal in Avalonia)
     private readonly ConcurrentDictionary<Guid, Border> _customContextBorders = new();
+
+    /// <summary>
+    /// Creates a formatted panel displaying a tool call with function name, arguments, and result.
+    /// </summary>
+    private StackPanel CreateToolCallPanel(ToolCall toolCall)
+    {
+        var panel = new StackPanel
+        {
+            Margin = new Thickness(0, 8, 0, 0)
+        };
+
+        // Tool call header: icon + function name
+        var headerPanel = new StackPanel { Orientation = Avalonia.Layout.Orientation.Horizontal };
+        headerPanel.Children.Add(new TextBlock
+        {
+            Text = "🔧",
+            FontSize = 14,
+            Margin = new Thickness(0, 0, 6, 0)
+        });
+        headerPanel.Children.Add(new TextBlock
+        {
+            Text = toolCall.FunctionName,
+            Foreground = new SolidColorBrush(Color.FromRgb(255, 152, 0)),
+            FontSize = 12,
+            FontWeight = FontWeight.SemiBold
+        });
+        panel.Children.Add(headerPanel);
+
+        // Arguments as formatted JSON
+        if (!string.IsNullOrEmpty(toolCall.ArgumentsJson))
+        {
+            var formattedArgs = FormatJson(toolCall.ArgumentsJson);
+            var argsBorder = new Border
+            {
+                Background = new SolidColorBrush(Color.FromRgb(30, 30, 34)),
+                CornerRadius = new CornerRadius(4),
+                Padding = new Thickness(10, 8),
+                Margin = new Thickness(0, 4, 0, 0)
+            };
+            argsBorder.Child = new TextBlock
+            {
+                Text = formattedArgs,
+                Foreground = new SolidColorBrush(Color.FromRgb(170, 170, 170)),
+                FontSize = 11,
+                FontFamily = new FontFamily("Consolas"),
+                TextWrapping = TextWrapping.Wrap
+            };
+            panel.Children.Add(argsBorder);
+        }
+
+        // Result if available
+        if (!string.IsNullOrEmpty(toolCall.Result))
+        {
+            var resultBorder = new Border
+            {
+                Background = new SolidColorBrush(Color.FromRgb(37, 60, 30)),
+                CornerRadius = new CornerRadius(4),
+                Padding = new Thickness(10, 8),
+                Margin = new Thickness(0, 4, 0, 0)
+            };
+            resultBorder.Child = new TextBlock
+            {
+                Text = $"✓ Result: {toolCall.Result}",
+                Foreground = new SolidColorBrush(Color.FromRgb(100, 200, 100)),
+                FontSize = 11,
+                TextWrapping = TextWrapping.Wrap
+            };
+            panel.Children.Add(resultBorder);
+        }
+
+        return panel;
+    }
+
+    /// <summary>
+    /// Formats a JSON string with basic indentation for display.
+    /// </summary>
+    private static string FormatJson(string json)
+    {
+        if (string.IsNullOrEmpty(json))
+            return json;
+
+        try
+        {
+            var doc = System.Text.Json.JsonDocument.Parse(json);
+            var options = new System.Text.Json.JsonSerializerOptions
+            {
+                WriteIndented = true
+            };
+            return System.Text.Json.JsonSerializer.Serialize(doc.RootElement, options);
+        }
+        catch
+        {
+            // If parsing fails, return as-is
+            return json;
+        }
+    }
 
     /// <summary>Tracks per-message pin/suppress toggle state. Key = message Id, value = pinned state.</summary>
     private readonly ConcurrentDictionary<Guid, bool> _messagePinStates = new();
