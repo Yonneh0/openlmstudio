@@ -647,38 +647,27 @@ public partial class MainWindow : Window
     // =========================================================================
 
     /// <summary>
-    /// Opens the OpenLMStudio root folder in the native file explorer.
-    /// Walks up from the executable to find the project root (where .git or OpenLMStudio.sln exists).
+    /// Opens the OpenLMStudio data folder (AppData directory) in the native file explorer.
     /// </summary>
     private void OnStatusFolderClicked(object? sender, RoutedEventArgs e)
     {
         try
         {
-            var exePath = Environment.ProcessPath ?? AppContext.BaseDirectory;
-            var dir = Directory.GetParent(exePath)?.FullName ?? exePath;
-
-            // Walk up looking for the project root (where .git or OpenLMStudio.sln lives)
-            for (var i = 0; i < 10; i++)
-            {
-                if (Directory.Exists(Path.Combine(dir, ".git")) ||
-                    File.Exists(Path.Combine(dir, "OpenLMStudio.sln")) ||
-                    File.Exists(Path.Combine(dir, "README.md")))
-                    break;
-                var parent = Directory.GetParent(dir);
-                if (parent == null || parent.FullName == dir) break;
-                dir = parent.FullName;
-            }
+            // Try to get the data folder from the DI container (AppDataDirectoryResolver)
+            var sp = GetAppServiceProvider();
+            var resolver = sp?.GetService<Infrastructure.Services.AppDataDirectoryResolver>();
+            var dataDir = resolver?.GetAppDataDirectory() ?? Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData);
 
             var psi = new ProcessStartInfo
             {
-                FileName = dir,
+                FileName = dataDir,
                 UseShellExecute = true
             };
             Process.Start(psi);
         }
         catch (Exception ex)
         {
-            _logger?.LogError(ex, "Failed to open folder: {Folder}", AppContext.BaseDirectory);
+            _logger?.LogError(ex, "Failed to open folder");
             ShowError($"Failed to open folder: {ex.Message}");
         }
     }
