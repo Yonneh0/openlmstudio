@@ -905,13 +905,12 @@
               </Border>
           </Popup>
 
-        <!-- Tool call popup (opens upward from the Tools button) -->
-        <Canvas Grid.Row="2" Grid.ColumnSpan="3">
+        <!-- Tool call popup (opens from the Tools button, uses a Canvas overlay) -->
+        <Canvas Grid.Row="1" Grid.Column="1" Panel.ZIndex="1000">
             <Popup x:Name="ToolCallPopup"
-                   PlacementTarget="{Binding ElementName=ToolsButton}"
                    Placement="Bottom"
                    HorizontalOffset="0"
-                   VerticalOffset="4"
+                   VerticalOffset="0"
                    IsOpen="False">
                 <Border Background="{StaticResource BgSecondary}"
                         BorderBrush="#333338"

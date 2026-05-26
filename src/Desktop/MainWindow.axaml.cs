@@ -1080,6 +1080,7 @@ public partial class MainWindow : Window
         if (_agentToolExecutor == null)
         {
             _logger?.LogWarning("AgentToolExecutor not resolved — cannot open tool call popup");
+            Avalonia.Controls.MessageBox.Show("Debug: AgentToolExecutor is null. Click Tools button again to retry.");
             return;
         }
 
@@ -1094,6 +1095,11 @@ public partial class MainWindow : Window
         {
             ToolCallPopup.PlacementTarget = ToolsButton;
             ToolCallPopup.SetValue(Avalonia.Controls.Primitives.Popup.IsOpenProperty, true);
+            _logger?.LogInformation("ToolCallPopup opened — PlacementTarget={Target}, Children={Count}", ToolsButton?.Name, ToolListPanel?.Children.Count);
+        }
+        else
+        {
+            _logger?.LogWarning("ToolCallPopup is null in OnToolsButtonClicked");
         }
     }
 
