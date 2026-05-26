@@ -1080,7 +1080,6 @@ public partial class MainWindow : Window
         if (_agentToolExecutor == null)
         {
             _logger?.LogWarning("AgentToolExecutor not resolved — cannot open tool call popup");
-            Avalonia.Controls.MessageBox.Show("Debug: AgentToolExecutor is null. Click Tools button again to retry.");
             return;
         }
 
