@@ -5,9 +5,10 @@
     HorizontalAlignment="Center"
     VerticalAlignment="Center">
 
-    <Border Background="{StaticResource BgSecondary}"
+    <Border x:Name="TileBorder" Background="{StaticResource BgSecondary}"
             CornerRadius="24"
-            Margin="8">
+            Margin="8"
+            PointerPressed="OnTileClicked">
         <TextBlock Text="Pingu"
                    FontSize="14"
                    TextAlignment="Center"

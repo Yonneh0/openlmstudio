@@ -1183,6 +1183,7 @@ public partial class MainWindow : Window
         if (_activeToolCallForm != null)
         {
             _activeToolCallForm.Dispose();
+            _activeToolCallForm = null;
         }
 
         // Create and show the form
@@ -1314,28 +1315,8 @@ public partial class MainWindow : Window
             // Create the folder if it doesn't exist
             Directory.CreateDirectory(exampleChatsDir);
 
-            // Copy from project's ExampleChats if AppData's is empty
-            if (!Directory.GetFiles(exampleChatsDir, "*.json").Any())
-            {
-                var appDir = AppContext.BaseDirectory;
-                var projectExampleChats = Path.Combine(appDir, "ExampleChats");
-                if (Directory.Exists(projectExampleChats) && Directory.GetFiles(projectExampleChats, "*.json").Any())
-                {
-                    foreach (var file in Directory.GetFiles(projectExampleChats, "*.json"))
-                    {
-                        try
-                        {
-                            var dest = Path.Combine(exampleChatsDir, Path.GetFileName(file));
-                            File.Copy(file, dest, true);
-                            _logger?.LogDebug("Copied example chat {File} to {Dest}", file, dest);
-                        }
-                        catch (Exception ex)
-                        {
-                            _logger?.LogWarning(ex, "Failed to copy example chat {File}", file);
-                        }
-                    }
-                }
-            }
+            // ExampleChats is now a permanent AppData folder — no copy needed.
+            // The portable exe always reads/writes data from AppData, never from the exe directory.
 
             if (!Directory.Exists(exampleChatsDir))
             {
@@ -1347,11 +1328,14 @@ public partial class MainWindow : Window
             var chatFiles = Directory.GetFiles(exampleChatsDir, "*.json");
             var loaded = 0;
 
+            // Await each import sequentially to avoid race conditions where multiple files
+            // deserialize and save concurrently, causing the second file's save to overwrite
+            // the first file's persisted state before it's written to disk.
             foreach (var file in chatFiles)
             {
                 try
                 {
-                    await _conversationManager.ImportChatAsync(file);
+                    await _conversationManager.ImportChatAsync(file).ConfigureAwait(false);
                     loaded++;
                 }
                 catch (Exception ex)
@@ -1360,7 +1344,7 @@ public partial class MainWindow : Window
                 }
             }
 
-            // Switch to chat tab and refresh the list
+            // Switch to chat tab and refresh the list (after all imports complete)
             ShowTab("Chat");
             RefreshChatListAsync();
 

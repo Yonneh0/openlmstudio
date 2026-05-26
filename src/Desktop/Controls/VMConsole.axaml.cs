@@ -42,6 +42,9 @@ public partial class VMConsole : UserControl
     {
         Dispatcher.UIThread.Post(() =>
         {
+            if (string.IsNullOrEmpty(text))
+                return;
+
             var lines = text.Split('\n', StringSplitOptions.RemoveEmptyEntries);
             foreach (var line in lines)
             {
@@ -58,6 +61,9 @@ public partial class VMConsole : UserControl
     {
         Dispatcher.UIThread.Post(() =>
         {
+            if (string.IsNullOrEmpty(prompt))
+                return;
+
             _prompt = prompt;
             _lines.Add(new ConsoleLine(new List<AnsiChar> { new(' ', 7) }));
             Render();
@@ -82,7 +88,13 @@ public partial class VMConsole : UserControl
     private void OnCopyClicked(object? sender, RoutedEventArgs e)
     {
         var text = string.Join("\n", _lines.Select(l => l.Text));
-        // In production, use Avalonia's clipboard API
+        var clipboard = TopLevel.GetTopLevel(this)?.Clipboard;
+        if (clipboard != null)
+        {
+            var data = new Avalonia.Input.DataTransfer();
+            data.Add(Avalonia.Input.DataTransferItem.CreateText(text));
+            _ = clipboard.SetDataAsync(data);
+        }
     }
 
     private void OnKeyDown(object? sender, KeyEventArgs e)
@@ -110,10 +122,43 @@ public partial class VMConsole : UserControl
             _inputColumn = 0;
             Render();
         }
+        else if (e.Key == Key.Space)
+        {
+            _inputBuffer.Append(' ');
+            _inputColumn++;
+            Render();
+        }
+        else if (e.Key >= Key.D0 && e.Key <= Key.D9)
+        {
+            var digit = (char)((int)Key.D0 + (int)e.Key - (int)Key.D0);
+            _inputBuffer.Append(digit);
+            _inputColumn++;
+            Render();
+        }
         else if (e.Key >= Key.A && e.Key <= Key.Z)
         {
             _inputBuffer.Append(char.ToLower((char)((int)Key.A + (int)e.Key - (int)Key.A)));
             _inputColumn++;
+            Render();
+        }
+        else if (e.Key == Key.Tab)
+        {
+            var spaces = 4 - (_inputColumn % 4);
+            for (var s = 0; s < spaces; s++)
+            {
+                _inputBuffer.Append(' ');
+                _inputColumn++;
+            }
+            Render();
+        }
+        else if (e.Key == Key.Left)
+        {
+            _inputColumn = Math.Max(0, _inputColumn - 1);
+            Render();
+        }
+        else if (e.Key == Key.Right)
+        {
+            _inputColumn = Math.Min(_inputBuffer.Length, _inputColumn + 1);
             Render();
         }
     }
@@ -129,7 +174,6 @@ public partial class VMConsole : UserControl
         {
             if (text[i] == '\x1b' && i + 1 < text.Length && text[i + 1] == '[')
             {
-                // Parse ANSI escape sequence
                 var j = i + 2;
                 var seq = new StringBuilder();
                 while (j < text.Length && char.IsAsciiLetter(text[j]))
@@ -149,7 +193,7 @@ public partial class VMConsole : UserControl
                             if (c == 0) { fgColor = 7; bgColor = 0; }
                             else if (c <= 37) fgColor = c - 30;
                             else if (c <= 47) bgColor = c - 40;
-                            else if (c == 1) fgColor = Math.Min(15, fgColor + 8); // bold
+                            else if (c == 1) fgColor = Math.Min(15, fgColor + 8);
                         }
                     }
                 }
@@ -209,56 +253,53 @@ public partial class VMConsole : UserControl
         }
 
         // Render input line
-        if (_lines.Count > 0)
+        var inputRow = Rows - 1;
+        var inputCol = 0;
+
+        // Prompt
+        for (var i = 0; i < _prompt.Length && inputCol < Columns; i++)
         {
-            var inputRow = Rows - 1;
-            var inputCol = 0;
-
-            // Prompt
-            for (var i = 0; i < _prompt.Length && inputCol < Columns; i++)
+            var text = new TextBlock
             {
-                var text = new TextBlock
-                {
-                    Text = _prompt[i].ToString(),
-                    FontFamily = new FontFamily("Consolas, 'Courier New', monospace"),
-                    FontSize = TerminalFontSize,
-                    Foreground = Brushes.Yellow,
-                };
-                Canvas.SetLeft(text, inputCol * FontWidth);
-                Canvas.SetTop(text, inputRow * FontHeight);
-                _canvas.Children.Add(text);
-                inputCol++;
-            }
-
-            // Input buffer
-            for (var i = 0; i < _inputBuffer.Length && inputCol < Columns; i++)
-            {
-                var text = new TextBlock
-                {
-                    Text = _inputBuffer[i].ToString(),
-                    FontFamily = new FontFamily("Consolas, 'Courier New', monospace"),
-                    FontSize = TerminalFontSize,
-                    Foreground = Brushes.White,
-                };
-                Canvas.SetLeft(text, inputCol * FontWidth);
-                Canvas.SetTop(text, inputRow * FontHeight);
-                _canvas.Children.Add(text);
-                inputCol++;
-            }
-
-            // Cursor
-            var cursorX = (inputCol) * FontWidth;
-            var cursorY = inputRow * FontHeight;
-            var cursorRect = new Rectangle
-            {
-                Width = FontWidth - 1,
-                Height = FontHeight - 2,
-                Fill = Brushes.White,
+                Text = _prompt[i].ToString(),
+                FontFamily = new FontFamily("Consolas, 'Courier New', monospace"),
+                FontSize = TerminalFontSize,
+                Foreground = Brushes.Yellow,
             };
-            Canvas.SetLeft(cursorRect, cursorX);
-            Canvas.SetTop(cursorRect, cursorY);
-            _canvas.Children.Add(cursorRect);
+            Canvas.SetLeft(text, inputCol * FontWidth);
+            Canvas.SetTop(text, inputRow * FontHeight);
+            _canvas.Children.Add(text);
+            inputCol++;
         }
+
+        // Input buffer
+        for (var i = 0; i < _inputBuffer.Length && inputCol < Columns; i++)
+        {
+            var text = new TextBlock
+            {
+                Text = _inputBuffer[i].ToString(),
+                FontFamily = new FontFamily("Consolas, 'Courier New', monospace"),
+                FontSize = TerminalFontSize,
+                Foreground = Brushes.White,
+            };
+            Canvas.SetLeft(text, inputCol * FontWidth);
+            Canvas.SetTop(text, inputRow * FontHeight);
+            _canvas.Children.Add(text);
+            inputCol++;
+        }
+
+        // Cursor
+        var cursorX = (inputCol) * FontWidth;
+        var cursorY = inputRow * FontHeight;
+        var cursorRect = new Rectangle
+        {
+            Width = FontWidth - 1,
+            Height = FontHeight - 2,
+            Fill = Brushes.White,
+        };
+        Canvas.SetLeft(cursorRect, cursorX);
+        Canvas.SetTop(cursorRect, cursorY);
+        _canvas.Children.Add(cursorRect);
     }
 
     private static Brush GetBrush(int color, bool isBackground = false)
@@ -276,18 +317,15 @@ public partial class VMConsole : UserControl
 
     private void ScrollToBottom()
     {
-        Dispatcher.UIThread.Post(() =>
+        if (TerminalScrollViewer is ScrollViewer sv)
         {
-            if (TerminalScrollViewer is ScrollViewer sv)
+            var content = sv.Content;
+            if (content is Panel p)
             {
-                var content = sv.Content;
-                if (content is Panel p)
-                {
-                    var height = p.Bounds.Height;
-                    sv.Offset = new Vector(sv.Offset.X, height);
-                }
+                var height = p.Bounds.Height;
+                sv.Offset = new Vector(sv.Offset.X, height);
             }
-        });
+        }
     }
 
     private record ConsoleLine(List<AnsiChar> Chars)

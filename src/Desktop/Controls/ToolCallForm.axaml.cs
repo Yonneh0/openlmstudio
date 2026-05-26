@@ -2,7 +2,9 @@ namespace OpenLMStudio.Desktop.Controls;
 
 using System;
 using System.Collections.Generic;
+using System.Collections.ObjectModel;
 using System.Linq;
+using System.Threading;
 using System.Threading.Tasks;
 using Avalonia;
 using Avalonia.Controls;
@@ -10,6 +12,7 @@ using Avalonia.Interactivity;
 using Avalonia.Media;
 using Avalonia.Platform.Storage;
 using Avalonia.Threading;
+using Microsoft.Extensions.Logging;
 using OpenLMStudio.Application.Services.Agent;
 using OpenLMStudio.Domain.Models;
 
@@ -20,9 +23,13 @@ public partial class ToolCallForm : UserControl, IDisposable
 {
     private readonly ToolDefinition _toolDefinition;
     private readonly AgentToolExecutor _toolExecutor;
+    private readonly ILogger<ToolCallForm>? _logger;
     private readonly Dictionary<string, object> _parameterValues;
     private readonly Action<ToolCallForm>? _onCancel;
     private readonly Func<ToolCallForm, Task>? _onExecute;
+    private bool _disposed;
+    private int _cancelled;
+    private bool _formBuilt;
 
     /// <summary>
     /// Event fired when the form is cancelled.
@@ -37,49 +44,65 @@ public partial class ToolCallForm : UserControl, IDisposable
     /// <summary>
     /// Creates a new ToolCallForm for the given tool definition.
     /// </summary>
-    public ToolCallForm(ToolDefinition toolDefinition, AgentToolExecutor toolExecutor)
+    public ToolCallForm(ToolDefinition toolDefinition, AgentToolExecutor toolExecutor, ILogger<ToolCallForm>? logger = null)
     {
         InitializeComponent();
-        _toolDefinition = toolDefinition;
-        _toolExecutor = toolExecutor;
+        _toolDefinition = toolDefinition ?? throw new ArgumentNullException(nameof(toolDefinition));
+        _toolExecutor = toolExecutor ?? throw new ArgumentNullException(nameof(toolExecutor));
+        _logger = logger;
         _parameterValues = new Dictionary<string, object>();
         ToolNameText.Text = toolDefinition.Name;
         ToolIconText.Text = GetToolIcon(toolDefinition.Name);
-        BuildForm();
     }
 
     /// <summary>
     /// Creates a new ToolCallForm with a custom execute callback.
     /// </summary>
-    public ToolCallForm(ToolDefinition toolDefinition, AgentToolExecutor toolExecutor, Func<ToolCallForm, Task> onExecute)
+    public ToolCallForm(ToolDefinition toolDefinition, AgentToolExecutor toolExecutor, Func<ToolCallForm, Task> onExecute, ILogger<ToolCallForm>? logger = null)
     {
         InitializeComponent();
-        _toolDefinition = toolDefinition;
-        _toolExecutor = toolExecutor;
+        _toolDefinition = toolDefinition ?? throw new ArgumentNullException(nameof(toolDefinition));
+        _toolExecutor = toolExecutor ?? throw new ArgumentNullException(nameof(toolExecutor));
+        _logger = logger;
         _parameterValues = new Dictionary<string, object>();
         _onExecute = onExecute;
         ToolNameText.Text = toolDefinition.Name;
         ToolIconText.Text = GetToolIcon(toolDefinition.Name);
-        BuildForm();
     }
 
     /// <summary>
     /// Creates a new ToolCallForm with a custom cancel callback.
     /// </summary>
-    public ToolCallForm(ToolDefinition toolDefinition, AgentToolExecutor toolExecutor, Action<ToolCallForm> onCancel)
+    public ToolCallForm(ToolDefinition toolDefinition, AgentToolExecutor toolExecutor, Action<ToolCallForm> onCancel, ILogger<ToolCallForm>? logger = null)
     {
         InitializeComponent();
-        _toolDefinition = toolDefinition;
-        _toolExecutor = toolExecutor;
+        _toolDefinition = toolDefinition ?? throw new ArgumentNullException(nameof(toolDefinition));
+        _toolExecutor = toolExecutor ?? throw new ArgumentNullException(nameof(toolExecutor));
+        _logger = logger;
         _parameterValues = new Dictionary<string, object>();
         _onCancel = onCancel;
         ToolNameText.Text = toolDefinition.Name;
         ToolIconText.Text = GetToolIcon(toolDefinition.Name);
-        BuildForm();
     }
 
     private void BuildForm()
     {
+        if (_formBuilt) return;
+        _formBuilt = true;
+
+        if (_toolDefinition.ParameterSchema == null || _toolDefinition.ParameterSchema.Count == 0)
+        {
+            _logger?.LogDebug("ToolCallForm: No parameters for tool '{ToolName}'", _toolDefinition.Name);
+            return;
+        }
+
+        // Ensure all existing parameter values are available for initialization
+        foreach (var param in _toolDefinition.ParameterSchema)
+        {
+            if (!_parameterValues.ContainsKey(param.Key))
+                _parameterValues[param.Key] = param.Value;
+        }
+
         foreach (var param in _toolDefinition.ParameterSchema)
         {
             var row = CreateParameterRow(param.Key, param.Value);
@@ -89,6 +112,9 @@ public partial class ToolCallForm : UserControl, IDisposable
 
     private Control CreateParameterRow(string paramName, string paramType)
     {
+        if (string.IsNullOrWhiteSpace(paramName))
+            return new TextBlock { Text = "Invalid parameter", Foreground = GetResource<SolidColorBrush>("AccentRed"), Margin = new Thickness(0, 4, 0, 0) };
+
         var outer = new Grid();
         outer.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
         outer.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Star });
@@ -200,7 +226,10 @@ public partial class ToolCallForm : UserControl, IDisposable
                 if (files?.Count > 0)
                     tb.Text = files[0].Path.ToString();
             }
-            catch { /* ignore */ }
+            catch (Exception ex)
+            {
+                _logger?.LogWarning(ex, "Failed to select folder for parameter '{ParamName}'", paramName);
+            }
         };
 
         row.Children.Add(tb);
@@ -253,6 +282,20 @@ public partial class ToolCallForm : UserControl, IDisposable
             BorderThickness = new Thickness(1),
             BorderBrush = GetResource<SolidColorBrush>("TextMuted")
         };
+
+        // Initialize toggle state from existing parameter value
+        if (_parameterValues.TryGetValue(paramName, out var existingValue) && existingValue is bool existingBool)
+        {
+            toggle.IsChecked = existingBool;
+            toggle.Content = existingBool ? "On" : "Off";
+            toggle.Background = existingBool
+                ? GetResource<SolidColorBrush>("AccentBlue")
+                : GetResource<SolidColorBrush>("BgTertiary");
+            toggle.Foreground = existingBool
+                ? Brushes.White
+                : GetResource<SolidColorBrush>("TextPrimary");
+        }
+
         toggle.AddHandler(ToggleButton.IsCheckedChangedEvent, (s, e) =>
         {
             var isChecked = ((ToggleButton)s!).IsChecked == true;
@@ -323,11 +366,11 @@ public partial class ToolCallForm : UserControl, IDisposable
         return tb;
     }
 
-    private T GetResource<T>(string name) where T : Avalonia.Media.IBrush
+    private T GetResource<T>(string name) where T : IBrush
     {
-        var result = (T)(this.FindResource(name) ?? Avalonia.Media.Brushes.Gray);
+        var result = (T?)(this.FindResource(name) ?? Brushes.Gray);
         if (result == null)
-            System.Diagnostics.Debug.WriteLine($"[ToolCallForm] Resource '{name}' not found, using default");
+            _logger?.LogDebug("ToolCallForm: Resource '{Name}' not found, using default", name);
         return result!;
     }
 
@@ -387,6 +430,7 @@ public partial class ToolCallForm : UserControl, IDisposable
         }
         catch (Exception ex)
         {
+            _logger?.LogError(ex, "ToolCallForm: Error executing tool '{ToolName}'", _toolDefinition.Name);
             await Dispatcher.UIThread.InvokeAsync(() =>
             {
                 ResultText.Text = $"Error: {ex.Message}";
@@ -406,23 +450,40 @@ public partial class ToolCallForm : UserControl, IDisposable
 
     private void OnCancelClicked(object? sender, RoutedEventArgs e)
     {
-        if (_onCancel != null)
-            _onCancel(this);
-        else
-            this.IsVisible = false;
+        if (Interlocked.Exchange(ref _cancelled, 1) == 0)
+        {
+            if (_onCancel != null)
+                _onCancel(this);
+            else
+                this.IsVisible = false;
+        }
+    }
+
+    /// <summary>
+    /// Called when the form is first loaded into the visual tree.
+    /// </summary>
+    protected override void OnLoaded(RoutedEventArgs e)
+    {
+        base.OnLoaded(e);
+        BuildForm();
     }
 
     /// <summary>
     /// Gets the collected parameter values.
     /// </summary>
-    public IReadOnlyDictionary<string, object> GetParameters() => _parameterValues;
+    public IReadOnlyDictionary<string, object> GetParameters() => new ReadOnlyDictionary<string, object>(_parameterValues);
 
     /// <summary>
     /// Sets the value of a specific parameter.
     /// </summary>
+    /// <param name="paramName">The parameter name to set.</param>
+    /// <param name="value">The value to set.</param>
+    /// <exception cref="ArgumentNullException">Thrown when paramName is null or empty.</exception>
     public void SetParameterValue(string paramName, object value)
     {
-        _parameterValues[paramName] = value;
+        if (string.IsNullOrEmpty(paramName))
+            throw new ArgumentNullException(nameof(paramName));
+        _parameterValues[paramName] = value ?? throw new ArgumentNullException(nameof(value));
     }
 
     /// <summary>
@@ -430,13 +491,22 @@ public partial class ToolCallForm : UserControl, IDisposable
     /// </summary>
     public void Dispose()
     {
+        if (_disposed)
+            return;
+
+        _disposed = true;
+
         if (PopupReference != null)
         {
             PopupReference.SetValue(Avalonia.Controls.Primitives.Popup.IsOpenProperty, false);
+            PopupReference.Child = null;
             PopupReference = null;
         }
 
-        Cancelled?.Invoke();
+        if (Interlocked.Exchange(ref _cancelled, 1) == 0)
+        {
+            Cancelled?.Invoke();
+        }
         GC.SuppressFinalize(this);
     }
 }

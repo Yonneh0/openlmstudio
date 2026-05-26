@@ -24,8 +24,8 @@ public static class DependencyInjection
         // ServerService manages local inference server lifecycle (ASP.NET Core Kestrel)
         services.AddSingleton<IServerService, Services.ServerService>();
 
-        // ConversationManager handles conversation CRUD and persistence
-        services.AddSingleton<IConversationManager, Services.FileConversationManager>();
+        // ChatPersistenceService handles conversation CRUD and persistence (consolidated from ChatPersistenceService + FileConversationManager)
+        services.AddSingleton<IConversationManager, Services.ChatPersistenceService>();
 
         // DeviceMonitor tracks hardware capabilities (GPU, CPU, memory)
         services.AddSingleton<IDeviceMonitor, Services.WindowsDeviceMonitor>();

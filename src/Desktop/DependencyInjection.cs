@@ -40,8 +40,8 @@ public static class DependencyInjection
         services.AddSingleton<InfraServices.MainAIManager>();
         services.AddSingleton<InfraServices.SystemAIManager>();
 
-        // ConversationManager (required by App.axaml.cs)
-        services.AddSingleton<IConversationManager, InfraServices.FileConversationManager>();
+        // ChatPersistenceService (required by App.axaml.cs)
+        services.AddSingleton<IConversationManager, InfraServices.ChatPersistenceService>();
 
         // AppDataDirectoryResolver (required by ChatContextManager and other services)
         services.AddSingleton<InfraServices.AppDataDirectoryResolver>();

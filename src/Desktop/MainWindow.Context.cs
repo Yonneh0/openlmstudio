@@ -59,56 +59,7 @@ public partial class MainWindow
 
             foreach (var segment in regularSegments)
             {
-                // Left sidebar compressed segment
-                var leftSegmentBorder = new Border
-                {
-                    Background = new SolidColorBrush(Color.FromRgb(45, 45, 48)),
-                    CornerRadius = new CornerRadius(4),
-                    Padding = new Thickness(12, 8),
-                    Margin = new Thickness(0, 0, 0, 6)
-                };
-
-                var leftGrid = new Grid();
-                leftGrid.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Star });
-                leftGrid.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
-
-                var leftLabel = new TextBlock
-                {
-                    Text = segment.Content != null && segment.Content.Length > 100
-                        ? segment.Content[..100] + "..."
-                        : segment.Content ?? "",
-                    Foreground = new SolidColorBrush(Color.FromRgb(204, 204, 204)),
-                    FontSize = 10
-                };
-
-                // Compression indicator
-                var indicatorText = segment.IsPinned ? "🟢 Uncompressed (pinned)"
-                    : segment.Content != null && segment.Content.Length == 0 ? "🔴 Evicted"
-                    : "🟡 Compressed";
-                var indicatorBorder = new Border
-                {
-                    Background = segment.IsPinned ? new SolidColorBrush(Color.FromRgb(46, 125, 50))
-                        : segment.Content != null && segment.Content.Length == 0 ? new SolidColorBrush(Color.FromRgb(244, 67, 54))
-                        : new SolidColorBrush(Color.FromRgb(255, 152, 0)),
-                    CornerRadius = new CornerRadius(2),
-                    Padding = new Thickness(6, 1)
-                };
-                indicatorBorder.Child = new TextBlock
-                {
-                    Text = indicatorText,
-                    FontSize = 9,
-                    Foreground = new SolidColorBrush(Color.FromRgb(255, 255, 255))
-                };
-
-                Grid.SetColumn(leftLabel, 0);
-                Grid.SetColumn(indicatorBorder, 1);
-                leftGrid.Children.Add(leftLabel);
-                leftGrid.Children.Add(indicatorBorder);
-                leftSegmentBorder.Child = leftGrid;
-
-                CompressedSegmentsContainer?.Children.Add(leftSegmentBorder);
-
-                // Message segment with pin/suppress controls (added to left panel's CompressedSegmentsContainer)
+                // Single merged segment border with label, compression indicator, and controls
                 var segmentBorder = new Border
                 {
                     Background = new SolidColorBrush(Color.FromRgb(45, 45, 48)),
@@ -120,6 +71,26 @@ public partial class MainWindow
                 var segmentGrid = new Grid();
                 segmentGrid.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Star });
                 segmentGrid.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
+
+                // Compression indicator
+                var indicatorText = segment.IsPinned ? "🟢 Uncompressed (pinned)"
+                    : segment.Content != null && segment.Content.Length == 0 ? "🔴 Evicted"
+                    : "🟡 Compressed";
+                var indicatorBorder = new Border
+                {
+                    Background = segment.IsPinned ? new SolidColorBrush(Color.FromRgb(46, 125, 50))
+                        : segment.Content != null && segment.Content.Length == 0 ? new SolidColorBrush(Color.FromRgb(244, 67, 54))
+                        : new SolidColorBrush(Color.FromRgb(255, 152, 0)),
+                    CornerRadius = new CornerRadius(2),
+                    Padding = new Thickness(6, 1),
+                    Margin = new Thickness(0, 0, 8, 0)
+                };
+                indicatorBorder.Child = new TextBlock
+                {
+                    Text = indicatorText,
+                    FontSize = 9,
+                    Foreground = new SolidColorBrush(Color.FromRgb(255, 255, 255))
+                };
 
                 var segmentLabel = new TextBlock
                 {
@@ -142,10 +113,20 @@ public partial class MainWindow
                 suppressBtn.Click += OnMessageSuppressClicked;
                 controlStack.Children.Add(suppressBtn);
 
+                // Row 1: label + indicator
+                var row1Grid = new Grid();
+                row1Grid.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Star });
+                row1Grid.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
                 Grid.SetColumn(segmentLabel, 0);
-                Grid.SetColumn(controlStack, 1);
-                segmentGrid.Children.Add(segmentLabel);
-                segmentGrid.Children.Add(controlStack);
+                Grid.SetColumn(indicatorBorder, 1);
+                row1Grid.Children.Add(segmentLabel);
+                row1Grid.Children.Add(indicatorBorder);
+
+                // Row 2: controls
+                Grid.SetColumn(controlStack, 0);
+                row1Grid.Children.Add(controlStack);
+
+                segmentGrid.Children.Add(row1Grid);
                 segmentBorder.Child = segmentGrid;
 
                 CompressedSegmentsContainer?.Children.Add(segmentBorder);

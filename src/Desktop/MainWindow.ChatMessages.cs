@@ -384,15 +384,24 @@ public partial class MainWindow
                     try
                     {
                         byte[] imageBytes;
-                        if (img.ImageData.Length < 1024 && !img.ImageData.Contains(',') && img.ImageData.All(b => b >= 32 && b < 128))
+                        if (img.ImageData.Length >= 1024 || img.ImageData.Contains(',') || !img.ImageData.All(b => b >= 32 && b < 128))
                         {
-                            // It's a base64-encoded PNG string
-                            imageBytes = Convert.FromBase64String(img.ImageData);
+                            // It's a file path or raw string — read from disk
+                            var path = img.ImageData.Trim();
+                            if (File.Exists(path))
+                            {
+                                imageBytes = File.ReadAllBytes(path);
+                            }
+                            else
+                            {
+                                // Treat as byte array serialized as a string
+                                imageBytes = Encoding.UTF8.GetBytes(img.ImageData);
+                            }
                         }
                         else
                         {
-                            // It's already a byte array serialized as a string
-                            imageBytes = Encoding.UTF8.GetBytes(img.ImageData);
+                            // It's a base64-encoded PNG string
+                            imageBytes = Convert.FromBase64String(img.ImageData);
                         }
                         using var ms = new MemoryStream(imageBytes);
                         var image = new Avalonia.Media.Imaging.Bitmap(ms);

@@ -28,9 +28,6 @@ public partial class MainModelSelector : UserControl
     private LogViewerService? _logViewer;
     private readonly ILogger<MainModelSelector>? _logger;
     private readonly ObservableCollection<MainModelItem> _modelItems = new();
-#pragma warning disable CS0414 // Field is assigned but its value is never used — reserved for future re-initialization guard
-    private bool _isInitialized; // Set in OnLoaded to prevent re-initialization
-#pragma warning restore CS0414
     private bool _buttonsWired;
 
     /// <summary>
@@ -203,25 +200,24 @@ public partial class MainModelSelector : UserControl
 
         if (state.NewState == MainAIState.Running)
         {
-            StopButton.IsVisible = true;
-            RestartButton.IsVisible = true;
-            LoadModelButton.IsVisible = false;
+            StopButton?.SetValue(ContentControl.IsVisibleProperty, true);
+            RestartButton?.SetValue(ContentControl.IsVisibleProperty, true);
+            LoadModelButton?.SetValue(ContentControl.IsVisibleProperty, false);
         }
         else
         {
-            StopButton.IsVisible = false;
-            RestartButton.IsVisible = false;
-            LoadModelButton.IsVisible = true;
+            StopButton?.SetValue(ContentControl.IsVisibleProperty, false);
+            RestartButton?.SetValue(ContentControl.IsVisibleProperty, false);
+            LoadModelButton?.SetValue(ContentControl.IsVisibleProperty, true);
         }
 
         if (!string.IsNullOrEmpty(state.ModelPath))
         {
-            ModelNameText.Text = Path.GetFileNameWithoutExtension(state.ModelPath);
-            ModelPathText.Text = state.ModelPath;
+            ModelNameText?.SetText(Path.GetFileNameWithoutExtension(state.ModelPath));
+            ModelPathText?.SetValue(TextBlock.TextProperty, state.ModelPath);
         }
 
-        // Update engine info and settings (must run on UI thread)
-        Avalonia.Threading.Dispatcher.UIThread.Post(() => UpdateUI());
+        UpdateUI();
     }
 
     /// <summary>
@@ -234,41 +230,22 @@ public partial class MainModelSelector : UserControl
         var settings = _mainAIManager.CurrentSettings;
         var backend = _mainAIManager.CurrentBackend;
 
-        // Update model type
-        if (ModelTypeText != null)
-            ModelTypeText.Text = "MainAI";
+        ModelTypeText?.SetText("MainAI");
+        BackendText?.SetText(backend.ToString());
 
-        // Update backend and port
-        if (BackendText != null)
-            BackendText.Text = backend.ToString();
+        var activeSlot = _mainAIManager.LoadedModels.FirstOrDefault(m => m.Id == _mainAIManager.ActiveModelId);
+        PortText?.SetValue(TextBlock.TextProperty, activeSlot != null && activeSlot.Port > 0 ? $"Port: {activeSlot.Port}" : "Port: --");
 
-        if (PortText != null)
-        {
-            var activeSlot = _mainAIManager.LoadedModels.FirstOrDefault(m => m.Id == _mainAIManager.ActiveModelId);
-            PortText.Text = activeSlot != null && activeSlot.Port > 0 ? $"Port: {activeSlot.Port}" : "Port: --";
-        }
+        var count = _mainAIManager.LoadedModels.Count;
+        ModelCountText?.SetText(count == 1 ? "1 model" : $"{count} models");
 
-        // Update model count
-        if (ModelCountText != null)
-        {
-            var count = _mainAIManager.LoadedModels.Count;
-            ModelCountText.Text = count == 1 ? "1 model" : $"{count} models";
-        }
-
-        // Update settings (safe even if settings is null)
         if (settings != null)
         {
-            if (GpuLayersText != null)
-                GpuLayersText.Text = $"GPU: {settings.GpuLayers}";
-
-            if (CtxSizeText != null)
-                CtxSizeText.Text = $"Ctx: {settings.ContextSize}";
-
-            if (BatchSizeText != null)
-                BatchSizeText.Text = $"Batch: {settings.BatchSize}";
+            GpuLayersText?.SetText($"GPU: {settings.GpuLayers}");
+            CtxSizeText?.SetText($"Ctx: {settings.ContextSize}");
+            BatchSizeText?.SetText($"Batch: {settings.BatchSize}");
         }
 
-        // Update model list
         UpdateModelList();
     }
 
@@ -379,6 +356,10 @@ public partial class MainModelSelector : UserControl
         {
             // Restart on a new port (don't reuse the old one)
             _ = _mainAIManager.LoadModelAsync(_mainAIManager.ActiveModelPath);
+        }
+        else
+        {
+            _logger?.LogWarning("MainModelSelector: ActiveModelPath is null, cannot restart");
         }
     }
 
@@ -521,24 +502,12 @@ public partial class MainModelSelector : UserControl
         });
     }
 
-    private static string FormatSize(long bytes)
-    {
-        return bytes switch
-        {
-            < 1024 => $"{bytes} B",
-            < 1024 * 1024 => $"{bytes / (1024.0):F1} KB",
-            < 1024 * 1024 * 1024 => $"{bytes / (1024.0 * 1024):F1} MB",
-            _ => $"{bytes / (1024.0 * 1024 * 1024):F1} GB"
-        };
-    }
-
     /// <summary>
     /// Called after the control is loaded into the visual tree.
     /// </summary>
     protected override void OnLoaded(RoutedEventArgs e)
     {
         base.OnLoaded(e);
-        _isInitialized = true;
         _ = DiscoverModelsAsync();
     }
 }
@@ -547,3 +516,25 @@ public partial class MainModelSelector : UserControl
 /// Represents a loaded model item for the UI.
 /// </summary>
 public record MainModelItem(string Name, int Port, bool IsActive);
+
+/// <summary>
+/// Extension methods for setting text on controls.
+/// </summary>
+public static class TextExtensions
+{
+    /// <summary>
+    /// Helper extension to set Text property safely.
+    /// </summary>
+    public static void SetText<T>(this T? control, string value) where T : Control
+    {
+        control?.SetValue(ContentControl.ContentProperty, value);
+    }
+
+    /// <summary>
+    /// Sets the Text property of a TextBox directly.
+    /// </summary>
+    public static void SetTextBoxText(TextBox? tb, string value)
+    {
+        tb?.SetValue(TextBox.TextProperty, value);
+    }
+}

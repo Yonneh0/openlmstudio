@@ -1,3 +1,5 @@
+using System;
+using System.Threading.Tasks;
 using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Interactivity;
@@ -14,25 +16,34 @@ namespace OpenLMStudio.Desktop.Controls;
 public partial class PinguAvatar : UserControl, IDisposable
 {
     private readonly IPinguStore _pingu;
-    private readonly Timer? _mouthTimer;
+    private readonly Timer _mouthTimer;
+    private readonly Timer _blinkTimer;
     private int _mouthFrame;
+    private bool _disposed;
 
     public PinguAvatar(IPinguStore pingu)
     {
-        _pingu = pingu;
+        _pingu = pingu ?? throw new ArgumentNullException(nameof(pingu));
         InitializeComponent();
         _pingu.OnStateChanged += OnPinguStateChanged;
 
-        _mouthTimer = new Timer(OnMouthTick, null, Timeout.Infinite, Timeout.Infinite);
+        _mouthTimer = new Timer(OnMouthTick, this, Timeout.Infinite, Timeout.Infinite);
+        _blinkTimer = new Timer(OnBlinkTick, this, TimeSpan.FromSeconds(3), TimeSpan.FromSeconds(3));
     }
 
     /// <summary>
-    /// Disposes the timer and unregisters from Pingu state changes.
+    /// Disposes the timers and unregisters from Pingu state changes.
     /// </summary>
     public void Dispose()
     {
+        if (_disposed)
+            return;
+
+        _disposed = true;
         _pingu.OnStateChanged -= OnPinguStateChanged;
-        _mouthTimer?.Dispose();
+        _mouthTimer.Dispose();
+        _blinkTimer.Dispose();
+        GC.SuppressFinalize(this);
     }
 
     private void OnPinguStateChanged(object? sender, PinguStateChangedEventArgs e)
@@ -73,9 +84,9 @@ public partial class PinguAvatar : UserControl, IDisposable
 
         // Mouth animation for speaking
         if (state.Mood == PinguMood.Speaking)
-            _mouthTimer?.Change(TimeSpan.FromSeconds(0.1), TimeSpan.FromSeconds(0.1));
+            _mouthTimer.Change(TimeSpan.FromSeconds(0.1), TimeSpan.FromSeconds(0.1));
         else
-            _mouthTimer?.Change(Timeout.Infinite, Timeout.Infinite);
+            _mouthTimer.Change(Timeout.Infinite, Timeout.Infinite);
 
         // Bob animation
         var bobSpeed = state.BobSpeed;
@@ -101,8 +112,31 @@ public partial class PinguAvatar : UserControl, IDisposable
         });
     }
 
-    private void OnPointerPressed(object? sender, PointerPressedEventArgs e)
+    private void OnBlinkTick(object? state)
     {
-        _ = _pingu.ToggleMenuAsync();
+        Avalonia.Threading.Dispatcher.UIThread.InvokeAsync(() =>
+        {
+            BlinkOverlay.Opacity = 0.8;
+            // Un-blank after a short duration
+            _ = Task.Delay(TimeSpan.FromMilliseconds(150)).ContinueWith(_ =>
+            {
+                Avalonia.Threading.Dispatcher.UIThread.InvokeAsync(() =>
+                {
+                    BlinkOverlay.Opacity = 0;
+                });
+            });
+        });
+    }
+
+    private async void OnPointerPressed(object? sender, PointerPressedEventArgs e)
+    {
+        try
+        {
+            await _pingu.ToggleMenuAsync();
+        }
+        catch
+        {
+            // Log or handle error silently
+        }
     }
 }

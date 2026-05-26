@@ -209,12 +209,12 @@ public class LoraWeightMerger : IDisposable
             }
         }
 
+        var appData = Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData);
         // Search common directories for LoRA safetensors files
         var searchPaths = new[]
         {
-            Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "models", "lora"),
+            Path.Combine(appData, "OpenLMStudio", "models", "lora"),
             Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), ".openlmstudio", "models", "lora"),
-            Path.Combine(Environment.GetEnvironmentVariable("APPDATA") ?? "", "OpenLMStudio", "models", "lora"),
         };
 
         foreach (var searchPath in searchPaths)

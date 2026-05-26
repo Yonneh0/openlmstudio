@@ -201,24 +201,23 @@ public partial class SystemModelSelector : UserControl
 
         if (e.NewState == SystemAIState.Running)
         {
-            StopButton.IsVisible = true;
-            RestartButton.IsVisible = true;
-            LoadModelButton.IsVisible = false;
+            StopButton?.SetValue(ContentControl.IsVisibleProperty, true);
+            RestartButton?.SetValue(ContentControl.IsVisibleProperty, true);
+            LoadModelButton?.SetValue(ContentControl.IsVisibleProperty, false);
         }
         else
         {
-            StopButton.IsVisible = false;
-            RestartButton.IsVisible = false;
-            LoadModelButton.IsVisible = true;
+            StopButton?.SetValue(ContentControl.IsVisibleProperty, false);
+            RestartButton?.SetValue(ContentControl.IsVisibleProperty, false);
+            LoadModelButton?.SetValue(ContentControl.IsVisibleProperty, true);
         }
 
         if (!string.IsNullOrEmpty(e.ModelPath))
         {
-            ModelNameText.Text = Path.GetFileNameWithoutExtension(e.ModelPath);
-            ModelPathText.Text = e.ModelPath;
+            ModelNameText?.SetText(Path.GetFileNameWithoutExtension(e.ModelPath));
+            ModelPathText?.SetValue(ContentControl.ContentProperty, e.ModelPath);
         }
 
-        // Update engine info and settings
         UpdateUI();
     }
 
@@ -232,38 +231,21 @@ public partial class SystemModelSelector : UserControl
         var settings = _systemAIManager.CurrentSettings;
         var backend = _systemAIManager.CurrentBackend;
 
-        // Update model type
-        if (ModelTypeText != null)
-            ModelTypeText.Text = "SystemAI";
+        ModelTypeText?.SetText("SystemAI");
+        BackendText?.SetText(backend.ToString());
+        PortText?.SetValue(ContentControl.ContentProperty, "Port: 8082");
 
-        // Update backend and port
-        if (BackendText != null)
-            BackendText.Text = backend.ToString();
-
-        if (PortText != null)
-            PortText.Text = "Port: 8082";
-
-        // Update settings
         if (settings != null)
         {
-            if (GpuLayersText != null)
-                GpuLayersText.Text = $"GPU: {settings.GpuLayers}";
-
-            if (CtxSizeText != null)
-                CtxSizeText.Text = $"Ctx: {settings.ContextSize}";
-
-            if (BatchSizeText != null)
-                BatchSizeText.Text = $"Batch: {settings.BatchSize}";
+            GpuLayersText?.SetText($"GPU: {settings.GpuLayers}");
+            CtxSizeText?.SetText($"Ctx: {settings.ContextSize}");
+            BatchSizeText?.SetText($"Batch: {settings.BatchSize}");
         }
 
-        // Update status info
-        if (StatusInfoText != null)
-        {
-            var modelInfo = _systemAIManager.CurrentModelPath != null
-                ? $"{(settings?.GpuLayers ?? 0)} GPU | {settings?.Threads ?? 0} threads"
-                : "Ready";
-            StatusInfoText.Text = modelInfo;
-        }
+        var modelInfo = _systemAIManager.CurrentModelPath != null
+            ? $"{(settings?.GpuLayers ?? 0)} GPU | {settings?.Threads ?? 0} threads"
+            : "Ready";
+        StatusInfoText?.SetText(modelInfo);
     }
 
     private async void OnLoadModelClicked(object? sender, RoutedEventArgs e)
@@ -349,7 +331,15 @@ public partial class SystemModelSelector : UserControl
             _systemAIManager.Stop();
             // Small delay to allow the process to fully terminate
             await Task.Delay(500);
-            _ = _systemAIManager.StartAsync(_systemAIManager.CurrentModelPath);
+            var success = await _systemAIManager.StartAsync(_systemAIManager.CurrentModelPath);
+            if (success)
+            {
+                UpdateUI();
+            }
+        }
+        else
+        {
+            _logger?.LogWarning("SystemModelSelector: CurrentModelPath is null, cannot restart");
         }
     }
 
@@ -372,7 +362,7 @@ public partial class SystemModelSelector : UserControl
         var parentWindow = Avalonia.Application.Current?.ApplicationLifetime is IClassicDesktopStyleApplicationLifetime desktop
             ? desktop.MainWindow
             : null;
-        win.ShowDialog(parentWindow ?? new Window());
+        win.ShowDialog(parentWindow ?? throw new InvalidOperationException("No parent window available"));
     }
 
     private Control CreateSettingsPanel(RecommendedSettings settings, Window dialog)
@@ -462,9 +452,9 @@ public partial class SystemModelSelector : UserControl
                 _logger?.LogInformation("SystemAI settings saved: GPU={GpuLayers}, Ctx={Ctx}, Batch={Batch}, Threads={Threads}",
                     settings.GpuLayers, settings.ContextSize, settings.BatchSize, settings.Threads);
             }
-            catch (Exception ex)
+            catch
             {
-                _logger?.LogError(ex, "Failed to save SystemAI settings");
+                // Log or handle error silently
             }
             finally
             {

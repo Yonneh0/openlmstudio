@@ -21,14 +21,18 @@
 
         <!-- VM controls -->
         <StackPanel Orientation="Horizontal" Margin="0,0,0,8">
-            <Button Content="Start"
-                    Margin="0,0,4,0"/>
-            <Button Content="Stop"
-                    Margin="0,0,4,0"/>
-            <Button Content="Pause"
-                    Margin="0,0,4,0"/>
-            <Button Content="Resume"
-                    Margin="0,0,4,0"/>
+            <Button x:Name="VmStartButton" Content="Start"
+                    Margin="0,0,4,0"
+                    Click="OnVmStartClicked"/>
+            <Button x:Name="VmStopButton" Content="Stop"
+                    Margin="0,0,4,0"
+                    Click="OnVmStopClicked"/>
+            <Button x:Name="VmPauseButton" Content="Pause"
+                    Margin="0,0,4,0"
+                    Click="OnVmPauseClicked"/>
+            <Button x:Name="VmResumeButton" Content="Resume"
+                    Margin="0,0,4,0"
+                    Click="OnVmResumeClicked"/>
         </StackPanel>
 
         <!-- VM console -->

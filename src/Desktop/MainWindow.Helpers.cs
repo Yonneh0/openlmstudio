@@ -104,8 +104,12 @@ public partial class MainWindow
             }
             else
             {
-                // Start the server on a default port
-                var configuration = new ServerConfiguration { Port = 8080 };
+                // Start the server using the service's current config, or create one with default port
+                var configuration = _serverService.Configuration;
+                if (configuration == null)
+                {
+                    configuration = new ServerConfiguration { Port = 8080 };
+                }
                 await _serverService.StartAsync(configuration);
 
                 // Update UI to reflect running state
@@ -368,43 +372,20 @@ public partial class MainWindow
     {
         try
         {
-            if (this.Owner is Window ownerWindow)
-                new Window { Content = new TextBlock { Text = message } }.ShowDialog(ownerWindow);
-            else
-                ShowStaticError(message); // Fallback to static method
-        }
-        catch
-        {
-            System.Diagnostics.Debug.WriteLine($"Error: {message}");
-        }
-    }
+            // Try to find a parent window
+            Window? parentWindow = null;
 
-    /// <summary>
-    /// Shows a static error dialog without owner window.
-    /// </summary>
-    private static void ShowStaticError(string message)
-    {
-        try
-        {
-            // Find the first available Window to use as parent (from App.ApplicationServices)
-            var appType = typeof(App);
-            var propInfo = appType.GetProperty("ApplicationServices",
-                System.Reflection.BindingFlags.Static | System.Reflection.BindingFlags.Public);
-            var serviceProvider = propInfo?.GetValue(null) as IServiceProvider;
-
-            // Try to find the first Window via Avalonia's application lifetime
-            if (serviceProvider != null && serviceProvider.GetService<IClassicDesktopStyleApplicationLifetime>() is IClassicDesktopStyleApplicationLifetime appLifetime)
+            if (this.Owner is Window w)
             {
-                foreach (var window in appLifetime.Windows)
-                {
-                    var w = window as Window;
-                    if (w != null)
-                        new Window { Content = new TextBlock { Text = message } }.ShowDialog(w);
-                    return;
-                }
+                parentWindow = w;
+            }
+            else
+            {
+                // Try to find the first window via application lifetime
+                var appLifetime = global::Avalonia.Application.Current?.ApplicationLifetime as IClassicDesktopStyleApplicationLifetime;
+                parentWindow = appLifetime?.Windows.OfType<Window>().FirstOrDefault();
             }
 
-            // No parent window found — show without owner
             var errorWin = new Window
             {
                 Title = "OpenLMStudio - Error",
@@ -424,22 +405,14 @@ public partial class MainWindow
                 }
             };
 
-            if (App.ApplicationServices != null && App.ApplicationServices.GetService<IClassicDesktopStyleApplicationLifetime>() is IClassicDesktopStyleApplicationLifetime app)
-            {
-                foreach (var w in app.Windows)
-                {
-                    var win = w as Window;
-                    if (win != null)
-                        errorWin.ShowDialog(win);
-                    return;
-                }
-            }
-
-            errorWin.Show();
+            if (parentWindow != null)
+                errorWin.ShowDialog(parentWindow);
+            else
+                errorWin.Show();
         }
-        catch
+        catch (Exception ex)
         {
-            System.Diagnostics.Debug.WriteLine($"Error: {message}");
+            System.Diagnostics.Debug.WriteLine($"ShowError failed: {ex.Message}");
         }
     }
 
@@ -589,11 +562,11 @@ public partial class MainWindow
         catch (Exception ex)
         {
             _logger?.LogError(ex, "Failed to open settings window");
-            ShowStaticError($"Failed to open settings: {ex.Message}");
+            ShowError($"Failed to open settings: {ex.Message}");
         }
     }
 
-    // ---- Keyboard Shortcuts ----
+    // ---- Keyboard Shortcuts (kept for early-init before KeyboardService is ready) ----
 
     private void OnMainWindowKeyDown(object? sender, KeyEventArgs e)
     {
@@ -634,6 +607,17 @@ public partial class MainWindow
         if (e.KeyModifiers.HasFlag(KeyModifiers.Control) && e.Key == Key.L)
         {
             OnSettingsClicked(null, new RoutedEventArgs());
+            e.Handled = true;
+            return;
+        }
+
+        // Escape: Close popups
+        if (e.Key == Key.Escape)
+        {
+            if (GitLogPopup != null)
+                GitLogPopup.SetValue(Avalonia.Controls.Primitives.Popup.IsOpenProperty, false);
+            if (ToolCallPopup != null)
+                ToolCallPopup.SetValue(Avalonia.Controls.Primitives.Popup.IsOpenProperty, false);
             e.Handled = true;
             return;
         }

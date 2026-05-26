@@ -196,13 +196,13 @@ public partial class MainWindow
         using var stream = await response.Content.ReadAsStreamAsync();
         using var reader = new StreamReader(stream);
         var currentData = new StringBuilder();
-        bool inDataEvent = false;
+        var inDataEvent = false;
         while (!reader.EndOfStream && _isStreaming)
         {
             var line = await reader.ReadLineAsync();
             if (line == null) break;
 
-            // Parse SSE event format: "data: {\"token\": \"...\", ...}" or "data: [DONE]"
+            // SSE format: blank lines separate events
             if (inDataEvent && line.Length > 0)
             {
                 // Accumulate multi-line data events
@@ -210,40 +210,40 @@ public partial class MainWindow
                 continue;
             }
 
-            inDataEvent = false;
-
-            // SSE events are separated by blank lines — process the accumulated event now
-            try
+            // Process the accumulated event
+            var dataStr = currentData.ToString();
+            if (!string.IsNullOrEmpty(dataStr))
             {
-                var dataStr = currentData.ToString();
-                if (string.IsNullOrEmpty(dataStr)) continue; // Skip empty events
-
                 if (dataStr == "[DONE]") break; // Stream complete
 
-                var jsonDoc = System.Text.Json.JsonDocument.Parse(dataStr);
-                var tokenElement = jsonDoc.RootElement.GetProperty("token");
-                var tokenValue = tokenElement.GetString();
-
-                await Dispatcher.UIThread.InvokeAsync(() =>
+                try
                 {
-                    if (_assistantTextBlock != null)
+                    var jsonDoc = System.Text.Json.JsonDocument.Parse(dataStr);
+                    if (jsonDoc.RootElement.TryGetProperty("token", out var tokenElement))
                     {
-                        _assistantTextBlock.Text += (tokenValue ?? "");
-                        ScrollToBottomAsync().ConfigureAwait(false).GetAwaiter().GetResult();
-                    }
-                });
+                        var tokenValue = tokenElement.GetString();
+                        await Dispatcher.UIThread.InvokeAsync(() =>
+                        {
+                            if (_assistantTextBlock != null)
+                            {
+                                _assistantTextBlock.Text += (tokenValue ?? "");
+                                ScrollToBottomAsync().ConfigureAwait(false).GetAwaiter().GetResult();
+                            }
+                        });
 
-                // Render accumulated markdown after each token (when renderer is available)
-                if (_markdownRenderer != null && _assistantTextBlock?.Text != null)
-                {
-                    var rendered = _markdownRenderer.Render(_assistantTextBlock.Text);
-                    _assistantTextBlock.Text = rendered;
+                        // Render accumulated markdown after each token (when renderer is available)
+                        if (_markdownRenderer != null && _assistantTextBlock?.Text != null)
+                        {
+                            var rendered = _markdownRenderer.Render(_assistantTextBlock.Text);
+                            _assistantTextBlock.Text = rendered;
+                        }
+                    }
                 }
-            }
-            catch (Exception ex)
-            {
-                // Ignore parsing errors for non-textual JSON events (e.g., usage stats)
-                _logger?.LogDebug("SSE parsing error: {Message}", ex.Message);
+                catch (Exception ex)
+                {
+                    // Ignore parsing errors for non-textual JSON events (e.g., usage stats)
+                    _logger?.LogDebug("SSE parsing error: {Message}", ex.Message);
+                }
             }
 
             currentData.Clear();

@@ -51,7 +51,7 @@ public class LlamaCppChatCompletionService : IChatCompletionService, IDisposable
         try
         {
             var appData = Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData);
-            var searchPaths = new[] { appData, AppDomain.CurrentDomain.BaseDirectory };
+            var searchPaths = new[] { appData };
             var libName = Environment.OSVersion.Platform switch
             {
                 PlatformID.Win32NT => "libllama.dll",
@@ -274,11 +274,11 @@ public class LlamaCppChatCompletionService : IChatCompletionService, IDisposable
     private string? FindGgufFilePath(string modelId)
     {
         // Search common GGUF directories for the model file
+        var appData = Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData);
         var searchPaths = new[]
         {
-            Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "models"),
+            Path.Combine(appData, "OpenLMStudio", "models"),
             Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), ".openlmstudio", "models"),
-            Path.Combine(Environment.GetEnvironmentVariable("APPDATA") ?? "", "OpenLMStudio", "models")
         };
 
         foreach (var searchPath in searchPaths)

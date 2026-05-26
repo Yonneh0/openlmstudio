@@ -3,6 +3,8 @@ using System.Collections.Generic;
 using System.IO;
 using System.Security.Cryptography;
 using System.Text;
+using System.Text.Json;
+using System.Text.Json.Serialization;
 
 namespace OpenLMStudio.Domain.Models;
 
@@ -40,11 +42,44 @@ public enum MessageRole
 /// Represents a single tool invocation within an assistant message.
 /// </summary>
 public record ToolCall(
-    string Id,
-    string FunctionName,
-    string ArgumentsJson,
-    string? Result = null
-);
+    [property: JsonPropertyName("id")] string? Id,
+    [property: JsonPropertyName("functionName")] string FunctionName,
+    [property: JsonPropertyName("argumentsJson")] string ArgumentsJson,
+    [property: JsonPropertyName("result")] string? Result = null
+)
+{
+    /// <summary>
+    /// Parses <see cref="ArgumentsJson"/> into a <see cref="JsonDocument"/> for consumption by tool executors.
+    /// The caller is responsible for disposing the returned document.
+    /// </summary>
+    public JsonDocument ParsedArguments => JsonDocument.Parse(ArgumentsJson);
+
+    /// <summary>
+    /// Parses <see cref="ArgumentsJson"/> and returns a shallow <see cref="Dictionary{TKey, TValue}"/>.
+    /// </summary>
+    public Dictionary<string, object?> ToArguments()
+    {
+        using var doc = ParsedArguments;
+        var dict = new Dictionary<string, object?>();
+        foreach (var prop in doc.RootElement.EnumerateObject())
+            dict[prop.Name] = prop.Value.Clone();
+        return dict;
+    }
+
+    /// <summary>
+    /// Parses <see cref="ArgumentsJson"/> and returns a shallow <see cref="Dictionary{TKey, TValue}"/>
+    /// without requiring the caller to dispose a <see cref="JsonDocument"/>.
+    /// This is the preferred API for most callers — it avoids the memory leak risk of <see cref="ParsedArguments"/>.
+    /// </summary>
+    public Dictionary<string, object?> ToArgumentsSafe()
+    {
+        var dict = new Dictionary<string, object?>();
+        using var doc = JsonDocument.Parse(ArgumentsJson);
+        foreach (var prop in doc.RootElement.EnumerateObject())
+            dict[prop.Name] = prop.Value.Clone();
+        return dict;
+    }
+};
 
 /// <summary>
 /// Represents a message in a conversation thread with support for content, tool calls, and multi-modal outputs.

@@ -5,16 +5,12 @@ using System.Collections.Generic;
 using System.Linq;
 using Avalonia;
 using Avalonia.Controls;
-using Avalonia.Controls.ApplicationLifetimes;
 using Avalonia.Controls.Primitives;
 using Avalonia.Input;
 using Avalonia.Interactivity;
 using Avalonia.Layout;
 using Avalonia.Media;
 using Avalonia.Platform.Storage;
-using Avalonia.Styling;
-using Avalonia.Platform;
-using Avalonia.Reactive;
 
 namespace OpenLMStudio.Desktop.Controls;
 
@@ -50,6 +46,11 @@ public class GitLogTable : ContentControl
     /// Event fired when the close button is clicked.
     /// </summary>
     public event EventHandler<CloseRequestedEventArgs>? CloseRequestedEvent;
+
+    /// <summary>
+    /// Gets or sets the parent Popup reference for auto-closing.
+    /// </summary>
+    public Popup? PopupParent { get; set; }
 
     // Colors
     private static readonly IBrush _bgPrimary = new SolidColorBrush(Color.Parse("#1E1E22"));
@@ -98,7 +99,22 @@ public class GitLogTable : ContentControl
         BuildCloseButton();
 
         // Subscribe to close requested
-        CloseRequestedProperty.Changed.Subscribe(new AnonymousObserver<AvaloniaPropertyChangedEventArgs<bool>>(x => onCloseRequested(x)));
+        CloseRequestedProperty.Changed.Subscribe(new PopupParentSubscriber(this));
+    }
+
+    private class PopupParentSubscriber : IObserver<AvaloniaPropertyChangedEventArgs<bool>>
+    {
+        private readonly GitLogTable _parent;
+        public PopupParentSubscriber(GitLogTable parent) => _parent = parent;
+        public void OnNext(AvaloniaPropertyChangedEventArgs<bool> value)
+        {
+            if (value.NewValue.Value == true)
+            {
+                _parent.PopupParent?.SetValue(Avalonia.Controls.Primitives.Popup.IsOpenProperty, false);
+            }
+        }
+        public void OnError(Exception error) { }
+        public void OnCompleted() { }
     }
 
     private void BuildCloseButton()
@@ -122,12 +138,19 @@ public class GitLogTable : ContentControl
         _closeButton.AddHandler(PointerEnteredEvent, OnCloseButtonEntered);
         _closeButton.AddHandler(PointerExitedEvent, OnCloseButtonExited);
 
+        // Position the close button container to overlay on top
+        _closeButtonContainer.Width = CloseButtonWidth;
+        _closeButtonContainer.Height = CloseButtonWidth;
+        _closeButtonContainer.HorizontalAlignment = HorizontalAlignment.Right;
+        _closeButtonContainer.VerticalAlignment = VerticalAlignment.Top;
+        _closeButtonContainer.Margin = new Thickness(0, TopPadding, 4, 0);
+
         _closeButtonContainer.Child = _closeButton;
     }
 
     private void OnCloseButtonClicked(object? sender, RoutedEventArgs e)
     {
-        CloseRequested = !CloseRequested;
+        CloseRequested = true;
         CloseRequestedEvent?.Invoke(this, new CloseRequestedEventArgs());
         e.Handled = true;
     }
@@ -152,10 +175,17 @@ public class GitLogTable : ContentControl
         e.Handled = true;
     }
 
-    private void onCloseRequested(AvaloniaPropertyChangedEventArgs<bool> change)
+    /// <summary>
+    /// Creates a fresh separator Border for use in the header row.
+    /// </summary>
+    private Border CreateNewSeparator()
     {
-        // When CloseRequested becomes true, the popup should close
-        // This is handled by the binding in XAML
+        return new Border
+        {
+            Width = SeparatorWidth,
+            Background = _borderBrush,
+            Margin = new Thickness(0, 8, 0, 8),
+        };
     }
 
     private void BuildVisualTree()
@@ -180,7 +210,7 @@ public class GitLogTable : ContentControl
         Grid.SetColumn(hashHeader, 0);
         _headerGrid.Children.Add(hashHeader);
 
-        var hashSep = CreateSeparator();
+        var hashSep = CreateNewSeparator();
         Grid.SetColumn(hashSep, 1);
         _headerGrid.Children.Add(hashSep);
 
@@ -188,7 +218,7 @@ public class GitLogTable : ContentControl
         Grid.SetColumn(authorHeader, 2);
         _headerGrid.Children.Add(authorHeader);
 
-        var authorSep = CreateSeparator();
+        var authorSep = CreateNewSeparator();
         Grid.SetColumn(authorSep, 3);
         _headerGrid.Children.Add(authorSep);
 
@@ -253,6 +283,15 @@ public class GitLogTable : ContentControl
         base.OnPropertyChanged(change);
         if (change.Property == EntriesProperty)
             RebuildRows();
+    }
+
+    /// <summary>
+    /// Called when the control is loaded into the visual tree.
+    /// </summary>
+    protected override void OnLoaded(RoutedEventArgs e)
+    {
+        base.OnLoaded(e);
+        RebuildRows();
     }
 
     private void RebuildRows()
@@ -416,13 +455,12 @@ public class GitLogTable : ContentControl
         if (index >= 0 && index < _allEntries.Length)
         {
             var hash = _allEntries[index].Hash;
-            var lifetime = Avalonia.Application.Current?.ApplicationLifetime as IClassicDesktopStyleApplicationLifetime;
-            var clipboard = lifetime?.MainWindow?.Clipboard;
+            var clipboard = TopLevel.GetTopLevel(this)?.Clipboard;
             if (clipboard != null)
             {
                 var data = new DataTransfer();
                 data.Add(DataTransferItem.CreateText(hash));
-                clipboard.SetDataAsync(data);
+                _ = clipboard.SetDataAsync(data);
             }
         }
 
