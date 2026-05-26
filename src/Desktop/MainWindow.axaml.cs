@@ -453,7 +453,6 @@ public partial class MainWindow : Window
         {
             GitStatusText!.Text = $"OpenLMStudio {GitInfo.FullName}";
 
-            // Build log display from compile-time captured log
             var sb = new StringBuilder();
             sb.Append($"OpenLMStudio {GitInfo.FullName}");
             if (!string.Equals(GitInfo.Dirty, "true", StringComparison.OrdinalIgnoreCase))

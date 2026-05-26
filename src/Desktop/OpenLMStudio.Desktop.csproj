@@ -39,7 +39,7 @@
     <Exec Command="git rev-parse --abbrev-ref HEAD" ConsoleToMSBuild="true" StandardOutputImportance="low">
       <Output PropertyName="GitBranch" TaskParameter="ConsoleOutput" />
     </Exec>
-    <Exec Command="git diff --quiet 2&gt;NUL" ConsoleToMSBuild="true" StandardOutputImportance="low" IgnoreExitCode="true">
+    <Exec Command="git diff --quiet 2>NUL" ConsoleToMSBuild="true" StandardOutputImportance="low" IgnoreExitCode="true">
       <Output PropertyName="GitDirty" TaskParameter="ExitCode" />
     </Exec>
     <Exec Command="git log -7 --oneline --date=short --format=&quot;%h %ad %s&quot;" ConsoleToMSBuild="true" StandardOutputImportance="low">
@@ -51,20 +51,14 @@
       <GitDirty>$([System.String]::new($(GitDirty)).Trim())</GitDirty>
       <GitLog>$([System.String]::new($(GitLog)).Trim())</GitLog>
     </PropertyGroup>
-    <WriteLinesToFile File="GeneratedGitInfo.cs" Lines='
-namespace OpenLMStudio.Desktop;
-
-/// &lt;summary&gt;Auto-generated git metadata — produced at build time.&lt;/summary&gt;
-internal static class GitInfo
-{
-    public const string Commit = "$(GitCommit)";
-    public const string Branch = "$(GitBranch)";
-    public const string Dirty = "$(GitDirty)";
-    public const string FullName = "$(GitCommit)";
-    public const string FullBranch = "$(GitBranch)";
-    public const string Log = "$(GitLog)";
-}
-' Overwrite="true" Encoding="Unicode" />
+    <WriteLinesToFile File="GeneratedGitInfo.cs" Lines='namespace OpenLMStudio.Desktop { internal static class GitInfo {
+    public const string Commit = "$(GitCommit)"%3B
+    public const string Branch = "$(GitBranch)"%3B
+    public const string Dirty = "$(GitDirty)"%3B
+    public const string FullName = "$(GitCommit)"%3B
+    public const string FullBranch = "$(GitBranch)"%3B
+    public const string Log = "$(GitLog)"%3B
+}}' Overwrite="true" Encoding="Unicode" />
   </Target>
 
   <!-- Avalonia UI packages for cross-platform support -->

@@ -32,16 +32,20 @@ public partial class AboutWindow : Window
         var version = assembly.GetName().Version;
         var versionStr = version?.ToString() ?? "1.0.0";
         VersionText.Text = $"v{versionStr}";
-        AppVersionText.Text = versionStr;
+        // AppVersionText not in XAML — skip; VersionText already shows v{versionStr}
+        // AppVersionText.Text = versionStr;
 
         // Git info from AssemblyInfo
         CommitText.Text = GitInfo.Commit;
         BranchText.Text = GitInfo.Branch;
 
-        // Dirty indicator
-        DirtyText.Text = string.Equals(GitInfo.Dirty, "1", StringComparison.Ordinal)
-            ? "⦿"  // dirty (orange)
-            : "●"; // clean (green)
+        // Dirty indicator — "⦿" when dirty, "●" when clean
+        DirtyText.Text = string.Equals(GitInfo.Dirty, "true", StringComparison.OrdinalIgnoreCase)
+            ? "⦿"
+            : "●";
+        DirtyText.Foreground = string.Equals(GitInfo.Dirty, "true", StringComparison.OrdinalIgnoreCase)
+            ? (Avalonia.Media.ISolidColorBrush)(this.FindResource("AccentOrange") ?? Avalonia.Media.Brushes.Orange)
+            : (Avalonia.Media.ISolidColorBrush)(this.FindResource("AccentGreen") ?? Avalonia.Media.Brushes.Green);
 
         // Build type
         var configuration = typeof(AboutWindow).Assembly.GetCustomAttribute<AssemblyConfigurationAttribute>()
@@ -50,7 +54,7 @@ public partial class AboutWindow : Window
 
         // Runtime info
         RuntimeText.Text = $".NET {Environment.Version}";
-        OsText.Text = GetOSDescription();
+        OsText.Text = RuntimeInformation.OSDescription ?? "Unknown";
         ArchitectureText.Text = RuntimeInformation.OSArchitecture.ToString();
     }
 
@@ -71,7 +75,7 @@ public partial class AboutWindow : Window
         var sb = new StringBuilder();
 
         sb.Append($"OpenLMStudio {GitInfo.FullName}");
-        if (!string.Equals(GitInfo.Dirty, "1", StringComparison.Ordinal))
+        if (!string.Equals(GitInfo.Dirty, "true", StringComparison.OrdinalIgnoreCase))
             sb.Append(" (clean)");
         sb.AppendLine();
         sb.AppendLine("Recent commits:");
@@ -145,4 +149,8 @@ public partial class AboutWindow : Window
         return string.Empty;
     }
 
+    protected override void OnLoaded(RoutedEventArgs e)
+    {
+        base.OnLoaded(e);
+    }
 }
