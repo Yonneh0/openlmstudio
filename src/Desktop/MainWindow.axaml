@@ -387,6 +387,38 @@
 
         <!-- Bottom buttons -->
             <StackPanel Grid.Row="2" Orientation="Horizontal" Margin="8,4,8,8">
+                <Button x:Name="LeftSettingsButton"
+                        Content="&#x2699;"
+                        Background="{StaticResource BgTertiary}"
+                        Foreground="{StaticResource TextPrimary}"
+                        Padding="6"
+                        Margin="0,0,4,0"
+                        Click="OnSettingsClicked"
+                        Cursor="Hand"
+                        Height="24"
+                        Width="24">
+                    <Button.Styles>
+                        <Style Selector="Button:pointerover">
+                            <Setter Property="Background" Value="#3A3A3E"/>
+                        </Style>
+                    </Button.Styles>
+                </Button>
+                <Button x:Name="LeftHelpButton"
+                        Content="&#x3F;"
+                        Background="{StaticResource BgTertiary}"
+                        Foreground="{StaticResource TextPrimary}"
+                        Padding="6"
+                        Margin="0,0,4,0"
+                        Click="OnStatusAboutClicked"
+                        Cursor="Hand"
+                        Height="24"
+                        Width="24">
+                    <Button.Styles>
+                        <Style Selector="Button:pointerover">
+                            <Setter Property="Background" Value="#3A3A3E"/>
+                        </Style>
+                    </Button.Styles>
+                </Button>
             </StackPanel>
         </Grid>
 
@@ -719,13 +751,63 @@
             </Grid>
         </Grid>
 
+        <!-- ===== PINGU CORNER PANEL (for PinguAvatar) ===== -->
+        <Panel x:Name="PinguCornerPanel" Grid.Row="1" Grid.Column="1" IsVisible="True" Panel.ZIndex="100" PointerPressed="OnPinguCornerPanelPointerPressed"/>
+
         <!-- ===== RIGHT SIDEBAR ===== -->
-        <!-- Will be used for active task stuff when implemented -->
         <Grid x:Name="RightSidebarPanel" Grid.Row="1" Grid.Column="2" Background="{StaticResource BgPrimary}">
-            <StackPanel>
-                <TextBlock Text="Active Tasks" FontWeight="SemiBold" Foreground="#4FC3F7" Padding="16,12" FontSize="14"/>
-                <TextBlock Text="No active tasks" Foreground="{StaticResource TextMuted}" Padding="16,8" FontSize="12"/>
+            <Grid.RowDefinitions>
+                <RowDefinition Height="Auto"/>
+                <RowDefinition Height="*"/>
+            </Grid.RowDefinitions>
+            <StackPanel Grid.Row="0" Margin="0,0,0,8">
+                <!-- Right sidebar tabs -->
+                <WrapPanel x:Name="RightTabButtonsPanel" Margin="4,0,4,0">
+                    <ToggleButton x:Name="RightTabTasks" Content="Tasks" Classes="rightPanelTab" IsChecked="True" MinHeight="24"/>
+                    <ToggleButton x:Name="RightTabContext" Content="Context" Classes="rightPanelTab"/>
+                    <ToggleButton x:Name="RightTabInfo" Content="Info" Classes="rightPanelTab"/>
+                </WrapPanel>
             </StackPanel>
+            <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto">
+                <StackPanel x:Name="RightTabContentPanel">
+                    <!-- Tasks tab -->
+                    <StackPanel x:Name="RightTasksContent" IsVisible="True">
+                        <TextBlock Text="Active Tasks" FontWeight="SemiBold" Foreground="#4FC3F7" Padding="16,12,16,8" FontSize="14"/>
+                        <TextBlock x:Name="RightActiveTasksText" Text="No active tasks" Foreground="{StaticResource TextMuted}" Padding="16,8" FontSize="12"/>
+                    </StackPanel>
+                    <!-- Context tab -->
+                    <StackPanel x:Name="RightContextContent" IsVisible="False">
+                        <TextBlock Text="Context Window" FontWeight="SemiBold" Foreground="#4FC3F7" Padding="16,12,16,8" FontSize="14"/>
+                        <Border Background="{StaticResource BgSecondary}" CornerRadius="4" Margin="8,4,8,8">
+                            <StackPanel>
+                                <TextBlock Text="Used:" Foreground="{StaticResource TextPrimary}" Padding="12,4"/>
+                                <TextBlock x:Name="RightContextUsedText" Text="0 / 4096 tokens" Foreground="{StaticResource AccentBlue}" Padding="12,4"/>
+                                <Border x:Name="RightContextBar" Background="#3A3A3E" CornerRadius="4" Height="6" Margin="12,4,12,8"/>
+                            </StackPanel>
+                        </Border>
+                        <Border Background="{StaticResource BgSecondary}" CornerRadius="4" Margin="8,4,8,8">
+                            <StackPanel>
+                                <TextBlock Text="Compression:" Foreground="{StaticResource TextPrimary}" Padding="12,4"/>
+                                <TextBlock x:Name="RightCompressionText" Text="None" Foreground="{StaticResource TextSecondary}" Padding="12,4"/>
+                            </StackPanel>
+                        </Border>
+                    </StackPanel>
+                    <!-- Info tab -->
+                    <StackPanel x:Name="RightInfoContent" IsVisible="False">
+                        <TextBlock Text="System Info" FontWeight="SemiBold" Foreground="#4FC3F7" Padding="16,12,16,8" FontSize="14"/>
+                        <Border Background="{StaticResource BgSecondary}" CornerRadius="4" Margin="8,4,8,8">
+                            <StackPanel>
+                                <TextBlock Text="CPU:" Foreground="{StaticResource TextPrimary}" Padding="12,4"/>
+                                <TextBlock x:Name="RightCpuText" Text="Loading..." Foreground="{StaticResource TextSecondary}" Padding="12,4"/>
+                                <TextBlock Text="RAM:" Foreground="{StaticResource TextPrimary}" Padding="12,4"/>
+                                <TextBlock x:Name="RightRamText" Text="Loading..." Foreground="{StaticResource TextSecondary}" Padding="12,4"/>
+                                <TextBlock Text="GPU:" Foreground="{StaticResource TextPrimary}" Padding="12,4"/>
+                                <TextBlock x:Name="RightGpuText" Text="Loading..." Foreground="{StaticResource TextSecondary}" Padding="12,4"/>
+                            </StackPanel>
+                        </Border>
+                    </StackPanel>
+                </StackPanel>
+            </ScrollViewer>
         </Grid>
 
         <!-- Status bar -->

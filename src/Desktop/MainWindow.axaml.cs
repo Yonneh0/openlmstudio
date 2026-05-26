@@ -146,6 +146,9 @@ public partial class MainWindow : Window
         // Wire up ToggleButton click handlers for left sidebar tabs
         WireUpLeftTabClickHandlers();
 
+        // Wire up right sidebar tab toggles
+        WireUpRightSidebarTabs();
+
         // Initialize Pingu avatar if IPinguStore is available
         InitializePingu();
 
@@ -183,6 +186,18 @@ public partial class MainWindow : Window
             if (target != null)
                 target.Children.Add(_pinguAvatar);
             // If no panel found, the PinguCornerPanel will be defined in XAML
+        }
+    }
+
+    /// <summary>
+    /// Handles pointer pressed on the PinguCornerPanel.
+    /// </summary>
+    private void OnPinguCornerPanelPointerPressed(object? sender, Avalonia.Input.PointerPressedEventArgs e)
+    {
+        // Toggle Pingu panel visibility
+        if (_pinguAvatar != null)
+        {
+            _pinguAvatar.IsVisible = !_pinguAvatar.IsVisible;
         }
     }
 
@@ -924,6 +939,41 @@ public partial class MainWindow : Window
                 UpdateRightSidebarTab("Context");
             ShowTab(tabName);
         }
+    }
+
+    /// <summary>
+    /// Wires up the right sidebar tab toggles (Tasks, Context, Info).
+    /// </summary>
+    private void WireUpRightSidebarTabs()
+    {
+        if (RightTabTasks != null)
+            RightTabTasks.Click += OnRightSidebarTabClicked;
+        if (RightTabContext != null)
+            RightTabContext.Click += OnRightSidebarTabClicked;
+        if (RightTabInfo != null)
+            RightTabInfo.Click += OnRightSidebarTabClicked;
+    }
+
+    /// <summary>
+    /// Handles clicks on the right sidebar ToggleButton tabs.
+    /// </summary>
+    private void OnRightSidebarTabClicked(object? sender, RoutedEventArgs e)
+    {
+        if (sender is not ToggleButton tab)
+            return;
+
+        // Hide all content panels
+        RightTasksContent?.SetValue(StackPanel.IsVisibleProperty, false);
+        RightContextContent?.SetValue(StackPanel.IsVisibleProperty, false);
+        RightInfoContent?.SetValue(StackPanel.IsVisibleProperty, false);
+
+        // Show the selected panel
+        if (tab.Name == nameof(RightTabTasks))
+            RightTasksContent?.SetValue(StackPanel.IsVisibleProperty, true);
+        else if (tab.Name == nameof(RightTabContext))
+            RightContextContent?.SetValue(StackPanel.IsVisibleProperty, true);
+        else if (tab.Name == nameof(RightTabInfo))
+            RightInfoContent?.SetValue(StackPanel.IsVisibleProperty, true);
     }
 
     // =========================================================================
