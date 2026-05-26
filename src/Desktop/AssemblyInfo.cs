@@ -51,9 +51,11 @@ internal static class GitInfo
     {
         try
         {
-            var attr = typeof(GitInfo).Assembly.GetCustomAttribute<AssemblyMetadataAttribute>();
-            if (attr != null && string.Equals(attr.Key, key, StringComparison.Ordinal))
-                return attr.Value;
+            foreach (var attr in typeof(GitInfo).Assembly.GetCustomAttributes<AssemblyMetadataAttribute>())
+            {
+                if (string.Equals(attr.Key, key, StringComparison.Ordinal))
+                    return attr.Value;
+            }
         }
         catch { /* best-effort */ }
         return null;

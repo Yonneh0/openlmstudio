@@ -39,9 +39,9 @@ public partial class AboutWindow : Window
         BranchText.Text = GitInfo.Branch;
 
         // Dirty indicator
-        DirtyText.Text = string.Equals(GitInfo.Dirty, "true", StringComparison.OrdinalIgnoreCase)
-            ? "⦿"
-            : "●";
+        DirtyText.Text = string.Equals(GitInfo.Dirty, "1", StringComparison.Ordinal)
+            ? "⦿"  // dirty (orange)
+            : "●"; // clean (green)
 
         // Build type
         var configuration = typeof(AboutWindow).Assembly.GetCustomAttribute<AssemblyConfigurationAttribute>()
@@ -59,68 +59,9 @@ public partial class AboutWindow : Window
         return RuntimeInformation.OSDescription ?? "Unknown";
     }
 
-    private static string GetGitCommit()
-    {
-        try
-        {
-            var startInfo = new ProcessStartInfo
-            {
-                FileName = "git",
-                Arguments = "rev-parse --short HEAD",
-                RedirectStandardOutput = true,
-                UseShellExecute = false
-            };
-
-            using var process = Process.Start(startInfo);
-            if (process != null)
-            {
-                var output = process.StandardOutput.ReadLine();
-                return output?.Trim() ?? "unknown";
-            }
-        }
-        catch
-        {
-            // Ignore errors
-        }
-
-        return "unknown";
-    }
-
-    private static string GetGitBranch()
-    {
-        try
-        {
-            var startInfo = new ProcessStartInfo
-            {
-                FileName = "git",
-                Arguments = "rev-parse --abbrev-ref HEAD",
-                RedirectStandardOutput = true,
-                UseShellExecute = false
-            };
-
-            using var process = Process.Start(startInfo);
-            if (process != null)
-            {
-                var output = process.StandardOutput.ReadLine();
-                return output?.Trim() ?? "unknown";
-            }
-        }
-        catch
-        {
-            // Ignore errors
-        }
-
-        return "unknown";
-    }
-
     private void OnCloseClicked(object? sender, RoutedEventArgs e)
     {
         Close();
-    }
-
-    private void OnMinimizeClicked(object? sender, RoutedEventArgs e)
-    {
-        WindowState = WindowState.Minimized;
     }
 
     private void OnVersionBadgeClicked(object? sender, PointerPressedEventArgs e)
@@ -130,7 +71,7 @@ public partial class AboutWindow : Window
         var sb = new StringBuilder();
 
         sb.Append($"OpenLMStudio {GitInfo.FullName}");
-        if (!string.Equals(GitInfo.Dirty, "true", StringComparison.OrdinalIgnoreCase))
+        if (!string.Equals(GitInfo.Dirty, "1", StringComparison.Ordinal))
             sb.Append(" (clean)");
         sb.AppendLine();
         sb.AppendLine("Recent commits:");

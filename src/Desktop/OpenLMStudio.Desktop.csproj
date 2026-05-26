@@ -40,7 +40,7 @@
       <Output PropertyName="GitBranch" TaskParameter="ConsoleOutput" />
     </Exec>
     <Exec Command="git diff --quiet 2&gt;NUL" ConsoleToMSBuild="true" StandardOutputImportance="low" IgnoreExitCode="true">
-      <Output PropertyName="GitDirty" TaskParameter="ConsoleOutput" />
+      <Output PropertyName="GitDirty" TaskParameter="ExitCode" />
       <Output PropertyName="GitHasChanges" TaskParameter="ExitCode" />
     </Exec>
     <PropertyGroup>

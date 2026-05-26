@@ -75,14 +75,6 @@
 
     <Border Classes="aboutCard">
         <DockPanel>
-            <!-- Custom Title Bar -->
-            <Border DockPanel.Dock="Top" Background="{StaticResource BgTertiary}" Height="32">
-                <StackPanel Orientation="Horizontal" DockPanel.Dock="Right">
-                    <Button x:Name="CloseButton" Content="✕" Width="36" Height="28" Classes="closeBtn"
-                            Click="OnCloseClicked"/>
-                </StackPanel>
-            </Border>
-
             <!-- Scrollable Content -->
             <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
                 <StackPanel Margin="16,8,16,12">
