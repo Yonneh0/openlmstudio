@@ -14,6 +14,7 @@ using Avalonia.Media;
 using Avalonia.Platform.Storage;
 using Avalonia.Styling;
 using Avalonia.Platform;
+using Avalonia.Reactive;
 
 namespace OpenLMStudio.Desktop.Controls;
 
@@ -97,7 +98,7 @@ public class GitLogTable : ContentControl
         BuildCloseButton();
 
         // Subscribe to close requested
-        CloseRequestedProperty.Changed.Subscribe(onCloseRequested);
+        CloseRequestedProperty.Changed.Subscribe(new AnonymousObserver<AvaloniaPropertyChangedEventArgs<bool>>(x => onCloseRequested(x)));
     }
 
     private void BuildCloseButton()
@@ -151,7 +152,7 @@ public class GitLogTable : ContentControl
         e.Handled = true;
     }
 
-    private void onCloseRequested(Avalonia.Reactive.AvaloniaPropertyChangedObservable<bool> change)
+    private void onCloseRequested(AvaloniaPropertyChangedEventArgs<bool> change)
     {
         // When CloseRequested becomes true, the popup should close
         // This is handled by the binding in XAML

@@ -810,7 +810,7 @@
         </Border>
 
           <!-- Git log popup -->
-          <Popup x:Name="GitLogPopup" Width="960" Height="560" IsOpen="False" Placement="Top" AllowsTopmost="True">
+          <Popup x:Name="GitLogPopup" Width="960" Height="560" IsOpen="False" Placement="Top" Topmost="True">
               <Border Background="Transparent" PointerPressed="OnGitLogOverlayClicked">
                   <Border Background="{StaticResource BgPrimary}"
                           BorderBrush="#3A3A3E"
