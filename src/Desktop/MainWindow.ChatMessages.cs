@@ -137,7 +137,7 @@ public partial class MainWindow
         }
 
         // Load the selected conversation's messages — fire-and-forget since this is called from an async void event handler
-        _ = LoadConversationMessagesAsync(chatIdObj.Value).ConfigureAwait(false);
+        _ = LoadConversationMessagesAsync(chatIdObj.Value);
 
         // Show the delete button when a chat is selected
         DeleteChatButton?.SetValue(Button.IsVisibleProperty, true);

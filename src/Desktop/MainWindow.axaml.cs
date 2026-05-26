@@ -614,7 +614,7 @@ public partial class MainWindow : Window
             Task.Run(async () =>
             {
                 var chat = mgr != null
-                    ? await mgr.LoadChatAsync(chatId).ConfigureAwait(false)
+                    ? await mgr.LoadChatAsync(chatId)
                     : null;
 
                 await Dispatcher.UIThread.InvokeAsync(() =>
@@ -660,18 +660,18 @@ public partial class MainWindow : Window
         if (_titleEditSaving)
             return;
 
+        // Only save if the title was visible (i.e., we were actually in edit mode)
+        var wasVisible = ChatTitleEdit.IsVisible;
+        if (!wasVisible)
+            return;
+
         // Switch mode immediately (before the save completes)
         // This ensures that if the user clicks another control, the edit mode
         // is already switched and subsequent clicks work correctly
-        var wasVisible = ChatTitleEdit.IsVisible;
         ChatTitleEdit.IsVisible = false;
         ChatTitleDisplay.IsVisible = true;
 
-        // Only save if the title was visible (i.e., we were actually in edit mode)
-        if (wasVisible)
-        {
-            _ = SaveChatTitleAsync(refreshList: true);
-        }
+        _ = SaveChatTitleAsync(refreshList: true);
     }
 
     /// <summary>
@@ -750,8 +750,10 @@ public partial class MainWindow : Window
 
             foreach (var file in Directory.EnumerateFiles(settingsDir, "*", SearchOption.AllDirectories))
             {
-                // Skip files in the models/ folder
-                if (file.StartsWith(modelsDir + Path.DirectorySeparatorChar) || file.StartsWith(modelsDir + '\\'))
+                // Skip files in the models/ folder (use Path.Combine to handle both separators)
+                var modelsDirWithSep = Path.Combine(modelsDir, "");
+                if (file.StartsWith(modelsDirWithSep, StringComparison.OrdinalIgnoreCase) ||
+                    file.StartsWith(modelsDir, StringComparison.OrdinalIgnoreCase))
                     continue;
 
                 // Skip settings.json (it will be preserved)
@@ -783,7 +785,7 @@ public partial class MainWindow : Window
                     continue;
 
                 // Skip subdirectories of models/
-                if (dir.StartsWith(modelsDir))
+                if (dir.StartsWith(modelsDir, StringComparison.OrdinalIgnoreCase))
                     continue;
 
                 if (Directory.GetFiles(dir).Length == 0 && Directory.GetDirectories(dir).Length == 0)
@@ -799,7 +801,8 @@ public partial class MainWindow : Window
             var psi = new ProcessStartInfo
             {
                 FileName = exePath,
-                UseShellExecute = true
+                UseShellExecute = true,
+                CreateNoWindow = true
             };
             Process.Start(psi);
 
