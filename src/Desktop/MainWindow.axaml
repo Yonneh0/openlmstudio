@@ -3,8 +3,8 @@
         x:Class="OpenLMStudio.Desktop.MainWindow"
         xmlns:Controls="clr-namespace:OpenLMStudio.Desktop.Controls"
         xmlns:local="clr-namespace:OpenLMStudio.Desktop"
-        Width="1400" Height="750"
-        MinWidth="1100" MinHeight="600">
+         Width="1600" Height="900"
+         MinWidth="1300" MinHeight="700">
 
     <Window.Resources>
         <SolidColorBrush x:Key="BgPrimary" Color="#1E1E22"/>
@@ -809,12 +809,10 @@
             </DockPanel>
         </Border>
 
-        <!-- Git log popup -->
-        <Popup x:Name="GitLogPopup" Width="720" Height="480">
-            <Border Background="{StaticResource BgSecondary}" BorderBrush="#333338" BorderThickness="1" CornerRadius="4">
-                <Controls:GitLogTable x:Name="GitLogTableControl" x:DataType="local:MainWindow" Entries="{Binding GitLogEntries}"/>
-            </Border>
-        </Popup>
+         <!-- Git log popup -->
+         <Popup x:Name="GitLogPopup" Width="960" Height="560" IsOpen="False">
+             <Controls:GitLogTable x:Name="GitLogTableControl"/>
+         </Popup>
 
         <!-- Tool call popup (opens upward from the Tools button) -->
         <Canvas Grid.Row="2" Grid.ColumnSpan="3">
