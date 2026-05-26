@@ -2,6 +2,7 @@ using System.Text;
 using Microsoft.Extensions.Logging;
 using OpenLMStudio.Application.Interfaces;
 using OpenLMStudio.Domain.Models;
+using DomainModels = OpenLMStudio.Domain.Models;
 
 namespace OpenLMStudio.Infrastructure;
 
@@ -371,7 +372,7 @@ public class PinguPromptGenerator : IPinguPromptGenerator
     // Helpers
     // =========================================================================
 
-    private static PinguTaskType GetDominantTaskType(IReadOnlyList<PinguTask> tasks)
+    private static PinguTaskType GetDominantTaskType(IReadOnlyList<OpenLMStudio.Application.Interfaces.PinguTask> tasks)
     {
         // Return the most common task type
         return tasks.GroupBy(t => t.TaskType)
