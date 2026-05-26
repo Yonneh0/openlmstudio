@@ -169,15 +169,19 @@ public class AgentToolExecutor : IAgentToolExecutor
     {
         if (!parameters.TryGetValue("path", out var path))
             return ToolResult.Fail("Missing required parameter: path");
-        if (!parameters.TryGetValue("startLine", out var startLine))
-            return ToolResult.Fail("Missing required parameter: startLine");
-        if (!parameters.TryGetValue("endLine", out var endLine))
-            return ToolResult.Fail("Missing required parameter: endLine");
+
+        // startLine and endLine are optional — default to 1 and int.MaxValue (read entire file)
+        var startLine = parameters.TryGetValue("startLine", out var sl)
+            ? Convert.ToInt32(sl)
+            : 1;
+        var endLine = parameters.TryGetValue("endLine", out var el)
+            ? Convert.ToInt32(el)
+            : int.MaxValue;
 
         return await _fileSystem.ReadFileAsync(
             path?.ToString() ?? string.Empty,
-            Convert.ToInt32(startLine),
-            Convert.ToInt32(endLine),
+            startLine,
+            endLine,
             parameters.TryGetValue("workingDirectory", out var wd) ? (wd?.ToString() ?? string.Empty) : string.Empty,
             parameters.TryGetValue("agentIgnoreRules", out var rules) ? rules as IReadOnlyList<AgentIgnoreRule> : null);
     }

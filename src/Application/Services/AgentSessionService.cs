@@ -1,5 +1,7 @@
 namespace OpenLMStudio.Application.Services.Agent;
 
+using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Logging.Abstractions;
 using OpenLMStudio.Domain.Models;
 
 /// <summary>
@@ -35,10 +37,17 @@ public class AgentSessionService
                 var existing = _sessions.FirstOrDefault(s => s.Id == sessionId.Value);
                 if (existing != null)
                     return existing;
+
+                // No existing session found — create with the requested ID
+                var session = new AgentSession { Id = sessionId.Value, WorkingDirectory = "" };
+                _sessions.Add(session);
+                return session;
             }
-            var session = new AgentSession { WorkingDirectory = "" };
-            _sessions.Add(session);
-            return session;
+
+            // No sessionId provided — create a new session with a fresh ID
+            var session2 = new AgentSession { WorkingDirectory = "" };
+            _sessions.Add(session2);
+            return session2;
         }
     }
 

@@ -497,7 +497,7 @@ public class AgentTaskState
     /// </summary>
     public void Reset()
     {
-        Ulid = string.Empty;
+        Ulid = AgentTaskSettings.GenerateUlid();
         TaskProgress = new AgentTaskProgress();
         ConversationHistoryDeletedRange = null;
         FileReadCache.Clear();
@@ -690,10 +690,28 @@ public class AgentTaskSettings
         };
     }
 
-    private static string GenerateUlid()
+    /// <summary>Generates a proper ULID using timestamp + random bytes.</summary>
+    public static string GenerateUlid()
     {
-        var bytes = Guid.NewGuid().ToByteArray();
-        return Convert.ToBase64String(bytes).Substring(0, 26);
+        var timestamp = (long)(DateTime.UtcNow - new DateTime(1970, 1, 1)).TotalMilliseconds;
+        var randomBytes = new byte[16];
+        var rng = new Random();
+        rng.NextBytes(randomBytes);
+
+        var chars = "0123456789ABCDEFGHJKMNPQRSTVWXYZ";
+        var ulid = new char[26];
+        var num = timestamp;
+        for (var i = 25; i >= 0; i--)
+        {
+            ulid[i] = chars[(int)(num % 32)];
+            num /= 32;
+        }
+        for (var i = 10; i >= 0; i--)
+        {
+            var val = randomBytes[i];
+            ulid[10 + i] = chars[val % 32];
+        }
+        return new string(ulid);
     }
 }
 

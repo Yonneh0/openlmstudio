@@ -235,7 +235,7 @@ public class Chat
     /// <summary>
     /// Collection of messages in this chat session.
     /// </summary>
-    public List<Message>? Messages { get; set; } = new();
+    public List<Message> Messages { get; set; } = new();
 
     /// <summary>
     /// Generated images associated with this chat session (image generation outputs).
@@ -453,13 +453,14 @@ public static class ConversationEncryption
         var iv = reader.ReadBytes(IvsSizeBytes);
         var encrypted = reader.ReadBytes(bytes.Length - 4 - hmacLength - IvsSizeBytes);
 
+        // Derive the key from password using the IV stored in the ciphertext
+        using var aes = Aes.Create();
         var derivedKey = DeriveKey(password, aes.Key, iv);
         var expectedHmac = ComputeHmac(derivedKey, encrypted);
 
         if (!ConstantTimeCompare(hmac, expectedHmac))
             throw new CryptographicException("Decryption failed: integrity check failed (tampered ciphertext)");
 
-        using var aes = Aes.Create();
         using var decryptor = aes.CreateDecryptor(encrypted, iv);
         var decrypted = decryptor.TransformFinalBlock(encrypted, 0, encrypted.Length);
         return Encoding.UTF8.GetString(decrypted);

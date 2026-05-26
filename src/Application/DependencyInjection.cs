@@ -51,7 +51,7 @@ public static class DependencyInjection
         services.AddTransient<IAgentTaskCheckpointService, AgentTaskCheckpointService>();
         services.AddTransient<IAgentTaskStateService, AgentTaskStateService>();
         services.AddTransient<IAgentTaskProgressService, AgentTaskProgressService>();
-        services.AddTransient<IAgentTaskAutoApprover, AgentTaskAutoApprover>();
+        // AgentTaskAutoApprover registered below as singleton (not transient)
         services.AddTransient<IAgentTaskContextManager, AgentTaskContextManager>();
         services.AddTransient<IAgentTaskHookService, AgentTaskHookService>();
 

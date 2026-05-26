@@ -32,16 +32,16 @@ public class ContextWindowBudgeter : IContextWindowBudgeter
         _budgets.Clear();
     }
 
-    public async Task<ChatBudgetStateDto> GetOrCreateBudgetAsync(Guid chatId, int maxTokens = 8192)
+    public Task<ChatBudgetStateDto> GetOrCreateBudgetAsync(Guid chatId, int maxTokens = 8192)
     {
-        return _budgets.GetOrAdd(chatId, _ => new ChatBudgetStateDto
+        return Task.FromResult(_budgets.GetOrAdd(chatId, _ => new ChatBudgetStateDto
         {
             MaximumTokens = maxTokens,
             RemainingTokens = maxTokens,
-        });
+        }));
     }
 
-    public async Task<long> DeductFromBudgetAsync(Guid chatId, ContextInjectionType injectionType, long tokens)
+    public Task<long> DeductFromBudgetAsync(Guid chatId, ContextInjectionType injectionType, long tokens)
     {
         lock (_lock)
         {
@@ -54,23 +54,23 @@ public class ContextWindowBudgeter : IContextWindowBudgeter
                     RemainingTokens = Math.Max(0, newRemaining),
                 };
                 _budgets[chatId] = newBudget;
-                return newBudget.RemainingTokens;
+                return Task.FromResult(newBudget.RemainingTokens);
             }
-            return 0;
+            return Task.FromResult(0L);
         }
     }
 
-    public async Task<bool> TryAutoEvictLowestRelevanceSegmentsAsync(Guid chatId, long targetTokenReduction)
+    public Task<bool> TryAutoEvictLowestRelevanceSegmentsAsync(Guid chatId, long targetTokenReduction)
     {
         try
         {
             lock (_lock)
             {
                 if (!_budgets.TryGetValue(chatId, out var budget))
-                    return false;
+                    return Task.FromResult(false);
 
                 if (budget.RemainingTokens >= targetTokenReduction)
-                    return true;
+                    return Task.FromResult(true);
 
                 var newBudget = new ChatBudgetStateDto
                 {
@@ -78,28 +78,28 @@ public class ContextWindowBudgeter : IContextWindowBudgeter
                     RemainingTokens = budget.RemainingTokens + targetTokenReduction,
                 };
                 _budgets[chatId] = newBudget;
-                return true;
+                return Task.FromResult(true);
             }
         }
         catch (Exception ex)
         {
             _logger?.LogError(ex, "Error auto-evicting segments for chat {ChatId}", chatId);
-            return false;
+            return Task.FromResult(false);
         }
     }
 
-    public async Task<ContextBudgetIndicator> GetBudgetIndicatorAsync(Guid chatId)
+    public Task<ContextBudgetIndicator> GetBudgetIndicatorAsync(Guid chatId)
     {
         lock (_lock)
         {
             if (!_budgets.TryGetValue(chatId, out var budget))
-                return ContextBudgetIndicator.CreateEmpty();
+                return Task.FromResult(ContextBudgetIndicator.CreateEmpty());
 
             var percentageUsed = budget.MaximumTokens > 0
                 ? (float)((budget.MaximumTokens - budget.RemainingTokens) / (double)budget.MaximumTokens * 100)
                 : 0f;
 
-            return new ContextBudgetIndicator
+            return Task.FromResult<ContextBudgetIndicator>(new ContextBudgetIndicator
             {
                 MaximumTokens = budget.MaximumTokens,
                 UsedTokens = budget.MaximumTokens - budget.RemainingTokens,
@@ -111,11 +111,11 @@ public class ContextWindowBudgeter : IContextWindowBudgeter
                     < 95 => ContextBudgetColorZone.Yellow,
                     _ => ContextBudgetColorZone.Red,
                 },
-            };
+            });
         }
     }
 
-    public async Task SetBudgetForChatAsync(Guid chatId, int maxTokens)
+    public Task SetBudgetForChatAsync(Guid chatId, int maxTokens)
     {
         lock (_lock)
         {
@@ -138,12 +138,24 @@ public class ContextWindowBudgeter : IContextWindowBudgeter
                 MaximumTokens = maxTokens,
                 RemainingTokens = newRemaining,
             };
+
+            return Task.CompletedTask;
         }
     }
 
-    public async Task SetCompressionStrategyForChatAsync(Guid chatId, CompressionLevel strategy)
+    /// <summary>Constants for the compression strategy mapping.</summary>
+    private static class CompressionStrategyTokens
     {
-        await SetBudgetForChatAsync(chatId, strategy == CompressionLevel.Aggressive ? 65536 : 8192);
+        public const int Aggressive = 65536;
+        public const int Default = 8192;
+    }
+
+    public Task SetCompressionStrategyForChatAsync(Guid chatId, CompressionLevel strategy)
+    {
+        var tokens = strategy == CompressionLevel.Aggressive
+            ? CompressionStrategyTokens.Aggressive
+            : CompressionStrategyTokens.Default;
+        return SetBudgetForChatAsync(chatId, tokens);
     }
 
     public async Task UpdateSegmentRelevanceScoresAsync(Guid chatId, IEnumerable<ContextSegment> segments)
