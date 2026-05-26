@@ -282,6 +282,10 @@ public partial class MainWindow : Window
         if (CloseToolPopup != null)
             CloseToolPopup.Click += OnCloseToolPopupClicked;
 
+        // Handle clicks on the center pane to close the popup when clicking outside
+        if (CenterPaneGrid != null)
+            CenterPaneGrid.PointerPressed += OnCenterPanePointerPressed;
+
     }
 
     /// <summary>
@@ -1089,12 +1093,12 @@ public partial class MainWindow : Window
             PopulateToolList();
         }
 
-        // Show the popup with explicit placement target
+        // Show the popup
         if (ToolCallPopup != null)
         {
-            ToolCallPopup.PlacementTarget = ToolsButton;
+            ToolCallPopup.PlacementTarget = CenterPaneGrid;
             ToolCallPopup.SetValue(Avalonia.Controls.Primitives.Popup.IsOpenProperty, true);
-            _logger?.LogInformation("ToolCallPopup opened — PlacementTarget={Target}, Children={Count}", ToolsButton?.Name, ToolListPanel?.Children.Count);
+            _logger?.LogInformation("ToolCallPopup opened — Children={Count}", ToolListPanel?.Children.Count);
         }
         else
         {
@@ -1201,6 +1205,20 @@ public partial class MainWindow : Window
     {
         if (ToolCallPopup != null)
             ToolCallPopup.SetValue(Avalonia.Controls.Primitives.Popup.IsOpenProperty, false);
+    }
+
+    /// <summary>
+    /// Closes the tool popup when clicking on the center pane (outside the popup).
+    /// </summary>
+    private void OnCenterPanePointerPressed(object? sender, PointerPressedEventArgs e)
+    {
+        if (ToolCallPopup != null && ToolCallPopup.IsOpen)
+        {
+            var pos = e.GetPosition(ToolCallPopup);
+            // If the click is outside the popup content, close it
+            if (pos.X < 0 || pos.X > 440 || pos.Y < 0 || pos.Y > 500)
+                ToolCallPopup.SetValue(Avalonia.Controls.Primitives.Popup.IsOpenProperty, false);
+        }
     }
 
     /// <summary>

@@ -432,7 +432,7 @@
         </Border>
 
         <!-- ===== CENTER PANE ===== -->
-        <Grid Grid.Row="1" Grid.Column="1" Background="#1A1A1E">
+        <Grid x:Name="CenterPaneGrid" Grid.Row="1" Grid.Column="1" Background="#1A1A1E">
             <Grid>
                 <Grid.RowDefinitions>
                     <RowDefinition Height="Auto"/>
@@ -537,7 +537,7 @@
                         <Border Grid.Row="0" Background="{StaticResource BgTertiary}" Margin="16,0,16,8">
                             <TextBox x:Name="MessageInputBox" Foreground="{StaticResource TextPrimary}" Background="Transparent" BorderThickness="0" Padding="16,12" FontSize="14" MaxHeight="120" MinHeight="60"/>
                         </Border>
-                        <!-- Agent Mode, Plan/Act, and Safety controls (compact row) -->
+
                         <StackPanel Grid.Row="1" Orientation="Horizontal" Margin="8,0,8,4" VerticalAlignment="Bottom">
                             <!-- Agent Mode (clickable emoji with turns badge) -->
                             <Border Background="{StaticResource BgTertiary}" CornerRadius="6" Padding="8,0" Margin="0,0,4,0">
@@ -705,7 +705,12 @@
                                 </StackPanel>
                             </Border>
                         </StackPanel>
-                                <StackPanel Grid.Row="2" Grid.Column="0" Orientation="Horizontal" HorizontalAlignment="Right" VerticalAlignment="Bottom" Margin="16,0,16,8">
+                                <Grid Grid.Row="2" Grid.Column="0" HorizontalAlignment="Right" VerticalAlignment="Bottom" Margin="16,0,16,8">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*"/>
+                                        <ColumnDefinition Width="Auto"/>
+                                        <ColumnDefinition Width="Auto"/>
+                                    </Grid.ColumnDefinitions>
                                     <Button x:Name="ToolsButton"
                                             Content="🔧"
                                             Width="60" Height="36"
@@ -713,7 +718,8 @@
                                             Foreground="{StaticResource TextPrimary}"
                                             Padding="0"
                                             Click="OnToolsButtonClicked"
-                                            Cursor="Hand">
+                                            Cursor="Hand"
+                                            Grid.Column="1">
                                         <Button.Styles>
                                             <Style Selector="Button">
                                                 <Setter Property="Background" Value="{StaticResource BgTertiary}"/>
@@ -745,7 +751,7 @@
                                             </ContextMenu>
                                         </Button.ContextMenu>
                                     </Button>
-                                </StackPanel>
+                                </Grid>
                     </Grid>
                 </Border>
             </Grid>
@@ -905,46 +911,46 @@
               </Border>
           </Popup>
 
-        <!-- Tool call popup (opens from the Tools button, uses a Canvas overlay) -->
-        <Canvas Grid.Row="1" Grid.Column="1" Panel.ZIndex="1000">
-            <Popup x:Name="ToolCallPopup"
-                   Placement="Bottom"
-                   HorizontalOffset="0"
-                   VerticalOffset="0"
-                   IsOpen="False">
-                <Border Background="{StaticResource BgSecondary}"
-                        BorderBrush="#333338"
-                        BorderThickness="1"
-                        CornerRadius="8"
-                        Width="440"
-                        MaxHeight="500">
-                    <StackPanel>
-                        <!-- Tool list header -->
-                        <Border Background="{StaticResource BgTertiary}"
-                                CornerRadius="8,8,0,0"
-                                Padding="12,8">
-                            <Grid>
-                                <Grid.ColumnDefinitions>
-                                    <ColumnDefinition Width="*"/>
-                                    <ColumnDefinition Width="Auto"/>
-                                </Grid.ColumnDefinitions>
-                                <TextBlock Grid.Column="0" Text="Select a Tool" FontWeight="SemiBold" Foreground="{StaticResource AccentBlue}" FontSize="13"/>
-                                <Button Grid.Column="1" x:Name="CloseToolPopup"
-                                        Content="✕"
-                                        Background="Transparent"
-                                        Foreground="{StaticResource TextSecondary}"
-                                        Padding="6,2"
-                                        FontSize="12"
-                                        Click="OnCloseToolPopupClicked"/>
-                            </Grid>
-                        </Border>
-                        <!-- Tool list -->
-                        <ScrollViewer VerticalScrollBarVisibility="Auto" MaxHeight="350">
-                            <StackPanel x:Name="ToolListPanel" Margin="8,4,8,8"/>
-                        </ScrollViewer>
-                    </StackPanel>
-                </Border>
-            </Popup>
-        </Canvas>
+        <!-- Tool call popup — uses Popup control with center pane Grid as PlacementTarget -->
+        <Popup x:Name="ToolCallPopup"
+               PlacementTarget="{Binding ElementName=CenterPaneGrid}"
+               Placement="Bottom"
+               HorizontalOffset="0"
+               VerticalOffset="0"
+               IsOpen="False"
+               Topmost="True">
+            <Border Background="{StaticResource BgSecondary}"
+                    BorderBrush="#333338"
+                    BorderThickness="1"
+                    CornerRadius="8"
+                    Width="440"
+                    MaxHeight="500">
+                <StackPanel>
+                    <!-- Tool list header -->
+                    <Border Background="{StaticResource BgTertiary}"
+                            CornerRadius="8,8,0,0"
+                            Padding="12,8">
+                        <Grid>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*"/>
+                                <ColumnDefinition Width="Auto"/>
+                            </Grid.ColumnDefinitions>
+                            <TextBlock Grid.Column="0" Text="Select a Tool" FontWeight="SemiBold" Foreground="{StaticResource AccentBlue}" FontSize="13"/>
+                            <Button Grid.Column="1" x:Name="CloseToolPopup"
+                                    Content="✕"
+                                    Background="Transparent"
+                                    Foreground="{StaticResource TextSecondary}"
+                                    Padding="6,2"
+                                    FontSize="12"
+                                    Click="OnCloseToolPopupClicked"/>
+                        </Grid>
+                    </Border>
+                    <!-- Tool list -->
+                    <ScrollViewer VerticalScrollBarVisibility="Auto" MaxHeight="350">
+                        <StackPanel x:Name="ToolListPanel" Margin="8,4,8,8"/>
+                    </ScrollViewer>
+                </StackPanel>
+            </Border>
+        </Popup>
     </Grid>
 </Window>
