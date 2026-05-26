@@ -145,11 +145,4 @@ public partial class AboutWindow : Window
         return string.Empty;
     }
 
-    protected override void OnLoaded(RoutedEventArgs e)
-    {
-        base.OnLoaded(e);
-        // Close button is in the title bar
-        if (CloseButton != null)
-            CloseButton.Click += OnCloseClicked;
-    }
 }
