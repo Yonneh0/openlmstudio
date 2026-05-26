@@ -96,24 +96,6 @@ public static class DependencyInjection
     {
         services.AddApplicationTypes();
 
-        // Register agent task management services
-        services.AddTransient<IAgentTaskManager, AgentTaskManager>();
-        services.AddTransient<IAgentTaskCheckpointService, AgentTaskCheckpointService>();
-        services.AddTransient<IAgentTaskStateService, AgentTaskStateService>();
-        services.AddTransient<IAgentTaskProgressService, AgentTaskProgressService>();
-        services.AddTransient<IAgentTaskAutoApprover, AgentTaskAutoApprover>();
-        services.AddTransient<IAgentTaskContextManager, AgentTaskContextManager>();
-        services.AddTransient<IAgentTaskHookService, AgentTaskHookService>();
-
-        // Register context management services
-        services.AddTransient<IContextWindowBudgeter, ContextWindowBudgeter>();
-        services.AddTransient<ITokenEstimator, TokenEstimator>();
-        services.AddTransient<IContextCompressor, ContextCompressor>();
-        services.AddTransient<IContextRelevanceEngine, ContextRelevanceEngine>();
-        services.AddTransient<IContextManipulator, ContextManipulator>();
-        services.AddSingleton<ContextSnapshotManager>();
-        services.AddSingleton<SystemPromptGenerator>();
-
         // NOTE: ITaskContextReinjectionService, ITaskContextInheritor, ITaskContextPruner
         // are registered in Infrastructure.DependencyInjection, not here.
 

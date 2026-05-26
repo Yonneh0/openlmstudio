@@ -321,7 +321,7 @@ public class AgentTaskManager : IAgentTaskManager
     public async Task<(bool rejected, string result)> ExecuteCommandToolAsync(string command, int timeoutSeconds = 30, Dictionary<string, object>? options = null)
     {
         if (_currentTaskId == null)
-            return (true, string.Empty);
+            return (true, "No active task");
 
         try
         {

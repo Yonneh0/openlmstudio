@@ -453,7 +453,7 @@ public static class ConversationEncryption
         var iv = reader.ReadBytes(IvsSizeBytes);
         var encrypted = reader.ReadBytes(bytes.Length - 4 - hmacLength - IvsSizeBytes);
 
-        var derivedKey = DeriveKey(password, encrypted, iv);
+        var derivedKey = DeriveKey(password, aes.Key, iv);
         var expectedHmac = ComputeHmac(derivedKey, encrypted);
 
         if (!ConstantTimeCompare(hmac, expectedHmac))

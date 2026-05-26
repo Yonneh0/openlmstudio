@@ -43,11 +43,13 @@ public class AgentTaskCheckpointService : IAgentTaskCheckpointService
             _fileSystem.Directory.CreateDirectory(taskDir);
 
             var checkpoints = _inMemoryCheckpoints.GetOrAdd(taskId, _ => new List<TaskCheckpoint>());
+            int version;
             lock (_lock)
             {
-                checkpoint.Version = checkpoints.Count + 1;
-                checkpoints.Add(checkpoint);
+                version = checkpoints.Count + 1;
             }
+            checkpoint.Version = version;
+            checkpoints.Add(checkpoint);
 
             var checkpointPath = Path.Combine(taskDir, $"checkpoint_{checkpoint.Version}.json");
             var json = JsonSerializer.Serialize(checkpoint, new JsonSerializerOptions { WriteIndented = true });

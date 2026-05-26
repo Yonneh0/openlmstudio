@@ -10,6 +10,7 @@ public class AgentSessionService
 {
     private readonly List<AgentSession> _sessions = new();
     private readonly object _lock = new();
+    private readonly ILogger<AgentSessionService> _logger = NullLogger<AgentSessionService>.Instance;
 
     /// <summary>
     /// Creates a new agent session.
@@ -27,16 +28,18 @@ public class AgentSessionService
     /// </summary>
     public AgentSession GetOrCreateSession(Guid? sessionId = null)
     {
-        if (sessionId.HasValue)
+        lock (_lock)
         {
-            lock (_lock)
+            if (sessionId.HasValue)
             {
                 var existing = _sessions.FirstOrDefault(s => s.Id == sessionId.Value);
                 if (existing != null)
                     return existing;
             }
+            var session = new AgentSession { WorkingDirectory = "" };
+            _sessions.Add(session);
+            return session;
         }
-        return CreateSession();
     }
 
     /// <summary>
@@ -56,7 +59,12 @@ public class AgentSessionService
         lock (_lock)
         {
             var active = _sessions.FirstOrDefault(s => s.IsActive);
-            active?.UpdateState(AgentState.Paused);
+            if (active == null)
+            {
+                _logger?.LogWarning("No active session to pause");
+                return;
+            }
+            active.UpdateState(AgentState.Paused);
         }
     }
 
@@ -80,7 +88,12 @@ public class AgentSessionService
         lock (_lock)
         {
             var active = _sessions.FirstOrDefault(s => s.IsActive);
-            active?.UpdateState(Domain.Models.AgentState.Completed);
+            if (active == null)
+            {
+                _logger?.LogWarning("No active session to complete");
+                return;
+            }
+            active.UpdateState(Domain.Models.AgentState.Completed);
         }
     }
 

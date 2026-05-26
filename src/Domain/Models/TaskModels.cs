@@ -497,6 +497,7 @@ public class AgentTaskState
     /// </summary>
     public void Reset()
     {
+        Ulid = string.Empty;
         TaskProgress = new AgentTaskProgress();
         ConversationHistoryDeletedRange = null;
         FileReadCache.Clear();
