@@ -31,8 +31,8 @@
     <NoWarn>AVLN3001;NU1701;$(NoWarn)</NoWarn>
   </PropertyGroup>
 
-  <!-- Git commit metadata — resolved at build time -->
-  <Target Name="GitInfo" BeforeTargets="CoreCompile" Outputs="GeneratedGitInfo.cs">
+  <!-- Git commit metadata — captured at build time and written to GeneratedGitInfo.cs -->
+  <Target Name="GenerateGitInfo" BeforeTargets="CoreCompile" Outputs="GeneratedGitInfo.cs">
     <Exec Command="git rev-parse --short HEAD" ConsoleToMSBuild="true" StandardOutputImportance="low">
       <Output PropertyName="GitCommit" TaskParameter="ConsoleOutput" />
     </Exec>
@@ -41,13 +41,30 @@
     </Exec>
     <Exec Command="git diff --quiet 2&gt;NUL" ConsoleToMSBuild="true" StandardOutputImportance="low" IgnoreExitCode="true">
       <Output PropertyName="GitDirty" TaskParameter="ExitCode" />
-      <Output PropertyName="GitHasChanges" TaskParameter="ExitCode" />
+    </Exec>
+    <Exec Command="git log -7 --oneline --date=short --format=&quot;%h %ad %s&quot;" ConsoleToMSBuild="true" StandardOutputImportance="low">
+      <Output PropertyName="GitLog" TaskParameter="ConsoleOutput" />
     </Exec>
     <PropertyGroup>
       <GitCommit>$([System.String]::new($(GitCommit)).Trim())</GitCommit>
       <GitBranch>$([System.String]::new($(GitBranch)).Trim())</GitBranch>
       <GitDirty>$([System.String]::new($(GitDirty)).Trim())</GitDirty>
+      <GitLog>$([System.String]::new($(GitLog)).Trim())</GitLog>
     </PropertyGroup>
+    <WriteLinesToFile File="GeneratedGitInfo.cs" Lines='
+namespace OpenLMStudio.Desktop;
+
+/// &lt;summary&gt;Auto-generated git metadata — produced at build time.&lt;/summary&gt;
+internal static class GitInfo
+{
+    public const string Commit = "$(GitCommit)";
+    public const string Branch = "$(GitBranch)";
+    public const string Dirty = "$(GitDirty)";
+    public const string FullName = "$(GitCommit)";
+    public const string FullBranch = "$(GitBranch)";
+    public const string Log = "$(GitLog)";
+}
+' Overwrite="true" Encoding="Unicode" />
   </Target>
 
   <!-- Avalonia UI packages for cross-platform support -->

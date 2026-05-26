@@ -451,18 +451,16 @@ public partial class MainWindow : Window
     {
         try
         {
-            var shortHash = GetGitCommitShort();
-            GitStatusText!.Text = $"OpenLMStudio {shortHash}";
+            GitStatusText!.Text = $"OpenLMStudio {GitInfo.FullName}";
 
-            // Load full log for popup
-            var log = GetGitLog(7);
+            // Build log display from compile-time captured log
             var sb = new StringBuilder();
             sb.Append($"OpenLMStudio {GitInfo.FullName}");
             if (!string.Equals(GitInfo.Dirty, "true", StringComparison.OrdinalIgnoreCase))
                 sb.Append(" (clean)");
             sb.AppendLine();
             sb.AppendLine("Recent commits:");
-            foreach (var line in log.Split('\n').Where(l => l.Trim().Length > 0))
+            foreach (var line in GitInfo.Log.Split('\n').Where(l => l.Trim().Length > 0))
                 sb.AppendLine(line.Trim());
             GitLogContent!.Text = sb.ToString();
         }
@@ -817,53 +815,6 @@ public partial class MainWindow : Window
         catch (Exception ex)
         {
             _logger?.LogError(ex, "Failed to rename chat {ChatId}", _selectedChatId.Value);
-        }
-    }
-
-    private static string GetGitCommitShort()
-    {
-        try
-        {
-            var startInfo = new ProcessStartInfo
-            {
-                FileName = "git",
-                Arguments = "rev-parse --short HEAD",
-                UseShellExecute = false,
-                RedirectStandardOutput = true,
-                CreateNoWindow = true
-            };
-            using var proc = Process.Start(startInfo) ?? throw new InvalidOperationException();
-            var result = proc.StandardOutput.ReadToEnd().Trim();
-            proc.WaitForExit();
-            return result.Length > 0 ? result : "unknown";
-        }
-        catch
-        {
-            return "unknown";
-        }
-    }
-
-    private static string GetGitLog(int count)
-    {
-        try
-        {
-            var startInfo = new ProcessStartInfo
-            {
-                FileName = "git",
-                Arguments = $"log -{count} --oneline --date=short --format=\"%h %ad %s\"",
-                UseShellExecute = false,
-                RedirectStandardOutput = true,
-                CreateNoWindow = true,
-                StandardOutputEncoding = System.Text.Encoding.UTF8
-            };
-            using var proc = Process.Start(startInfo) ?? throw new InvalidOperationException();
-            var output = proc.StandardOutput.ReadToEnd().Trim();
-            proc.WaitForExit();
-            return output;
-        }
-        catch
-        {
-            return "";
         }
     }
 
