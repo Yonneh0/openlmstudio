@@ -136,77 +136,77 @@
   - 39-line reactive store interface for managing QEMU VM instances (Zustand equivalent). Defines IVMStore with Instances property (IEnumerable<VMInstance>), OnStateChanged event, AddAsync/RemoveAsync/GetAsync/UpdateAsync methods for CRUD operations. Uses OpenLMStudio.Domain.Models namespace (VMInstance type). Located in OpenLMStudio.Application.Interfaces namespace.
 ## src/Application/Interfaces/IWindowSettings.cs - Window State Persistence Interface
   - 50-line interface file defining IWindowSettings inheriting IDisposable for managing window state persistence. Contains WindowStateSettings record (Id, Width, Height, Left, Top, ActiveTab, LeftSidebarWidth, RightSidebarWidth, SelectedChatId) with defaults (1400x750, "Chat" tab, 280px/320px sidebars). Methods: SaveAsync (takes WindowStateSettings), LoadAsync (returns WindowStateSettings with defaults). Uses System, System.Collections.Generic, System.IO, System.Text.Json namespaces. Located in OpenLMStudio.Application.Interfaces namespace.
-## src/Application/OpenLMStudio.Application.csproj - ???
-  - Not Reviewed
-## src/Application/Services/ActModeRespond.cs - ???
-  - Not Reviewed
-## src/Application/Services/AgentSessionService.cs - ???
-  - Not Reviewed
-## src/Application/Services/AgentTaskAutoApprover.cs - ???
-  - Not Reviewed
-## src/Application/Services/AgentTaskCheckpointService.cs - ???
-  - Not Reviewed
-## src/Application/Services/AgentTaskContextManager.cs - ???
-  - Not Reviewed
-## src/Application/Services/AgentTaskHookService.cs - ???
-  - Not Reviewed
-## src/Application/Services/AgentTaskManager.cs - ???
-  - Not Reviewed
-## src/Application/Services/AgentTaskProgressService.cs - ???
-  - Not Reviewed
-## src/Application/Services/AgentTaskStateService.cs - ???
-  - Not Reviewed
-## src/Application/Services/AgentToolExecutor.cs - ???
-  - Not Reviewed
-## src/Application/Services/AttemptCompletion.cs - ???
-  - Not Reviewed
-## src/Application/Services/BrowserService.cs - ???
-  - Not Reviewed
-## src/Application/Services/CommandExecutor.cs - ???
-  - Not Reviewed
-## src/Application/Services/ContextCompressor.cs - ???
-  - Not Reviewed
-## src/Application/Services/ContextManipulator.cs - ???
-  - Not Reviewed
-## src/Application/Services/ContextRelevanceEngine.cs - ???
-  - Not Reviewed
-## src/Application/Services/ContextSnapshotManager.cs - ???
-  - Not Reviewed
-## src/Application/Services/ContextWindowBudgeter.cs - ???
-  - Not Reviewed
-## src/Application/Services/FileSystemService.cs - ???
-  - Not Reviewed
-## src/Application/Services/IMarkdownRenderer.cs - ???
-  - Not Reviewed
-## src/Application/Services/MarkdownRenderer.cs - ???
-  - Not Reviewed
-## src/Application/Services/McpService.cs - ???
-  - Not Reviewed
-## src/Application/Services/NewTask.cs - ???
-  - Not Reviewed
-## src/Application/Services/PatchService.cs - ???
-  - Not Reviewed
-## src/Application/Services/PlanModeRespond.cs - ???
-  - Not Reviewed
-## src/Application/Services/QuestionService.cs - ???
-  - Not Reviewed
-## src/Application/Services/SystemPromptGenerator.cs - ???
-  - Not Reviewed
-## src/Application/Services/TokenEstimator.cs - ???
-  - Not Reviewed
-## src/Application/Services/UseSkill.cs - ???
-  - Not Reviewed
-## src/Application/Services/UseSubagents.cs - ???
-  - Not Reviewed
-## src/Application/Services/WebFetchService.cs - ???
-  - Not Reviewed
-## src/Application/Services/WebSearchService.cs - ???
-  - Not Reviewed
-## src/Application/Types/AgentTypes.cs - ???
-  - Not Reviewed
-## src/Application/Types/ChatTypes.cs - ???
-  - Not Reviewed
-## src/Application/Types/ImageTypes.cs - ???
-  - Not Reviewed
-## src/Application/Types/MiscTypes.cs - ???
-  - Not Reviewed
+## src/Application/OpenLMStudio.Application.csproj - Application Layer Project File
+  - 25-line .NET 8 SDK-style project file. TargetFramework net8.0, Nullable/ImplicitUsings enabled, RootNamespace OpenLMStudio.Application. References OpenLMStudio.Domain.csproj. Packages: Markdig 0.39, Microsoft.Extensions.DependencyInjection.Abstractions 8.0.2, Microsoft.Extensions.Http 8.0.1, Microsoft.Extensions.Logging.Abstractions 8.0.2, Microsoft.Extensions.Options 8.0.2, Microsoft.ML.OnnxRuntime 1.20.0, System.IO.Abstractions 21.0.29, System.IO.Pipelines 8.0.0.
+## src/Application/Services/ActModeRespond.cs - Act Mode Respond Tool Implementation (Stub)
+  - 62-line stub implementation for act_mode_respond tool, available only in ACT MODE. ILogger<ActModeRespond> with NullLogger fallback. RespondAsync validates response parameter, checks consecutive call state, returns ToolResult with progress update. Uses Microsoft.Extensions.Logging, OpenLMStudio.Domain.Interfaces, OpenLMStudio.Domain.Models.
+## src/Application/Services/AgentSessionService.cs - Agent Session Lifecycle Manager
+  - 133-line service in Agent namespace managing AgentSession CRUD with thread-safe lock. Methods: CreateSession, GetOrCreateSession, GetActiveSession, PauseActiveSession, ResumeSession, CompleteActiveSession, DisposeSession, ListSessions. Uses Microsoft.Extensions.Logging, OpenLMStudio.Domain.Models.
+## src/Application/Services/AgentTaskAutoApprover.cs - Agent Task Auto-Approver Implementation
+  - 134-line implementation of IAgentTaskAutoApprover. Uses AgentAutoApprovalSettings for tool/command auto-approval rules. Thread-safe with lock. Methods: ShouldAutoApproveTool, ShouldAutoApproveToolWithPath, ShouldAutoApproveCommand, GetCommandTimeout, IsLongRunningCommand, RecordToolApproval, RecordCommandApproval, Reset, Dispose.
+## src/Application/Services/AgentTaskCheckpointService.cs - Agent Task Checkpoint Service Implementation
+  - 175-line implementation of IAgentTaskCheckpointService. File-based + ConcurrentDictionary in-memory cache. Uses IFileSystem abstraction. Methods: SaveCheckpointAsync, GetLatestCheckpointAsync, GetCheckpointsAsync, GetLatestToolCheckpointAsync, GetLatestCompletionCheckpointAsync, DeleteCheckpointsAsync, SaveToolCheckpointAsync, SaveTaskCheckpointAsync, SaveCompletionCheckpointAsync. Uses TaskCheckpoint types.
+## src/Application/Services/AgentTaskContextManager.cs - Agent Task Context Manager Implementation
+  - 140-line implementation of IAgentTaskContextManager. File-based + ConcurrentDictionary for history, file cache, and context budget. Methods: TruncateHistoryAsync, SummarizeHistoryAsync, GetCachedFileAsync, SetCachedFileAsync, ClearFileCacheAsync, UpdateFileCacheAsync, GetContextBudgetAsync, SetContextBudgetAsync. Uses IFileSystem, ContextBudget type.
+## src/Application/Services/AgentTaskHookService.cs - Agent Task Hook Service Implementation
+  - 176-line implementation of IAgentTaskHookService. ConcurrentDictionary-based hook storage keyed by taskId/hookName. 4 lifecycle hooks: TaskComplete, UserPromptSubmit, ToolCall, StateChange. RegisterHook/UnregisterHook use Guid per-call. Uses ILogger, Delegate-based callbacks.
+## src/Application/Services/AgentTaskManager.cs - Agent Task Central Orchestrator
+  - 463-line central orchestrator for agent task lifecycle (init, execute, complete, terminate). Thread-safe with lock. 13+ methods: InitTaskAsync, CancelTaskAsync, ResumeTaskFromHistoryAsync, ExecuteToolLoopAsync, CompleteTaskAsync, TerminateTaskAsync, SwitchToActModeAsync, SwitchToPlanModeAsync, ExecuteCommandToolAsync. Uses IAgentTaskCheckpointService, IAgentTaskStateService, IAgentTaskProgressService, IAgentTaskAutoApprover, IAgentTaskContextManager, IAgentTaskHookService, IAgentToolExecutor, IFileSystem, ILogger.
+## src/Application/Services/AgentTaskProgressService.cs - Agent Task Progress Service Implementation
+  - 160-line implementation of IAgentTaskProgressService. File-based + ConcurrentDictionary storage. Methods: GetProgressAsync, UpdateProgressAsync, AddChecklistItemAsync, CompleteChecklistItemAsync, UpdateCurrentStepAsync, AddReminderAsync, GetChecklistPercentageAsync, ShouldSendReminderAsync. Saves per-task JSON files.
+## src/Application/Services/AgentTaskStateService.cs - Agent Task State Service Implementation
+  - 141-line implementation of IAgentTaskStateService. File-based + ConcurrentDictionary storage. Methods: GetStateAsync, SaveStateAsync, UpdateAgentStateAsync, ResetStateAsync, GetAllStatesAsync. Saves per-task JSON files.
+## src/Application/Services/AgentToolExecutor.cs - Agent Tool Executor (26 tools)
+  - 426-line tool executor in Agent namespace. Implements IAgentToolExecutor with ExecuteAsync switch routing 26 tools (write_to_file, replace_in_file, read_file, search_files, list_files, execute_command, browser_action, use_mcp_tool, access_mcp_resource, load_mcp_documentation, plan_mode_respond, act_mode_respond, attempt_completion, new_task, use_skill, use_subagents, apply_patch, generate_explanation, web_fetch, web_search, ask_followup_question). Uses IFileSystemService, ICommandExecutor, IBrowserService, IMcpService, IWebSearchService, PatchService, WebFetchService, QuestionService, ToolRegistry.
+## src/Application/Services/AttemptCompletion.cs - Attempt Completion Tool Stub
+  - 86-line stub implementation of attempt_completion tool. ILogger with NullLogger fallback. CompleteAsync validates result parameter, returns ToolResult with output text and optional command. TODO: Execute command, show system notification, save checkpoint, run TaskComplete hook. Uses Microsoft.Extensions.Logging, OpenLMStudio.Domain.Interfaces, OpenLMStudio.Domain.Models.
+## src/Application/Services/BrowserService.cs - Browser Service Stub (6 Actions)
+  - 148-line stub implementation of IBrowserService with 6 actions: launch, click, type, scroll_down, scroll_up, close. ILogger with NullLogger fallback, BrowserSession field. ParseCoordinate helper. TODO: PuppeteerSharp integration with browser launch, click, type, scroll, close. Uses Microsoft.Extensions.Logging, OpenLMStudio.Domain.Interfaces, OpenLMStudio.Domain.Models.
+## src/Application/Services/CommandExecutor.cs - CLI Command Executor Stub
+  - 120-line stub implementation of ICommandExecutor. ILogger with NullLogger fallback. Properties: _isRunning, _currentProcess. Methods: ExecuteAsync (stub, takes command, requiresApproval, timeoutSeconds, workingDirectory), CancelAsync (kills _currentProcess). TODO: Process.Start(), cross-platform (cmd.exe/bash), stdin/stdout/stderr, timeout, @workspace:path. Uses System.Diagnostics, System.Text, Microsoft.Extensions.Logging, OpenLMStudio.Domain.Interfaces, OpenLMStudio.Domain.Models.
+## src/Application/Services/ContextCompressor.cs - Context Segment Compressor (3 Levels)
+  - 158-line implementation of IContextCompressor. IFileSystem + ILogger<ContextCompressor>. Properties: _compressedCache (ConcurrentDictionary). Methods: CompressAsync (takes segments, CompressionLevel, returns CompressionResult), DecompressAsync (takes compressedSegment, returns string?). 3 strategies: Light (>0.3), Medium (>0.5), Aggressive (>0.7). Uses System.Collections.Concurrent, System.IO.Abstractions, System.Text.Json, Microsoft.Extensions.Logging, OpenLMStudio.Application.Interfaces, OpenLMStudio.Domain.Models.
+## src/Application/Services/ContextManipulator.cs - Context Segment Manipulator (5 Actions)
+  - 188-line implementation of IContextManipulator. ConcurrentDictionary-based storage keyed by ChatId. Properties: _segments, _lock, OnStateChanged event. Methods: ManipulateAsync (Pin/Unpin/SuppressToggle/RemoveFromContext/AddCustomContext), GetPinnedSegmentsAsync, GetSuppressedSegmentsAsync, GetCustomInjectionsAsync. TokenCount = content.Length/4. Uses System.Collections.Concurrent, Microsoft.Extensions.Logging, OpenLMStudio.Application.Interfaces, OpenLMStudio.Domain.Models.
+## src/Application/Services/ContextRelevanceEngine.cs - Context Relevance Scoring Engine
+  - 116-line engine scoring context segment relevance to goal text via word overlap + exact match similarity. ConcurrentDictionary cache, ILogger. Methods: ScoreSegmentsAsync, CalculateRelevanceThreshold, OrderByRelevance. Uses OpenLMStudio.Application.Interfaces, OpenLMStudio.Domain.Models.
+## src/Application/Services/ContextSnapshotManager.cs - Context Snapshot Manager
+  - 153-line manager for task context snapshots with file-based + ConcurrentDictionary storage. Methods: CreateSnapshotAsync, GetSnapshotAsync, SaveSnapshotAsync, DeleteSnapshotAsync, GetAllSnapshotsAsync. Uses IFileSystem, ILogger, JsonSerializer, TaskContextSnapshot.
+## src/Application/Services/ContextWindowBudgeter.cs - Context Window Budget Manager
+  - 165-line implementation of IContextWindowBudgeter. ConcurrentDictionary<ChatId, ChatBudgetStateDto>, IContextRelevanceEngine, ILogger. Methods: GetOrCreateBudgetAsync, DeductFromBudgetAsync, TryAutoEvictLowestRelevanceSegmentsAsync, GetBudgetIndicatorAsync (color zones), SetBudgetForChatAsync, SetCompressionStrategyForChatAsync, UpdateSegmentRelevanceScoresAsync.
+## src/Application/Services/FileSystemService.cs - Agent File System Service (460 lines)
+  - Fully implemented IFileSystemService with write_to_file, read_file, search_files, list_files, replace_in_file. .agentignore validation, @workspace:path syntax, line-numbered output, 1000-line limit, read cache, Stopwatch timing, NullLogger fallback. Uses IOAbstractions, Microsoft.Extensions.Logging, OpenLMStudio.Domain.Models.
+## src/Application/Services/IMarkdownRenderer.cs - Markdown Rendering Interface
+  - 21-line minimal interface with Render (takes markdown, returns formatted string) and ExtractPlainText (strips formatting). Uses OpenLMStudio.Application.Services namespace.
+## src/Application/Services/MarkdownRenderer.cs - Markdig Markdown Renderer (87 lines)
+  - IMarkdownRenderer impl using Markdig with AdvancedExtensions, Abbreviations, Mathematics, YamlFrontMatter. Render() produces HTML, ExtractPlainText() strips tags via character scan. Uses Markdig, OpenLMStudio.Application.Services.
+## src/Application/Services/McpService.cs - MCP Service Stub (190 lines)
+  - Stub IMcpService impl with UseToolAsync, AccessResourceAsync, LoadDocumentationAsync. Uses Microsoft.Extensions.Logging, OpenLMStudio.Domain.Interfaces, OpenLMStudio.Domain.Models. TODO: MCP SDK dependency, stdio/HTTP server connection, dynamic server support, tool/resource discovery.
+## src/Application/Services/NewTask.cs - New Task Tool Stub (55 lines)
+  - Stub for new_task tool, creates AgenticTask with preloaded context. ILogger with NullLogger fallback. CreateAsync validates context, returns ToolResult. TODO: Create new AgenticTask, preload current work/technical concepts/relevant files. Uses Microsoft.Extensions.Logging, OpenLMStudio.Domain.Interfaces, OpenLMStudio.Domain.Models.
+## src/Application/Services/PatchService.cs - Apply Patch Tool (202 lines)
+  - Implements apply_patch with V4A diff format parsing (ADD/UPDATE/DELETE/MOVE). IFileSystem + ILogger. ParsePatch, ApplyAdd/Update/Delete/Move, ResolvePath with @workspace: syntax. PatchOperation enum, PatchOperationInfo record. Uses System.IO, System.IO.Abstractions, System.Text, System.Text.RegularExpressions, Microsoft.Extensions.Logging, OpenLMStudio.Domain.Interfaces, OpenLMStudio.Domain.Models.
+## src/Application/Services/PlanModeRespond.cs - Plan Mode Respond Stub (58 lines)
+  - Stub for plan_mode_respond tool, only available in PLAN MODE. ILogger with NullLogger fallback. RespondAsync validates response, supports needsMoreExploration flag, returns ToolResult with trimmed output. TODO: Mode detection, agent message return, ACT MODE switching. Uses Microsoft.Extensions.Logging, OpenLMStudio.Domain.Interfaces, OpenLMStudio.Domain.Models.
+## src/Application/Services/QuestionService.cs - Ask Followup Question Tool (61 lines)
+  - Implements ask_followup_question with optional options. ILogger with NullLogger fallback. AskAsync validates question, formats options numbered (1-5), returns ToolResult with UI dialog note. Uses Microsoft.Extensions.Logging, OpenLMStudio.Domain.Interfaces, OpenLMStudio.Domain.Models.
+## src/Application/Services/SystemPromptGenerator.cs - System Prompt Generator with Template-Based Generation
+  - 213-line class generating system prompts with 12 dynamic template variables (AGENT_ROLE, TOOL_DEFINITIONS, FILE_STRUCTURE, FOCUS_CHAIN_INSTRUCTIONS, ENVIRONMENT_DETAILS, CAPABILITIES, SKILLS, RULES, SYSTEM_INFO, OBJECTIVE, USER_INSTRUCTIONS, FEEDBACK). Constructor accepts optional basePromptTemplate string and ILogger. Provides GeneratePrompt (all 12 params), GenerateFocusChainInstructions, GenerateEnvironmentDetails, GenerateToolDefinitions, GenerateFileStructure, GenerateCapabilitiesSection, GenerateSkillsSection, GenerateRulesSection. Uses OpenLMStudio.Application.Types (ToolDefinition), OpenLMStudio.Domain.Models, Microsoft.Extensions.Logging. Default template has all 12 sections.
+## src/Application/Services/TokenEstimator.cs - Token Estimation Service (4 Methods)
+  - 108-line fully implemented ITokenEstimator with 3 estimation algorithms: EstimateTokens (~1 token per 4 chars), EstimateTokensAdvanced (word-boundary-aware), EstimateMessagesTokens (per-message with role prefix overhead), plus GetHumanReadableTokenCount (humanizes to "1.5K tokens"). Uses OpenLMStudio.Application.Interfaces.
+## src/Application/Services/UseSkill.cs - Use Skill Tool Stub
+  - 54-line stub implementation of use_skill tool. ILogger with NullLogger fallback. ActivateAsync validates skillName, returns ToolResult with activation message. TODO: Load and activate skill, skill discovery, skill persistence. Uses Microsoft.Extensions.Logging, OpenLMStudio.Domain.Interfaces, OpenLMStudio.Domain.Models.
+## src/Application/Services/UseSubagents.cs - Use Subagents Tool Stub
+  - 70-line stub implementation of use_subagents tool. ILogger with NullLogger fallback. RunAsync validates prompts (max 5), returns ToolResult with subagent summary. ProcessSubagentAsync is a stub returning placeholder. TODO: Parallel subagent execution via Task.WhenAll, subagent prompt processing, result collection. Uses Microsoft.Extensions.Logging, OpenLMStudio.Domain.Interfaces, OpenLMStudio.Domain.Models.
+## src/Application/Services/WebFetchService.cs - Web Fetch Tool (Fully Implemented)
+  - 78-line fully implemented IWebFetchService with HTTP/HTTPS support and automatic HTTPS upgrade. FetchAsync validates url/prompt, upgrades HTTP→HTTPS, fetches content (truncated at 50K chars), handles HttpRequestException/TaskCanceledException. Uses IHttpClientFactory (creates "AgentWeb" client), Microsoft.Extensions.Logging, OpenLMStudio.Domain.Interfaces, OpenLMStudio.Domain.Models.
+## src/Application/Services/WebSearchService.cs - Web Search Service Stub (IWebSearchService)
+  - 122-line stub implementation of IWebSearchService with FetchAsync and SearchAsync methods. FetchAsync validates url/prompt, returns stub content. SearchAsync validates query, supports allowedDomains/blockedDomains filtering, returns stub search results (3 results). TODO: Bing/Google search API integration, domain filtering, HTML parsing, pagination. Uses Microsoft.Extensions.Logging, OpenLMStudio.Domain.Interfaces, OpenLMStudio.Domain.Models.
+## src/Application/Types/AgentTypes.cs - Agent Tool Request Records
+  - 154-line file with 9 record types for agent tool requests: ListFilesRequest, WriteFileRequest, ReadFileRequest, ReplaceFileRequest, SearchFilesRequest, ExecuteCommandRequest, UseMcpToolRequest, AccessMcpResourceRequest, BrowserActionRequest. All include Path/Content/Regex/Arguments properties and optional TaskProgress. Located in OpenLMStudio.Application.Types.Agent namespace.
+## src/Application/Types/ChatTypes.cs - Chat Completion Types and Event Handlers
+  - 242-line file with ChatMessage, ChatCompletionRequest (with Type for multi-engine routing), ChatChoice, ChatCompletionResponse, UsageStats, StreamingEventArgs, StreamingEventHandler, plus internal AnthropicMessage/AnthropicRequestWithModelType and ContextManipulationRequest/ContextManipulationAction. Uses OpenLMStudio.Application.Types and OpenLMStudio.Domain.Models namespaces.
+## src/Application/Types/ImageTypes.cs - Image Generation Request/Response Types
+  - 289-line file with OpenAI-compatible image generation types: OpenAIImageGenerationRequest (prompt, width, height, steps, cfgScale, seed), ImageGenerationResponse, ImageData (B64Json), ImageInpaintingRequest (with InitImage/MaskImage), ImageOutpaintingRequest (with InitImage/Direction). Uses OpenLMStudio.Application.Types namespace.
+## src/Application/Types/MiscTypes.cs - Misc DTOs, Plugin Verification, HuggingFace Info, Budget Types, and OpenTelemetry ActivitySource
+  - 295-line file with FilePreviewResult, PluginVerificationResult, HfRepoFileInfo, LoadTestResult, BenchmarkResult, ChatBudgetStateDto, ContextBudgetIndicator, ContextBudgetColorZone, and OpenLmStudioActivitySource (static class with StartToolCallActivity, StartContextCompressionActivity, StartModelLifecycleActivity, StartSandboxActivity, StartPluginSandboxActivity). Uses OpenLMStudio.Domain.Models and System.Diagnostics namespaces.
