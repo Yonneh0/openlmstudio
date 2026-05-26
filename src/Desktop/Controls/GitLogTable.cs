@@ -6,6 +6,7 @@ using System.Linq;
 using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Controls.ApplicationLifetimes;
+using Avalonia.Controls.Primitives;
 using Avalonia.Input;
 using Avalonia.Interactivity;
 using Avalonia.Layout;
@@ -31,6 +32,24 @@ public class GitLogTable : ContentControl
         set => SetValue(EntriesProperty, value);
     }
 
+    /// <summary>
+    /// Command to close the popup when the close button is clicked.
+    /// Set this to a command that closes the parent Popup.
+    /// </summary>
+    public static readonly StyledProperty<bool> CloseRequestedProperty =
+        AvaloniaProperty.Register<GitLogTable, bool>(nameof(CloseRequested));
+
+    public bool CloseRequested
+    {
+        get => GetValue(CloseRequestedProperty);
+        set => SetValue(CloseRequestedProperty, value);
+    }
+
+    /// <summary>
+    /// Event fired when the close button is clicked.
+    /// </summary>
+    public event EventHandler<CloseRequestedEventArgs>? CloseRequestedEvent;
+
     // Colors
     private static readonly IBrush _bgPrimary = new SolidColorBrush(Color.Parse("#1E1E22"));
     private static readonly IBrush _bgSecondary = new SolidColorBrush(Color.Parse("#252529"));
@@ -45,13 +64,14 @@ public class GitLogTable : ContentControl
     private static readonly IBrush _selectionColor = new SolidColorBrush(Color.Parse("#1E88E5"));
 
     // Layout constants
-    private const double HeaderHeight = 32;
-    private const double RowHeight = 30;
-    private const double RowPadding = 12;
+    private const double HeaderHeight = 36;
+    private const double RowHeight = 34;
+    private const double RowPadding = 14;
     private const double HashColumnWidth = 130;
-    private const double AuthorColumnWidth = 200;
+    private const double AuthorColumnWidth = 220;
     private const double SeparatorWidth = 1;
-    private const double TopPadding = 8;
+    private const double TopPadding = 10;
+    private const double CloseButtonWidth = 40;
 
     // Visual tree
     private readonly ScrollViewer _scrollViewer = new();
@@ -59,6 +79,8 @@ public class GitLogTable : ContentControl
     private readonly Border _outerBorder = new();
     private readonly Border _headerBorder = new();
     private readonly Grid _headerGrid = new();
+    private readonly Border _closeButtonContainer = new();
+    private readonly Button _closeButton = new();
 
     // State
     private int? _selectedIndex;
@@ -72,6 +94,67 @@ public class GitLogTable : ContentControl
 
         // Build the visual tree
         BuildVisualTree();
+        BuildCloseButton();
+
+        // Subscribe to close requested
+        CloseRequestedProperty.Changed.Subscribe(onCloseRequested);
+    }
+
+    private void BuildCloseButton()
+    {
+        _closeButton.Width = CloseButtonWidth;
+        _closeButton.Height = CloseButtonWidth;
+        _closeButton.Content = "✕";
+        _closeButton.FontSize = 16;
+        _closeButton.FontFamily = new FontFamily("Segoe UI");
+        _closeButton.Background = new SolidColorBrush(Color.Parse("#2D2D30"));
+        _closeButton.Foreground = new SolidColorBrush(Color.Parse("#888888"));
+        _closeButton.BorderThickness = new Thickness(0);
+        _closeButton.CornerRadius = new CornerRadius(6);
+        _closeButton.Padding = new Thickness(0);
+        _closeButton.Cursor = new Cursor(StandardCursorType.Hand);
+        _closeButton.HorizontalAlignment = HorizontalAlignment.Right;
+        _closeButton.VerticalAlignment = VerticalAlignment.Top;
+        _closeButton.Click += OnCloseButtonClicked;
+
+        // Hover effects
+        _closeButton.AddHandler(PointerEnteredEvent, OnCloseButtonEntered);
+        _closeButton.AddHandler(PointerExitedEvent, OnCloseButtonExited);
+
+        _closeButtonContainer.Child = _closeButton;
+    }
+
+    private void OnCloseButtonClicked(object? sender, RoutedEventArgs e)
+    {
+        CloseRequested = !CloseRequested;
+        CloseRequestedEvent?.Invoke(this, new CloseRequestedEventArgs());
+        e.Handled = true;
+    }
+
+    private void OnCloseButtonEntered(object? sender, PointerEventArgs e)
+    {
+        if (_closeButton != null)
+        {
+            _closeButton.Background = new SolidColorBrush(Color.Parse("#3A3A3E"));
+            _closeButton.Foreground = new SolidColorBrush(Color.Parse("#CCCCCC"));
+        }
+        e.Handled = true;
+    }
+
+    private void OnCloseButtonExited(object? sender, PointerEventArgs e)
+    {
+        if (_closeButton != null)
+        {
+            _closeButton.Background = new SolidColorBrush(Color.Parse("#2D2D30"));
+            _closeButton.Foreground = new SolidColorBrush(Color.Parse("#888888"));
+        }
+        e.Handled = true;
+    }
+
+    private void onCloseRequested(Avalonia.Reactive.AvaloniaPropertyChangedObservable<bool> change)
+    {
+        // When CloseRequested becomes true, the popup should close
+        // This is handled by the binding in XAML
     }
 
     private void BuildVisualTree()
@@ -80,7 +163,7 @@ public class GitLogTable : ContentControl
         _outerBorder.Background = _bgPrimary;
         _outerBorder.BorderBrush = _borderBrush;
         _outerBorder.BorderThickness = new Thickness(1);
-        _outerBorder.CornerRadius = new CornerRadius(6);
+        _outerBorder.CornerRadius = new CornerRadius(8);
         _outerBorder.Padding = new Thickness(0, TopPadding, 0, 0);
 
         // Header row
@@ -129,11 +212,16 @@ public class GitLogTable : ContentControl
         _scrollViewer.VerticalScrollBarVisibility = ScrollBarVisibility.Auto;
         _scrollViewer.HorizontalScrollBarVisibility = ScrollBarVisibility.Disabled;
 
-        _outerBorder.Child = _scrollViewer;
+        // Wrap in a Grid so the close button can overlay on top
+        var contentGrid = new Grid();
+        contentGrid.Children.Add(_scrollViewer);
+        contentGrid.Children.Add(_closeButtonContainer);
+
+        _outerBorder.Child = contentGrid;
         SetValue(ContentControl.ContentProperty, _outerBorder);
     }
 
-    private static TextBlock CreateHeaderCell(string text, IBrush foreground)
+    private TextBlock CreateHeaderCell(string text, IBrush foreground)
     {
         return new TextBlock
         {
@@ -149,13 +237,13 @@ public class GitLogTable : ContentControl
         };
     }
 
-    private static Border CreateSeparator()
+    private Border CreateSeparator()
     {
         return new Border
         {
             Width = SeparatorWidth,
             Background = _borderBrush,
-            Margin = new Thickness(0, 6, 0, 6),
+            Margin = new Thickness(0, 8, 0, 8),
         };
     }
 
@@ -340,3 +428,8 @@ public class GitLogTable : ContentControl
         e.Handled = true;
     }
 }
+
+/// <summary>
+/// Event args for the CloseRequested event.
+/// </summary>
+public class CloseRequestedEventArgs : EventArgs;

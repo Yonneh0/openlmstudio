@@ -809,10 +809,19 @@
             </DockPanel>
         </Border>
 
-         <!-- Git log popup -->
-         <Popup x:Name="GitLogPopup" Width="960" Height="560" IsOpen="False">
-             <Controls:GitLogTable x:Name="GitLogTableControl"/>
-         </Popup>
+          <!-- Git log popup -->
+          <Popup x:Name="GitLogPopup" Width="960" Height="560" IsOpen="False" Placement="Top" AllowsTopmost="True">
+              <Border Background="Transparent" PointerPressed="OnGitLogOverlayClicked">
+                  <Border Background="{StaticResource BgPrimary}"
+                          BorderBrush="#3A3A3E"
+                          BorderThickness="1"
+                          CornerRadius="8"
+                          Width="960"
+                          Height="560">
+                      <Controls:GitLogTable x:Name="GitLogTableControl" CloseRequested="{Binding ElementName=GitLogPopup, Path=IsOpen, Mode=TwoWay}"/>
+                  </Border>
+              </Border>
+          </Popup>
 
         <!-- Tool call popup (opens upward from the Tools button) -->
         <Canvas Grid.Row="2" Grid.ColumnSpan="3">

@@ -520,6 +520,25 @@ public partial class MainWindow : Window
     }
 
     /// <summary>
+    /// Closes the GitLog popup when clicking outside of it.
+    /// </summary>
+    private void OnGitLogOverlayClicked(object? sender, PointerPressedEventArgs e)
+    {
+        if (GitLogPopup != null && GitLogPopup.IsOpen)
+        {
+            // Check if the click was outside the popup content
+            var position = e.GetPosition(GitLogPopup.Child);
+            if (position.X >= 0 && position.X <= GitLogPopup.Width &&
+                position.Y >= 0 && position.Y <= GitLogPopup.Height)
+            {
+                // Click was inside the popup, don't close
+                return;
+            }
+            GitLogPopup.SetValue(Avalonia.Controls.Primitives.Popup.IsOpenProperty, false);
+        }
+    }
+
+    /// <summary>
     /// Deletes the currently selected chat from the UI, backing store, and file system.
     /// </summary>
     private async void OnDeleteChatClicked(object? sender, RoutedEventArgs e)
