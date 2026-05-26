@@ -165,13 +165,13 @@
                         VerticalContentAlignment="Center"
                         Cursor="Hand"/>
                 <!-- Tab buttons -->
-                <ToggleButton x:Name="ChatTab" Content="Chats" Classes="toolTab" IsChecked="True" MinHeight="24" VerticalContentAlignment="Center"/>
-                <ToggleButton x:Name="ServerTab" Content="Server" Classes="toolTab" MinHeight="24" VerticalContentAlignment="Center"/>
-                <ToggleButton x:Name="ModelsTab" Content="Models" Classes="toolTab" MinHeight="24" VerticalContentAlignment="Center"/>
-                <ToggleButton x:Name="DevicesTab" Content="Devices" Classes="toolTab" MinHeight="24" VerticalContentAlignment="Center"/>
-                <ToggleButton x:Name="ContextTab" Content="Context" Classes="toolTab" MinHeight="24" VerticalContentAlignment="Center"/>
-                <ToggleButton x:Name="PinguTab" Content="Pingu" Classes="toolTab" MinHeight="24" VerticalContentAlignment="Center"/>
-                <ToggleButton x:Name="ImageGenTab" Content="ImageGen" Classes="toolTab" MinHeight="24" VerticalContentAlignment="Center"/>
+                <ToggleButton x:Name="ChatTab" Content="Chats" Classes="toolTab" IsChecked="True" Tag="Chat" MinHeight="24" VerticalContentAlignment="Center"/>
+                <ToggleButton x:Name="ServerTab" Content="Server" Classes="toolTab" Tag="Server" MinHeight="24" VerticalContentAlignment="Center"/>
+                <ToggleButton x:Name="ModelsTab" Content="Models" Classes="toolTab" Tag="Models" MinHeight="24" VerticalContentAlignment="Center"/>
+                <ToggleButton x:Name="DevicesTab" Content="Devices" Classes="toolTab" Tag="Devices" MinHeight="24" VerticalContentAlignment="Center"/>
+                <ToggleButton x:Name="ContextTab" Content="Context" Classes="toolTab" Tag="Context" MinHeight="24" VerticalContentAlignment="Center"/>
+                <ToggleButton x:Name="PinguTab" Content="Pingu" Classes="toolTab" Tag="Pingu" MinHeight="24" VerticalContentAlignment="Center"/>
+                <ToggleButton x:Name="ImageGenTab" Content="ImageGen" Classes="toolTab" Tag="ImageGen" MinHeight="24" VerticalContentAlignment="Center"/>
             </WrapPanel>
 
             <Grid Grid.Row="1">
@@ -769,9 +769,9 @@
             <StackPanel Grid.Row="0" Margin="0,0,0,8">
                 <!-- Right sidebar tabs -->
                 <WrapPanel x:Name="RightTabButtonsPanel" Margin="4,0,4,0">
-                    <ToggleButton x:Name="RightTabTasks" Content="Tasks" Classes="rightPanelTab" IsChecked="True" MinHeight="24"/>
-                    <ToggleButton x:Name="RightTabContext" Content="Context" Classes="rightPanelTab"/>
-                    <ToggleButton x:Name="RightTabInfo" Content="Info" Classes="rightPanelTab"/>
+                    <ToggleButton x:Name="RightTabTasks" Content="Tasks" Classes="rightPanelTab" IsChecked="True" Tag="Tasks" MinHeight="24"/>
+                    <ToggleButton x:Name="RightTabContext" Content="Context" Classes="rightPanelTab" Tag="Context"/>
+                    <ToggleButton x:Name="RightTabInfo" Content="Info" Classes="rightPanelTab" Tag="Info"/>
                 </WrapPanel>
             </StackPanel>
             <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto">

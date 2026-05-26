@@ -53,7 +53,7 @@ public partial class MainWindow : Window
     private readonly IWindowSettings? _windowSettings;
     private readonly Infrastructure.Services.MainAIManager? _mainAIManager;
     private readonly Infrastructure.Services.SystemAIManager? _systemAIManager;
-    private readonly IAgentToolExecutor? _agentToolExecutor;
+    private IAgentToolExecutor? _agentToolExecutor;
 
     /// <summary>Flag to prevent duplicate title saves when both LostFocus and overlay click fire.</summary>
     private bool _titleEditSaving = false;
@@ -207,9 +207,7 @@ public partial class MainWindow : Window
         if (NewChatButton != null)
             NewChatButton.Click += OnNewChatClicked;
 
-        // Send message button
-        if (SendButton != null)
-            SendButton.Click += OnSendMessageClicked;
+        // NOTE: SendButton.Click is wired directly in XAML (Click="OnSendMessageClicked"), do NOT register here to avoid double-firing
 
 
         // Server start/stop buttons - both left and right panels need handlers
@@ -905,7 +903,7 @@ public partial class MainWindow : Window
 
     /// <summary>
     /// Wires up ToggleButton click handlers for the left sidebar tabs.
-    /// Each button is only wired once (AttachTabClickHandlers handles the same buttons via PointerPressed).
+    /// Each button is wired exactly once during MainWindow constructor.
     /// </summary>
     private void WireUpLeftTabClickHandlers()
     {
@@ -922,11 +920,8 @@ public partial class MainWindow : Window
 
         foreach (var (button, tabName) in tabs)
         {
-            // Only wire once - detach any existing handler to avoid double-firing
             if (button != null)
             {
-                // Remove the handler if it was already added by AttachTabClickHandlers
-                button.Click -= OnLeftTabClicked;
                 button.Click += OnLeftTabClicked;
             }
         }
@@ -960,24 +955,42 @@ public partial class MainWindow : Window
 
     /// <summary>
     /// Handles clicks on the right sidebar ToggleButton tabs.
+    /// Uses the Tag property to determine which tab was clicked, avoiding null reference issues.
     /// </summary>
     private void OnRightSidebarTabClicked(object? sender, RoutedEventArgs e)
     {
         if (sender is not ToggleButton tab)
             return;
 
-        // Hide all content panels
+        // Get the tab name from Tag property (set in XAML)
+        var tabName = tab.Tag as string;
+        if (string.IsNullOrEmpty(tabName))
+        {
+            // Fallback to Name property if Tag is not set
+            tabName = tab.Name;
+        }
+
+        // Hide all content panels first
         RightTasksContent?.SetValue(StackPanel.IsVisibleProperty, false);
         RightContextContent?.SetValue(StackPanel.IsVisibleProperty, false);
         RightInfoContent?.SetValue(StackPanel.IsVisibleProperty, false);
 
-        // Show the selected panel
-        if (tab.Name == nameof(RightTabTasks))
-            RightTasksContent?.SetValue(StackPanel.IsVisibleProperty, true);
-        else if (tab.Name == nameof(RightTabContext))
-            RightContextContent?.SetValue(StackPanel.IsVisibleProperty, true);
-        else if (tab.Name == nameof(RightTabInfo))
-            RightInfoContent?.SetValue(StackPanel.IsVisibleProperty, true);
+        // Show the selected panel based on Tag
+        switch (tabName)
+        {
+            case "Tasks":
+                RightTasksContent?.SetValue(StackPanel.IsVisibleProperty, true);
+                break;
+            case "Context":
+                RightContextContent?.SetValue(StackPanel.IsVisibleProperty, true);
+                break;
+            case "Info":
+                RightInfoContent?.SetValue(StackPanel.IsVisibleProperty, true);
+                break;
+            default:
+                _logger?.LogWarning("Unknown right sidebar tab: {TabName}", tabName);
+                break;
+        }
     }
 
     // =========================================================================
@@ -1080,10 +1093,15 @@ public partial class MainWindow : Window
     /// </summary>
     private void OnToolsButtonClicked(object? sender, RoutedEventArgs e)
     {
-        // Resolve AgentToolExecutor from DI if not already resolved
+        // Try to resolve AgentToolExecutor if not already resolved
         if (_agentToolExecutor == null)
         {
-            _logger?.LogWarning("AgentToolExecutor not resolved — cannot open tool call popup");
+            _agentToolExecutor = ResolveAgentToolExecutorFromAppServices();
+        }
+
+        if (_agentToolExecutor == null)
+        {
+            ShowError("AgentToolExecutor is not available. Please ensure the agent services are properly configured.");
             return;
         }
 
