@@ -75,3 +75,4 @@ OpenLMStudio.*
 
 # Android build artifacts
 *.apk
+ref/
