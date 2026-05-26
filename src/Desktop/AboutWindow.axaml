@@ -9,7 +9,7 @@
         WindowState="Normal"
         CanResize="False"
         ExtendClientAreaToDecorationsHint="True"
-        ExtendClientAreaTitleBarHeightHint="32"
+        ExtendClientAreaTitleBarHeightHint="0"
         Title="About OpenLMStudio">
 
     <Window.Resources>
@@ -82,20 +82,20 @@
                     <StackPanel Margin="0,0,0,6">
                         <TextBlock Text="OpenLMStudio" FontSize="20" FontWeight="SemiBold" Foreground="{StaticResource AccentBlue}" TextAlignment="Center" Margin="0,0,0,2"/>
                         <TextBlock Text="Local LLM Studio" FontSize="10" Foreground="{StaticResource TextSecondary}" TextAlignment="Center" Margin="0,0,0,4"/>
-                    <!-- Version badge -->
-                    <Border Background="{StaticResource BgTertiary}" CornerRadius="3" Padding="8,4" Margin="0,0,0,6" Cursor="Hand" PointerPressed="OnVersionBadgeClicked">
-                        <StackPanel Orientation="Horizontal" HorizontalAlignment="Center">
-                            <TextBlock x:Name="VersionText" Text="v1.0.0" Foreground="{StaticResource AccentGreen}" FontSize="10" FontWeight="SemiBold"/>
-                            <TextBlock Text="  ·  " Foreground="{StaticResource TextMuted}" FontSize="10"/>
-                            <TextBlock x:Name="CommitText" Text="c58b6a2" Foreground="{StaticResource TextMuted}" FontSize="10"/>
-                            <TextBlock Text="  ·  " Foreground="{StaticResource TextMuted}" FontSize="10"/>
-                            <TextBlock x:Name="BranchText" Text="main" Foreground="{StaticResource TextMuted}" FontSize="10"/>
-                            <TextBlock Text="  ·  " Foreground="{StaticResource TextMuted}" FontSize="10"/>
-                            <TextBlock x:Name="BuildTypeText" Text="Release" Foreground="{StaticResource AccentOrange}" FontSize="10"/>
-                            <TextBlock Text="  ·  " Foreground="{StaticResource TextMuted}" FontSize="10"/>
-                            <TextBlock x:Name="DirtyText" Foreground="{StaticResource AccentOrange}" FontSize="10"/>
-                        </StackPanel>
-                    </Border>
+                        <!-- Version badge -->
+                        <Border Background="{StaticResource BgTertiary}" CornerRadius="3" Padding="8,4" Margin="0,0,0,6" Cursor="Hand" PointerPressed="OnVersionBadgeClicked">
+                            <StackPanel Orientation="Horizontal" HorizontalAlignment="Center">
+                                <TextBlock x:Name="VersionText" Text="v1.0.0" Foreground="{StaticResource AccentGreen}" FontSize="10" FontWeight="SemiBold"/>
+                                <TextBlock Text="  ·  " Foreground="{StaticResource TextMuted}" FontSize="10"/>
+                                <TextBlock x:Name="CommitText" Text="c58b6a2" Foreground="{StaticResource TextMuted}" FontSize="10"/>
+                                <TextBlock Text="  ·  " Foreground="{StaticResource TextMuted}" FontSize="10"/>
+                                <TextBlock x:Name="BranchText" Text="main" Foreground="{StaticResource TextMuted}" FontSize="10"/>
+                                <TextBlock Text="  ·  " Foreground="{StaticResource TextMuted}" FontSize="10"/>
+                                <TextBlock x:Name="BuildTypeText" Text="Release" Foreground="{StaticResource AccentOrange}" FontSize="10"/>
+                                <TextBlock Text="  ·  " Foreground="{StaticResource TextMuted}" FontSize="10"/>
+                                <TextBlock x:Name="DirtyText" Foreground="{StaticResource AccentOrange}" FontSize="10"/>
+                            </StackPanel>
+                        </Border>
                         <TextBlock Text="A cross-platform desktop application for running local AI models — text, images, and beyond." Foreground="{StaticResource TextSecondary}" FontSize="9" TextAlignment="Center" TextWrapping="Wrap" Margin="0,0,0,2"/>
                         <TextBlock Text="Built with ❤️ for the local AI community" Foreground="{StaticResource TextMuted}" FontSize="8" TextAlignment="Center"/>
                     </StackPanel>
@@ -106,29 +106,23 @@
                     <!-- Application Details -->
                     <TextBlock Text="Application" Classes="sectionTitle"/>
                     <Border Classes="sectionCard" Padding="8">
-                        <Grid>
-                            <Grid.RowDefinitions>
-                                <RowDefinition Height="Auto"/>
-                                <RowDefinition Height="Auto"/>
-                                <RowDefinition Height="Auto"/>
-                                <RowDefinition Height="Auto"/>
-                                <RowDefinition Height="Auto"/>
-                            </Grid.RowDefinitions>
-                            <Grid.ColumnDefinitions>
-                                <ColumnDefinition Width="120"/>
-                                <ColumnDefinition Width="*"/>
-                            </Grid.ColumnDefinitions>
-                            <TextBlock Grid.Row="0" Grid.Column="0" Text="Product" Classes="techName"/>
-                            <TextBlock Grid.Row="0" Grid.Column="1" Text="OpenLMStudio" Classes="techValue"/>
-                            <TextBlock Grid.Row="1" Grid.Column="0" Text="Version" Classes="techName" Margin="0,4,0,0"/>
-                            <TextBlock Grid.Row="1" Grid.Column="1" x:Name="AppVersionText" Text="1.0.0" Classes="techValue" Margin="0,4,0,0"/>
-                            <TextBlock Grid.Row="2" Grid.Column="0" Text="Runtime" Classes="techName" Margin="0,4,0,0"/>
-                            <TextBlock Grid.Row="2" Grid.Column="1" x:Name="RuntimeText" Text=".NET 8.0" Classes="techValue" Margin="0,4,0,0"/>
-                            <TextBlock Grid.Row="3" Grid.Column="0" Text="OS" Classes="techName" Margin="0,4,0,0"/>
-                            <TextBlock Grid.Row="3" Grid.Column="1" x:Name="OsText" Text="Windows" Classes="techValue" Margin="0,4,0,0"/>
-                            <TextBlock Grid.Row="4" Grid.Column="0" Text="Architecture" Classes="techName" Margin="0,4,0,0"/>
-                            <TextBlock Grid.Row="4" Grid.Column="1" x:Name="ArchitectureText" Text="x64" Classes="techValue" Margin="0,4,0,0"/>
-                        </Grid>
+                            <Grid>
+                                <Grid.RowDefinitions>
+                                    <RowDefinition Height="Auto"/>
+                                    <RowDefinition Height="Auto"/>
+                                    <RowDefinition Height="Auto"/>
+                                </Grid.RowDefinitions>
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="120"/>
+                                    <ColumnDefinition Width="*"/>
+                                </Grid.ColumnDefinitions>
+                                <TextBlock Grid.Row="0" Grid.Column="0" Text="Runtime" Classes="techName"/>
+                                <TextBlock Grid.Row="0" Grid.Column="1" x:Name="RuntimeText" Text=".NET 8.0" Classes="techValue" Margin="0,4,0,0"/>
+                                <TextBlock Grid.Row="1" Grid.Column="0" Text="OS" Classes="techName" Margin="0,4,0,0"/>
+                                <TextBlock Grid.Row="1" Grid.Column="1" x:Name="OsText" Text="Windows" Classes="techValue" Margin="0,4,0,0"/>
+                                <TextBlock Grid.Row="2" Grid.Column="0" Text="Architecture" Classes="techName" Margin="0,4,0,0"/>
+                                <TextBlock Grid.Row="2" Grid.Column="1" x:Name="ArchitectureText" Text="x64" Classes="techValue" Margin="0,4,0,0"/>
+                            </Grid>
                     </Border>
 
                     <!-- Divider -->

@@ -3,7 +3,7 @@
         x:Class="OpenLMStudio.Desktop.MainWindow"
         xmlns:Controls="clr-namespace:OpenLMStudio.Desktop.Controls"
         Width="1400" Height="750"
-        MinWidth="1000" MinHeight="600">
+        MinWidth="1100" MinHeight="600">
 
     <Window.Resources>
         <SolidColorBrush x:Key="BgPrimary" Color="#1E1E22"/>
@@ -809,11 +809,9 @@
         </Border>
 
         <!-- Git log popup -->
-        <Popup x:Name="GitLogPopup">
-            <Border Background="{StaticResource BgSecondary}" BorderBrush="#333338" BorderThickness="1" CornerRadius="4" Width="600" Height="400">
-                <ScrollViewer HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Auto">
-                    <TextBlock x:Name="GitLogContent" Text="Git log" Foreground="{StaticResource TextPrimary}" Padding="12" FontSize="12" TextWrapping="Wrap" Margin="8"/>
-                </ScrollViewer>
+        <Popup x:Name="GitLogPopup" Width="720" Height="480">
+            <Border Background="{StaticResource BgSecondary}" BorderBrush="#333338" BorderThickness="1" CornerRadius="4">
+                <Controls:GitLogTable x:Name="GitLogTableControl" Entries="{Binding GitLogEntries}"/>
             </Border>
         </Popup>
 

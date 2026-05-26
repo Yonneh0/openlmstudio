@@ -82,6 +82,11 @@ public partial class MainWindow : Window
     private string _activeTab = "Chat";
     private Guid? _selectedChatId;
 
+    /// <summary>
+    /// Parsed git log entries for the GitLogTable popup.
+    /// </summary>
+    public IEnumerable<Controls.GitLogEntry> GitLogEntries { get; private set; } = Array.Empty<Controls.GitLogEntry>();
+
     public MainWindow(
         ILogger<MainWindow>? logger,
         IConversationManager? conversationManager = null,
@@ -445,7 +450,7 @@ public partial class MainWindow : Window
 
 
     /// <summary>
-    /// Initializes the status bar with the current git commit hash and wires up click handler.
+    /// Parses the git log string from GitInfo into GitLogEntry objects and updates the table.
     /// </summary>
     private void RefreshGitStatusBar()
     {
@@ -453,20 +458,60 @@ public partial class MainWindow : Window
         {
             GitStatusText!.Text = $"OpenLMStudio {GitInfo.FullName}";
 
-            var sb = new StringBuilder();
-            sb.Append($"OpenLMStudio {GitInfo.FullName}");
-            if (!string.Equals(GitInfo.Dirty, "true", StringComparison.OrdinalIgnoreCase))
-                sb.Append(" (clean)");
-            sb.AppendLine();
-            sb.AppendLine("Recent commits:");
-            foreach (var line in GitInfo.Log.Split('\n').Where(l => l.Trim().Length > 0))
-                sb.AppendLine(line.Trim());
-            GitLogContent!.Text = sb.ToString();
+            var entries = ParseGitLog(GitInfo.Log);
+            GitLogEntries = entries;
+
+            // Update the GitLogTableControl if it exists
+            if (GitLogTableControl != null)
+            {
+                GitLogTableControl.SetValue(Controls.GitLogTable.EntriesProperty, entries);
+            }
         }
         catch (Exception ex)
         {
             _logger?.LogWarning(ex, "Failed to load git status");
         }
+    }
+
+    /// <summary>
+    /// Parses the semicolon-delimited git log string into a list of GitLogEntry objects.
+    /// Format: "commit HASH;Author: NAME;    MESSAGE;commit HASH;..."
+    /// </summary>
+    private static List<Controls.GitLogEntry> ParseGitLog(string log)
+    {
+        var entries = new List<Controls.GitLogEntry>();
+        if (string.IsNullOrEmpty(log))
+            return entries;
+
+        // Split by "commit " to get individual entries
+        var parts = log.Split(new[] { "commit " }, StringSplitOptions.RemoveEmptyEntries);
+        foreach (var part in parts)
+        {
+            var trimmed = part.Trim();
+            if (string.IsNullOrEmpty(trimmed))
+                continue;
+
+            // Extract hash (first token)
+            var hashEnd = trimmed.IndexOf(';');
+            var hash = hashEnd > 0 ? trimmed.Substring(0, hashEnd) : trimmed;
+
+            // Extract author
+            var authorStart = trimmed.IndexOf("Author: ");
+            var authorEnd = trimmed.IndexOf(";", authorStart > 0 ? authorStart : 0);
+            var author = authorStart > 0 && authorEnd > authorStart
+                ? trimmed.Substring(authorStart + 8, authorEnd - authorStart - 8)
+                : "Unknown";
+
+            // Extract message (everything after "Author: NAME;    ")
+            var messageStart = trimmed.IndexOf(";", authorEnd + 1);
+            var message = messageStart >= 0
+                ? trimmed.Substring(messageStart + 1).TrimStart()
+                : trimmed;
+
+            entries.Add(new Controls.GitLogEntry(hash, author, message));
+        }
+
+        return entries;
     }
 
     private void OnGitStatusClicked(object? sender, PointerPressedEventArgs e)
