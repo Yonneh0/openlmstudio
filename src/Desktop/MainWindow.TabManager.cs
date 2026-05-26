@@ -180,64 +180,13 @@ public partial class MainWindow
 
     /// <summary>
     /// Attaches Click event handlers to the Tab TextBlocks so users can switch tabs by clicking.
+    /// NOTE: This method is now deprecated — left sidebar tabs use ToggleButton.Click handlers via WireUpLeftTabClickHandlers().
+    /// Right sidebar tabs use WireUpRightSidebarTabs().
+    /// Kept as no-op for backward compatibility.
     /// </summary>
     private void AttachTabClickHandlers()
     {
-        // Each tab's title TextBlock is inside a StackPanel — attach click to that panel instead for better hit target
-        var tabPanels = new[] { ChatTabContent, ServerTabContent, ModelsTabContent, DevicesTabContent, ContextTabContent, PinguTabContent, ImageGenTabContent };
-        foreach (var tab in tabPanels)
-        {
-            if (tab == null) continue;
-
-            // Make the entire StackPanel clickable by attaching a Click handler to its first element
-            var child = tab.Children.OfType<Control>().FirstOrDefault();
-            if (child != null && !string.IsNullOrEmpty(tab.Name))
-            {
-                try
-                {
-                    switch (tab.Name)
-                    {
-                        case "ChatTabContent":
-                            child.PointerPressed += (_, _) => ShowTab("Chat"); break;
-                        case "ServerTabContent":
-                            child.PointerPressed += (_, _) => ShowTab("Server"); break;
-                        case "ModelsTabContent":
-                            child.PointerPressed += (_, _) => ShowTab("Models"); break;
-                        case "DevicesTabContent":
-                            child.PointerPressed += (_, _) => ShowTab("Devices"); break;
-                        case "ContextTabContent":
-                            child.PointerPressed += (_, _) => { UpdateRightSidebarTab("Context"); ShowTab("Context"); }; break;
-                        case "PinguTabContent":
-                            child.PointerPressed += (_, _) => ShowTab("Pingu"); break;
-                        case "ImageGenTabContent":
-                            child.PointerPressed += (_, _) => ShowTab("ImageGen"); break;
-                    }
-                }
-                catch { /* Ignore errors on individual tab attaches */ }
-            }
-        }
-
-        // Also attach click handlers directly to the TabControl buttons in XAML for reliability — use lambda instead of RoutedEventHandler
-        if (ChatTabContent?.Children.OfType<Control>().FirstOrDefault() is Control chatClickTarget)
-            chatClickTarget.PointerPressed += (_, _) => ShowTab("Chat");
-
-        var serverChild = ServerTabContent?.Children.OfType<Control>().FirstOrDefault();
-        serverChild?.AddHandler(Control.PointerPressedEvent, (_, _) => ShowTab("Server"));
-
-        var modelsChild = ModelsTabContent?.Children.OfType<Control>().FirstOrDefault();
-        modelsChild?.AddHandler(Control.PointerPressedEvent, (_, _) => ShowTab("Models"));
-
-        var devicesChild = DevicesTabContent?.Children.OfType<Control>().FirstOrDefault();
-        devicesChild?.AddHandler(Control.PointerPressedEvent, (_, _) => ShowTab("Devices"));
-
-
-        var pinguChild = PinguTabContent?.Children.OfType<Control>().FirstOrDefault();
-        pinguChild?.AddHandler(Control.PointerPressedEvent, (_, _) => ShowTab("Pingu"));
-
-        var imageGenChild = ImageGenTabContent?.Children.OfType<Control>().FirstOrDefault();
-        imageGenChild?.AddHandler(Control.PointerPressedEvent, (_, _) => ShowTab("ImageGen"));
-
-
-        // Attach right sidebar tab button Click handlers (no-op — right panel is a placeholder)
+        // No-op: Tab navigation is now handled by ToggleButton.Click events in WireUpLeftTabClickHandlers()
+        // and WireUpRightSidebarTabs(). This method is kept for backward compatibility.
     }
 }

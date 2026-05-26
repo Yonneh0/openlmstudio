@@ -1,18 +1,26 @@
 # OpenLMStudio
 
-A .NET 8 implementation of LM Studio's local LLM interface and server capabilities — with extended AI model support beyond text generation (images, diffusion, etc.), a robust agentic build harness for autonomous task completion, and an intelligent context management system.
+A cross-platform desktop application for running and managing local AI models, built with .NET 8 and Avalonia UI. Provides an OpenAI/Anthropic-compatible inference server alongside a chat client with context management, multi-model support, and an agentic task harness.
 
-Built as a cross-platform desktop application supporting Windows, macOS, and Linux with native performance on each platform.
+## Overview
 
-## Features
+OpenLMStudio brings LM Studio's local LLM interface and server capabilities to the .NET ecosystem, with extended support for multi-modal models beyond text generation — including image generation, diffusion models, VAE, LoRA adapters, and embeddings.
 
-- **Multi-Modal Model Support** — GGUF (text generation), Safetensors (images/diffusion/VAE/LoRA/embeddings)
-- **Local Inference Server** — OpenAI-compatible `/v1/chat/completions` endpoint, Anthropic-compatible `/v1/messages` endpoint
-- **Image Generation API** — Stable Diffusion 1.x, SDXL, SD 3.x, Flux models via ONNX Runtime + diffusers integration
-- **Agentic Task Harness** — Plan/act cycle with extensible tooling system (file operations, code execution, git integration)
-- **Intelligent Context Management** — Token-aware context window with compression, relevance scoring, and user-driven manipulation
-- **Plugin & MCP System** — Model Context Protocol client/server for third-party integrations
-- **Cross-Platform Device Monitoring** — GPU VRAM, CPU utilization, memory usage across Windows/macOS/Linux
+### Key Features
+
+| Feature | Status |
+|---------|--------|
+| Local inference server (OpenAI + Anthropic compatible API) | Partial |
+| GGUF model loading via llama.cpp | Partial |
+| Safetensors model parsing | Partial |
+| Chat interface with conversation persistence | Partial |
+| Image generation (SD 1.x, SDXL, SD 3.x, Flux) | Stub |
+| Agentic task harness (plan/act cycle) | Stub |
+| Context window management with compression | Stub |
+| Plugin & MCP system | Stub |
+| Device monitoring (GPU VRAM, CPU, RAM) | Stub |
+
+> **⚠️ Development Status**: This project is in early active development. Many documented features have interface contracts and infrastructure scaffolding in place, but core inference is not yet wired to actual model execution. The chat completion service returns simulated placeholder responses. Image generation infrastructure is scaffolded but ONNX Runtime inference uses simulated delays.
 
 ## Architecture
 
@@ -20,151 +28,129 @@ Built as a cross-platform desktop application supporting Windows, macOS, and Lin
 OpenLMStudio/
 ├── src/
 │   ├── Application/        — Application layer: interfaces, DTOs, DI registration
-│   ├── Domain/             — Domain layer: models and domain interfaces
-│   ├── Infrastructure/     — Infrastructure layer: concrete implementations
+│   ├── Domain/             — Domain layer: models, domain interfaces
+│   ├── Infrastructure/     — Infrastructure layer: concrete service implementations
 │   └── Desktop/            — UI layer: Avalonia cross-platform desktop app
-├── OpenLMStudio.slnx       — .NET 8 solution file
-└── DEVELOPMENT_PLAN.md     — Detailed development plan
+├── docs/                   — Project documentation
+│   ├── avalonia/           — Avalonia UI reference documentation
+│   └── *.md                — Feature and API documentation
+└── build.ps1 / build.sh    — Build scripts
 ```
 
-### Key Architecture Layers (Clean Architecture)
+### Layer Responsibilities
 
-| Layer | Responsibility | Example |
-|-------|---------------|---------|
-| **Domain** | Core business logic, domain models | Chat, Message, Device hardware info |
-| **Application** | Application services, DTOs, use case orchestration | ChatCompletionRequest, StreamingEventHandler |
-| **Infrastructure** | Concrete implementations of interfaces (I/O, external APIs) | ServerService, DownloadManager, GgufParser |
-| **Desktop** | UI layer — cross-platform Avalonia application | MainWindow, App entry point |
+| Layer | Responsibility |
+|-------|---------------|
+| **Domain** | Core business logic, domain models (Chat, Message, Device, ModelMetadata) |
+| **Application** | Application services, DTOs, use case orchestration, interface contracts |
+| **Infrastructure** | Concrete implementations (ServerService, DownloadManager, GgufParser) |
+| **Desktop** | UI layer — cross-platform Avalonia application with MainWindow |
 
 ## Tech Stack
 
 | Component | Technology |
 |-----------|------------|
-| Language/Framework | C# / .NET 8 (cross-platform: Windows/macOS/Linux) |
-| UI Framework | Avalonia UI — cross-platform WPF-like framework |
-| HTTP Server | ASP.NET Core Minimal APIs via Kestrel |
-| Database | SQLite for all persistent data |
-| Text Inference Engine | llama-cpp-net — cross-platform GGUF inference |
-| Image Generation Engine | ONNX Runtime + diffusers model integration |
-| Embedding Engine | ONNX Runtime + safetensors model loader |
-| Device Monitoring | Vulkan.NET + nvidia-ml-net for GPU VRAM |
-| Security | AES-256 encryption at rest, SHA256 hash verification |
+| Language/Framework | C# / .NET 8 |
+| UI Framework | Avalonia UI (cross-platform: Windows/macOS/Linux) |
+| HTTP Server | ASP.NET Core Kestrel (Minimal APIs) |
+| Text Inference | llama.cpp (via GgufParser + GgufChatCompletionLoader — native bindings pending) |
+| Image Generation | ONNX Runtime + DiffusionInferenceEngine (scaffolded) |
+| Persistence | JSON file-based storage (chat conversations) |
+| Model Formats | GGUF (text), Safetensors (image/diffusion/VAE/LoRA/embedding) |
 
 ## Getting Started
 
 ### Prerequisites
 
 - [.NET 8 SDK](https://dotnet.microsoft.com/download/dotnet/8.0)
-- For building: Visual Studio 2022, Rider, or `dotnet build` from the command line
+- [Avalonia Developer Tools](https://learn.avaloniaui.io/) (optional, for development)
 
 ### Build & Run
 
-#### Quick Start (Windows)
-
 ```bash
-# Clone the repository
-git clone https://github.com/Yonneh0/openlmstudio.git
-cd openlmstudio
+# Build the project
+dotnet build src/Desktop/OpenLMStudio.Desktop.csproj
 
-# Publish (creates self-contained OpenLMStudio.exe in the root folder)
-dotnet publish src/Desktop/OpenLMStudio.Desktop.csproj -c Publish
-
-# Run
-.\OpenLMStudio.exe
+# Run the desktop application
+dotnet run --project src/Desktop/OpenLMStudio.Desktop.csproj
 ```
 
-> **Output:** `dotnet publish -c Publish` produces a **self-contained** `OpenLMStudio.exe` (~200 MB) in the project root that includes the .NET 8 runtime and runs on any Windows machine without needing .NET installed.
-
-#### Cross-Platform Builds
-
-By default, `dotnet publish` builds for **Windows x64**. To target other platforms, specify the runtime identifier (RID):
+### Publish (Self-Contained)
 
 ```bash
-# Windows x64 (default)
-dotnet publish src/Desktop/OpenLMStudio.Desktop.csproj -c Publish -o publish/win-x64
+# Windows x64
+dotnet publish src/Desktop/OpenLMStudio.Desktop.csproj -c Release -r win-x64 -o publish/win-x64 --self-contained
 
-# Windows ARM64 (Surface Pro X, etc.)
-dotnet publish src/Desktop/OpenLMStudio.Desktop.csproj -c Publish -r win-arm64 -o publish/win-arm64
+# macOS ARM64 (Apple Silicon)
+dotnet publish src/Desktop/OpenLMStudio.Desktop.csproj -c Release -r osx-arm64 -o publish/osx-arm64 --self-contained
 
-# macOS (Apple Silicon — M1/M2/M3)
-dotnet publish src/Desktop/OpenLMStudio.Desktop.csproj -c Publish -r osx-arm64 -o publish/osx-arm64
-
-# macOS (Intel)
-dotnet publish src/Desktop/OpenLMStudio.Desktop.csproj -c Publish -r osx-x64 -o publish/osx-x64
-
-# Linux (x64 — Intel/AMD)
-dotnet publish src/Desktop/OpenLMStudio.Desktop.csproj -c Publish -r linux-x64 -o publish/linux-x64
-
-# Linux (ARM64 — Raspberry Pi, Jetson)
-dotnet publish src/Desktop/OpenLMStudio.Desktop.csproj -c Publish -r linux-arm64 -o publish/linux-arm64
+# Linux x64
+dotnet publish src/Desktop/OpenLMStudio.Desktop.csproj -c Release -r linux-x64 -o publish/linux-x64 --self-contained
 ```
 
-> **Note:** macOS/Linux outputs have no `.exe` extension. Use `publish/<platform>/OpenLMStudio` (without extension) to run on those platforms.
+## Usage
 
-#### Android Builds
+### Inference Server
 
-Android support requires the .NET Android workload:
+The application includes a local HTTP server that exposes OpenAI-compatible and Anthropic-compatible API endpoints:
 
 ```bash
-dotnet workload install android
-dotnet publish src/Desktop/OpenLMStudio.Desktop.csproj -c Publish -r android.35-arm64-v8a -o publish/android-arm64
+# Start the server via the UI (Server tab → Start Server)
+# Then call:
+curl http://localhost:8080/v1/chat/completions \
+  -H "Content-Type: application/json" \
+  -d '{"model": "local", "messages": [{"role": "user", "content": "Hello"}]}'
 ```
 
-Android builds produce `.apk` files.
+> **Note**: The chat completion service currently returns simulated placeholder responses. Real inference requires llama.cpp native bindings integration.
 
-## API Endpoints
+### Chat Interface
 
-### OpenAI-Compatible (`/v1`)
+1. Launch the application
+2. Use the chat input to send messages (targeting "MainAI" or "Pingu")
+3. Conversations are persisted as JSON files in the app data directory
 
-| Endpoint | Method | Description |
-|----------|--------|-------------|
-| `/v1/chat/completions` | POST | Chat completion (text) with streaming via SSE |
-| `/v1/images/generations` | POST | Image generation via diffusion models |
-| `/v1/images/inpainting` | POST | Inpainting with mask blending |
-| `/v1/images/outpainting` | POST | Outpainting/canvas expansion |
-| `/v1/embeddings` | POST | Embedding generation |
-| `/v1/models/list` | GET | List available models |
+### Model Management
 
-### Anthropic-Compatible (`/v1`)
-
-| Endpoint | Method | Description |
-|----------|--------|-------------|
-| `/v1/messages` | POST | Message endpoint with cache_control, stop_sequence, thinking support |
-
-## Model Formats Supported
-
-- **GGUF** — Text generation via llama-cpp-net (Q4_0, Q4_1, Q5_0, Q5_1, Q8_0 variants)
-- **Safetensors** — Image generation, diffusion checkpoints, VAE, LoRA adapters, embeddings
-  - Single-file and multi-file sharded models supported
-  - Header integrity validation via SHA256/MD5
+- Navigate to the Models tab to manage GGUF and Safetensors models
+- Models are discovered from the application's models directory
+- Load/unload models via the MainModelSelector and SystemModelSelector controls
 
 ## Development Status
 
-| Phase | Scope | % Complete |
-|-------|-------|------------|
-| 1: Foundation & Architecture | Core setup, context architecture design | ~64% |
-| 2: Model Management System | Multi-model support + Safetensors integration | ~56% |
-| 3: Inference Engines & Server API | Text + image + embedding engines + server routing | ~15% |
-| 4: Chat & Conversation System | Data models, SQLite-backed persistence | ~67% |
-| 5: Context Management System | All context services (conversation + agentic) | ~3% |
-| 6: UI Implementation | Main window, settings, plugin management, image gen panel | 0% |
-| 7: Agent Harness | Plan/act, tooling, project tree, Git integration | 0% |
-| 8: Plugin & MCP System | Protocol + plugin management | 0% |
-| 9: Resilience, Security & Operations | Error recovery, security model | 0% |
-| 10: Testing & Release | Comprehensive testing + documentation | 0% |
+| Component | Status | Notes |
+|-----------|--------|-------|
+| Server API | Partial | OpenAI/Anthropic endpoints scaffolded, SSE streaming infrastructure in place |
+| Chat Completions | Stub | Simulated responses, no real llama.cpp integration |
+| GGUF Parsing | Partial | GgufParser reads headers, model discovery works |
+| Model Download | Partial | GgufModelDownloader scaffolded |
+| Image Generation | Stub | ONNX Runtime pipeline scaffolded, Task.Delay simulates inference |
+| Chat Persistence | Partial | File-based JSON storage works |
+| Context Management | Stub | Budgeter, compressor, relevance engine interfaces defined |
+| Agent Harness | Stub | Plan/act cycle skeleton with error recovery |
+| Plugin System | Stub | IPluginRegistry interface defined |
+| MCP Support | Stub | McpService, McpClient scaffolded |
+| Device Monitoring | Stub | IDeviceMonitor interface defined |
 
-**Overall Progress**: ~52% complete across all phases
+**Overall**: Early development — core inference engines not yet functional.
 
-## Testing
+## Project Structure Details
 
-```bash
-# Verify formatting
-dotnet format --verify-no-changes
-```
+See [docs/INDEX.md](docs/INDEX.md) for a complete file tree with descriptions of every tracked source file.
 
-## Contributing
+## Documentation
 
-Contributions are welcome! Please read the [DEVELOPMENT_PLAN.md](./DEVELOPMENT_PLAN.md) for project structure, priorities, and current status before getting started.
+| Document | Description |
+|----------|-------------|
+| [docs/INDEX.md](docs/INDEX.md) | Complete file tree with descriptions |
+| [docs/DEVELOPMENT_STATUS.md](docs/DEVELOPMENT_STATUS.md) | Exhaustive feature completion status |
+| [docs/API_COMPATIBILITY.md](docs/API_COMPATIBILITY.md) | API endpoint compatibility matrix |
+| [docs/MODEL_COMPATIBILITY.md](docs/MODEL_COMPATIBILITY.md) | Supported model formats and known models |
+| [docs/GGUF_LOADING.md](docs/GGUF_LOADING.md) | GGUF parsing and model loading pipeline |
+| [docs/USER_GUIDE.md](docs/USER_GUIDE.md) | User-facing guide |
+| [docs/TROUBLESHOOTING.md](docs/TROUBLESHOOTING.md) | Common issues and fixes |
+| [docs/DEVELOPER_PLUGINS.md](docs/DEVELOPER_PLUGINS.md) | Plugin development guide |
+| [docs/avalonia/](docs/avalonia/) | Avalonia UI reference documentation |
 
 ## License
 
