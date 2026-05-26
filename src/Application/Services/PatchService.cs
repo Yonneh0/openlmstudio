@@ -89,7 +89,8 @@ public class PatchService
         {
             stopwatch.Stop();
             return ToolResult.Fail($"Error applying patch: {ex.Message}")
-                with { DurationMs = stopwatch.ElapsedMilliseconds };
+                with
+            { DurationMs = stopwatch.ElapsedMilliseconds };
         }
     }
 

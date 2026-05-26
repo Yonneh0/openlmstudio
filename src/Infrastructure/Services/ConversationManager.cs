@@ -318,13 +318,16 @@ public class FileConversationManager : IConversationManager, IDisposable
             // Generate a new ID to avoid conflicts and save to current directory
             chat.Id = Guid.NewGuid();
             chat.Messages ??= new List<Message>();
+            chat.Name ??= "Untitled Chat";
 
             Directory.CreateDirectory(_storagePath);
-            await File.WriteAllTextAsync(
-                Path.Combine(_storagePath, $"{chat.Id}.json"),
-                JsonSerializer.Serialize(chat, JsonOptions));
+            var filePath = Path.Combine(_storagePath, $"{chat.Id}.json");
+            await File.WriteAllTextAsync(filePath, JsonSerializer.Serialize(chat, JsonOptions));
 
-            _logger.LogInformation("Imported conversation: {SourcePath} -> {ChatId}", sourcePath, chat.Id);
+            // Update StoragePath to point to the newly saved file
+            chat.StoragePath = filePath;
+
+            _logger.LogInformation("Imported conversation '{Name}' ({SourcePath}) -> {ChatId}", chat.Name, sourcePath, chat.Id);
             return chat;
         }
         catch (Exception ex)

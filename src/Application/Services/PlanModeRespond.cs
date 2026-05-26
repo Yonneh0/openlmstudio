@@ -52,7 +52,8 @@ public class PlanModeRespond
         {
             stopwatch.Stop();
             return ToolResult.Fail($"Error in plan_mode_respond: {ex.Message}")
-                with { DurationMs = stopwatch.ElapsedMilliseconds };
+                with
+            { DurationMs = stopwatch.ElapsedMilliseconds };
         }
     }
 }

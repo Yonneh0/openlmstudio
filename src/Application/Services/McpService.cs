@@ -76,7 +76,8 @@ public class McpService : IMcpService
         {
             stopwatch.Stop();
             return ToolResult.Fail($"Error in use_mcp_tool: {ex.Message}")
-                with { DurationMs = stopwatch.ElapsedMilliseconds };
+                with
+            { DurationMs = stopwatch.ElapsedMilliseconds };
         }
     }
 
@@ -121,7 +122,8 @@ public class McpService : IMcpService
         {
             stopwatch.Stop();
             return ToolResult.Fail($"Error in access_mcp_resource: {ex.Message}")
-                with { DurationMs = stopwatch.ElapsedMilliseconds };
+                with
+            { DurationMs = stopwatch.ElapsedMilliseconds };
         }
     }
 
@@ -184,7 +186,8 @@ public class McpService : IMcpService
         {
             stopwatch.Stop();
             return ToolResult.Fail($"Error loading MCP documentation: {ex.Message}")
-                with { DurationMs = stopwatch.ElapsedMilliseconds };
+                with
+            { DurationMs = stopwatch.ElapsedMilliseconds };
         }
     }
 }

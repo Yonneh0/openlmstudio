@@ -60,19 +60,22 @@ public class WebFetchService
         {
             stopwatch.Stop();
             return ToolResult.Fail($"HTTP error fetching {url}: {ex.Message}")
-                with { DurationMs = stopwatch.ElapsedMilliseconds };
+                with
+            { DurationMs = stopwatch.ElapsedMilliseconds };
         }
         catch (TaskCanceledException ex)
         {
             stopwatch.Stop();
             return ToolResult.Fail($"Timeout fetching {url}: {ex.Message}")
-                with { DurationMs = stopwatch.ElapsedMilliseconds };
+                with
+            { DurationMs = stopwatch.ElapsedMilliseconds };
         }
         catch (Exception ex)
         {
             stopwatch.Stop();
             return ToolResult.Fail($"Error fetching {url}: {ex.Message}")
-                with { DurationMs = stopwatch.ElapsedMilliseconds };
+                with
+            { DurationMs = stopwatch.ElapsedMilliseconds };
         }
     }
 }

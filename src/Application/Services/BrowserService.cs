@@ -71,7 +71,8 @@ public class BrowserService : IBrowserService
         {
             stopwatch.Stop();
             return ToolResult.Fail($"Error in browser_action: {ex.Message}")
-                with { DurationMs = stopwatch.ElapsedMilliseconds };
+                with
+            { DurationMs = stopwatch.ElapsedMilliseconds };
         }
     }
 

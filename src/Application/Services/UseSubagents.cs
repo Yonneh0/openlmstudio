@@ -52,13 +52,15 @@ public class UseSubagents
 
             _logger?.LogInformation("use_subagents: Running {Count} subagents", prompts.Count);
             return ToolResult.Ok($"Summary of subagent results:\n\n{summary}")
-                with { DurationMs = stopwatch.ElapsedMilliseconds };
+                with
+            { DurationMs = stopwatch.ElapsedMilliseconds };
         }
         catch (Exception ex)
         {
             stopwatch.Stop();
             return ToolResult.Fail($"Error running subagents: {ex.Message}")
-                with { DurationMs = stopwatch.ElapsedMilliseconds };
+                with
+            { DurationMs = stopwatch.ElapsedMilliseconds };
         }
     }
 

@@ -80,7 +80,8 @@ public class AttemptCompletion
         {
             stopwatch.Stop();
             return ToolResult.Fail($"Error in attempt_completion: {ex.Message}")
-                with { DurationMs = stopwatch.ElapsedMilliseconds };
+                with
+            { DurationMs = stopwatch.ElapsedMilliseconds };
         }
     }
 }

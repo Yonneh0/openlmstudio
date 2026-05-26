@@ -55,7 +55,8 @@ public class QuestionService
         {
             stopwatch.Stop();
             return ToolResult.Fail($"Error asking question: {ex.Message}")
-                with { DurationMs = stopwatch.ElapsedMilliseconds };
+                with
+            { DurationMs = stopwatch.ElapsedMilliseconds };
         }
     }
 }

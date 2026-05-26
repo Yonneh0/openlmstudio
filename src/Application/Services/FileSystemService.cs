@@ -76,13 +76,15 @@ public class FileSystemService : IFileSystemService
             return ToolResult.Ok(
                 $"Successfully wrote to {path}",
                 new List<string> { absolutePath }
-            ) with { DurationMs = stopwatch.ElapsedMilliseconds };
+            ) with
+            { DurationMs = stopwatch.ElapsedMilliseconds };
         }
         catch (Exception ex)
         {
             stopwatch.Stop();
             return ToolResult.Fail($"Error writing file: {ex.Message}")
-                with { DurationMs = stopwatch.ElapsedMilliseconds };
+                with
+            { DurationMs = stopwatch.ElapsedMilliseconds };
         }
     }
 
@@ -136,13 +138,15 @@ public class FileSystemService : IFileSystemService
             return ToolResult.Ok(
                 $"Successfully applied {searchReplaceBlocks.Length} SEARCH/REPLACE block(s) to {path}",
                 new List<string> { absolutePath }
-            ) with { DurationMs = stopwatch.ElapsedMilliseconds };
+            ) with
+            { DurationMs = stopwatch.ElapsedMilliseconds };
         }
         catch (Exception ex)
         {
             stopwatch.Stop();
             return ToolResult.Fail($"Error in replace_in_file: {ex.Message}")
-                with { DurationMs = stopwatch.ElapsedMilliseconds };
+                with
+            { DurationMs = stopwatch.ElapsedMilliseconds };
         }
     }
 
@@ -227,7 +231,8 @@ public class FileSystemService : IFileSystemService
         {
             stopwatch.Stop();
             return ToolResult.Fail($"Error reading file: {ex.Message}")
-                with { DurationMs = stopwatch.ElapsedMilliseconds };
+                with
+            { DurationMs = stopwatch.ElapsedMilliseconds };
         }
     }
 
@@ -319,7 +324,8 @@ public class FileSystemService : IFileSystemService
         {
             stopwatch.Stop();
             return ToolResult.Fail($"Error searching files: {ex.Message}")
-                with { DurationMs = stopwatch.ElapsedMilliseconds };
+                with
+            { DurationMs = stopwatch.ElapsedMilliseconds };
         }
     }
 
@@ -405,7 +411,8 @@ public class FileSystemService : IFileSystemService
         {
             stopwatch.Stop();
             return ToolResult.Fail($"Error listing files: {ex.Message}")
-                with { DurationMs = stopwatch.ElapsedMilliseconds };
+                with
+            { DurationMs = stopwatch.ElapsedMilliseconds };
         }
     }
 

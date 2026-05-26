@@ -43,13 +43,15 @@ public class NewTask
 
             _logger?.LogInformation("new_task: Created task with context");
             return ToolResult.Ok($"New task created with context:\n\n{context.Trim()}")
-                with { DurationMs = stopwatch.ElapsedMilliseconds };
+                with
+            { DurationMs = stopwatch.ElapsedMilliseconds };
         }
         catch (Exception ex)
         {
             stopwatch.Stop();
             return ToolResult.Fail($"Error creating new task: {ex.Message}")
-                with { DurationMs = stopwatch.ElapsedMilliseconds };
+                with
+            { DurationMs = stopwatch.ElapsedMilliseconds };
         }
     }
 }

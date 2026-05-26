@@ -56,7 +56,8 @@ public class ActModeRespond
         {
             stopwatch.Stop();
             return ToolResult.Fail($"Error in act_mode_respond: {ex.Message}")
-                with { DurationMs = stopwatch.ElapsedMilliseconds };
+                with
+            { DurationMs = stopwatch.ElapsedMilliseconds };
         }
     }
 }

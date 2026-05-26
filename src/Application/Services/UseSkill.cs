@@ -42,13 +42,15 @@ public class UseSkill
 
             _logger?.LogInformation("use_skill: Activated skill '{SkillName}'", skillName);
             return ToolResult.Ok($"Skill '{skillName}' activated.")
-                with { DurationMs = stopwatch.ElapsedMilliseconds };
+                with
+            { DurationMs = stopwatch.ElapsedMilliseconds };
         }
         catch (Exception ex)
         {
             stopwatch.Stop();
             return ToolResult.Fail($"Error activating skill: {ex.Message}")
-                with { DurationMs = stopwatch.ElapsedMilliseconds };
+                with
+            { DurationMs = stopwatch.ElapsedMilliseconds };
         }
     }
 }

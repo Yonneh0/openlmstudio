@@ -114,7 +114,8 @@ public class CommandExecutor : ICommandExecutor
         {
             stopwatch.Stop();
             return ToolResult.Fail($"Error executing command: {ex.Message}")
-                with { DurationMs = stopwatch.ElapsedMilliseconds };
+                with
+            { DurationMs = stopwatch.ElapsedMilliseconds };
         }
     }
 }

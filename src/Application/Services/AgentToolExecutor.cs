@@ -116,7 +116,8 @@ public class AgentToolExecutor : IAgentToolExecutor
         {
             stopwatch.Stop();
             return ToolResult.Fail($"Error executing tool '{toolName}': {ex.Message}")
-                with { DurationMs = stopwatch.ElapsedMilliseconds };
+                with
+            { DurationMs = stopwatch.ElapsedMilliseconds };
         }
     }
 

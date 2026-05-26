@@ -60,7 +60,8 @@ public class WebSearchService : IWebSearchService
         {
             stopwatch.Stop();
             return ToolResult.Fail($"Error fetching {url}: {ex.Message}")
-                with { DurationMs = stopwatch.ElapsedMilliseconds };
+                with
+            { DurationMs = stopwatch.ElapsedMilliseconds };
         }
     }
 
@@ -116,7 +117,8 @@ public class WebSearchService : IWebSearchService
         {
             stopwatch.Stop();
             return ToolResult.Fail($"Error searching: {ex.Message}")
-                with { DurationMs = stopwatch.ElapsedMilliseconds };
+                with
+            { DurationMs = stopwatch.ElapsedMilliseconds };
         }
     }
 }
