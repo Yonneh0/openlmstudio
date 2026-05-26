@@ -18,7 +18,7 @@ namespace OpenLMStudio.Infrastructure.Rendering;
 /// </summary>
 public class PinguRenderer
 {
-    private readonly PinguMeshData _mesh;
+    private PinguMeshData? _mesh;
     private readonly PinguBoneHierarchy _hierarchy;
     private readonly PinguAnimationSystem _animation;
     private readonly PinguNPCManager _npcManager;
@@ -34,6 +34,11 @@ public class PinguRenderer
     private SKBitmap? _atlasBitmap;
     private SKCanvas? _canvas;
     private SKPaint? _paint;
+
+    /// <summary>
+    /// Get the current render bitmap for copying into Avalonia.
+    /// </summary>
+    public SKBitmap? RenderBitmap => _bitmap;
 
     public PinguRenderer(
         PinguMeshData mesh,
@@ -51,6 +56,26 @@ public class PinguRenderer
         _homeScene = homeScene;
         _textureAtlas = textureAtlas;
         _random = random ?? new Random();
+        _activePenguins = new List<PinguNPC> { _npcManager.Pingu };
+    }
+
+    /// <summary>
+    /// Simplified constructor without mesh data (for generated data).
+    /// </summary>
+    public PinguRenderer(
+        PinguBoneHierarchy hierarchy,
+        PinguAnimationSystem animation,
+        PinguNPCManager npcManager,
+        PinguHomeScene homeScene,
+        byte[] textureAtlas)
+    {
+        _hierarchy = hierarchy;
+        _animation = animation;
+        _npcManager = npcManager;
+        _homeScene = homeScene;
+        _textureAtlas = textureAtlas;
+        _mesh = new PinguMeshData();
+        _random = new Random();
         _activePenguins = new List<PinguNPC> { _npcManager.Pingu };
     }
 

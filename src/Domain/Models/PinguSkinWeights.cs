@@ -17,14 +17,25 @@ public class PinguVertexSkinData
     public PinguSkinInfluence[] Influences { get; set; } = new PinguSkinInfluence[4];
 
     /// <summary>
+    /// Initialize all influence slots with default bone index 0 and weight 0.
+    /// </summary>
+    public void Initialize()
+    {
+        for (int i = 0; i < Influences.Length; i++)
+        {
+            Influences[i] = new PinguSkinInfluence();
+        }
+    }
+
+    /// <summary>
     /// Get the bone index at the given influence slot.
     /// </summary>
-    public int GetBoneIndex(int slot) => Influences[slot].BoneIndex;
+    public int GetBoneIndex(int slot) => Influences[slot]?.BoneIndex ?? 0;
 
     /// <summary>
     /// Get the weight at the given influence slot.
     /// </summary>
-    public float GetWeight(int slot) => Influences[slot].Weight;
+    public float GetWeight(int slot) => Influences[slot]?.Weight ?? 0f;
 }
 
 /// <summary>

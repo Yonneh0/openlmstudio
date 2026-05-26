@@ -757,7 +757,7 @@
             </Grid>
         </Grid>
 
-        <!-- ===== PINGU CORNER PANEL (for PinguAvatar) ===== -->
+        <!-- ===== PINGU CORNER PANEL (for PinguAvatar and PinguCanvas) ===== -->
         <Panel x:Name="PinguCornerPanel" Grid.Row="1" Grid.Column="1" IsVisible="True" Panel.ZIndex="100" PointerPressed="OnPinguCornerPanelPointerPressed"/>
 
         <!-- ===== RIGHT SIDEBAR ===== -->

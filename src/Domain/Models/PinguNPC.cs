@@ -102,6 +102,9 @@ public class PinguNPC
     // Hat
     public PinguHat? Hat { get; set; }
 
+    // Tool (in addition to the CurrentTool enum for quick checks)
+    public PinguTool? Tool { get; set; }
+
     // Physics
     public PinguPhysicsParams Physics { get; set; } = new();
 

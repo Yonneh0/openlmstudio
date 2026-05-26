@@ -24,6 +24,8 @@
   - Namespace: OpenLMStudio.Desktop.Controls. 80x80 UserControl with white penguin body, black eyes/mouth. Blink overlay, mood-based body color (thinking=blue, happy=gold, error=red, working=green).
 ## src/Desktop/Controls/PinguAvatar.axaml.cs - PinguAvatar code-behind (~137 lines)
   - Namespace: OpenLMStudio.Desktop.Controls. Implements IDisposable. Listens to IPinguStore, updates mouth color/size, body color, blink overlay, bob animation via ScaleTransform. Has mouth tick timer and click-to-toggle-menu. **Fixed**: ArgumentNullException in constructor for pingu parameter, GC.SuppressFinalize in Dispose, _pingu null check in OnPointerPressed, OnMouthTick now uses this as state object, OnBlinkTick properly captures state, added try-catch in OnPointerPressed, fixed catch block (removed unused ex variable), added ArgumentNullException for pingu in constructor.
+## src/Desktop/Controls/PinguCanvas.cs - PinguCanvas (~120 lines)
+##   - Namespace: OpenLMStudio.Desktop.Controls. SkiaSharp-backed canvas control for rendering Pingu characters. Embeds directly in the Avalonia visual tree using public override void Render(DrawingContext). Creates SKBitmap, renders via SkiaSharp.SKCanvas, calls render function, converts to Avalonia Bitmap via PNG encoding. Supports cursor tracking for eye tracking, pointer events, and size changes.
 ## src/Desktop/Controls/PinguHomeTile.axaml - PinguHomeTile (~17 lines)
   - Namespace: OpenLMStudio.Desktop.Controls. Minimal UserControl: 120x120 border with BgSecondary background, CornerRadius=24, shows "Pingu" text centered.
 ## src/Desktop/Controls/PinguHomeTile.axaml.cs - PinguHomeTile code-behind (~43 lines)

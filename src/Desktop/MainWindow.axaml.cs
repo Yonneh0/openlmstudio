@@ -63,6 +63,12 @@ public partial class MainWindow : Window
     /// <summary>Pingu avatar control for the bottom-right corner of the main window.</summary>
     private PinguAvatar? _pinguAvatar;
 
+    /// <summary>PinguCanvas control for GPU rendering.</summary>
+    private PinguCanvas? _pinguCanvas;
+
+    /// <summary>DispatcherTimer for the render loop (60fps).</summary>
+    private DispatcherTimer? _pinguRenderTimer;
+
     /// <summary>Flag indicating whether a streaming response is in progress.</summary>
     private bool _isStreaming = false;
 
@@ -173,7 +179,7 @@ public partial class MainWindow : Window
     }
 
     /// <summary>
-    /// Initializes the Pingu avatar control in the bottom-right corner.
+    /// Initializes the Pingu avatar control and GPU canvas in the bottom-right corner.
     /// </summary>
     private void InitializePingu()
     {
@@ -186,6 +192,97 @@ public partial class MainWindow : Window
             if (target != null)
                 target.Children.Add(_pinguAvatar);
             // If no panel found, the PinguCornerPanel will be defined in XAML
+        }
+
+        // Initialize the GPU canvas
+        InitializePinguCanvas();
+    }
+
+    /// <summary>
+    /// Initializes the PinguCanvas control and starts the render loop.
+    /// </summary>
+    private void InitializePinguCanvas()
+    {
+        // Create the PinguCanvas
+        _pinguCanvas = new PinguCanvas
+        {
+            Width = 350,
+            Height = 350,
+            Opacity = 0.95,
+            ZIndex = 10
+        };
+
+        // Find the PinguCornerPanel and add the canvas
+        var panel = this.FindControl<Panel>("PinguCornerPanel");
+        if (panel != null)
+            panel.Children.Add(_pinguCanvas);
+
+        // Initialize the renderer (this will load/create mesh, texture, etc.)
+        if (_pinguStore != null)
+        {
+            try
+            {
+                var renderFunc = _pinguStore.CreateRenderer();
+                _pinguCanvas.Initialize(renderFunc);
+            }
+            catch (Exception ex)
+            {
+                _logger?.LogWarning(ex, "Failed to initialize PinguCanvas renderer");
+            }
+        }
+
+        // Position the canvas in the bottom-right corner
+        UpdatePinguCanvasPosition();
+
+        // Start the render loop
+        StartPinguRenderLoop();
+
+        // Wire up cursor tracking
+        this.PointerMoved += OnMainWindowPointerMoved;
+    }
+
+    /// <summary>
+    /// Updates the PinguCanvas position to the bottom-right corner of the window.
+    /// </summary>
+    private void UpdatePinguCanvasPosition()
+    {
+        if (_pinguCanvas == null)
+            return;
+
+        _pinguCanvas.SetValue(Canvas.RightProperty, 10.0);
+        _pinguCanvas.SetValue(Canvas.BottomProperty, 10.0);
+    }
+
+    /// <summary>
+    /// Starts the render loop using a DispatcherTimer at 60fps.
+    /// </summary>
+    private void StartPinguRenderLoop()
+    {
+        _pinguRenderTimer = new DispatcherTimer
+        {
+            Interval = TimeSpan.FromMilliseconds(16.67) // ~60fps
+        };
+        _pinguRenderTimer.Tick += OnPinguRenderTick;
+        _pinguRenderTimer.Start();
+    }
+
+    /// <summary>
+    /// Handles the render loop tick — triggers a render update.
+    /// </summary>
+    private void OnPinguRenderTick(object? sender, EventArgs e)
+    {
+        _pinguCanvas?.InvalidateRender();
+    }
+
+    /// <summary>
+    /// Tracks the cursor position for eye tracking.
+    /// </summary>
+    private void OnMainWindowPointerMoved(object? sender, PointerEventArgs e)
+    {
+        if (_pinguCanvas != null)
+        {
+            var point = e.GetCurrentPoint(this).Position;
+            _pinguCanvas.SetCursorPosition(new System.Numerics.Vector2((float)point.X, (float)point.Y));
         }
     }
 

@@ -86,4 +86,10 @@ public interface IPinguStore
     /// Convenience: transitions Pingu to idle state.
     /// </summary>
     Task IdleAsync();
+
+    /// <summary>
+    /// Creates a PinguRenderer for GPU rendering of the Pingu character.
+    /// Returns a function that renders the scene given a cursor position.
+    /// </summary>
+    Func<System.Numerics.Vector2, Task> CreateRenderer();
 }

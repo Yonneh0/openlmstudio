@@ -1,0 +1,120 @@
+using System;
+using System.Numerics;
+using Avalonia;
+using Avalonia.Controls;
+using Avalonia.Media;
+using Avalonia.Platform;
+
+namespace OpenLMStudio.Desktop.Controls;
+
+/// <summary>
+/// A SkiaSharp-backed canvas control that renders Pingu characters.
+/// Embeds directly in the Avalonia visual tree.
+/// </summary>
+public class PinguCanvas : Control
+{
+    private Func<System.Numerics.Vector2, Task>? _renderFunc;
+    private System.Numerics.Vector2 _cursorPosition;
+    private bool _cursorActive;
+    private int _width;
+    private int _height;
+
+    public PinguCanvas()
+    {
+        Width = 400;
+        Height = 400;
+    }
+
+    /// <summary>
+    /// Initialize the canvas with a render function from PinguStore.
+    /// </summary>
+    public void Initialize(Func<System.Numerics.Vector2, Task> renderFunc)
+    {
+        _renderFunc = renderFunc ?? throw new ArgumentNullException(nameof(renderFunc));
+        InvalidateVisual();
+    }
+
+    /// <summary>
+    /// Set the cursor position for eye tracking.
+    /// </summary>
+    public void SetCursorPosition(System.Numerics.Vector2 position)
+    {
+        _cursorPosition = position;
+        _cursorActive = true;
+        InvalidateVisual();
+    }
+
+    /// <summary>
+    /// Clear the cursor position.
+    /// </summary>
+    public void ClearCursorPosition()
+    {
+        _cursorActive = false;
+        InvalidateVisual();
+    }
+
+    /// <summary>
+    /// Trigger a render update.
+    /// </summary>
+    public void InvalidateRender()
+    {
+        InvalidateVisual();
+    }
+
+    protected override void OnPointerMoved(PointerEventArgs e)
+    {
+        base.OnPointerMoved(e);
+        if (e.GetCurrentPoint(this).Position != default)
+        {
+            _cursorPosition = new System.Numerics.Vector2((float)e.GetCurrentPoint(this).Position.X, (float)e.GetCurrentPoint(this).Position.Y);
+            _cursorActive = true;
+            InvalidateVisual();
+        }
+    }
+
+    protected override void OnSizeChanged(SizeChangedEventArgs e)
+    {
+        base.OnSizeChanged(e);
+        if (e.NewSize.Width > 0 && e.NewSize.Height > 0)
+        {
+            _width = (int)e.NewSize.Width;
+            _height = (int)e.NewSize.Height;
+            InvalidateVisual();
+        }
+    }
+
+    protected override void OnDetachedFromVisualTree(VisualTreeAttachmentEventArgs e)
+    {
+        base.OnDetachedFromVisualTree(e);
+        _renderFunc = null;
+    }
+
+    public override void Render(DrawingContext context)
+    {
+        if (_renderFunc == null)
+            return;
+
+        if (_width <= 0 || _height <= 0)
+            return;
+
+        // Render directly using SkiaSharp on the SKCanvas
+        using var skBitmap = new SkiaSharp.SKBitmap(_width, _height, SkiaSharp.SKColorType.Rgba8888, SkiaSharp.SKAlphaType.Premul);
+        using var skCanvas = new SkiaSharp.SKCanvas(skBitmap);
+
+        // Clear with transparent background
+        skCanvas.Clear(SkiaSharp.SKColors.Transparent);
+
+        // Call the render function
+        var cursor = _cursorActive ? _cursorPosition : new System.Numerics.Vector2(200f, 200f);
+        _renderFunc(cursor).Wait();
+
+        // Draw the SKBitmap directly using the DrawingContext
+        var rect = new Avalonia.Rect(0, 0, _width, _height);
+        using var skStream = new System.IO.MemoryStream();
+        skBitmap.Encode(skStream, SkiaSharp.SKEncodedImageFormat.Png, 90);
+        skStream.Position = 0;
+        var wBitmap = new Avalonia.Media.Imaging.Bitmap(skStream);
+        context.DrawImage(wBitmap, rect);
+        skBitmap.Dispose();
+    }
+}

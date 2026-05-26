@@ -72,6 +72,10 @@ public class PinguBoneHierarchy
     /// </summary>
     public void Resolve()
     {
+        // Clear previous state (but not Definitions, which is the source of truth)
+        ResolvedBones.Clear();
+        RootBones.Clear();
+
         var nameToBone = Definitions.ToDictionary(d => d.Name, d => new PinguBone
         {
             Name = d.Name,
@@ -104,6 +108,10 @@ public class PinguBoneHierarchy
                 {
                     bone.Parent = parent;
                     parent.Children.Add(bone);
+                }
+                else
+                {
+                    // ParentIndex references a bone that doesn't exist
                 }
             }
         }

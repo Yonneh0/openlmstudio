@@ -69,4 +69,27 @@ public class PinguBoneLoader
     {
         return JsonSerializer.Serialize(paramsData, new JsonSerializerOptions { WriteIndented = true });
     }
+
+    /// <summary>
+    /// Load a PinguHomeScene with default objects.
+    /// </summary>
+    public PinguHomeScene LoadHomeScene(string? boneHierarchyJson = null)
+    {
+        return new PinguHomeScene
+        {
+            Name = "Default Home",
+            BackgroundColor = "#1E1E22",
+            Width = 200f,
+            Height = 200f,
+            Objects = new List<PinguHomeObject>
+            {
+                PinguHomeScene.CreateDefaultIgloo(),
+                PinguHomeScene.CreateDefaultSink(),
+                PinguHomeScene.CreateDefaultRug(),
+                PinguHomeScene.CreateDefaultBall(),
+                PinguHomeScene.CreateDefaultFishBowl(),
+                PinguHomeScene.CreateDefaultNest(),
+            }
+        };
+    }
 }

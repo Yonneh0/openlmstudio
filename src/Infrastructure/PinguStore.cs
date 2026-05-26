@@ -1,6 +1,10 @@
 using Microsoft.Extensions.Logging;
 using OpenLMStudio.Application.Interfaces;
 using OpenLMStudio.Domain.Models;
+using OpenLMStudio.Infrastructure.Rendering;
+using OpenLMStudio.Infrastructure.Services;
+using SkiaSharp;
+using System.IO;
 
 namespace OpenLMStudio.Infrastructure;
 
@@ -232,5 +236,48 @@ public class PinguStore : IPinguStore, IDisposable
     public void Dispose()
     {
         _blinkTimer?.Dispose();
+    }
+
+    /// <summary>
+    /// Creates a PinguRenderer for GPU rendering of the Pingu character.
+    /// Returns a Func that renders the scene given a cursor position.
+    /// </summary>
+    public Func<System.Numerics.Vector2, Task> CreateRenderer()
+    {
+        // Generate all data using PinguMeshGenerator
+        var generator = new PinguMeshGenerator();
+        var characterData = generator.Generate();
+
+        // Load bone hierarchy from JSON
+        var loader = new PinguBoneLoader();
+        var hierarchy = loader.LoadBoneHierarchy(
+            System.Text.Json.JsonSerializer.Serialize(characterData.BoneHierarchy.Definitions,
+                new System.Text.Json.JsonSerializerOptions { WriteIndented = false }));
+
+        // Create animation system
+        var animation = new PinguAnimationSystem(
+            hierarchy,
+            characterData.AnimationClips,
+            characterData.PhysicsParams);
+
+        // Create NPC manager
+        var npcManager = new PinguNPCManager();
+
+        // Load home scene
+        var homeScene = loader.LoadHomeScene(
+            System.Text.Json.JsonSerializer.Serialize(characterData.BoneHierarchy.Definitions,
+                new System.Text.Json.JsonSerializerOptions { WriteIndented = false }));
+
+        // Use texture atlas from character data
+        var atlas = characterData.TextureAtlas ?? new byte[0];
+
+        var renderer = new PinguRenderer(hierarchy, animation, npcManager, homeScene, atlas);
+        renderer.Initialize(400, 400);
+
+        return async cursor =>
+        {
+            renderer.Render(cursor);
+            await Task.CompletedTask;
+        };
     }
 }

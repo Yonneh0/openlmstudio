@@ -76,5 +76,5 @@ public class PinguAnimationClip
     /// <summary>
     /// Get the maximum number of keyframes in any single track.
     /// </summary>
-    public int MaxTrackKeyframes => Tracks.Max(t => t.Keyframes.Count);
+    public int MaxTrackKeyframes => Tracks.Count > 0 ? Tracks.Max(t => t.Keyframes.Count) : 0;
 }
