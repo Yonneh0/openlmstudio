@@ -911,7 +911,7 @@
                    PlacementTarget="{Binding ElementName=ToolsButton}"
                    Placement="Bottom"
                    HorizontalOffset="0"
-                   VerticalOffset="0"
+                   VerticalOffset="4"
                    IsOpen="False">
                 <Border Background="{StaticResource BgSecondary}"
                         BorderBrush="#333338"

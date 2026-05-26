@@ -1083,15 +1083,18 @@ public partial class MainWindow : Window
             return;
         }
 
-        // Populate the tool list if empty
-        if (ToolListPanel != null && ToolListPanel.Children.Count == 0)
+        // Always refresh the tool list when opening
+        if (ToolListPanel != null)
         {
             PopulateToolList();
         }
 
-        // Show the popup
+        // Show the popup with explicit placement target
         if (ToolCallPopup != null)
+        {
+            ToolCallPopup.PlacementTarget = ToolsButton;
             ToolCallPopup.SetValue(Avalonia.Controls.Primitives.Popup.IsOpenProperty, true);
+        }
     }
 
     /// <summary>
