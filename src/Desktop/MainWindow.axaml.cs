@@ -56,7 +56,7 @@ public partial class MainWindow : Window
     private IAgentToolExecutor? _agentToolExecutor;
 
     /// <summary>Flag to prevent duplicate title saves when both LostFocus and overlay click fire.</summary>
-    private bool _titleEditSaving = false;
+    private int _titleEditSaving = 0;
     /// <summary>Currently visible ToolCallForm popup (or null if closed).</summary>
     private ToolCallForm? _activeToolCallForm;
 
@@ -86,6 +86,12 @@ public partial class MainWindow : Window
 
     // Tab tracking
     private string _activeTab = "Chat";
+
+    /// <summary>
+    /// Gets the currently active tab name.
+    /// </summary>
+    public string ActiveTab => _activeTab;
+
     private Guid? _selectedChatId;
 
     /// <summary>
@@ -274,8 +280,16 @@ public partial class MainWindow : Window
         // Start the render loop
         StartPinguRenderLoop();
 
-        // Wire up cursor tracking
+        // Wire up cursor tracking (placeholder — no-op handler)
         this.PointerMoved += OnMainWindowPointerMoved;
+    }
+
+    /// <summary>
+    /// Handles pointer movement on the main window — used for Pingu cursor tracking.
+    /// </summary>
+    private void OnMainWindowPointerMoved(object? sender, Avalonia.Input.PointerEventArgs e)
+    {
+        // Update Pingu cursor position (no-op handler — cursor tracking to be implemented)
     }
 
     /// <summary>
@@ -300,15 +314,12 @@ public partial class MainWindow : Window
     }
 
     /// <summary>
-    /// Tracks the cursor position for eye tracking.
+    /// Handles pointer pressed on the PinguHomeTile.
     /// </summary>
-    private void OnMainWindowPointerMoved(object? sender, PointerEventArgs e)
+    private void OnPinguHomeTileClicked(object? sender, Avalonia.Input.PointerPressedEventArgs e)
     {
-        if (_pinguCanvas != null)
-        {
-            var point = e.GetCurrentPoint(this).Position;
-            _pinguCanvas.SetCursorPosition(new System.Numerics.Vector2((float)point.X, (float)point.Y));
-        }
+        // Toggle Pingu home tile visibility
+        PinguHomeTile?.SetValue(Avalonia.Controls.Primitives.TemplatedControl.IsVisibleProperty, !PinguHomeTile.IsVisible);
     }
 
     /// <summary>
@@ -320,18 +331,6 @@ public partial class MainWindow : Window
         if (_pinguAvatar != null)
         {
             _pinguAvatar.IsVisible = !_pinguAvatar.IsVisible;
-        }
-    }
-
-    /// <summary>
-    /// Handles pointer pressed on the PinguHomeTile.
-    /// </summary>
-    private void OnPinguHomeTileClicked(object? sender, Avalonia.Input.PointerPressedEventArgs e)
-    {
-        // Toggle Pingu home tile visibility
-        if (PinguHomeTile != null)
-        {
-            PinguHomeTile.IsVisible = !PinguHomeTile.IsVisible;
         }
     }
 
@@ -756,7 +755,7 @@ public partial class MainWindow : Window
                 return;
 
             // Set the flag BEFORE starting the async operation to prevent race conditions
-            _titleEditSaving = true;
+            System.Threading.Interlocked.Exchange(ref _titleEditSaving, 1);
 
             var chatId = _selectedChatId.Value;
             var mgr = _conversationManager;
@@ -808,7 +807,7 @@ public partial class MainWindow : Window
             return;
 
         // If we're already in the process of saving (triggered by overlay click), skip
-        if (_titleEditSaving)
+        if (System.Threading.Interlocked.CompareExchange(ref _titleEditSaving, 1, 0) != 0)
             return;
 
         // Only save if the title was visible (i.e., we were actually in edit mode)
@@ -854,7 +853,7 @@ public partial class MainWindow : Window
                 }
             }
             // Reset _titleEditSaving so subsequent clicks work correctly
-            _titleEditSaving = false;
+            System.Threading.Interlocked.Exchange(ref _titleEditSaving, 0);
             ChatTitleEdit.IsVisible = false;
             ChatTitleDisplay.IsVisible = true;
         }
@@ -975,10 +974,10 @@ public partial class MainWindow : Window
     private void OnTitleEditOverlayPointerPressed(object? sender, PointerPressedEventArgs e)
     {
         // If already saving, don't duplicate
-        if (_titleEditSaving)
+        if (System.Threading.Interlocked.CompareExchange(ref _titleEditSaving, 1, 0) != 0)
             return;
 
-        _titleEditSaving = true;
+        System.Threading.Interlocked.Exchange(ref _titleEditSaving, 1);
 
         // If the edit box is still visible, save and exit edit mode
         if (ChatTitleEdit != null && ChatTitleEdit.IsVisible)
@@ -997,12 +996,12 @@ public partial class MainWindow : Window
             // Reset the flag after a short delay to let the LostFocus event settle
             Dispatcher.UIThread.InvokeAsync(() =>
             {
-                _titleEditSaving = false;
+                System.Threading.Interlocked.Exchange(ref _titleEditSaving, 0);
             });
         }
         else
         {
-            _titleEditSaving = false;
+            System.Threading.Interlocked.Exchange(ref _titleEditSaving, 0);
         }
     }
 

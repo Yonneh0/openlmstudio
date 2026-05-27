@@ -35,7 +35,12 @@ public class PanelService : IPanelService
 
     private MainWindow Window => _window ?? throw new InvalidOperationException("PanelService: MainWindow not set");
 
-    public PanelService() { }
+    public PanelService()
+    {
+        // Ensure Window is set
+        if (_window == null)
+            throw new InvalidOperationException("PanelService: MainWindow not set. Call SetWindow() before using PanelService.");
+    }
 
     public bool IsPanelVisible(string panelName)
     {

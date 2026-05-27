@@ -727,28 +727,10 @@ public partial class MainWindow
         this.Close();
     }
 
-    private void OnOpenMinesweeperClicked(object? sender, RoutedEventArgs e)
-    {
-        // Games removed — no-op
-    }
-
-    private void OnOpenTetrisClicked(object? sender, RoutedEventArgs e)
-    {
-        // Games removed — no-op
-    }
-
-    private void OnOpenSnakeClicked(object? sender, RoutedEventArgs e)
-    {
-        // Games removed — no-op
-    }
-
-    private void OnOpenJezzballClicked(object? sender, RoutedEventArgs e)
-    {
-        // Games removed — no-op
-    }
-
-    private void OnOpenSolitaireClicked(object? sender, RoutedEventArgs e)
-    {
-        // Games removed — no-op
-    }
+    // Games removed — handlers kept for compatibility
+    private void OnOpenMinesweeperClicked(object? sender, RoutedEventArgs e) { }
+    private void OnOpenTetrisClicked(object? sender, RoutedEventArgs e) { }
+    private void OnOpenSnakeClicked(object? sender, RoutedEventArgs e) { }
+    private void OnOpenJezzballClicked(object? sender, RoutedEventArgs e) { }
+    private void OnOpenSolitaireClicked(object? sender, RoutedEventArgs e) { }
 }

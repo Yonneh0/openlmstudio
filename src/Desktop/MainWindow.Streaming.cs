@@ -291,12 +291,12 @@ public partial class MainWindow
                 var tokenElement = jsonDoc.RootElement.GetProperty("token");
                 var tokenValue = tokenElement.GetString();
 
-                await Dispatcher.UIThread.InvokeAsync(() =>
+                _ = Dispatcher.UIThread.InvokeAsync(async () =>
                 {
                     if (_assistantTextBlock != null)
                     {
                         _assistantTextBlock.Text += (tokenValue ?? "");
-                        ScrollToBottomAsync().ConfigureAwait(false);
+                        await ScrollToBottomAsync();
                     }
                 });
 

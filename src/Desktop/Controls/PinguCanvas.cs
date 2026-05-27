@@ -19,6 +19,7 @@ public class PinguCanvas : Control
     private bool _cursorActive;
     private int _width;
     private int _height;
+    private SKBitmap? _renderBitmap;
 
     public PinguCanvas()
     {
@@ -89,6 +90,7 @@ public class PinguCanvas : Control
     {
         base.OnDetachedFromVisualTree(e);
         _renderFunc = null;
+        _renderBitmap?.Dispose();
     }
 
     public override void Render(DrawingContext context)
@@ -99,25 +101,29 @@ public class PinguCanvas : Control
         if (_width <= 0 || _height <= 0)
             return;
 
-        // Render directly using SkiaSharp on the SKCanvas
-        using var skBitmap = new SkiaSharp.SKBitmap(_width, _height, SkiaSharp.SKColorType.Rgba8888, SkiaSharp.SKAlphaType.Premul);
-        using var skCanvas = new SkiaSharp.SKCanvas(skBitmap);
+        // Dispose the previous bitmap before creating a new one (prevents memory leak)
+        var oldBitmap = _renderBitmap;
+        _renderBitmap = new SKBitmap(_width, _height, SKColorType.Rgba8888, SKAlphaType.Premul);
+
+        using var skCanvas = new SKCanvas(_renderBitmap);
 
         // Clear with transparent background
-        skCanvas.Clear(SkiaSharp.SKColors.Transparent);
+        skCanvas.Clear(SKColors.Transparent);
 
         // Call the render function, passing the bitmap and canvas for drawing
         var cursor = _cursorActive ? _cursorPosition : new System.Numerics.Vector2(200f, 200f);
         // Use GetAwaiter().GetResult() instead of .Wait() to avoid deadlocks
-        _renderFunc(cursor, skBitmap, skCanvas).GetAwaiter().GetResult();
+        _renderFunc(cursor, _renderBitmap, skCanvas).GetAwaiter().GetResult();
 
         // Draw the SKBitmap directly using the DrawingContext
         var rect = new Avalonia.Rect(0, 0, _width, _height);
         using var skStream = new System.IO.MemoryStream();
-        skBitmap.Encode(skStream, SkiaSharp.SKEncodedImageFormat.Png, 90);
+        _renderBitmap.Encode(skStream, SKEncodedImageFormat.Png, 90);
         skStream.Position = 0;
         var wBitmap = new Avalonia.Media.Imaging.Bitmap(skStream);
         context.DrawImage(wBitmap, rect);
-        skBitmap.Dispose();
+
+        // Dispose old bitmap after rendering completes
+        oldBitmap?.Dispose();
     }
 }

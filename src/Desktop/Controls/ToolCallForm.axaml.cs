@@ -51,8 +51,8 @@ public partial class ToolCallForm : UserControl, IDisposable
         _toolExecutor = toolExecutor ?? throw new ArgumentNullException(nameof(toolExecutor));
         _logger = logger;
         _parameterValues = new Dictionary<string, object>();
-        ToolNameText.Text = toolDefinition.Name;
-        ToolIconText.Text = GetToolIcon(toolDefinition.Name);
+        ToolNameText?.SetText(toolDefinition.Name);
+        ToolIconText?.SetText(GetToolIcon(toolDefinition.Name));
     }
 
     /// <summary>
@@ -66,8 +66,8 @@ public partial class ToolCallForm : UserControl, IDisposable
         _logger = logger;
         _parameterValues = new Dictionary<string, object>();
         _onExecute = onExecute;
-        ToolNameText.Text = toolDefinition.Name;
-        ToolIconText.Text = GetToolIcon(toolDefinition.Name);
+        ToolNameText?.SetText(toolDefinition.Name);
+        ToolIconText?.SetText(GetToolIcon(toolDefinition.Name));
     }
 
     /// <summary>
@@ -81,8 +81,8 @@ public partial class ToolCallForm : UserControl, IDisposable
         _logger = logger;
         _parameterValues = new Dictionary<string, object>();
         _onCancel = onCancel;
-        ToolNameText.Text = toolDefinition.Name;
-        ToolIconText.Text = GetToolIcon(toolDefinition.Name);
+        ToolNameText?.SetText(toolDefinition.Name);
+        ToolIconText?.SetText(GetToolIcon(toolDefinition.Name));
     }
 
     private void BuildForm()
@@ -498,8 +498,15 @@ public partial class ToolCallForm : UserControl, IDisposable
 
         if (PopupReference != null)
         {
-            PopupReference.SetValue(Avalonia.Controls.Primitives.Popup.IsOpenProperty, false);
-            PopupReference.Child = null;
+            try
+            {
+                PopupReference.SetValue(Avalonia.Controls.Primitives.Popup.IsOpenProperty, false);
+                PopupReference.Child = null;
+            }
+            catch (Exception ex)
+            {
+                _logger?.LogDebug(ex, "ToolCallForm: Error closing popup during dispose");
+            }
             PopupReference = null;
         }
 

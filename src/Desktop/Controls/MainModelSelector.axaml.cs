@@ -85,7 +85,8 @@ public partial class MainModelSelector : UserControl
         _mainAIManager = mainAIManager;
         _modelDownloader = modelDownloader;
         _logViewer = logViewer;
-        WireUpEvents();
+        _wireButtonEvents();
+        _buttonsWired = true;
     }
 
     /// <summary>

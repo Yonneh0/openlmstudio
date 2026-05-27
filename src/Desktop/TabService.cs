@@ -34,18 +34,10 @@ public class TabService : ITabService
             // Try MainTabControl first
             var tabControl = Window.Find<TabControl>("MainTabControl");
             if (tabControl?.SelectedItem is TabItem selected && selected.Header is string header)
-                return header.ToString();
+                return header;
 
-            // Fall back to _activeTab field from MainWindow
-            try
-            {
-                var activeTabField = typeof(MainWindow).GetField("_activeTab", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
-                if (activeTabField?.GetValue(Window) is string activeTab)
-                    return activeTab;
-            }
-            catch { /* Ignore reflection errors */ }
-
-            return "Chat";
+            // Fall back to MainWindow's ActiveTab property
+            return Window.ActiveTab;
         }
     }
 

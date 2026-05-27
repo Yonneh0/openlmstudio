@@ -107,6 +107,7 @@ public partial class PinguCharacter : UserControl
     /// </summary>
     public void Dispose()
     {
-        // Dispose any resources
+        _characterView?.StopRenderLoop();
+        _characterView?.Dispose();
     }
 }
