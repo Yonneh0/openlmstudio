@@ -1,0 +1,29 @@
+<UserControl x:Class="OpenLMStudio.Desktop.Controls.PinguCharacter"
+    xmlns="https://github.com/avaloniaui"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:controls="using:OpenLMStudio.Desktop.Controls"
+    Width="200"
+    Height="200">
+    <UserControl.Styles>
+        <Style Selector="Border#pinguCharacterBorder">
+            <Setter Property="Background" Value="#252529" />
+            <Setter Property="CornerRadius" Value="12" />
+            <Setter Property="Padding" Value="10" />
+        </Style>
+    </UserControl.Styles>
+    <Border x:Name="pinguCharacterBorder">
+        <StackPanel>
+            <TextBlock x:Name="CharacterName"
+                Text="Pingu"
+                FontSize="16"
+                FontWeight="Bold"
+                Foreground="#4FC3F7"
+                HorizontalAlignment="Center"
+                Margin="0,0,0,8" />
+            <controls:PinguCharacterView x:Name="CharacterView"
+                Width="180"
+                Height="180"
+                HorizontalAlignment="Center" />
+        </StackPanel>
+    </Border>
+</UserControl>

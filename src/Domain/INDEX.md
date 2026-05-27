@@ -65,7 +65,13 @@
 ## src/Domain/Models/PinguHomeScene.cs - Pingu Home Scene Models
     - PinguHomeObject (name, type, position, size, color, interactivity, animation, IsVisible, Clone()), PinguHomeScene (background, dimensions, objects, CreateDefault()). Static factories: CreateDefaultIgloo, CreateDefaultSink, CreateDefaultRug, CreateDefaultBall, CreateDefaultFishBowl, CreateDefaultNest. (~207 lines)
 ## src/Domain/Models/PinguAccessory.cs - Pingu Accessory Base Model
-    - PinguAccessory (abstract base for Hat/Tool: name, attachedBoneIndex, offsetX/Y/Z, rotation, scale, color, Clone()). Shared base for PinguHat and PinguTool. (~70 lines)
+     - PinguAccessory (abstract base for Hat/Tool: name, attachedBoneIndex, offsetX/Y/Z, rotation, scale, color, Clone()). Shared base for PinguHat and PinguTool. (~70 lines)
+## src/Domain/Models/PinguToolHolder.cs - Pingu Tool Holder Model
+     - PinguToolHolder (attached tools: ToolAttachment list, current tool, GetTool, SetTool, RemoveTool, SwapTools, ClearTools). ToolAttachment record (ToolType, ToolName, AttachedBoneIndex, ToolDefinition). (~60 lines)
+## src/Domain/Models/PinguAnimationStateMachine.cs - Pingu Animation State Machine Model
+     - PinguAnimationStateMachine (current state, blend factor, blend duration, is blending, current clip, state timer, behavior triggers, animation priorities). Methods: TransitionTo, Update, GetBlendedAnimation, TriggerBehavior, IsInterruptible, Reset. PinguAnimationState enum values with priority levels. (~257 lines)
+## src/Domain/Models/PinguBehaviorTriggers.cs - Pingu Behavior Triggers Model
+     - PinguBehaviorTriggers (random behavior triggers with weights: Twitch, HeadTurn, Scratch, EarFlick, Blink, SittingDown, SittingUp). Methods: Update, GetTrigger, GetBehaviorTriggers. (~120 lines)
 ## src/Domain/Models/PinguHat.cs - Pingu Hat Model
     - PinguHatType enum (None/Crown/Cap/Beanie/ChefHat/LabCoat/Hat), PinguHat extends PinguAccessory (HatType, PutOnAnimation, TakeOffAnimation, IsEquipped, Clone()). (~80 lines)
 ## src/Domain/Models/PinguTool.cs - Pingu Tool Model

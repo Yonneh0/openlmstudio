@@ -11,4 +11,9 @@ public class PinguCharacterData
     public PinguPhysicsParams PhysicsParams { get; set; } = new();
     public byte[]? TextureAtlas { get; set; }
     public int? Seed { get; set; }
+
+    /// <summary>
+    /// JSON representation of the bone hierarchy.
+    /// </summary>
+    public string BoneHierarchyJson => System.Text.Json.JsonSerializer.Serialize(BoneHierarchy.Definitions, new System.Text.Json.JsonSerializerOptions { WriteIndented = false });
 }

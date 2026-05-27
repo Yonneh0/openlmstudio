@@ -398,6 +398,109 @@ public static class DependencyInjection
         // ResourceManager monitors CPU/memory with VM-aware allocation
         services.AddSingleton<IResourceManager, ResourceManager>();
 
+        // ---- Pingu Character System Services ----
+
+        // PinguMeshGenerator generates mesh, bone hierarchy, animations, physics, and texture atlas for Pingu
+        services.AddSingleton<PinguMeshGenerator>();
+
+        // PinguBoneLoader loads bone hierarchy from JSON or generates default data
+        services.AddSingleton<PinguBoneLoader>();
+
+        // PinguAnimationSystem provides real-time animation and physics for Pingu characters
+        services.AddSingleton<PinguAnimationSystem>(resolver =>
+        {
+            var meshGen = resolver.GetService<PinguMeshGenerator>();
+            var boneLoader = resolver.GetService<PinguBoneLoader>();
+            var logger = resolver.GetService<Microsoft.Extensions.Logging.ILogger<PinguAnimationSystem>>();
+            if (meshGen == null || boneLoader == null)
+                throw new InvalidOperationException("PinguMeshGenerator and PinguBoneLoader required for PinguAnimationSystem.");
+
+            var meshData = meshGen.Generate();
+            var boneHierarchy = boneLoader.LoadBoneHierarchy(meshData.BoneHierarchyJson);
+            return new PinguAnimationSystem(boneHierarchy, meshData.AnimationClips, meshData.PhysicsParams, logger);
+        });
+
+        // PinguAnimationStateMachine manages animation state transitions with blending
+        services.AddSingleton<PinguAnimationStateMachine>(resolver =>
+        {
+            var meshGen = resolver.GetService<PinguMeshGenerator>();
+            var logger = resolver.GetService<Microsoft.Extensions.Logging.ILogger<PinguAnimationStateMachine>>();
+            if (meshGen == null)
+                throw new InvalidOperationException("PinguMeshGenerator required for PinguAnimationStateMachine.");
+
+            return new PinguAnimationStateMachine(meshGen.Generate().AnimationClips, logger);
+        });
+
+        // PinguBehaviorTriggers provides pseudo-random behavior triggers for Pingu
+        services.AddSingleton<PinguBehaviorTriggers>(resolver =>
+        {
+            var stateMachine = resolver.GetService<PinguAnimationStateMachine>();
+            var logger = resolver.GetService<Microsoft.Extensions.Logging.ILogger<PinguBehaviorTriggers>>();
+            if (stateMachine == null)
+                throw new InvalidOperationException("PinguAnimationStateMachine required for PinguBehaviorTriggers.");
+
+            return new PinguBehaviorTriggers(stateMachine, logger);
+        });
+
+        // PinguPhysicsSolver provides distance constraints, velocity damping, and gravity
+        services.AddSingleton<PinguPhysicsSolver>(resolver =>
+        {
+            var meshGen = resolver.GetService<PinguMeshGenerator>();
+            var boneLoader = resolver.GetService<PinguBoneLoader>();
+            var logger = resolver.GetService<Microsoft.Extensions.Logging.ILogger<PinguPhysicsSolver>>();
+            if (meshGen == null || boneLoader == null)
+                throw new InvalidOperationException("PinguMeshGenerator and PinguBoneLoader required for PinguPhysicsSolver.");
+
+            var meshData = meshGen.Generate();
+            var boneHierarchy = boneLoader.LoadBoneHierarchy(meshData.BoneHierarchyJson);
+            return new PinguPhysicsSolver(boneHierarchy.BoneCount, meshData.PhysicsParams.Gravity, meshData.PhysicsParams.VelocityDamping, logger);
+        });
+
+        // PinguInverseKinematics provides CCD IK solver for Pingu limbs
+        services.AddSingleton<PinguInverseKinematics>(resolver =>
+        {
+            var meshGen = resolver.GetService<PinguMeshGenerator>();
+            var boneLoader = resolver.GetService<PinguBoneLoader>();
+            var logger = resolver.GetService<Microsoft.Extensions.Logging.ILogger<PinguInverseKinematics>>();
+            if (meshGen == null || boneLoader == null)
+                throw new InvalidOperationException("PinguMeshGenerator and PinguBoneLoader required for PinguInverseKinematics.");
+
+            var meshData = meshGen.Generate();
+            var boneHierarchy = boneLoader.LoadBoneHierarchy(meshData.BoneHierarchyJson);
+            var positions = meshData.MeshData.Vertices.Select(v => new System.Numerics.Vector3(v.X, v.Y, v.Z)).ToArray();
+            var parentMap = meshData.BoneHierarchy.ResolvedBones.Select(b => b.ParentIndex ?? -1).ToArray();
+            return new PinguInverseKinematics(meshData.BoneHierarchy.BoneCount, parentMap, positions, new float[meshData.BoneHierarchy.BoneCount * 3], logger);
+        });
+
+        // PinguToolHolder manages tool attachments for Pingu characters
+        services.AddSingleton<PinguToolHolder>(resolver =>
+        {
+            var meshGen = resolver.GetService<PinguMeshGenerator>();
+            var boneLoader = resolver.GetService<PinguBoneLoader>();
+            var logger = resolver.GetService<Microsoft.Extensions.Logging.ILogger<PinguToolHolder>>();
+            if (meshGen == null || boneLoader == null)
+                throw new InvalidOperationException("PinguMeshGenerator and PinguBoneLoader required for PinguToolHolder.");
+
+            var boneHierarchy = boneLoader.LoadBoneHierarchy(meshGen.Generate().BoneHierarchyJson);
+            return new PinguToolHolder(boneHierarchy, logger);
+        });
+
+        // PinguHomeSceneRenderer renders the Pingu home scene with igloo, sink, rug, ball, etc.
+        services.AddSingleton<Rendering.PinguHomeSceneRenderer>(resolver =>
+        {
+            var boneLoader = resolver.GetService<PinguBoneLoader>();
+            var homeScene = boneLoader?.LoadHomeScene() ?? Domain.Models.PinguHomeScene.CreateDefault();
+            var logger = resolver.GetService<Microsoft.Extensions.Logging.ILogger<Rendering.PinguHomeSceneRenderer>>();
+            return new Rendering.PinguHomeSceneRenderer(homeScene, logger);
+        });
+
+        // PinguService orchestrates the entire Pingu system
+        services.AddSingleton<PinguService>(resolver =>
+        {
+            var logger = resolver.GetService<Microsoft.Extensions.Logging.ILogger<PinguService>>();
+            return new PinguService(logger);
+        });
+
         // SystemAICoordinator orchestrates System AI with QEMU VMs for cross-architecture workflows
         services.AddSingleton<ISystemAICoordinator, SystemAICoordinator>();
 
