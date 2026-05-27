@@ -77,4 +77,19 @@ public class PinguAnimationClip
     /// Get the maximum number of keyframes in any single track.
     /// </summary>
     public int MaxTrackKeyframes => Tracks.Count > 0 ? Tracks.Max(t => t.Keyframes.Count) : 0;
+
+    /// <summary>
+    /// Get the number of unique time steps in this animation (max keyframes across all tracks).
+    /// <remarks>This is the actual number of animation ticks — use this instead of TotalKeyframes for timing calculations.</remarks>
+    /// </summary>
+    public int KeyframeCount => MaxTrackKeyframes;
+
+    /// <summary>
+    /// Sort all tracks' keyframes by time in ascending order.
+    /// </summary>
+    public void SortKeyframes()
+    {
+        foreach (var track in Tracks)
+            track.Keyframes.Sort((a, b) => a.Time.CompareTo(b.Time));
+    }
 }

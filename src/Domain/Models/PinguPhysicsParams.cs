@@ -64,4 +64,47 @@ public class PinguPhysicsParams
     /// Deceleration rate when stopping movement.
     /// </summary>
     public float Deceleration { get; set; } = 400.0f;
+
+    /// <summary>
+    /// Validates that all physics parameters are within reasonable bounds.
+    /// </summary>
+    public bool IsValid()
+    {
+        if (Mass <= 0f) return false;
+        if (Friction < 0f || Friction > 1f) return false;
+        if (Gravity < 0f) return false;
+        if (IkStiffness < 0f || IkStiffness > 1f) return false;
+        if (VelocityDamping < 0f || VelocityDamping > 1f) return false;
+        if (SpringStiffness < 0f) return false;
+        if (SpringRestLength < 0f) return false;
+        if (MaxWalkSpeed <= 0f) return false;
+        if (MaxRunSpeed <= 0f) return false;
+        if (Acceleration < 0f) return false;
+        if (Deceleration < 0f) return false;
+        return true;
+    }
+
+    /// <summary>
+    /// Creates a copy of this physics params object.
+    /// </summary>
+    public PinguPhysicsParams Clone() => new()
+    {
+        Mass = Mass,
+        Friction = Friction,
+        Gravity = Gravity,
+        IkStiffness = IkStiffness,
+        VelocityDamping = VelocityDamping,
+        SpringStiffness = SpringStiffness,
+        SpringRestLength = SpringRestLength,
+        AffectedByGravity = AffectedByGravity,
+        MaxWalkSpeed = MaxWalkSpeed,
+        MaxRunSpeed = MaxRunSpeed,
+        Acceleration = Acceleration,
+        Deceleration = Deceleration,
+    };
+
+    /// <summary>
+    /// Validates that MaxWalkSpeed does not exceed MaxRunSpeed.
+    /// </summary>
+    public bool HasConsistentSpeedLimits() => MaxWalkSpeed <= MaxRunSpeed;
 }

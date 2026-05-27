@@ -5,23 +5,72 @@ namespace OpenLMStudio.Domain.Models;
 /// </summary>
 public class PinguHomeObject
 {
+    /// <summary>
+    /// Display name of the object.
+    /// </summary>
     public string Name { get; set; } = string.Empty;
+
+    /// <summary>
+    /// Type identifier for the object (e.g., "igloo", "sink", "rug").
+    /// </summary>
     public string Type { get; set; } = string.Empty;
 
-    // Position in the home scene (0-1 normalized)
+    /// <summary>
+    /// Position in the home scene (0-1 normalized).
+    /// </summary>
     public float X { get; set; }
+
+    /// <summary>
+    /// Position in the home scene (0-1 normalized).
+    /// </summary>
     public float Y { get; set; }
 
-    // Size in pixels
+    /// <summary>
+    /// Size in pixels.
+    /// </summary>
     public float Width { get; set; }
+
+    /// <summary>
+    /// Size in pixels.
+    /// </summary>
     public float Height { get; set; }
 
-    // Visual properties
+    /// <summary>
+    /// Visual color of the object.
+    /// </summary>
     public string Color { get; set; } = "#808080";
+
+    /// <summary>
+    /// Whether the object can be interacted with.
+    /// </summary>
     public bool IsInteractive { get; set; } = false;
 
-    // Interaction behavior
+    /// <summary>
+    /// Animation played when interacting with this object.
+    /// </summary>
     public string? InteractionAnimation { get; set; }
+
+    /// <summary>
+    /// Whether the object is currently visible.
+    /// </summary>
+    public bool IsVisible { get; set; } = true;
+
+    /// <summary>
+    /// Creates a copy of this home object.
+    /// </summary>
+    public PinguHomeObject Clone() => new()
+    {
+        Name = Name,
+        Type = Type,
+        X = X,
+        Y = Y,
+        Width = Width,
+        Height = Height,
+        Color = Color,
+        IsInteractive = IsInteractive,
+        InteractionAnimation = InteractionAnimation,
+        IsVisible = IsVisible,
+    };
 }
 
 /// <summary>
@@ -134,5 +183,25 @@ public class PinguHomeScene
         Color = "#D2691E",
         IsInteractive = true,
         InteractionAnimation = "sleep",
+    };
+
+    /// <summary>
+    /// Create a new home scene with all default objects.
+    /// </summary>
+    public static PinguHomeScene CreateDefault() => new()
+    {
+        Name = "Default Home",
+        BackgroundColor = "#1E1E22",
+        Width = 200f,
+        Height = 200f,
+        Objects = new List<PinguHomeObject>
+        {
+            CreateDefaultIgloo(),
+            CreateDefaultSink(),
+            CreateDefaultRug(),
+            CreateDefaultBall(),
+            CreateDefaultFishBowl(),
+            CreateDefaultNest(),
+        },
     };
 }

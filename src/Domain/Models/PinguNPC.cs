@@ -91,7 +91,6 @@ public class PinguNPC
 
     // State
     public PinguRole CurrentRole { get; set; } = PinguRole.Idle;
-    public PinguToolType CurrentTool { get; set; } = PinguToolType.None;
     public PinguAnimationState CurrentAnimation { get; set; } = PinguAnimationState.Idle;
     public PinguNPCState State { get; set; } = PinguNPCState.Idle;
 
@@ -102,16 +101,59 @@ public class PinguNPC
     // Hat
     public PinguHat? Hat { get; set; }
 
-    // Tool (in addition to the CurrentTool enum for quick checks)
+    // Tool
     public PinguTool? Tool { get; set; }
+
+    /// <summary>
+    /// Convenience accessor for the tool type (null-safe).
+    /// </summary>
+    public PinguToolType CurrentToolType => Tool?.ToolType ?? PinguToolType.None;
 
     // Physics
     public PinguPhysicsParams Physics { get; set; } = new();
 
     /// <summary>
     /// Whether this Pingu has reached its target position.
+    /// <remarks>Uses a threshold of 0.1f for both axes — adjust if tighter/looser tolerance is needed.</remarks>
     /// </summary>
     public bool HasReachedTarget => Math.Abs(VelocityX) < 0.1f && Math.Abs(VelocityY) < 0.1f;
+
+    /// <summary>
+    /// Moves this Pingu to the target position over the given duration.
+    /// </summary>
+    public void MoveTo(float targetX, float targetY, float duration)
+    {
+        TargetX = targetX;
+        TargetY = targetY;
+        MoveDuration = duration;
+        MoveProgress = 0f;
+        IsMoving = true;
+    }
+
+    /// <summary>
+    /// Updates the Pingu's position based on the current move progress (call each frame).
+    /// </summary>
+    public void UpdatePosition()
+    {
+        if (!IsMoving) return;
+
+        MoveProgress += 1.0f / MoveDuration;
+        if (MoveProgress >= 1.0f)
+        {
+            X = TargetX;
+            Y = TargetY;
+            VelocityX = 0f;
+            VelocityY = 0f;
+            IsMoving = false;
+            MoveProgress = 1f;
+        }
+        else
+        {
+            var t = MoveProgress;
+            X = X + (TargetX - X) * t;
+            Y = Y + (TargetY - Y) * t;
+        }
+    }
 }
 
 /// <summary>

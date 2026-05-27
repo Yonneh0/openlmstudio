@@ -53,4 +53,15 @@ public class PinguAnimationStateConfig
     /// Priority of this state (higher = more important, less likely to be interrupted).
     /// </summary>
     public int Priority { get; set; } = 0;
+
+    /// <summary>
+    /// Validates that DurationMin does not exceed DurationMax and all required values are valid.
+    /// <remarks>By default, AnimationClipName is null, so IsValid() returns false until set.</remarks>
+    /// </summary>
+    public bool IsValid() =>
+        DurationMin > 0f &&
+        DurationMin <= DurationMax &&
+        DurationMax > 0f &&
+        BlendSpeed > 0f &&
+        AnimationClipName != null;
 }

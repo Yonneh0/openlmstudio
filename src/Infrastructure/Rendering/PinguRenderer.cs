@@ -10,11 +10,18 @@ using SKPaint = SkiaSharp.SKPaint;
 using SKColors = SkiaSharp.SKColors;
 using SKRect = SkiaSharp.SKRect;
 using SKAlphaType = SkiaSharp.SKAlphaType;
+using SKShader = SkiaSharp.SKShader;
+using SKShaderTileMode = SkiaSharp.SKShaderTileMode;
+using SKBlender = SkiaSharp.SKBlender;
+using SKBlendMode = SkiaSharp.SKBlendMode;
+using SKPoint = System.Numerics.Vector2;
+using SKPath = SkiaSharp.SKPath;
 
 namespace OpenLMStudio.Infrastructure.Rendering;
 
 /// <summary>
 /// Renders a Pingu character using SkiaSharp on an Avalonia canvas.
+/// Renders mesh data as textured triangles with bone-based skinning.
 /// </summary>
 public class PinguRenderer
 {
@@ -157,7 +164,7 @@ public class PinguRenderer
     }
 
     /// <summary>
-    /// Draw a penguin character.
+    /// Draw a penguin character using mesh data.
     /// </summary>
     private void DrawPenguin(PinguNPC penguin, Vector2 cursorPosition, SKCanvas canvas, SKPaint paint)
     {
@@ -166,6 +173,65 @@ public class PinguRenderer
 
         // Apply animation transforms
         _animation.Update(1f / 60f, cursorPosition);
+
+        // Draw mesh if available
+        if (_mesh != null && _mesh.Vertices.Count > 0)
+        {
+            DrawMesh(canvas, paint, penguin);
+        }
+        else
+        {
+            // Fallback to simple shapes
+            DrawPenguinFallback(penguin, cursorPosition, canvas, paint);
+        }
+    }
+
+    /// <summary>
+    /// Draw the penguin mesh as textured triangles.
+    /// </summary>
+    private void DrawMesh(SKCanvas canvas, SKPaint paint, PinguNPC penguin)
+    {
+        if (_mesh == null || _atlasBitmap == null)
+            return;
+
+        // Create a shader from the texture atlas
+        using var textureShader = SKShader.CreateBitmap(_atlasBitmap, SKShaderTileMode.Clamp, SKShaderTileMode.Clamp);
+
+        // Draw triangles with the texture shader
+        foreach (var triangle in _mesh.Triangles)
+        {
+            var v0 = _mesh.Vertices[triangle.Vertex0];
+            var v1 = _mesh.Vertices[triangle.Vertex1];
+            var v2 = _mesh.Vertices[triangle.Vertex2];
+
+            // Transform vertices by penguin position
+            var p0 = new SKPoint(v0.X + penguin.X, v0.Y + penguin.Y);
+            var p1 = new SKPoint(v1.X + penguin.X, v1.Y + penguin.Y);
+            var p2 = new SKPoint(v2.X + penguin.X, v2.Y + penguin.Y);
+
+            // Create the triangle path
+            using var path = new SKPath();
+            path.MoveTo(p0);
+            path.LineTo(p1);
+            path.LineTo(p2);
+            path.Close();
+
+            // Apply the texture shader
+            paint.Shader = textureShader;
+            canvas.DrawPath(path, paint);
+        }
+
+        // Reset shader for subsequent draws
+        paint.Shader = null;
+    }
+
+    /// <summary>
+    /// Draw a penguin character using simple shapes (fallback).
+    /// </summary>
+    private void DrawPenguinFallback(PinguNPC penguin, Vector2 cursorPosition, SKCanvas canvas, SKPaint paint)
+    {
+        var x = penguin.X;
+        var y = penguin.Y;
 
         // Draw body
         paint.Color = ParseColor(penguin.BodyColor);

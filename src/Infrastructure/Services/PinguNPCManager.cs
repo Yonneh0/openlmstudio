@@ -68,18 +68,30 @@ public class PinguNPCManager
         pingu.Hat = new PinguHat
         {
             Name = role.ToString() + " Hat",
-            HatType = role.ToString(),
+            HatType = RoleToHatType(role),
             AttachedBoneIndex = 4,
             Color = GetRandomColor(),
         };
     }
+
+    private static PinguHatType RoleToHatType(PinguRole role) => role switch
+    {
+        PinguRole.Worker => PinguHatType.Cap,
+        PinguRole.Explorer => PinguHatType.Beanie,
+        PinguRole.Assistant => PinguHatType.Hat,
+        PinguRole.Guardian => PinguHatType.Crown,
+        PinguRole.Artist => PinguHatType.Beanie,
+        PinguRole.Chef => PinguHatType.ChefHat,
+        PinguRole.Scientist => PinguHatType.LabCoat,
+        _ => PinguHatType.Hat,
+    };
 
     /// <summary>
     /// Equip a tool to a penguin.
     /// </summary>
     public void EquipTool(PinguNPC pingu, PinguToolType tool)
     {
-        pingu.CurrentTool = tool;
+        pingu.Tool = new PinguTool { ToolType = tool, Name = tool.ToString() };
         pingu.CurrentTask = new DomainModels.PinguTask
         {
             Id = Guid.NewGuid(),
@@ -131,7 +143,6 @@ public class PinguNPCManager
             X = 100f,
             Y = 100f,
             CurrentRole = PinguRole.Idle,
-            CurrentTool = PinguToolType.None,
         };
         _penguins.Add(pingu);
         return pingu;

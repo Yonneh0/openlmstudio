@@ -47,27 +47,29 @@
 ## src/Domain/Models/PinguTaskType.cs - PinguTaskType Enum
    - PinguTaskType enum with 9 task types: TaskOrchestration, UIControl, ModelManagement, GamePlay, Wandering, UserAssistant, ModelRun, Workflow. (~47 lines)
 ## src/Domain/Models/PinguMesh.cs - Pingu Mesh Data Models
-   - PinguVertex (position, normal, UV, 4-bone skin indices/weights), PinguTriangle (vertex indices + Z-order), PinguMeshData (vertex/triangle arrays, texture atlas bytes, atlas dimensions, count display). (~100 lines)
+   - PinguVertex (position, normal, UV, 4-bone skin indices/weights), PinguTriangle (vertex indices + Z-order), PinguMeshData (vertex/triangle arrays, texture atlas bytes, atlas dimensions, count display, Clone(), Clear()). (~120 lines)
 ## src/Domain/Models/PinguCharacterData.cs - Pingu Character Data Model
    - PinguCharacterData record (MeshData, BoneHierarchy, AnimationClips, PhysicsParams, TextureAtlas, Seed) for aggregated character data. Used by PinguMeshGenerator as the complete output of mesh generation. (~30 lines)
 ## src/Domain/Models/PinguBone.cs - Pingu Bone & Hierarchy Models
-   - PinguBone (name, parent, transform, rotation, scale, joint limits, world/local matrices), PinguBoneHierarchy (definitions, resolved bones, root bones, Resolve() method with state reset), PinguBoneDefinition (pre-resolution JSON schema). (~140 lines)
+    - PinguBone (name, parent, transform, rotation, scale, joint limits, world/local matrices, ComputeLocalMatrix() with ZYX Euler composition, ComputeWorldMatrix() with column-major multiplication, Clone() shallow copy), PinguBoneHierarchy (definitions, resolved bones, root bones, Resolve() with two-pass approach, InvalidateDepths(), BoneCount from ResolvedBones, RootBoneCount, FindBoneByName, FindBoneByIndex, GetDescendants), PinguBoneDefinition (pre-resolution JSON schema). (~280 lines)
 ## src/Domain/Models/PinguSkinWeights.cs - Pingu Skin Weight Models
-   - PinguSkinInfluence (bone index + weight), PinguVertexSkinData (4-slot influence array with Initialize() method and null-safe GetBoneIndex/GetWeight), PinguSkinWeightEntry (binary mesh format). (~50 lines)
+    - PinguSkinInfluence (record with bone index init + weight set), PinguVertexSkinData (4-slot influence array, constructor auto-initialize, Initialize(), bounds-checked GetBoneIndex/GetWeight with ArgumentOutOfRangeException). PinguSkinWeightEntry (binary mesh format) is unused dead code. (~60 lines)
 ## src/Domain/Models/PinguAnimationClip.cs - Pingu Animation Clip Models
-   - AnimationKeyframe (time, position, Euler rotation, scale), BoneAnimationTrack (bone index + keyframes), PinguAnimationClip (name, duration, looping, tracks, keyframe counts, null-safe MaxTrackKeyframes). (~80 lines)
+    - AnimationKeyframe (time, position, Euler rotation, scale), BoneAnimationTrack (bone index + keyframes), PinguAnimationClip (name, duration, looping, tracks, keyframe counts, KeyframeCount property, SortKeyframes(), null-safe MaxTrackKeyframes). (~90 lines)
 ## src/Domain/Models/PinguAnimationState.cs - Pingu Animation State Models
-   - PinguAnimationState enum (Idle/Walk/Run/Sit/Wave/Scratch/Twitch/EarFlick/HeadTurn/Blink/SittingDown/SittingUp/Playing/Breathing), PinguAnimationStateConfig (clip name, duration, blend speed, interruptible, priority). (~60 lines)
+    - PinguAnimationState enum (Idle/Walk/Run/Sit/Wave/Scratch/Twitch/EarFlick/HeadTurn/Blink/SittingDown/SittingUp/Playing/Breathing), PinguAnimationStateConfig (clip name, duration, blend speed, interruptible, priority, IsValid() with AnimationClipName null check). (~66 lines)
 ## src/Domain/Models/PinguPhysicsParams.cs - Pingu Physics Parameters
-   - Mass, friction, gravity, IK stiffness, velocity damping, spring stiffness/rest length, max walk/run speeds, acceleration/deceleration. (~65 lines)
+    - Mass, friction, gravity, IK stiffness, velocity damping, spring stiffness/rest length, max walk/run speeds, acceleration/deceleration, AffectedByGravity, IsValid() validation, Clone() method, HasConsistentSpeedLimits() validation. (~110 lines)
 ## src/Domain/Models/PinguNPC.cs - Pingu NPC Character Model
-   - PinguRole enum (Idle/Worker/Explorer/Assistant/Guardian/Artist/Chef/Scientist/Wandering), PinguToolType enum (None/Pickaxe/Sledgehammer/PokeStick/Paintbrush/ChefHat/LabCoat/Crown/Hat), PinguTask (id, description, type, priority, status, timestamps), PinguNPCState enum, PinguNPC class (appearance, position, velocity, role, tool enum, Tool property, Hat property, animation, task queue, physics). (~140 lines)
+    - PinguRole enum (Idle/Worker/Explorer/Assistant/Guardian/Artist/Chef/Scientist/Wandering), PinguToolType enum (None/Pickaxe/Sledgehammer/PokeStick/Paintbrush/ChefHat/LabCoat/Crown/Hat), PinguTask (id, description, type, priority, status, timestamps), PinguNPCState enum, PinguNPC class (appearance, position, velocity, role, Tool property + CurrentToolType accessor, Hat property, animation, task queue, physics, MoveTo(), UpdatePosition()). (~160 lines)
 ## src/Domain/Models/PinguHomeScene.cs - Pingu Home Scene Models
-   - PinguHomeObject (name, type, position, size, color, interactivity, animation), PinguHomeScene (background, dimensions, objects). Static factories: CreateDefaultIgloo, CreateDefaultSink, CreateDefaultRug, CreateDefaultBall, CreateDefaultFishBowl, CreateDefaultNest. (~130 lines)
+    - PinguHomeObject (name, type, position, size, color, interactivity, animation, IsVisible, Clone()), PinguHomeScene (background, dimensions, objects, CreateDefault()). Static factories: CreateDefaultIgloo, CreateDefaultSink, CreateDefaultRug, CreateDefaultBall, CreateDefaultFishBowl, CreateDefaultNest. (~207 lines)
+## src/Domain/Models/PinguAccessory.cs - Pingu Accessory Base Model
+    - PinguAccessory (abstract base for Hat/Tool: name, attachedBoneIndex, offsetX/Y/Z, rotation, scale, color, Clone()). Shared base for PinguHat and PinguTool. (~70 lines)
 ## src/Domain/Models/PinguHat.cs - Pingu Hat Model
-   - PinguHat (name, type, bone attachment, offset, rotation, scale, color, putOn/takeOff animations). (~50 lines)
+    - PinguHatType enum (None/Crown/Cap/Beanie/ChefHat/LabCoat/Hat), PinguHat extends PinguAccessory (HatType, PutOnAnimation, TakeOffAnimation, IsEquipped, Clone()). (~80 lines)
 ## src/Domain/Models/PinguTool.cs - Pingu Tool Model
-   - PinguTool (name, type, bone attachment, offset, rotation, scale, color, use/equip/unequip animations), PinguToolDefinition (lightweight tool definition with same properties). (~100 lines)
+    - PinguTool extends PinguAccessory (ToolType, UseAnimation, EquipAnimation, UnequipAnimation, Clone()). Removed dead code PinguToolDefinition. (~55 lines)
 ## src/Domain/Models/QEMUTypes.cs - QEMU Types
   - ArchitectureType/AcceleratorType/DiskFormatType/NetworkBackendType/VMRunState enums, CpuTopology record, DiskImageConfig/NetworkDeviceConfig/QmpSocket records, VMInstance class (with ProcessId string, QEMUProcessManager reference), VMCreationConfig record. (~155 lines)
 ## src/Domain/Models/SmallModels.cs - Small Models

@@ -1,41 +1,29 @@
 namespace OpenLMStudio.Domain.Models;
 
 /// <summary>
-/// A hat that can be worn by a Pingu character.
+/// Type of hat worn by a Pingu character.
 /// </summary>
-public class PinguHat
+public enum PinguHatType
 {
-    public string Name { get; set; } = string.Empty;
-    public string HatType { get; set; } = string.Empty;
+    None,
+    Crown,
+    Cap,
+    Beanie,
+    ChefHat,
+    LabCoat,
+    Hat,
+}
 
+/// <summary>
+/// A hat that can be worn by a Pingu character.
+/// <remarks>Extends PinguAccessory for bone attachment and transform offsets. Adds HatType-specific properties.</remarks>
+/// </summary>
+public class PinguHat : PinguAccessory
+{
     /// <summary>
-    /// The bone index this hat attaches to (usually the head bone).
+    /// Type identifier for the hat (e.g., Crown, Cap, Beanie).
     /// </summary>
-    public int AttachedBoneIndex { get; set; }
-
-    /// <summary>
-    /// Offset from the attached bone (in pixels).
-    /// </summary>
-    public float OffsetX { get; set; }
-    public float OffsetY { get; set; }
-    public float OffsetZ { get; set; }
-
-    /// <summary>
-    /// Rotation offset in degrees.
-    /// </summary>
-    public float Roll { get; set; }
-    public float Pitch { get; set; }
-    public float Yaw { get; set; }
-
-    /// <summary>
-    /// Scale multiplier.
-    /// </summary>
-    public float Scale { get; set; } = 1.0f;
-
-    /// <summary>
-    /// Color of the hat.
-    /// </summary>
-    public string Color { get; set; } = "#FFFFFF";
+    public PinguHatType HatType { get; set; }
 
     /// <summary>
     /// Animation played when the hat is put on.
@@ -46,4 +34,30 @@ public class PinguHat
     /// Animation played when the hat is taken off.
     /// </summary>
     public string TakeOffAnimation { get; set; } = "hatTakeOff";
+
+    /// <summary>
+    /// Whether the hat is currently equipped on the Pingu.
+    /// </summary>
+    public bool IsEquipped { get; set; }
+
+    /// <summary>
+    /// Creates a copy of this hat.
+    /// </summary>
+    public new PinguHat Clone() => new()
+    {
+        Name = Name,
+        HatType = HatType,
+        AttachedBoneIndex = AttachedBoneIndex,
+        OffsetX = OffsetX,
+        OffsetY = OffsetY,
+        OffsetZ = OffsetZ,
+        Roll = Roll,
+        Pitch = Pitch,
+        Yaw = Yaw,
+        Scale = Scale,
+        Color = Color,
+        PutOnAnimation = PutOnAnimation,
+        TakeOffAnimation = TakeOffAnimation,
+        IsEquipped = IsEquipped,
+    };
 }

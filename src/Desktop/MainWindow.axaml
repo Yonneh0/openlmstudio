@@ -758,7 +758,14 @@
         </Grid>
 
         <!-- ===== PINGU CORNER PANEL (for PinguAvatar and PinguCanvas) ===== -->
-        <Panel x:Name="PinguCornerPanel" Grid.Row="1" Grid.Column="1" IsVisible="True" Panel.ZIndex="100" PointerPressed="OnPinguCornerPanelPointerPressed"/>
+        <Panel x:Name="PinguCornerPanel" Grid.Row="1" Grid.Column="1" IsVisible="True" Panel.ZIndex="100" PointerPressed="OnPinguCornerPanelPointerPressed" Background="Transparent">
+            <Panel.Width>
+                <Binding Path="Width" RelativeSource="{RelativeSource AncestorType=Grid}"/>
+            </Panel.Width>
+            <Panel.Height>
+                <Binding Path="Height" RelativeSource="{RelativeSource AncestorType=Grid}"/>
+            </Panel.Height>
+        </Panel>
 
         <!-- ===== RIGHT SIDEBAR ===== -->
         <Grid x:Name="RightSidebarPanel" Grid.Row="1" Grid.Column="2" Background="{StaticResource BgPrimary}">
