@@ -14,7 +14,7 @@ namespace OpenLMStudio.Desktop.Controls;
 /// </summary>
 public partial class PinguCharacter : UserControl
 {
-    private readonly ILogger<PinguCharacter>? _logger;
+    private readonly ILogger<PinguCharacter> _logger = null!;
     private readonly PinguCharacterView _characterView;
     private readonly PinguAnimationStateMachine _stateMachine;
 
@@ -25,12 +25,14 @@ public partial class PinguCharacter : UserControl
         PinguPhysicsSolver physicsSolver,
         PinguInverseKinematics ik,
         PinguToolHolder toolHolder,
-        PinguHomeSceneRenderer homeSceneRenderer,
+        global::OpenLMStudio.Infrastructure.Rendering.PinguHomeSceneRenderer homeSceneRenderer,
+        PinguRenderer pinguRenderer,
         ILogger<PinguCharacter>? logger = null)
     {
         InitializeComponent();
 
         _stateMachine = stateMachine;
+
         // Create the character view with all services
         _characterView = new PinguCharacterView(
             animationSystem,
@@ -40,17 +42,36 @@ public partial class PinguCharacter : UserControl
             ik,
             toolHolder,
             homeSceneRenderer,
+            pinguRenderer,
             logger: null);
 
-        // Replace the CharacterView reference
+        // Replace the CharacterView reference from XAML with our injected one
         var existing = this.Find<PinguCharacterView>("CharacterView");
         if (existing != null)
         {
-            var panel = existing.Parent as StackPanel;
-            if (panel != null)
+            var parent = existing.Parent;
+            if (parent is StackPanel panel)
             {
                 panel.Children.Remove(existing);
                 panel.Children.Add(_characterView);
+            }
+            else
+            {
+                // Fallback: replace the entire content
+                var border = this.Find<Avalonia.Controls.Border>("pinguCharacterBorder");
+                if (border != null)
+                {
+                    border.Child = _characterView;
+                }
+            }
+        }
+        else
+        {
+            // Fallback: if CharacterView not found by name, set as border content
+            var border = this.Find<Avalonia.Controls.Border>("pinguCharacterBorder");
+            if (border != null)
+            {
+                border.Child = _characterView;
             }
         }
 

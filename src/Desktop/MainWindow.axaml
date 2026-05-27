@@ -758,7 +758,7 @@
         </Grid>
 
         <!-- ===== PINGU CORNER PANEL (for PinguAvatar and PinguCanvas) ===== -->
-        <Panel x:Name="PinguCornerPanel" Grid.Row="1" Grid.Column="1" IsVisible="True" Panel.ZIndex="100" PointerPressed="OnPinguCornerPanelPointerPressed" Background="Transparent">
+        <Panel x:Name="PinguCornerPanel" Grid.Row="1" Grid.Column="1" IsVisible="True" Panel.ZIndex="100" Background="Transparent">
             <Panel.Width>
                 <Binding Path="Width" RelativeSource="{RelativeSource AncestorType=Grid}"/>
             </Panel.Width>
@@ -767,21 +767,14 @@
             </Panel.Height>
         </Panel>
 
-        <!-- ===== RIGHT SIDEBAR ===== -->
-        <Grid x:Name="RightSidebarPanel" Grid.Row="1" Grid.Column="2" Background="{StaticResource BgPrimary}">
+        <!-- ===== RIGHT SIDEBAR (with Pingu home tile) ===== -->
+        <Grid Grid.Row="1" Grid.Column="2" Background="{StaticResource BgPrimary}">
             <Grid.RowDefinitions>
-                <RowDefinition Height="Auto"/>
                 <RowDefinition Height="*"/>
+                <RowDefinition Height="Auto"/>
             </Grid.RowDefinitions>
-            <StackPanel Grid.Row="0" Margin="0,0,0,8">
-                <!-- Right sidebar tabs -->
-                <WrapPanel x:Name="RightTabButtonsPanel" Margin="4,0,4,0">
-                    <ToggleButton x:Name="RightTabTasks" Content="Tasks" Classes="rightPanelTab" IsChecked="True" Tag="Tasks" MinHeight="24"/>
-                    <ToggleButton x:Name="RightTabContext" Content="Context" Classes="rightPanelTab" Tag="Context"/>
-                    <ToggleButton x:Name="RightTabInfo" Content="Info" Classes="rightPanelTab" Tag="Info"/>
-                </WrapPanel>
-            </StackPanel>
-            <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto">
+            <!-- The existing RightSidebarPanel (scrollable content) -->
+            <ScrollViewer Grid.Row="0" VerticalScrollBarVisibility="Auto">
                 <StackPanel x:Name="RightTabContentPanel">
                     <!-- Tasks tab -->
                     <StackPanel x:Name="RightTasksContent" IsVisible="True">
@@ -821,6 +814,11 @@
                     </StackPanel>
                 </StackPanel>
             </ScrollViewer>
+            <!-- Pingu Home tile at the bottom of the sidebar -->
+            <Controls:PinguHomeTile Grid.Row="1"
+                                    x:Name="PinguHomeTile"
+                                    HorizontalAlignment="Stretch"
+                                    PointerPressed="OnPinguHomeTileClicked"/>
         </Grid>
 
         <!-- Status bar -->

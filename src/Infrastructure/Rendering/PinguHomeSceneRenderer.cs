@@ -8,7 +8,7 @@ namespace OpenLMStudio.Infrastructure.Rendering;
 /// <summary>
 /// Renders the Pingu home scene with igloo, sink, rug, ball, and other decorative objects.
 /// </summary>
-public class PinguHomeSceneRenderer
+public class PinguHomeSceneRenderer : IDisposable
 {
     private readonly ILogger<PinguHomeSceneRenderer>? _logger;
     private readonly Random _random;
@@ -20,6 +20,8 @@ public class PinguHomeSceneRenderer
     private SKPaint _paint = new();
     private SKPaint _strokePaint = new() { Style = SKPaintStyle.Stroke, StrokeWidth = 2 };
     private SKShader? _textureShader;
+
+    private bool _disposed;
 
     public PinguHomeSceneRenderer(
         PinguHomeScene homeScene,
@@ -37,6 +39,20 @@ public class PinguHomeSceneRenderer
     public void SetTextureShader(SKShader shader)
     {
         _textureShader = shader;
+    }
+
+    /// <summary>
+    /// Disposes the renderer and all associated resources.
+    /// </summary>
+    public void Dispose()
+    {
+        if (_disposed)
+            return;
+
+        _disposed = true;
+        _paint?.Dispose();
+        _strokePaint?.Dispose();
+        _textureShader?.Dispose();
     }
 
     /// <summary>
@@ -92,13 +108,14 @@ public class PinguHomeSceneRenderer
 
     /// <summary>
     /// Draw a single home scene object.
+    /// X/Y are normalized (0-1), Width/Height are in absolute pixels.
     /// </summary>
     private void DrawHomeObject(SKCanvas canvas, PinguHomeObject obj, float width, float height)
     {
         var x = obj.X * width;
         var y = obj.Y * height;
-        var w = obj.Width * width;
-        var h = obj.Height * height;
+        var w = obj.Width;
+        var h = obj.Height;
 
         var color = ParseColor(obj.Color);
 

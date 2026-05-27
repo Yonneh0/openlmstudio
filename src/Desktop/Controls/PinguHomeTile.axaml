@@ -1,18 +1,12 @@
 <UserControl x:Class="OpenLMStudio.Desktop.Controls.PinguHomeTile"
     xmlns="https://github.com/avaloniaui"
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-    Width="120" Height="120"
-    HorizontalAlignment="Center"
-    VerticalAlignment="Center">
+    x:ClassModifier="public">
 
     <Border x:Name="TileBorder" Background="{StaticResource BgSecondary}"
-            CornerRadius="24"
-            Margin="8"
             PointerPressed="OnTileClicked">
-        <TextBlock Text="Pingu"
-                   FontSize="14"
-                   TextAlignment="Center"
-                   Foreground="{StaticResource TextPrimary}"
-                   TextWrapping="Wrap"/>
+        <Canvas x:Name="HomeCanvas" Background="#1E1E22"
+                HorizontalAlignment="Stretch"
+                VerticalAlignment="Stretch"/>
     </Border>
 </UserControl>

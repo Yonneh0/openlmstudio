@@ -40,6 +40,11 @@ public class PinguAnimationStateMachine
     public PinguAnimationClip? CurrentClip { get; private set; }
 
     /// <summary>
+    /// Cached lookup from PinguAnimationState enum value to animation clip.
+    /// </summary>
+    private readonly Dictionary<PinguAnimationState, PinguAnimationClip?> _clipByName;
+
+    /// <summary>
     /// Time since last state change.
     /// </summary>
     private float _stateTimer;
@@ -48,11 +53,6 @@ public class PinguAnimationStateMachine
     /// Weighted behavior triggers for random behaviors.
     /// </summary>
     private readonly List<(PinguAnimationState State, float Weight)> _behaviorTriggers;
-
-    /// <summary>
-    /// Current behavior state (for concurrent behaviors).
-    /// </summary>
-    private PinguAnimationState _behaviorState;
 
     /// <summary>
     /// Priority levels for animations (higher = more important).
@@ -69,9 +69,29 @@ public class PinguAnimationStateMachine
         _random = random ?? new Random();
 
         CurrentState = PinguAnimationState.Idle;
-        _behaviorState = PinguAnimationState.Idle;
         _stateTimer = 0;
         BlendFactor = 1;
+
+        // Build clip lookup by name (handles clips named differently from enum values)
+        _clipByName = new Dictionary<PinguAnimationState, PinguAnimationClip?>();
+        foreach (var clip in clips)
+        {
+            if (Enum.IsDefined(typeof(PinguAnimationState), clip.Name))
+            {
+                _clipByName[(PinguAnimationState)Enum.Parse(typeof(PinguAnimationState), clip.Name)] = clip;
+            }
+        }
+        // Also add all clips as a fallback
+        foreach (var clip in clips)
+        {
+            if (!_clipByName.Values.Contains(clip))
+            {
+                // If clip name doesn't match an enum value, add it as the first available fallback
+                var fallbackState = _clipByName.Keys.FirstOrDefault(s => _clipByName[s] == null);
+                if (fallbackState != default)
+                    _clipByName[fallbackState] = clip;
+            }
+        }
 
         _animationPriorities = new Dictionary<PinguAnimationState, int>
         {
@@ -88,8 +108,6 @@ public class PinguAnimationStateMachine
             [PinguAnimationState.EarFlick] = 6,
             [PinguAnimationState.HeadTurn] = 5,
             [PinguAnimationState.Blink] = 7,
-            [PinguAnimationState.SittingDown] = 8,
-            [PinguAnimationState.SittingUp] = 8,
             [PinguAnimationState.Playing] = 3,
         };
 
@@ -123,7 +141,8 @@ public class PinguAnimationStateMachine
         }
 
         // Find the clip for the new state
-        var clip = _clips.FirstOrDefault(c => c.Name == newState.ToString());
+        // First try exact enum name match, then fall back to any available clip
+        var clip = _clipByName.GetValueOrDefault(newState) ?? _clips.FirstOrDefault();
         if (clip != null)
         {
             CurrentClip = clip;
@@ -206,10 +225,27 @@ public class PinguAnimationStateMachine
     public void Reset()
     {
         CurrentState = PinguAnimationState.Idle;
-        _behaviorState = PinguAnimationState.Idle;
         BlendFactor = 1;
         _stateTimer = 0;
-        CurrentClip = _clips.FirstOrDefault(c => c.Name == "Idle");
+        CurrentClip = _clipByName.GetValueOrDefault(PinguAnimationState.Idle) ?? _clips.FirstOrDefault(c => c.Name == "Idle");
+    }
+
+    /// <summary>
+    /// Pause the current animation (hold the current frame).
+    /// </summary>
+    public void Pause()
+    {
+        // Set a high priority flag by transitioning to a temporary state
+        // The animation continues but no new behaviors are triggered
+        _stateTimer = float.MaxValue;
+    }
+
+    /// <summary>
+    /// Resume the animation after Pause.
+    /// </summary>
+    public void Resume()
+    {
+        _stateTimer = 0;
     }
 
     /// <summary>

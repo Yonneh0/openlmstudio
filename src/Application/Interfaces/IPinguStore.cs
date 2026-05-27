@@ -89,7 +89,7 @@ public interface IPinguStore
 
     /// <summary>
     /// Creates a PinguRenderer for GPU rendering of the Pingu character.
-    /// Returns a function that renders the scene given a cursor position.
+    /// Returns a function that renders the scene given a cursor position, bitmap, and canvas.
     /// </summary>
-    Func<System.Numerics.Vector2, Task> CreateRenderer();
+    Func<System.Numerics.Vector2, SkiaSharp.SKBitmap, SkiaSharp.SKCanvas, Task> CreateRenderer();
 }

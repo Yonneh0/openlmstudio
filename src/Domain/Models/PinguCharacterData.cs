@@ -13,7 +13,21 @@ public class PinguCharacterData
     public int? Seed { get; set; }
 
     /// <summary>
-    /// JSON representation of the bone hierarchy.
+    /// JSON representation of the bone hierarchy (cached).
     /// </summary>
-    public string BoneHierarchyJson => System.Text.Json.JsonSerializer.Serialize(BoneHierarchy.Definitions, new System.Text.Json.JsonSerializerOptions { WriteIndented = false });
+    public string BoneHierarchyJson
+    {
+        get
+        {
+            if (_boneHierarchyJson == null)
+                _boneHierarchyJson = System.Text.Json.JsonSerializer.Serialize(BoneHierarchy.Definitions, new System.Text.Json.JsonSerializerOptions { WriteIndented = false });
+            return _boneHierarchyJson;
+        }
+    }
+    private string? _boneHierarchyJson;
+
+    /// <summary>
+    /// Invalidate the cached BoneHierarchyJson (call after modifying hierarchy).
+    /// </summary>
+    public void InvalidateBoneHierarchyJson() => _boneHierarchyJson = null;
 }

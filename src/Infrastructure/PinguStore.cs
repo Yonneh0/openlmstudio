@@ -242,7 +242,7 @@ public class PinguStore : IPinguStore, IDisposable
     /// Creates a PinguRenderer for GPU rendering of the Pingu character.
     /// Returns a Func that renders the scene given a cursor position.
     /// </summary>
-    public Func<System.Numerics.Vector2, Task> CreateRenderer()
+    public Func<System.Numerics.Vector2, SkiaSharp.SKBitmap, SkiaSharp.SKCanvas, Task> CreateRenderer()
     {
         // Generate all data using PinguMeshGenerator
         var generator = new PinguMeshGenerator();
@@ -274,9 +274,9 @@ public class PinguStore : IPinguStore, IDisposable
         var renderer = new PinguRenderer(hierarchy, animation, npcManager, homeScene, atlas);
         renderer.Initialize(400, 400);
 
-        return async cursor =>
+        return async (cursor, skBitmap, skCanvas) =>
         {
-            renderer.Render(cursor);
+            renderer.Render(cursor, skBitmap, skCanvas);
             await Task.CompletedTask;
         };
     }

@@ -104,7 +104,7 @@ public class PinguBehaviorTriggers
         var duration = (float)_random.NextDouble() * (definition.MaxDuration - definition.MinDuration) + definition.MinDuration;
 
         _activeBehaviors[behavior] = duration;
-        _lastTriggerTime[behavior] = DateTime.UtcNow.TotalSeconds();
+        _lastTriggerTime[behavior] = DateTime.UtcNow.Subtract(DateTime.UnixEpoch).TotalSeconds;
 
         _stateMachine.TriggerBehavior(behavior);
         _logger?.LogDebug("Triggered behavior: {Behavior} for {Duration:F1}s", behavior, duration);
@@ -142,7 +142,7 @@ public class PinguBehaviorTriggers
             if (_activeBehaviors.ContainsKey(definition.State)) continue;
 
             var lastTime = _lastTriggerTime.GetValueOrDefault(definition.State, 0);
-            var timeSinceLastTrigger = DateTime.UtcNow.TotalSeconds() - lastTime;
+            var timeSinceLastTrigger = DateTime.UtcNow.Subtract(DateTime.UnixEpoch).TotalSeconds - lastTime;
             if (timeSinceLastTrigger < BehaviorCooldown) continue;
 
             if (!_stateMachine.IsInterruptible && definition.State != PinguAnimationState.Blink) continue;

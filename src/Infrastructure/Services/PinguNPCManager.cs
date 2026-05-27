@@ -49,13 +49,22 @@ public class PinguNPCManager
 
     /// <summary>
     /// Move a penguin to a target position.
+    /// Velocity is initialized based on the distance to the target for immediate movement response.
     /// </summary>
     public void MoveTo(PinguNPC pingu, float targetX, float targetY, float duration)
     {
         pingu.TargetX = targetX;
         pingu.TargetY = targetY;
         pingu.MoveDuration = duration;
+        pingu.MoveProgress = 0f;
         pingu.IsMoving = true;
+
+        // Initialize velocity based on distance to target
+        var dx = targetX - pingu.X;
+        var dy = targetY - pingu.Y;
+        var distance = (float)Math.Sqrt(dx * dx + dy * dy);
+        pingu.VelocityX = distance > 0 ? dx / distance : 0f;
+        pingu.VelocityY = distance > 0 ? dy / distance : 0f;
     }
 
     /// <summary>

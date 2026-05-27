@@ -208,9 +208,29 @@ public class PinguAnimationClip
     public int TotalKeyframes => Tracks.Sum(t => t.Keyframes.Count);
 
     /// <summary>
-    /// Get the maximum number of keyframes in any single track.
+    /// Get the maximum number of keyframes in any single track (cached for performance).
     /// </summary>
-    public int MaxTrackKeyframes => Tracks.Count > 0 ? Tracks.Max(t => t.Keyframes.Count) : 0;
+    private int? _cachedMaxTrackKeyframes;
+
+    private bool _maxTrackKeyframesDirty = true;
+
+    public int MaxTrackKeyframes
+    {
+        get
+        {
+            if (_maxTrackKeyframesDirty)
+            {
+                _cachedMaxTrackKeyframes = Tracks.Count > 0 ? Tracks.Max(t => t.Keyframes.Count) : 0;
+                _maxTrackKeyframesDirty = false;
+            }
+            return _cachedMaxTrackKeyframes ?? 0;
+        }
+        internal set
+        {
+            _cachedMaxTrackKeyframes = value;
+            _maxTrackKeyframesDirty = false;
+        }
+    }
 
     /// <summary>
     /// Get the number of unique time steps in this animation (max keyframes across all tracks).

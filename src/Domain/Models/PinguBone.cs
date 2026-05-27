@@ -9,15 +9,48 @@ public class PinguBone
     public int Index { get; set; }
     public int? ParentIndex { get; set; }
 
-    public float X { get; set; }
-    public float Y { get; set; }
-    public float Z { get; set; }
+    private float _x;
+    private float _y;
+    private float _z;
+    private float _roll;
+    private float _pitch;
+    private float _yaw;
+    private float _scale = 1.0f;
 
-    public float Roll { get; set; }
-    public float Pitch { get; set; }
-    public float Yaw { get; set; }
+    /// <summary>
+    /// Position X coordinate.
+    /// </summary>
+    public float X { get => _x; set { _x = value; InvalidateMatrices(); } }
 
-    public float Scale { get; set; } = 1.0f;
+    /// <summary>
+    /// Position Y coordinate.
+    /// </summary>
+    public float Y { get => _y; set { _y = value; InvalidateMatrices(); } }
+
+    /// <summary>
+    /// Position Z coordinate.
+    /// </summary>
+    public float Z { get => _z; set { _z = value; InvalidateMatrices(); } }
+
+    /// <summary>
+    /// Roll rotation (Z-axis) in degrees.
+    /// </summary>
+    public float Roll { get => _roll; set { _roll = value; InvalidateMatrices(); } }
+
+    /// <summary>
+    /// Pitch rotation (Y-axis) in degrees.
+    /// </summary>
+    public float Pitch { get => _pitch; set { _pitch = value; InvalidateMatrices(); } }
+
+    /// <summary>
+    /// Yaw rotation (X-axis) in degrees.
+    /// </summary>
+    public float Yaw { get => _yaw; set { _yaw = value; InvalidateMatrices(); } }
+
+    /// <summary>
+    /// Scale factor for the bone.
+    /// </summary>
+    public float Scale { get => _scale; set { _scale = value; InvalidateMatrices(); } }
 
     // Joint limits
     public float MinRoll { get; set; } = -180f;
@@ -46,6 +79,11 @@ public class PinguBone
     /// Computed local transform matrix (column-major 4x4).
     /// </summary>
     public float[] LocalMatrix { get; set; } = new float[16];
+
+    /// <summary>
+    /// Whether WorldMatrix has been computed since last modification.
+    /// </summary>
+    private bool _worldMatrixDirty = true;
 
     /// <summary>
     /// Recomputes the local matrix from this bone's transform using proper ZYX Euler angle composition.
@@ -92,30 +130,42 @@ public class PinguBone
     /// </summary>
     public void ComputeWorldMatrix()
     {
-        if (Parent != null)
+        if (_worldMatrixDirty)
         {
-            var parentWorld = Parent.WorldMatrix;
-            var local = LocalMatrix;
-            var world = new float[16];
-
-            // Column-major matrix multiplication: world = parentWorld × local
-            for (var i = 0; i < 4; i++)
+            _worldMatrixDirty = false;
+            if (Parent != null)
             {
-                for (var j = 0; j < 4; j++)
-                {
-                    world[i + j * 4] = parentWorld[i + 0 * 4] * local[0 + j * 4] +
-                                       parentWorld[i + 1 * 4] * local[1 + j * 4] +
-                                       parentWorld[i + 2 * 4] * local[2 + j * 4] +
-                                       parentWorld[i + 3 * 4] * local[3 + j * 4];
-                }
-            }
+                var parentWorld = Parent.WorldMatrix;
+                var local = LocalMatrix;
+                var world = new float[16];
 
-            WorldMatrix = world;
+                // Column-major matrix multiplication: world = parentWorld × local
+                for (var i = 0; i < 4; i++)
+                {
+                    for (var j = 0; j < 4; j++)
+                    {
+                        world[i + j * 4] = parentWorld[i + 0 * 4] * local[0 + j * 4] +
+                                           parentWorld[i + 1 * 4] * local[1 + j * 4] +
+                                           parentWorld[i + 2 * 4] * local[2 + j * 4] +
+                                           parentWorld[i + 3 * 4] * local[3 + j * 4];
+                    }
+                }
+
+                WorldMatrix = world;
+            }
+            else
+            {
+                WorldMatrix = (float[])LocalMatrix.Clone();
+            }
         }
-        else
-        {
-            WorldMatrix = (float[])LocalMatrix.Clone();
-        }
+    }
+
+    /// <summary>
+    /// Marks both matrices as dirty, forcing recomputation on next access.
+    /// </summary>
+    public void InvalidateMatrices()
+    {
+        _worldMatrixDirty = true;
     }
 
     /// <summary>

@@ -41,13 +41,19 @@ public class PinguMeshGenerator
         if (seed.HasValue)
             _random = new Random(seed.Value);
 
+        var mesh = GenerateMesh();
+        var textureAtlas = GenerateTextureAtlas();
+
+        // Apply texture atlas to mesh
+        ApplyTextureAtlasToMesh(mesh, textureAtlas);
+
         return new PinguCharacterData
         {
-            MeshData = GenerateMesh(),
+            MeshData = mesh,
             BoneHierarchy = GenerateBoneHierarchy(),
             AnimationClips = GenerateAnimationClips(),
             PhysicsParams = GeneratePhysicsParams(),
-            TextureAtlas = GenerateTextureAtlas(),
+            TextureAtlas = textureAtlas,
             Seed = seed ?? _random.Next(),
         };
     }
@@ -100,9 +106,16 @@ public class PinguMeshGenerator
                             NormalX = (float)xNorm,
                             NormalY = (float)yNorm * 0.6f,
                             NormalZ = 0.8f,
-                            U = cu, V = cv,
-                            BoneIndex0 = 1, BoneIndex1 = 2, BoneIndex2 = 0, BoneIndex3 = 0,
-                            BoneWeight0 = 0.6f, BoneWeight1 = 0.3f, BoneWeight2 = 0.1f, BoneWeight3 = 0.0f,
+                            U = cu,
+                            V = cv,
+                            BoneIndex0 = 1,
+                            BoneIndex1 = 2,
+                            BoneIndex2 = 0,
+                            BoneIndex3 = 0,
+                            BoneWeight0 = 0.6f,
+                            BoneWeight1 = 0.3f,
+                            BoneWeight2 = 0.1f,
+                            BoneWeight3 = 0.0f,
                         });
                     }
                 }
@@ -195,13 +208,19 @@ public class PinguMeshGenerator
             X = baseV.X + (float)(_random.NextDouble() - 0.5) * 5f,
             Y = baseV.Y + (float)(_random.NextDouble() - 0.5) * 5f,
             Z = baseV.Z + (float)(_random.NextDouble() - 0.5) * 3f,
-            NormalX = baseV.NormalX, NormalY = baseV.NormalY, NormalZ = baseV.NormalZ,
+            NormalX = baseV.NormalX,
+            NormalY = baseV.NormalY,
+            NormalZ = baseV.NormalZ,
             U = baseV.U + (float)(_random.NextDouble() - 0.5) * 0.05f,
             V = baseV.V + (float)(_random.NextDouble() - 0.5) * 0.05f,
-            BoneIndex0 = baseV.BoneIndex0, BoneIndex1 = baseV.BoneIndex1,
-            BoneIndex2 = baseV.BoneIndex2, BoneIndex3 = baseV.BoneIndex3,
-            BoneWeight0 = baseV.BoneWeight0, BoneWeight1 = baseV.BoneWeight1,
-            BoneWeight2 = baseV.BoneWeight2, BoneWeight3 = baseV.BoneWeight3,
+            BoneIndex0 = baseV.BoneIndex0,
+            BoneIndex1 = baseV.BoneIndex1,
+            BoneIndex2 = baseV.BoneIndex2,
+            BoneIndex3 = baseV.BoneIndex3,
+            BoneWeight0 = baseV.BoneWeight0,
+            BoneWeight1 = baseV.BoneWeight1,
+            BoneWeight2 = baseV.BoneWeight2,
+            BoneWeight3 = baseV.BoneWeight3,
         });
     }
 
@@ -238,6 +257,11 @@ public class PinguMeshGenerator
             var avgZ = (mesh.Vertices[tri.Vertex0].Z + mesh.Vertices[tri.Vertex1].Z + mesh.Vertices[tri.Vertex2].Z) / 3f;
             tri.ZOrder = avgZ;
         }
+    }
+
+    private void ApplyTextureAtlasToMesh(PinguMeshData mesh, byte[] textureAtlas)
+    {
+        mesh.TextureAtlasBytes = textureAtlas;
     }
 
     private PinguBoneHierarchy GenerateBoneHierarchy()
@@ -394,14 +418,23 @@ public class PinguMeshGenerator
     {
         return new PinguPhysicsParams
         {
-            Mass = 1.0f, Friction = 0.6f, Gravity = 980.0f,
-            IkStiffness = 0.7f, VelocityDamping = 0.95f,
-            SpringStiffness = 0.1f, SpringRestLength = 1.0f,
-            MaxWalkSpeed = 100.0f, MaxRunSpeed = 200.0f,
-            Acceleration = 300.0f, Deceleration = 400.0f,
+            Mass = 1.0f,
+            Friction = 0.6f,
+            Gravity = 980.0f,
+            IkStiffness = 0.7f,
+            VelocityDamping = 0.95f,
+            SpringStiffness = 0.1f,
+            SpringRestLength = 1.0f,
+            MaxWalkSpeed = 100.0f,
+            MaxRunSpeed = 200.0f,
+            Acceleration = 300.0f,
+            Deceleration = 400.0f,
         };
     }
 
+    /// <summary>
+    /// Generate a 512×512 RGBA texture atlas with penguin face and body textures.
+    /// </summary>
     private byte[] GenerateTextureAtlas()
     {
         var info = new SkiaSharp.SKImageInfo(AtlasWidth, AtlasHeight);
@@ -436,6 +469,7 @@ public class PinguMeshGenerator
         canvas.DrawOval(new SkiaSharp.SKRect(382, 120, 452, 260), paint);
         paint.IsStroke = false;
 
+        // Snapshot copies the surface data, so surface can be safely disposed
         return surface.Snapshot().Encode(SkiaSharp.SKEncodedImageFormat.Png, 90).ToArray();
     }
 }

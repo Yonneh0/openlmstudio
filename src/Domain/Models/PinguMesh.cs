@@ -100,13 +100,22 @@ public class PinguMeshData
         {
             Vertices = Vertices.Select(v => new PinguVertex
             {
-                X = v.X, Y = v.Y, Z = v.Z,
-                NormalX = v.NormalX, NormalY = v.NormalY, NormalZ = v.NormalZ,
-                U = v.U, V = v.V,
-                BoneIndex0 = v.BoneIndex0, BoneIndex1 = v.BoneIndex1,
-                BoneIndex2 = v.BoneIndex2, BoneIndex3 = v.BoneIndex3,
-                BoneWeight0 = v.BoneWeight0, BoneWeight1 = v.BoneWeight1,
-                BoneWeight2 = v.BoneWeight2, BoneWeight3 = v.BoneWeight3,
+                X = v.X,
+                Y = v.Y,
+                Z = v.Z,
+                NormalX = v.NormalX,
+                NormalY = v.NormalY,
+                NormalZ = v.NormalZ,
+                U = v.U,
+                V = v.V,
+                BoneIndex0 = v.BoneIndex0,
+                BoneIndex1 = v.BoneIndex1,
+                BoneIndex2 = v.BoneIndex2,
+                BoneIndex3 = v.BoneIndex3,
+                BoneWeight0 = v.BoneWeight0,
+                BoneWeight1 = v.BoneWeight1,
+                BoneWeight2 = v.BoneWeight2,
+                BoneWeight3 = v.BoneWeight3,
             }).ToList(),
             Triangles = Triangles.Select(t => new PinguTriangle
             {

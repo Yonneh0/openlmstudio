@@ -145,13 +145,6 @@ public partial class MainWindow
         }
     }
 
-    private void UpdateRightSidebarTab(string activeTab)
-    {
-        // Right sidebar is now a simple placeholder — no-op for now.
-        // Left panel tabs (Chats, Server, Models, Devices, Context, Pingu, ImageGen)
-        // handle all content display independently.
-    }
-
     private void SetPanelVisibility(StackPanel? panel, bool visible)
     {
         if (panel != null)

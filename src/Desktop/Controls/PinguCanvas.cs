@@ -4,6 +4,7 @@ using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Media;
 using Avalonia.Platform;
+using SkiaSharp;
 
 namespace OpenLMStudio.Desktop.Controls;
 
@@ -13,7 +14,7 @@ namespace OpenLMStudio.Desktop.Controls;
 /// </summary>
 public class PinguCanvas : Control
 {
-    private Func<System.Numerics.Vector2, Task>? _renderFunc;
+    private Func<System.Numerics.Vector2, SkiaSharp.SKBitmap, SkiaSharp.SKCanvas, Task>? _renderFunc;
     private System.Numerics.Vector2 _cursorPosition;
     private bool _cursorActive;
     private int _width;
@@ -27,8 +28,9 @@ public class PinguCanvas : Control
 
     /// <summary>
     /// Initialize the canvas with a render function from PinguStore.
+    /// The function receives (cursorPosition, skBitmap, skCanvas) for drawing.
     /// </summary>
-    public void Initialize(Func<System.Numerics.Vector2, Task> renderFunc)
+    public void Initialize(Func<System.Numerics.Vector2, SkiaSharp.SKBitmap, SkiaSharp.SKCanvas, Task> renderFunc)
     {
         _renderFunc = renderFunc ?? throw new ArgumentNullException(nameof(renderFunc));
         InvalidateVisual();
@@ -104,9 +106,10 @@ public class PinguCanvas : Control
         // Clear with transparent background
         skCanvas.Clear(SkiaSharp.SKColors.Transparent);
 
-        // Call the render function
+        // Call the render function, passing the bitmap and canvas for drawing
         var cursor = _cursorActive ? _cursorPosition : new System.Numerics.Vector2(200f, 200f);
-        _renderFunc(cursor).Wait();
+        // Use GetAwaiter().GetResult() instead of .Wait() to avoid deadlocks
+        _renderFunc(cursor, skBitmap, skCanvas).GetAwaiter().GetResult();
 
         // Draw the SKBitmap directly using the DrawingContext
         var rect = new Avalonia.Rect(0, 0, _width, _height);

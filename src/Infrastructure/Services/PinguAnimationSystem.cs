@@ -47,6 +47,13 @@ public class PinguAnimationSystem
     private readonly float[] _eyeTargetAngles;
     private readonly float[] _eyeCurrentAngles;
 
+    // Cached bone indices for performance
+    private int _headBoneIndex = -1;
+    private int _chestBoneIndex = -1;
+    private int _leftEarBoneIndex = -1;
+    private int _rightEarBoneIndex = -1;
+    private bool _boneIndicesDirty = true;
+
     public PinguAnimationSystem(
         PinguBoneHierarchy boneHierarchy,
         List<PinguAnimationClip> animationClips,
@@ -60,6 +67,7 @@ public class PinguAnimationSystem
         _logger = logger;
         _random = random ?? new Random();
         _boneHierarchy.Resolve();
+        _boneIndicesDirty = true;
 
         var boneCount = boneHierarchy.ResolvedBones.Count;
         _bonePositions = new float[boneCount * 3];
@@ -79,6 +87,16 @@ public class PinguAnimationSystem
     public void Update(float deltaTime, Vector2? cursorPosition = null)
     {
         _currentTime += deltaTime;
+
+        // Invalidate cached bone indices when hierarchy changes
+        if (_boneIndicesDirty)
+        {
+            _headBoneIndex = _boneHierarchy.ResolvedBones.FindIndex(b => b.Name == "head");
+            _chestBoneIndex = _boneHierarchy.ResolvedBones.FindIndex(b => b.Name == "chest");
+            _leftEarBoneIndex = _boneHierarchy.ResolvedBones.FindIndex(b => b.Name == "leftEar");
+            _rightEarBoneIndex = _boneHierarchy.ResolvedBones.FindIndex(b => b.Name == "rightEar");
+            _boneIndicesDirty = false;
+        }
 
         if (cursorPosition.HasValue)
         {
@@ -120,6 +138,9 @@ public class PinguAnimationSystem
 
         // Apply breathing
         ApplyBreathing(deltaTime);
+
+        // Recompute bone positions so GetBoneWorldPosition returns correct values
+        RecomputeBonePositions();
     }
 
     /// <summary>
@@ -127,11 +148,43 @@ public class PinguAnimationSystem
     /// </summary>
     public Vector2 GetBoneWorldPosition(int boneIndex)
     {
-        var bone = _boneHierarchy.ResolvedBones[boneIndex];
-        var parent = bone.Parent;
-        var px = parent != null ? _bonePositions[parent.Index * 3] : 0;
-        var py = parent != null ? _bonePositions[parent.Index * 3 + 1] : 0;
-        return new Vector2(px + _bonePositions[boneIndex * 3], py + _bonePositions[boneIndex * 3 + 1]);
+        // Return the cached position (populated by RecomputeBonePositions at end of Update)
+        return new Vector2(_bonePositions[boneIndex * 3], _bonePositions[boneIndex * 3 + 1]);
+    }
+
+    /// <summary>
+    /// Recompute bone positions from hierarchy + transforms.
+    /// Walks up the parent chain accumulating offsets from each bone's local position.
+    /// </summary>
+    private void RecomputeBonePositions()
+    {
+        var boneCount = _boneHierarchy.ResolvedBones.Count;
+        for (var i = 0; i < boneCount; i++)
+        {
+            var bone = _boneHierarchy.ResolvedBones[i];
+            var px = bone.X;
+            var py = bone.Y;
+            var pz = bone.Z;
+
+            // Walk up the parent chain accumulating offsets
+            var current = bone.Parent;
+            while (current != null)
+            {
+                px += current.X;
+                py += current.Y;
+                pz += current.Z;
+                current = current.Parent;
+            }
+
+            // Apply per-bone transform offsets
+            px += _boneRoll[i];
+            py += _bonePitch[i];
+            pz += _boneYaw[i];
+
+            _bonePositions[i * 3] = px;
+            _bonePositions[i * 3 + 1] = py;
+            _bonePositions[i * 3 + 2] = pz;
+        }
     }
 
     /// <summary>
@@ -240,18 +293,44 @@ public class PinguAnimationSystem
             if (time >= current.Time && time <= next.Time)
             {
                 var t = (time - current.Time) / (next.Time - current.Time);
+                // Use SLERP for rotation (Roll/Pitch/Yaw) for smooth blending
+                var roll = SlerpAngle(current.Roll, next.Roll, t);
+                var pitch = SlerpAngle(current.Pitch, next.Pitch, t);
+                var yaw = SlerpAngle(current.Yaw, next.Yaw, t);
+                var scale = current.Scale + (next.Scale - current.Scale) * t;
                 return new AnimationKeyframe
                 {
                     Time = time,
-                    Roll = current.Roll + (next.Roll - current.Roll) * t,
-                    Pitch = current.Pitch + (next.Pitch - current.Pitch) * t,
-                    Yaw = current.Yaw + (next.Yaw - current.Yaw) * t,
-                    Scale = current.Scale + (next.Scale - current.Scale) * t,
+                    Roll = roll,
+                    Pitch = pitch,
+                    Yaw = yaw,
+                    Scale = scale,
                 };
             }
         }
 
         return keyframes.LastOrDefault() ?? keyframes[0];
+    }
+
+    /// <summary>
+    /// Spherical linear interpolation of an angle (in degrees), wrapping around at ±180°.
+    /// </summary>
+    private static float SlerpAngle(float from, float to, float t)
+    {
+        // Convert to radians
+        var fromRad = from * Math.PI / 180f;
+        var toRad = to * Math.PI / 180f;
+
+        // Find the shortest rotation
+        var diff = toRad - fromRad;
+        while (diff > Math.PI) diff -= 2 * Math.PI;
+        while (diff < -Math.PI) diff += 2 * Math.PI;
+
+        // SLERP
+        var result = fromRad + diff * t;
+
+        // Convert back to degrees
+        return (float)(result * 180f / Math.PI);
     }
 
     private void ApplyInverseKinematics(float deltaTime)
@@ -274,76 +353,78 @@ public class PinguAnimationSystem
 
     private void ApplyEyeTracking(float deltaTime)
     {
-        var leftEarIndex = _boneHierarchy.ResolvedBones.FindIndex(b => b.Name == "leftEar");
-        var rightEarIndex = _boneHierarchy.ResolvedBones.FindIndex(b => b.Name == "rightEar");
+        var headIndex = _boneHierarchy.ResolvedBones.FindIndex(b => b.Name == "head");
+        if (headIndex < 0 || !_cursorActive)
+            return;
 
-        if (_cursorActive)
-        {
-            var headPos = GetBoneWorldPosition(Math.Max(leftEarIndex, rightEarIndex));
-            var dx = _cursorPosition.X - headPos.X;
-            var dy = _cursorPosition.Y - headPos.Y;
-            var angle = (float)Math.Atan2(dy, dx);
+        var headPos = GetBoneWorldPosition(headIndex);
+        var dx = _cursorPosition.X - headPos.X;
+        var dy = _cursorPosition.Y - headPos.Y;
+        var angle = (float)Math.Atan2(dy, dx);
 
-            if (leftEarIndex >= 0)
-                _boneYaw[leftEarIndex] += (angle - _boneYaw[leftEarIndex]) * 0.1f * deltaTime * 60f;
-            if (rightEarIndex >= 0)
-                _boneYaw[rightEarIndex] += (angle - _boneYaw[rightEarIndex]) * 0.1f * deltaTime * 60f;
-        }
+        // Apply eye tracking to the head bone
+        _boneYaw[headIndex] += (angle - _boneYaw[headIndex]) * 0.1f * deltaTime * 60f;
     }
 
     private void ApplyBodyTilt(float deltaTime)
     {
-        var spineIndex = _boneHierarchy.ResolvedBones.FindIndex(b => b.Name == "spine");
-        if (spineIndex >= 0 && _cursorActive)
+        // Use "chest" bone (not "torso") — the hierarchy defines it as "chest"
+        var chestIndex = _boneHierarchy.ResolvedBones.FindIndex(b => b.Name == "chest");
+        if (chestIndex >= 0 && _cursorActive)
         {
-            var spinePos = GetBoneWorldPosition(spineIndex);
-            var dx = _cursorPosition.X - spinePos.X;
+            var chestPos = GetBoneWorldPosition(chestIndex);
+            var dx = _cursorPosition.X - chestPos.X;
             var targetTilt = (float)Math.Atan2(dx, 500f) * 0.3f;
-            _boneRoll[spineIndex] += (targetTilt - _boneRoll[spineIndex]) * 0.05f * deltaTime * 60f;
+            _boneRoll[chestIndex] += (targetTilt - _boneRoll[chestIndex]) * 0.05f * deltaTime * 60f;
         }
     }
 
+    /// <summary>
+    /// Apply random behavioral animations: twitches, head turns, scratches, ear flicks, blinks, and sitting.
+    /// Probability thresholds and durations are documented as constants for maintainability.
+    /// </summary>
     private void ApplyRandomBehaviors(float deltaTime)
     {
-        // Random twitch
+        // Cache bone indices to avoid repeated FindIndex calls
+        var headIndex = _headBoneIndex;
+        var chestIndex = _chestBoneIndex;
+        var leftEarIndex = _leftEarBoneIndex;
+        var rightEarIndex = _rightEarBoneIndex;
+
+        // Random twitch — ~0.1% chance per frame, lasts 0.3s
         if (_random.NextDouble() < 0.001f)
             TriggerTwitch();
         if (_currentTime - _lastTwitchTime < 0.3f)
-            _boneRoll[0] += (float)(_random.NextDouble() * 10 - 5);
+            _boneRoll[headIndex >= 0 ? headIndex : 0] += (float)(_random.NextDouble() * 10 - 5);
 
-        // Random head turn
+        // Random head turn — ~0.2% chance per frame, lasts 1.0s
         if (_random.NextDouble() < 0.002f)
             TriggerHeadTurn();
-        if (_currentTime - _lastHeadTurnTime < 1.0f)
-            _boneYaw[4] += (float)(_random.NextDouble() * 20 - 10) * deltaTime;
+        if (_currentTime - _lastHeadTurnTime < 1.0f && headIndex >= 0)
+            _boneYaw[headIndex] += (float)(_random.NextDouble() * 20 - 10) * deltaTime;
 
-        // Random scratch
+        // Random scratch — ~0.05% chance per frame, lasts 2.0s
         if (_random.NextDouble() < 0.0005f)
             TriggerScratch();
         if (_currentTime - _lastScratchTime < 2.0f)
             _boneRoll[8] += (float)(_random.NextDouble() * 15 - 7) * deltaTime;
 
-        // Random ear flick
+        // Random ear flick — ~0.3% chance per frame, lasts 0.5s
         if (_random.NextDouble() < 0.003f)
             TriggerEarFlick();
         if (_currentTime - _lastEarFlickTime < 0.5f)
         {
-            var leftEar = _boneHierarchy.ResolvedBones.FindIndex(b => b.Name == "leftEar");
-            var rightEar = _boneHierarchy.ResolvedBones.FindIndex(b => b.Name == "rightEar");
-            if (leftEar >= 0) _boneYaw[leftEar] += (float)(_random.NextDouble() * 30 - 15) * deltaTime;
-            if (rightEar >= 0) _boneYaw[rightEar] += (float)(_random.NextDouble() * 30 - 15) * deltaTime;
+            if (leftEarIndex >= 0) _boneYaw[leftEarIndex] += (float)(_random.NextDouble() * 30 - 15) * deltaTime;
+            if (rightEarIndex >= 0) _boneYaw[rightEarIndex] += (float)(_random.NextDouble() * 30 - 15) * deltaTime;
         }
 
-        // Random blink
+        // Random blink — ~0.5% chance per frame, lasts 0.2s
         if (_random.NextDouble() < 0.005f)
             TriggerBlink();
-        if (_currentTime - _lastBlinkTime < 0.2f)
-        {
-            var headIndex = _boneHierarchy.ResolvedBones.FindIndex(b => b.Name == "head");
-            if (headIndex >= 0) _bonePitch[headIndex] += 20f * deltaTime;
-        }
+        if (_currentTime - _lastBlinkTime < 0.2f && headIndex >= 0)
+            _bonePitch[headIndex] += 20f * deltaTime;
 
-        // Random sit down
+        // Random sit down — ~0.01% chance per frame, sits for 5s
         if (_random.NextDouble() < 0.0001f && !_isSitting)
             TriggerSitDown();
         if (_isSitting && _currentTime - _lastSitDownTime > 5f)

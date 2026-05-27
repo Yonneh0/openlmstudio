@@ -75,12 +75,13 @@ public class PinguBoneLoader
     /// </summary>
     public PinguHomeScene LoadHomeScene(string? boneHierarchyJson = null)
     {
-        return new PinguHomeScene
+        var scene = new PinguHomeScene
         {
             Name = "Default Home",
             BackgroundColor = "#1E1E22",
             Width = 200f,
             Height = 200f,
+            Depth = 100f,
             Objects = new List<PinguHomeObject>
             {
                 PinguHomeScene.CreateDefaultIgloo(),
@@ -91,5 +92,33 @@ public class PinguBoneLoader
                 PinguHomeScene.CreateDefaultNest(),
             }
         };
+
+        // If boneHierarchyJson is provided, parse and apply it
+        if (!string.IsNullOrWhiteSpace(boneHierarchyJson))
+        {
+            try
+            {
+                var definitions = System.Text.Json.JsonSerializer.Deserialize<List<PinguBoneDefinition>>(boneHierarchyJson);
+                if (definitions != null && definitions.Count > 0)
+                {
+                    scene.BoneHierarchyJson = boneHierarchyJson;
+
+                    // Use the bone hierarchy to customize the scene
+                    var rootBone = definitions.FirstOrDefault(d => d.ParentIndex == null);
+                    if (rootBone != null)
+                    {
+                        // Position the scene based on root bone position
+                        scene.X = rootBone.X / 200f;
+                        scene.Y = rootBone.Y / 200f;
+                    }
+                }
+            }
+            catch
+            {
+                // If JSON is invalid, just use the default scene
+            }
+        }
+
+        return scene;
     }
 }

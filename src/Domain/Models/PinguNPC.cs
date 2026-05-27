@@ -116,7 +116,7 @@ public class PinguNPC
     /// Whether this Pingu has reached its target position.
     /// <remarks>Uses a threshold of 0.1f for both axes — adjust if tighter/looser tolerance is needed.</remarks>
     /// </summary>
-    public bool HasReachedTarget => Math.Abs(VelocityX) < 0.1f && Math.Abs(VelocityY) < 0.1f;
+    public bool HasReachedTarget => IsMoving && Math.Abs(X - TargetX) < 0.5f && Math.Abs(Y - TargetY) < 0.5f;
 
     /// <summary>
     /// Moves this Pingu to the target position over the given duration.
@@ -128,16 +128,24 @@ public class PinguNPC
         MoveDuration = duration;
         MoveProgress = 0f;
         IsMoving = true;
+
+        // Calculate velocity for has-reached-target detection
+        var dx = targetX - X;
+        var dy = targetY - Y;
+        var distance = (float)Math.Sqrt(dx * dx + dy * dy);
+        VelocityX = distance > 0 ? dx / distance : 0f;
+        VelocityY = distance > 0 ? dy / distance : 0f;
     }
 
     /// <summary>
     /// Updates the Pingu's position based on the current move progress (call each frame).
+    /// Uses smooth easing (ease-in-out) for natural movement.
     /// </summary>
-    public void UpdatePosition()
+    public void UpdatePosition(float deltaTime = 1f / 60f)
     {
         if (!IsMoving) return;
 
-        MoveProgress += 1.0f / MoveDuration;
+        MoveProgress += deltaTime / MoveDuration;
         if (MoveProgress >= 1.0f)
         {
             X = TargetX;
@@ -149,9 +157,18 @@ public class PinguNPC
         }
         else
         {
+            // Smooth easing: ease-in-out cubic
             var t = MoveProgress;
-            X = X + (TargetX - X) * t;
-            Y = Y + (TargetY - Y) * t;
+            var easedT = t < 0.5f ? 4 * t * t * t : 1 - Math.Pow(-2 * t + 2, 3) / 2f;
+
+            X = X + (TargetX - X) * (float)easedT;
+            Y = Y + (TargetY - Y) * (float)easedT;
+
+            // Update velocity based on movement
+            var dx = TargetX - X;
+            var dy = TargetY - Y;
+            VelocityX = dx / MoveDuration;
+            VelocityY = dy / MoveDuration;
         }
     }
 }

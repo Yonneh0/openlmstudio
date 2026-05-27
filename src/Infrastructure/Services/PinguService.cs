@@ -25,8 +25,8 @@ public class PinguService : IDisposable
     {
         _logger = logger;
         _random = random ?? new Random();
-        _meshGenerator = new PinguMeshGenerator(logger: null, _random);
-        _boneLoader = new PinguBoneLoader(logger: null);
+        _meshGenerator = new PinguMeshGenerator();
+        _boneLoader = new PinguBoneLoader();
 
         // Generate or load mesh data
         var meshData = _meshGenerator.Generate(_random.Next());
@@ -38,24 +38,13 @@ public class PinguService : IDisposable
         _animation = new PinguAnimationSystem(
             hierarchy,
             meshData.AnimationClips,
-            meshData.PhysicsParams,
-            logger: null,
-            _random);
+            meshData.PhysicsParams);
 
         // Create NPC manager
-        _npcManager = new PinguNPCManager(logger: null, _random);
+        _npcManager = new PinguNPCManager();
 
-        // Create home scene
-        _homeScene = new PinguHomeScene
-        {
-            BackgroundColor = "#F0F0F0",
-            Objects = new List<PinguHomeObject>
-            {
-                new() { Name = "floor", X = 0, Y = 0, Width = 400, Height = 200, Color = "#E8E8E8" },
-                new() { Name = "table", X = 100, Y = 150, Width = 200, Height = 100, Color = "#D2B48C" },
-                new() { Name = "plant", X = 300, Y = 120, Width = 50, Height = 80, Color = "#8FBC8F" },
-            }
-        };
+        // Create home scene using the default factory
+        _homeScene = PinguHomeScene.CreateDefault();
 
         // Create renderer
         _renderer = new PinguRenderer(
@@ -91,7 +80,11 @@ public class PinguService : IDisposable
     /// </summary>
     public void Render(System.Numerics.Vector2 cursorPosition)
     {
-        _renderer.Render(cursorPosition);
+        if (_renderer.RenderBitmap != null)
+        {
+            // Render directly into the renderer's internal bitmap (no redundant canvas creation)
+            _renderer.Render(cursorPosition, _renderer.RenderBitmap, new SkiaSharp.SKCanvas(_renderer.RenderBitmap));
+        }
     }
 
     /// <summary>

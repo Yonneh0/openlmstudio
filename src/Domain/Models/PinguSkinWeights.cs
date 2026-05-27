@@ -2,6 +2,8 @@ namespace OpenLMStudio.Domain.Models;
 
 /// <summary>
 /// Per-vertex skin weights for a single bone influence.
+/// <remarks>DEPRECATED: Dead code — PinguVertex stores skin data inline (BoneIndices/BoneWeights).
+/// Kept for potential future use. If unused for multiple releases, consider removing.</remarks>
 /// </summary>
 public record PinguSkinInfluence
 {
@@ -18,7 +20,8 @@ public record PinguSkinInfluence
 
 /// <summary>
 /// Complete skinning data for a single vertex (4 bone influences).
-/// <remarks>This class is defined but not currently used by PinguVertex, which stores skin data inline.</remarks>
+/// <remarks>DEPRECATED: This class is defined but not currently used by PinguVertex, which stores skin data inline.
+/// Kept for potential future use. If unused for multiple releases, consider removing.</remarks>
 /// </summary>
 public class PinguVertexSkinData
 {

@@ -26,6 +26,11 @@ public class PinguHomeObject
     public float Y { get; set; }
 
     /// <summary>
+    /// Z position in the home scene (0-1 normalized) for depth sorting.
+    /// </summary>
+    public float Z { get; set; }
+
+    /// <summary>
     /// Size in pixels.
     /// </summary>
     public float Width { get; set; }
@@ -64,6 +69,7 @@ public class PinguHomeObject
         Type = Type,
         X = X,
         Y = Y,
+        Z = Z,
         Width = Width,
         Height = Height,
         Color = Color,
@@ -87,8 +93,53 @@ public class PinguHomeScene
     public float Width { get; set; } = 200f;
     public float Height { get; set; } = 200f;
 
+    /// <summary>
+    /// Scene depth for 3D positioning.
+    /// </summary>
+    public float Depth { get; set; } = 100f;
+
+    /// <summary>
+    /// Scene position X (for bottom-right corner placement).
+    /// </summary>
+    public float X { get; set; } = 0f;
+
+    /// <summary>
+    /// Scene position Y (for bottom-right corner placement).
+    /// </summary>
+    public float Y { get; set; } = 0f;
+
+    /// <summary>
+    /// JSON representation of the bone hierarchy (if loaded from schema).
+    /// </summary>
+    public string? BoneHierarchyJson { get; set; }
+
     // Decorative objects
     public List<PinguHomeObject> Objects { get; set; } = new();
+
+    /// <summary>
+    /// Objects sorted by Z-order for proper depth rendering.
+    /// </summary>
+    public IReadOnlyList<PinguHomeObject> SortedObjects
+    {
+        get
+        {
+            if (_sortedObjects == null)
+            {
+                _sortedObjects = Objects.OrderBy(o => o.Z).ToList();
+            }
+            return _sortedObjects;
+        }
+    }
+
+    private List<PinguHomeObject>? _sortedObjects;
+
+    /// <summary>
+    /// Call this when objects are added, removed, or moved to invalidate the sorted cache.
+    /// </summary>
+    public void InvalidateSortedObjects()
+    {
+        _sortedObjects = null;
+    }
 
     /// <summary>
     /// Get the default igloo object.
@@ -99,6 +150,7 @@ public class PinguHomeScene
         Type = "igloo",
         X = 0.15f,
         Y = 0.2f,
+        Z = 0.2f,
         Width = 80,
         Height = 90,
         Color = "#E8F4F8",
@@ -115,6 +167,7 @@ public class PinguHomeScene
         Type = "sink",
         X = 0.6f,
         Y = 0.65f,
+        Z = 0.3f,
         Width = 60,
         Height = 40,
         Color = "#B0C4DE",
@@ -131,6 +184,7 @@ public class PinguHomeScene
         Type = "rug",
         X = 0.3f,
         Y = 0.75f,
+        Z = 0.05f,
         Width = 120,
         Height = 30,
         Color = "#8B4513",
@@ -146,6 +200,7 @@ public class PinguHomeScene
         Type = "ball",
         X = 0.75f,
         Y = 0.55f,
+        Z = 0.15f,
         Width = 30,
         Height = 30,
         Color = "#FF4500",
@@ -162,6 +217,7 @@ public class PinguHomeScene
         Type = "fishbowl",
         X = 0.45f,
         Y = 0.15f,
+        Z = 0.4f,
         Width = 50,
         Height = 50,
         Color = "#87CEEB",
@@ -178,6 +234,7 @@ public class PinguHomeScene
         Type = "nest",
         X = 0.05f,
         Y = 0.6f,
+        Z = 0.1f,
         Width = 70,
         Height = 50,
         Color = "#D2691E",
@@ -194,6 +251,7 @@ public class PinguHomeScene
         BackgroundColor = "#1E1E22",
         Width = 200f,
         Height = 200f,
+        Depth = 100f,
         Objects = new List<PinguHomeObject>
         {
             CreateDefaultIgloo(),

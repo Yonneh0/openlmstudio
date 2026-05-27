@@ -212,10 +212,50 @@ public partial class MainWindow : Window
             ZIndex = 10
         };
 
-        // Find the PinguCornerPanel and add the canvas
-        var panel = this.FindControl<Panel>("PinguCornerPanel");
-        if (panel != null)
-            panel.Children.Add(_pinguCanvas);
+        // Use PinguCornerPanel (which is already positioned in the bottom-right corner of the window)
+        // to host the canvas so it doesn't interfere with the center pane content
+        var targetPanel = this.FindControl<Panel>("PinguCornerPanel");
+        if (targetPanel != null)
+        {
+            // Clear existing children (PinguAvatar might already be there)
+            targetPanel.Children.Clear();
+
+            // Add the canvas directly to PinguCornerPanel
+            targetPanel.Children.Add(_pinguCanvas);
+
+            // Position it in the bottom-right of the panel
+            Canvas.SetRight(_pinguCanvas, 10);
+            Canvas.SetBottom(_pinguCanvas, 10);
+        }
+        else
+        {
+            // Fallback: create a new panel in the bottom-right
+            var fallbackPanel = new Canvas
+            {
+                Width = 350,
+                Height = 350,
+                ZIndex = 10,
+                Background = new Avalonia.Media.SolidColorBrush(
+                    Avalonia.Media.Color.FromArgb(200, 26, 26, 30))
+            };
+
+            Canvas.SetRight(_pinguCanvas, 10);
+            Canvas.SetBottom(_pinguCanvas, 10);
+
+            fallbackPanel.Children.Add(_pinguCanvas);
+
+            // Insert into the root grid
+            var root = this.FindControl<Grid>("RootGrid");
+            if (root != null)
+            {
+                root.Children.Add(fallbackPanel);
+            }
+            else
+            {
+                // Last resort: use the window itself as a panel
+                this.Content = fallbackPanel;
+            }
+        }
 
         // Initialize the renderer (this will load/create mesh, texture, etc.)
         if (_pinguStore != null)
@@ -231,26 +271,11 @@ public partial class MainWindow : Window
             }
         }
 
-        // Position the canvas in the bottom-right corner
-        UpdatePinguCanvasPosition();
-
         // Start the render loop
         StartPinguRenderLoop();
 
         // Wire up cursor tracking
         this.PointerMoved += OnMainWindowPointerMoved;
-    }
-
-    /// <summary>
-    /// Updates the PinguCanvas position to the bottom-right corner of the window.
-    /// </summary>
-    private void UpdatePinguCanvasPosition()
-    {
-        if (_pinguCanvas == null)
-            return;
-
-        _pinguCanvas.SetValue(Canvas.RightProperty, 10.0);
-        _pinguCanvas.SetValue(Canvas.BottomProperty, 10.0);
     }
 
     /// <summary>
@@ -295,6 +320,18 @@ public partial class MainWindow : Window
         if (_pinguAvatar != null)
         {
             _pinguAvatar.IsVisible = !_pinguAvatar.IsVisible;
+        }
+    }
+
+    /// <summary>
+    /// Handles pointer pressed on the PinguHomeTile.
+    /// </summary>
+    private void OnPinguHomeTileClicked(object? sender, Avalonia.Input.PointerPressedEventArgs e)
+    {
+        // Toggle Pingu home tile visibility
+        if (PinguHomeTile != null)
+        {
+            PinguHomeTile.IsVisible = !PinguHomeTile.IsVisible;
         }
     }
 
@@ -1039,15 +1076,13 @@ public partial class MainWindow : Window
 
     /// <summary>
     /// Wires up the right sidebar tab toggles (Tasks, Context, Info).
+    /// Now uses the scrollable content StackPanel to host the tabs.
     /// </summary>
     private void WireUpRightSidebarTabs()
     {
-        if (RightTabTasks != null)
-            RightTabTasks.Click += OnRightSidebarTabClicked;
-        if (RightTabContext != null)
-            RightTabContext.Click += OnRightSidebarTabClicked;
-        if (RightTabInfo != null)
-            RightTabInfo.Click += OnRightSidebarTabClicked;
+        // The right sidebar now uses a simple StackPanel with StackPanel children
+        // for Tasks, Context, and Info tabs. We wire up the tab switching
+        // through the individual tab buttons that are added in XAML.
     }
 
     /// <summary>
@@ -1073,6 +1108,34 @@ public partial class MainWindow : Window
         RightInfoContent?.SetValue(StackPanel.IsVisibleProperty, false);
 
         // Show the selected panel based on Tag
+        switch (tabName)
+        {
+            case "Tasks":
+                RightTasksContent?.SetValue(StackPanel.IsVisibleProperty, true);
+                break;
+            case "Context":
+                RightContextContent?.SetValue(StackPanel.IsVisibleProperty, true);
+                break;
+            case "Info":
+                RightInfoContent?.SetValue(StackPanel.IsVisibleProperty, true);
+                break;
+            default:
+                _logger?.LogWarning("Unknown right sidebar tab: {TabName}", tabName);
+                break;
+        }
+    }
+
+    /// <summary>
+    /// Programmatically switches the right sidebar tab.
+    /// </summary>
+    private void UpdateRightSidebarTab(string tabName)
+    {
+        // Hide all content panels first
+        RightTasksContent?.SetValue(StackPanel.IsVisibleProperty, false);
+        RightContextContent?.SetValue(StackPanel.IsVisibleProperty, false);
+        RightInfoContent?.SetValue(StackPanel.IsVisibleProperty, false);
+
+        // Show the selected panel
         switch (tabName)
         {
             case "Tasks":
@@ -1389,6 +1452,21 @@ public partial class MainWindow : Window
         {
             _logger?.LogError(ex, "Failed to open app folder");
             ShowError($"Failed to open app folder: {ex.Message}");
+        }
+    }
+
+    /// <summary>
+    /// Called when the window opens — updates the canvas wrapper size to match CenterPaneGrid.
+    /// </summary>
+    private void OnPinguCanvasOpened(object? sender, EventArgs e)
+    {
+        // Find the canvas wrapper and set its size to match CenterPaneGrid
+        var canvasWrapper = CenterPaneGrid.Children.OfType<Canvas>().FirstOrDefault(c => c.Width == 0);
+        if (canvasWrapper != null)
+        {
+            canvasWrapper.Width = CenterPaneGrid.Width;
+            canvasWrapper.Height = CenterPaneGrid.Height;
+            _logger?.LogInformation("PinguCanvas size set to {W}x{H}", canvasWrapper.Width, canvasWrapper.Height);
         }
     }
 

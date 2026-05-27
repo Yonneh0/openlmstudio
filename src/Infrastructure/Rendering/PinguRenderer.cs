@@ -14,6 +14,7 @@ using SKShader = SkiaSharp.SKShader;
 using SKShaderTileMode = SkiaSharp.SKShaderTileMode;
 using SKBlender = SkiaSharp.SKBlender;
 using SKBlendMode = SkiaSharp.SKBlendMode;
+using SKMatrix = SkiaSharp.SKMatrix;
 using SKPoint = System.Numerics.Vector2;
 using SKPath = SkiaSharp.SKPath;
 
@@ -104,29 +105,23 @@ public class PinguRenderer
     }
 
     /// <summary>
-    /// Render the scene.
+    /// Render the scene into the provided bitmap and canvas.
     /// </summary>
-    public void Render(Vector2 cursorPosition)
+    public void Render(Vector2 cursorPosition, SkiaSharp.SKBitmap bitmap, SkiaSharp.SKCanvas canvas)
     {
-        if (_canvas == null || _atlasBitmap == null)
+        if (_atlasBitmap == null)
             return;
-
-        var canvas = _canvas!;
-        var paint = _paint!;
-        var surface = _surface;
 
         canvas.Clear(SkiaSharp.SKColors.Transparent);
 
         // Draw home scene
-        DrawHomeScene(canvas, paint);
+        DrawHomeScene(canvas);
 
         // Draw each penguin
         foreach (var penguin in _activePenguins)
         {
-            DrawPenguin(penguin, cursorPosition, canvas, paint);
+            DrawPenguin(penguin, cursorPosition, canvas, 1f / 60f);
         }
-
-        surface!.Flush();
     }
 
     /// <summary>
@@ -143,12 +138,14 @@ public class PinguRenderer
 
     /// <summary>
     /// Draw the home scene.
+    /// X/Y are normalized (0-1), Width/Height are in absolute pixels.
     /// </summary>
-    private void DrawHomeScene(SKCanvas canvas, SKPaint paint)
+    private void DrawHomeScene(SKCanvas canvas)
     {
         // Background
-        paint.Color = ParseColor(_homeScene.BackgroundColor);
-        canvas.DrawRect(new SKRect(0, 0, _surfaceWidth, _surfaceHeight), paint);
+        using var bgPaint = new SKPaint { IsAntialias = true, IsStroke = false };
+        bgPaint.Color = ParseColor(_homeScene.BackgroundColor);
+        canvas.DrawRect(new SKRect(0, 0, _surfaceWidth, _surfaceHeight), bgPaint);
 
         // Draw objects
         foreach (var obj in _homeScene.Objects)
@@ -158,47 +155,47 @@ public class PinguRenderer
             var w = obj.Width;
             var h = obj.Height;
 
-            paint.Color = ParseColor(obj.Color);
-            canvas.DrawOval(new SKRect(x, y, x + w, y + h), paint);
+            using var objPaint = new SKPaint { IsAntialias = true, IsStroke = false };
+            objPaint.Color = ParseColor(obj.Color);
+            canvas.DrawOval(new SKRect(x, y, x + w, y + h), objPaint);
         }
     }
 
     /// <summary>
     /// Draw a penguin character using mesh data.
     /// </summary>
-    private void DrawPenguin(PinguNPC penguin, Vector2 cursorPosition, SKCanvas canvas, SKPaint paint)
+    private void DrawPenguin(PinguNPC penguin, Vector2 cursorPosition, SKCanvas canvas, float deltaTime)
     {
-        var x = penguin.X;
-        var y = penguin.Y;
-
-        // Apply animation transforms
-        _animation.Update(1f / 60f, cursorPosition);
+        // Apply animation transforms with the actual frame delta (60fps default)
+        _animation.Update(deltaTime, cursorPosition);
 
         // Draw mesh if available
         if (_mesh != null && _mesh.Vertices.Count > 0)
         {
-            DrawMesh(canvas, paint, penguin);
+            DrawMesh(canvas, penguin);
         }
         else
         {
             // Fallback to simple shapes
-            DrawPenguinFallback(penguin, cursorPosition, canvas, paint);
+            DrawPenguinFallback(penguin, cursorPosition, canvas);
         }
     }
 
     /// <summary>
-    /// Draw the penguin mesh as textured triangles.
+    /// Draw the penguin mesh as textured triangles with UV-based texture sampling.
     /// </summary>
-    private void DrawMesh(SKCanvas canvas, SKPaint paint, PinguNPC penguin)
+    private void DrawMesh(SKCanvas canvas, PinguNPC penguin)
     {
         if (_mesh == null || _atlasBitmap == null)
             return;
 
-        // Create a shader from the texture atlas
-        using var textureShader = SKShader.CreateBitmap(_atlasBitmap, SKShaderTileMode.Clamp, SKShaderTileMode.Clamp);
+        // Sort triangles by Z-order for proper depth rendering
+        var sortedTriangles = _mesh.Triangles
+            .OrderBy(t => t.ZOrder)
+            .ToList();
 
-        // Draw triangles with the texture shader
-        foreach (var triangle in _mesh.Triangles)
+        // Draw triangles with UV-based texture sampling
+        foreach (var triangle in sortedTriangles)
         {
             var v0 = _mesh.Vertices[triangle.Vertex0];
             var v1 = _mesh.Vertices[triangle.Vertex1];
@@ -209,6 +206,11 @@ public class PinguRenderer
             var p1 = new SKPoint(v1.X + penguin.X, v1.Y + penguin.Y);
             var p2 = new SKPoint(v2.X + penguin.X, v2.Y + penguin.Y);
 
+            // Compute average UV for the triangle (better than using just the first vertex)
+            var avgU = (v0.U + v1.U + v2.U) / 3f;
+            var avgV = (v0.V + v1.V + v2.V) / 3f;
+            var avgUV = new SKPoint(avgU / _mesh.AtlasWidth, avgV / _mesh.AtlasHeight);
+
             // Create the triangle path
             using var path = new SKPath();
             path.MoveTo(p0);
@@ -216,59 +218,72 @@ public class PinguRenderer
             path.LineTo(p2);
             path.Close();
 
-            // Apply the texture shader
-            paint.Shader = textureShader;
-            canvas.DrawPath(path, paint);
-        }
+            // Create a bitmap shader that samples from the atlas using the average UV coordinates
+            var localMatrix = SKMatrix.CreateScale(_mesh.AtlasWidth, _mesh.AtlasHeight)
+                .PostConcat(SKMatrix.CreateTranslation(avgUV.X * _mesh.AtlasWidth, avgUV.Y * _mesh.AtlasHeight));
+            using var textureShader = SKShader.CreateBitmap(
+                _atlasBitmap,
+                SKShaderTileMode.Clamp,
+                SKShaderTileMode.Clamp,
+                localMatrix);
 
-        // Reset shader for subsequent draws
-        paint.Shader = null;
+            // Apply the texture shader
+            using var triPaint = new SKPaint { Shader = textureShader, IsAntialias = true, IsStroke = false };
+            canvas.DrawPath(path, triPaint);
+        }
     }
 
     /// <summary>
     /// Draw a penguin character using simple shapes (fallback).
     /// </summary>
-    private void DrawPenguinFallback(PinguNPC penguin, Vector2 cursorPosition, SKCanvas canvas, SKPaint paint)
+    private void DrawPenguinFallback(PinguNPC penguin, Vector2 cursorPosition, SKCanvas canvas)
     {
         var x = penguin.X;
         var y = penguin.Y;
 
         // Draw body
-        paint.Color = ParseColor(penguin.BodyColor);
+        using var bodyPaint = new SKPaint { IsAntialias = true, IsStroke = false };
+        bodyPaint.Color = ParseColor(penguin.BodyColor);
         var bodyRect = new SKRect(x - 30, y - 60, x + 30, y + 60);
-        canvas.DrawOval(bodyRect, paint);
+        canvas.DrawOval(bodyRect, bodyPaint);
 
         // Draw head
         var headX = x + (float)Math.Cos(penguin.Rotation) * 40;
         var headY = y - 60 + (float)Math.Sin(penguin.Rotation) * 40;
-        paint.Color = ParseColor(penguin.BodyColor);
-        canvas.DrawOval(new SKRect(headX - 20, headY - 20, headX + 20, headY + 20), paint);
+        using var headPaint = new SKPaint { IsAntialias = true, IsStroke = false };
+        headPaint.Color = ParseColor(penguin.BodyColor);
+        canvas.DrawOval(new SKRect(headX - 20, headY - 20, headX + 20, headY + 20), headPaint);
 
         // Draw eyes
-        paint.Color = ParseColor("#FFFFFF");
-        canvas.DrawOval(new SKRect(headX - 10, headY - 5, headX - 2, headY + 5), paint);
-        canvas.DrawOval(new SKRect(headX + 2, headY - 5, headX + 10, headY + 5), paint);
+        using var eyePaint = new SKPaint { IsAntialias = true, IsStroke = false };
+        eyePaint.Color = ParseColor("#FFFFFF");
+        canvas.DrawOval(new SKRect(headX - 10, headY - 5, headX - 2, headY + 5), eyePaint);
+        canvas.DrawOval(new SKRect(headX + 2, headY - 5, headX + 10, headY + 5), eyePaint);
 
         // Draw beak
-        paint.Color = ParseColor(penguin.BeakColor);
-        canvas.DrawOval(new SKRect(headX - 5, headY + 5, headX + 5, headY + 12), paint);
+        using var beakPaint = new SKPaint { IsAntialias = true, IsStroke = false };
+        beakPaint.Color = ParseColor(penguin.BeakColor);
+        canvas.DrawOval(new SKRect(headX - 5, headY + 5, headX + 5, headY + 12), beakPaint);
 
         // Draw flippers
-        paint.Color = ParseColor(penguin.BodyColor);
-        canvas.DrawOval(new SKRect(x - 50, y - 20, x - 35, y + 20), paint);
-        canvas.DrawOval(new SKRect(x + 35, y - 20, x + 50, y + 20), paint);
+        using var flipperPaint = new SKPaint { IsAntialias = true, IsStroke = false };
+        flipperPaint.Color = ParseColor(penguin.BodyColor);
+        canvas.DrawOval(new SKRect(x - 50, y - 20, x - 35, y + 20), flipperPaint);
+        canvas.DrawOval(new SKRect(x + 35, y - 20, x + 50, y + 20), flipperPaint);
 
         // Draw legs
-        paint.Color = ParseColor(penguin.BeakColor);
-        canvas.DrawOval(new SKRect(x - 15, y + 50, x - 5, y + 65), paint);
-        canvas.DrawOval(new SKRect(x + 5, y + 50, x + 15, y + 65), paint);
+        using var legPaint = new SKPaint { IsAntialias = true, IsStroke = false };
+        legPaint.Color = ParseColor(penguin.BeakColor);
+        canvas.DrawOval(new SKRect(x - 15, y + 50, x - 5, y + 65), legPaint);
+        canvas.DrawOval(new SKRect(x + 5, y + 50, x + 15, y + 65), legPaint);
 
         // Draw hat if equipped
         if (penguin.Hat != null)
         {
-            paint.Color = ParseColor(penguin.Hat.Color);
+            using var hatPaint = new SKPaint { IsAntialias = true, IsStroke = false };
+            hatPaint.Color = ParseColor(penguin.Hat.Color);
             var hatY = headY - 25;
-            canvas.DrawOval(new SKRect(headX - 15, hatY - 10, headX + 15, hatY + 10), paint);
+            canvas.DrawOval(new SKRect(headX - 15, hatY - 10, headX + 15, hatY + 10), hatPaint);
         }
     }
 
