@@ -1,3 +1,4 @@
+using System.Linq;
 using System.Numerics;
 using Avalonia;
 using Avalonia.Controls;
@@ -20,24 +21,48 @@ namespace OpenLMStudio.Desktop.Controls;
 public partial class PinguCharacterView : Control
 {
     private readonly ILogger<PinguCharacterView>? _logger;
-    private readonly PinguAnimationSystem _animationSystem;
-    private readonly PinguAnimationStateMachine _stateMachine;
-    private readonly PinguBehaviorTriggers _behaviorTriggers;
-    private readonly PinguPhysicsSolver _physicsSolver;
-    private readonly PinguInverseKinematics _ik;
-    private readonly PinguToolHolder _toolHolder;
-    private readonly PinguHomeSceneRenderer _homeSceneRenderer;
-    private readonly Random _random;
+#pragma warning disable CS8618 // Fields initialized in main constructor
+    private PinguAnimationSystem _animationSystem = null!;
+    private PinguAnimationStateMachine _stateMachine = null!;
+    private PinguBehaviorTriggers _behaviorTriggers = null!;
+    private PinguPhysicsSolver _physicsSolver = null!;
+    private PinguInverseKinematics _ik = null!;
+    private PinguToolHolder _toolHolder = null!;
+    private PinguHomeSceneRenderer _homeSceneRenderer = null!;
+    private Random _random = null!;
+#pragma warning restore CS8618
 
     private float _surfaceWidth;
     private float _surfaceHeight;
     private Vector2 _cursorPosition;
+#pragma warning disable CS0414 // Private field is assigned but its value is never used
     private bool _isPointerDown;
+#pragma warning restore CS0414
     private bool _isInitialized;
 
     // Default constructor for XAML
     public PinguCharacterView()
     {
+        var boneHierarchy = PinguBoneHierarchy.CreateDefault();
+        var clips = PinguAnimationClip.CreateDefaultClips();
+        var physics = new PinguPhysicsParams();
+
+        _animationSystem = new PinguAnimationSystem(boneHierarchy, clips, physics);
+        _stateMachine = new PinguAnimationStateMachine(clips);
+        _behaviorTriggers = new PinguBehaviorTriggers(_stateMachine);
+        _physicsSolver = new PinguPhysicsSolver(boneHierarchy.ResolvedBones.Count, 0.01f, 0.9f);
+
+        // Build IK inputs from resolved bones
+        var boneCount = boneHierarchy.ResolvedBones.Count;
+        var boneParents = boneHierarchy.ResolvedBones.Select(b => b.Parent?.Index ?? -1).ToArray();
+        var bonePositions = boneHierarchy.ResolvedBones.Select(b => new Vector3(b.X, b.Y, b.Z)).ToArray();
+        var boneRotations = boneHierarchy.ResolvedBones.Select(b => (float)(b.Roll * Math.PI / 180)).ToArray();
+        _ik = new PinguInverseKinematics(boneCount, boneParents, bonePositions, boneRotations);
+
+        _toolHolder = new PinguToolHolder(boneHierarchy);
+        _homeSceneRenderer = new PinguHomeSceneRenderer(new PinguHomeScene());
+        _random = new Random();
+        _isInitialized = true;
     }
 
     public PinguCharacterView(

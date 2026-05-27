@@ -163,6 +163,39 @@ public class PinguBoneHierarchy
     public List<PinguBone> RootBones { get; set; } = new();
 
     /// <summary>
+    /// Creates a default Pingu bone hierarchy with 19 bones.
+    /// </summary>
+    public static PinguBoneHierarchy CreateDefault()
+    {
+        var definitions = new List<PinguBoneDefinition>
+        {
+            new() { Name = "root", Index = 0, ParentIndex = null, X = 0, Y = 0, Z = 0 },
+            new() { Name = "torso", Index = 1, ParentIndex = 0, X = 0, Y = 30, Z = 0 },
+            new() { Name = "chest", Index = 2, ParentIndex = 1, X = 0, Y = 35, Z = 0 },
+            new() { Name = "neck", Index = 3, ParentIndex = 2, X = 0, Y = -30, Z = 0 },
+            new() { Name = "head", Index = 4, ParentIndex = 3, X = 0, Y = -25, Z = 0 },
+            new() { Name = "leftArm", Index = 5, ParentIndex = 2, X = -30, Y = -10, Z = 0, MinRoll = -90, MaxRoll = 45 },
+            new() { Name = "leftForeArm", Index = 6, ParentIndex = 5, X = -25, Y = 0, Z = 0 },
+            new() { Name = "leftHand", Index = 7, ParentIndex = 6, X = -20, Y = 0, Z = 0 },
+            new() { Name = "rightArm", Index = 8, ParentIndex = 2, X = 30, Y = -10, Z = 0, MinRoll = -45, MaxRoll = 90 },
+            new() { Name = "rightForeArm", Index = 9, ParentIndex = 8, X = 25, Y = 0, Z = 0 },
+            new() { Name = "rightHand", Index = 10, ParentIndex = 9, X = 20, Y = 0, Z = 0 },
+            new() { Name = "leftUpLeg", Index = 11, ParentIndex = 0, X = -15, Y = 0, Z = 0 },
+            new() { Name = "leftLeg", Index = 12, ParentIndex = 11, X = 0, Y = -35, Z = 0 },
+            new() { Name = "leftFoot", Index = 13, ParentIndex = 12, X = 0, Y = -30, Z = 10 },
+            new() { Name = "rightUpLeg", Index = 14, ParentIndex = 0, X = 15, Y = 0, Z = 0 },
+            new() { Name = "rightLeg", Index = 15, ParentIndex = 14, X = 0, Y = -35, Z = 0 },
+            new() { Name = "rightFoot", Index = 16, ParentIndex = 15, X = 0, Y = -30, Z = 10 },
+            new() { Name = "leftEar", Index = 17, ParentIndex = 4, X = -15, Y = 20, Z = 10 },
+            new() { Name = "rightEar", Index = 18, ParentIndex = 4, X = 15, Y = 20, Z = 10 },
+        };
+
+        var hierarchy = new PinguBoneHierarchy { Definitions = definitions };
+        hierarchy.Resolve();
+        return hierarchy;
+    }
+
+    /// <summary>
     /// Resolve parent-child relationships from flat definitions.
     /// </summary>
     public void Resolve()
