@@ -21,6 +21,10 @@ public static class DependencyInjection
     /// <returns>The updated service collection.</returns>
     public static IServiceCollection AddInfrastructureServices(this IServiceCollection services)
     {
+        // Resolve ILogger from DI to avoid NullLogger fallback
+        Microsoft.Extensions.Logging.ILogger<T> ResolveLogger<T>(IServiceProvider r) =>
+            r.GetService<Microsoft.Extensions.Logging.ILogger<T>>() ?? NullLogger<T>.Instance;
+
         // ServerService manages local inference server lifecycle (ASP.NET Core Kestrel)
         services.AddSingleton<IServerService, Services.ServerService>();
 
@@ -222,24 +226,24 @@ public static class DependencyInjection
         // Registered as a factory so it gets the existing chat service from DI rather than creating its own instance.
         services.AddScoped<IModelLoader>(resolver =>
         {
-            var logger = resolver.GetService<Microsoft.Extensions.Logging.ILogger<Services.GgufChatCompletionLoader>>();
+            var logger = ResolveLogger<Services.GgufChatCompletionLoader>(resolver);
             var chatService = resolver.GetService<Services.LlamaCppChatCompletionService>();
             if (chatService == null)
                 throw new InvalidOperationException("LlamaCppChatCompletionService not found in DI container — required for text generation model loading.");
 
-            return new Services.GgufChatCompletionLoader(logger ?? NullLogger<Services.GgufChatCompletionLoader>.Instance, chatService);
+            return new Services.GgufChatCompletionLoader(logger, chatService);
         });
 
         // DiffusionModelLoader adapts DiffusionPipelineService to IModelLoader for image generation models.
         services.AddScoped<IModelLoader>(resolver =>
         {
-            var logger = resolver.GetService<Microsoft.Extensions.Logging.ILogger<Services.DiffusionModelLoader>>();
+            var logger = ResolveLogger<Services.DiffusionModelLoader>(resolver);
             var pipeline = resolver.GetService<Services.DiffusionPipelineService>();
             var modelRepo = resolver.GetService<IModelRepository>();
             if (pipeline == null || modelRepo == null)
                 throw new InvalidOperationException("DiffusionPipelineService and IModelRepository not found in DI container — required for image generation model loading.");
 
-            return new Services.DiffusionModelLoader(logger ?? NullLogger<Services.DiffusionModelLoader>.Instance, pipeline, modelRepo);
+            return new Services.DiffusionModelLoader(logger, pipeline, modelRepo);
         });
 
         // ---- Phase 7: Agent Harness — Core Agent Registration ----
@@ -249,7 +253,7 @@ public static class DependencyInjection
         // plus optional IContextCompressor for loop detection and degraded action generation.
         services.AddSingleton<IAgent>(resolver =>
         {
-            var logger = resolver.GetService<Microsoft.Extensions.Logging.ILogger<Services.Agent>>();
+            var logger = ResolveLogger<Services.Agent>(resolver);
             var progressTracker = resolver.GetService<ITaskProgressTracker>();
             var contextCompressor = resolver.GetService<IContextCompressor>();
             var toolRegistry = resolver.GetService<IToolRegistry>();
@@ -260,7 +264,7 @@ public static class DependencyInjection
                 throw new InvalidOperationException("ITaskProgressTracker not found in DI container — required for Agent lifecycle tracking.");
 
             return new Services.Agent(
-                logger ?? NullLogger<Services.Agent>.Instance,
+                logger,
                 progressTracker,
                 toolRegistry,
                 chatService,
@@ -522,7 +526,7 @@ public static class DependencyInjection
         // UpdateManager provides application-level update checking via GitHub Releases API.
         services.AddSingleton<IUpdateManager>(resolver =>
             new UpdateManager(
-                resolver.GetService<Microsoft.Extensions.Logging.ILogger<UpdateManager>>() ?? NullLogger<UpdateManager>.Instance,
+                ResolveLogger<UpdateManager>(resolver),
                 resolver.GetService<AppDataDirectoryResolver>() ?? new AppDataDirectoryResolver(),
                 resolver.GetService<Domain.Interfaces.IPluginRegistry>()));
 

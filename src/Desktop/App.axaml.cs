@@ -99,7 +99,19 @@ public partial class App : Avalonia.Application
 
         // Set up DI container for application-wide service resolution
         var serviceCollection = new ServiceCollection();
-        serviceCollection.AddLogging(builder => builder.AddConsole().SetMinimumLevel(LogLevel.Information));
+
+        // Configure logging FIRST so all subsequent service registrations
+        // use the configured logging provider (not NullLogger)
+        serviceCollection.AddLogging(builder =>
+            builder
+                .AddConsole(options =>
+                {
+                    options.TimestampFormat = "HH:mm:ss.fff ";
+                })
+                .AddDebug()
+                .SetMinimumLevel(LogLevel.Debug)
+                .AddFilter("OpenLMStudio", LogLevel.Information));
+
         try
         {
             System.Diagnostics.Debug.WriteLine("[App] Calling AddApplicationTypes");
@@ -112,6 +124,11 @@ public partial class App : Avalonia.Application
             serviceCollection.AddDesktopServices();
 
             ApplicationServices = serviceCollection.BuildServiceProvider();
+
+            // Verify logging is working — if this doesn't appear in console, logging is broken
+            var testLogger = ApplicationServices.GetRequiredService<ILogger<App>>();
+            testLogger.LogInformation("[App] Logging initialized — you should see this in the console");
+
             System.Diagnostics.Debug.WriteLine("[App] DI container built successfully");
         }
         catch (Exception ex)
