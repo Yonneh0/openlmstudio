@@ -19,6 +19,8 @@ namespace OpenLMStudio.Desktop;
 /// </summary>
 public partial class AboutWindow : Window
 {
+    private readonly ILogger<AboutWindow>? _logger = null!;
+
     public AboutWindow()
     {
         InitializeComponent();
@@ -56,11 +58,6 @@ public partial class AboutWindow : Window
         RuntimeText.Text = $".NET {Environment.Version}";
         OsText.Text = RuntimeInformation.OSDescription ?? "Unknown";
         ArchitectureText.Text = RuntimeInformation.OSArchitecture.ToString();
-    }
-
-    private static string GetOSDescription()
-    {
-        return RuntimeInformation.OSDescription ?? "Unknown";
     }
 
     private void OnCloseClicked(object? sender, RoutedEventArgs e)
@@ -121,7 +118,7 @@ public partial class AboutWindow : Window
         popup.Closed += (s, _) => popup.Close();
     }
 
-    private static string GetGitLog(int count)
+    private string GetGitLog(int count)
     {
         try
         {
@@ -141,9 +138,9 @@ public partial class AboutWindow : Window
                 return string.Join("\n", lines.Select(l => l.Trim()));
             }
         }
-        catch
+        catch (Exception ex)
         {
-            // Ignore errors
+            _logger?.LogDebug(ex, "Failed to get git log");
         }
 
         return string.Empty;

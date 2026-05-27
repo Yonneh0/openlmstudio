@@ -96,6 +96,7 @@
     <Using Include="Avalonia.Media" />
     <Using Include="Avalonia.Layout" />
     <Using Include="Avalonia.Platform.Storage" />
+    <Using Include="Microsoft.Extensions.Logging" />
     <Using Include="System.IO" />
     <Using Include="System.Collections.Generic" />
     <Using Include="System.Linq" />

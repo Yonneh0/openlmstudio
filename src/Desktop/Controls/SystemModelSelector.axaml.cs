@@ -26,9 +26,9 @@ public partial class SystemModelSelector : UserControl
     private GgufModelDownloader? _modelDownloader;
     private LogViewerService? _logViewer;
     private readonly ILogger<SystemModelSelector>? _logger;
-#pragma warning disable CS0414 // Field is assigned but its value is never used — reserved for future re-initialization guard
+    #pragma warning disable CS0414 // field is assigned but its value is never used
     private bool _isInitialized;
-#pragma warning restore CS0414
+    #pragma warning restore CS0414
     private bool _buttonsWired;
 
     /// <summary>
@@ -37,8 +37,6 @@ public partial class SystemModelSelector : UserControl
     public SystemModelSelector()
     {
         InitializeComponent();
-        // Wire up button events after InitializeComponent
-        _wireButtonEvents();
         _buttonsWired = true;
         // Resolve dependencies from the app service provider if not set via DI
         try
@@ -86,7 +84,8 @@ public partial class SystemModelSelector : UserControl
         _systemAIManager = systemAIManager;
         _modelDownloader = modelDownloader;
         _logViewer = logViewer;
-        WireUpEvents();
+        _wireButtonEvents();
+        _buttonsWired = true;
     }
 
     /// <summary>
@@ -122,36 +121,17 @@ public partial class SystemModelSelector : UserControl
     }
 
     /// <summary>
-    /// Wires up event handlers for buttons and state/log events.
-    /// </summary>
-    private void WireUpEvents()
-    {
-        if (!_buttonsWired)
-        {
-            _wireButtonEvents();
-            _buttonsWired = true;
-        }
-
-        if (_systemAIManager != null)
-        {
-            _systemAIManager.StateChanged += OnStateChanged;
-            _systemAIManager.LogEntryReceived += OnLogEntryReceived;
-        }
-    }
-
-    /// <summary>
-    /// Wires up button Click events.
+    /// Wires up button Click events (idempotent — skips if already wired).
     /// </summary>
     private void _wireButtonEvents()
     {
-        if (LoadModelButton != null)
-            LoadModelButton.Click += OnLoadModelClicked;
-        if (StopButton != null)
-            StopButton.Click += OnStopClicked;
-        if (RestartButton != null)
-            RestartButton.Click += OnRestartClicked;
-        if (AdvancedSettingsButton != null)
-            AdvancedSettingsButton.Click += OnAdvancedSettingsClicked;
+        if (_buttonsWired) return;
+        _buttonsWired = true;
+
+        LoadModelButton?.AddHandler(Button.ClickEvent, OnLoadModelClicked);
+        StopButton?.AddHandler(Button.ClickEvent, OnStopClicked);
+        RestartButton?.AddHandler(Button.ClickEvent, OnRestartClicked);
+        AdvancedSettingsButton?.AddHandler(Button.ClickEvent, OnAdvancedSettingsClicked);
     }
 
     /// <summary>
@@ -164,17 +144,13 @@ public partial class SystemModelSelector : UserControl
         try
         {
             var models = await _modelDownloader.DiscoverModelsAsync();
-            // Models are auto-discovered; update the UI with the first model if available
             if (models.Any())
             {
-                Avalonia.Threading.Dispatcher.UIThread.Post(() =>
+                var firstModel = models.First();
+                await Avalonia.Threading.Dispatcher.UIThread.InvokeAsync(() =>
                 {
-                    var firstModel = models.First();
-                    if (ModelNameText != null)
-                    {
-                        ModelNameText.Text = firstModel.Name;
-                        ModelPathText.Text = firstModel.FilePath;
-                    }
+                    ModelNameText?.SetValue(TextBlock.TextProperty, firstModel.Name);
+                    ModelPathText?.SetValue(TextBlock.TextProperty, firstModel.FilePath);
                 });
             }
         }
@@ -194,10 +170,10 @@ public partial class SystemModelSelector : UserControl
 
     private void UpdateStateDisplay(SystemAIStateChanged e)
     {
-        var accentRed = (ISolidColorBrush)(this.FindResource("AccentRed") ?? Brushes.Gray);
-        var accentGreen = (ISolidColorBrush)(this.FindResource("AccentGreen") ?? Brushes.Green);
-        StatusBadge.Background = e.NewState == SystemAIState.Running ? accentGreen : accentRed;
-        StatusText.Text = e.NewState.ToString();
+        var accentRed = this.FindResource("AccentRed") as ISolidColorBrush ?? Brushes.Gray;
+        var accentGreen = this.FindResource("AccentGreen") as ISolidColorBrush ?? Brushes.Green;
+        StatusBadge?.SetValue(Border.BackgroundProperty, e.NewState == SystemAIState.Running ? accentGreen : accentRed);
+        StatusText?.SetValue(TextBlock.TextProperty, e.NewState.ToString());
 
         if (e.NewState == SystemAIState.Running)
         {
@@ -214,8 +190,8 @@ public partial class SystemModelSelector : UserControl
 
         if (!string.IsNullOrEmpty(e.ModelPath))
         {
-            ModelNameText?.SetText(Path.GetFileNameWithoutExtension(e.ModelPath));
-            ModelPathText?.SetValue(ContentControl.ContentProperty, e.ModelPath);
+            ModelNameText?.SetValue(TextBlock.TextProperty, Path.GetFileNameWithoutExtension(e.ModelPath));
+            ModelPathText?.SetValue(TextBlock.TextProperty, e.ModelPath);
         }
 
         UpdateUI();
@@ -231,21 +207,21 @@ public partial class SystemModelSelector : UserControl
         var settings = _systemAIManager.CurrentSettings;
         var backend = _systemAIManager.CurrentBackend;
 
-        ModelTypeText?.SetText("SystemAI");
-        BackendText?.SetText(backend.ToString());
-        PortText?.SetValue(ContentControl.ContentProperty, "Port: 8082");
+        ModelTypeText?.SetValue(TextBlock.TextProperty, "SystemAI");
+        BackendText?.SetValue(TextBlock.TextProperty, backend.ToString());
+        PortText?.SetValue(TextBlock.TextProperty, "Port: 8082");
 
         if (settings != null)
         {
-            GpuLayersText?.SetText($"GPU: {settings.GpuLayers}");
-            CtxSizeText?.SetText($"Ctx: {settings.ContextSize}");
-            BatchSizeText?.SetText($"Batch: {settings.BatchSize}");
+            GpuLayersText?.SetValue(TextBlock.TextProperty, $"GPU: {settings.GpuLayers}");
+            CtxSizeText?.SetValue(TextBlock.TextProperty, $"Ctx: {settings.ContextSize}");
+            BatchSizeText?.SetValue(TextBlock.TextProperty, $"Batch: {settings.BatchSize}");
         }
 
         var modelInfo = _systemAIManager.CurrentModelPath != null
             ? $"{(settings?.GpuLayers ?? 0)} GPU | {settings?.Threads ?? 0} threads"
             : "Ready";
-        StatusInfoText?.SetText(modelInfo);
+        StatusInfoText?.SetValue(TextBlock.TextProperty, modelInfo);
     }
 
     private async void OnLoadModelClicked(object? sender, RoutedEventArgs e)
@@ -362,7 +338,15 @@ public partial class SystemModelSelector : UserControl
         var parentWindow = Avalonia.Application.Current?.ApplicationLifetime is IClassicDesktopStyleApplicationLifetime desktop
             ? desktop.MainWindow
             : null;
-        win.ShowDialog(parentWindow ?? throw new InvalidOperationException("No parent window available"));
+
+        try
+        {
+            win.ShowDialog(parentWindow ?? win);
+        }
+        catch (Exception ex)
+        {
+            _logger?.LogError(ex, "Failed to show advanced settings dialog");
+        }
     }
 
     private Control CreateSettingsPanel(RecommendedSettings settings, Window dialog)
@@ -468,29 +452,14 @@ public partial class SystemModelSelector : UserControl
 
     private void OnLogEntryReceived(object? sender, LogEntry e)
     {
-        Avalonia.Threading.Dispatcher.UIThread.Post(() =>
+        if (!e.IsImportant) return;
+        _ = Avalonia.Threading.Dispatcher.UIThread.InvokeAsync(() =>
         {
-            if (e.IsImportant)
-            {
-                // Show important messages in the status info
-                if (StatusInfoText != null)
-                {
-                    var msg = e.Message.Length > 50 ? e.Message[..50] + "..." : e.Message;
-                    StatusInfoText.Text = msg;
-                }
-            }
+            if (StatusInfoText != null && e.Message.Length > 50)
+                StatusInfoText.SetValue(TextBlock.TextProperty, e.Message[..50] + "...");
+            else if (StatusInfoText != null)
+                StatusInfoText.SetValue(TextBlock.TextProperty, e.Message);
         });
-    }
-
-    private static string FormatSize(long bytes)
-    {
-        return bytes switch
-        {
-            < 1024 => $"{bytes} B",
-            < 1024 * 1024 => $"{bytes / (1024.0):F1} KB",
-            < 1024 * 1024 * 1024 => $"{bytes / (1024.0 * 1024):F1} MB",
-            _ => $"{bytes / (1024.0 * 1024 * 1024):F1} GB"
-        };
     }
 
     /// <summary>

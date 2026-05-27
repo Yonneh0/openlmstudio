@@ -43,14 +43,14 @@ namespace OpenLMStudio.Desktop.Controls;
 public partial class PinguCharacterView : Control
 {
     private readonly ILogger<PinguCharacterView>? _logger;
-    private readonly PinguAnimationSystem _animationSystem;
-    private readonly PinguAnimationStateMachine _stateMachine;
-    private readonly PinguBehaviorTriggers _behaviorTriggers;
-    private readonly PinguPhysicsSolver _physicsSolver;
-    private readonly PinguInverseKinematics _ik;
-    private readonly PinguToolHolder _toolHolder;
-    private readonly PinguHomeSceneRenderer _homeSceneRenderer;
-    private readonly PinguRenderer _pinguRenderer;
+    private PinguAnimationSystem? _animationSystem;
+    private PinguAnimationStateMachine? _stateMachine;
+    private PinguBehaviorTriggers? _behaviorTriggers;
+    private PinguPhysicsSolver? _physicsSolver;
+    private PinguInverseKinematics? _ik;
+    private PinguToolHolder? _toolHolder;
+    private PinguHomeSceneRenderer? _homeSceneRenderer;
+    private PinguRenderer? _pinguRenderer;
     private readonly Random _random;
 
     private float _surfaceWidth;
@@ -76,44 +76,14 @@ public partial class PinguCharacterView : Control
     public PinguCharacterView()
     {
         _random = new Random();
-
-        // Create the main renderer from generated character data
-        var generator = new PinguMeshGenerator();
-        var characterData = generator.Generate();
-        var loader = new PinguBoneLoader();
-        var hierarchy = loader.LoadBoneHierarchy(
-            System.Text.Json.JsonSerializer.Serialize(characterData.BoneHierarchy.Definitions,
-                new System.Text.Json.JsonSerializerOptions { WriteIndented = false }));
-        var animation = new PinguAnimationSystem(hierarchy, characterData.AnimationClips, characterData.PhysicsParams);
-        var npcManager = new PinguNPCManager();
-        var homeScene = loader.LoadHomeScene(
-            System.Text.Json.JsonSerializer.Serialize(characterData.BoneHierarchy.Definitions,
-                new System.Text.Json.JsonSerializerOptions { WriteIndented = false }));
-        var atlas = characterData.TextureAtlas ?? Array.Empty<byte>();
-        _pinguRenderer = new PinguRenderer(hierarchy, animation, npcManager, homeScene, atlas);
-        _pinguRenderer.Initialize(400, 400);
-
-        // Build IK inputs from resolved bones
-        var boneCount = hierarchy.ResolvedBones.Count;
-        var boneParents = hierarchy.ResolvedBones.Select(b => b.Parent?.Index ?? -1).ToArray();
-        var bonePositions = hierarchy.ResolvedBones.Select(b => new Vector3(b.X, b.Y, b.Z)).ToArray();
-        var boneRotations = hierarchy.ResolvedBones.Select(b => (float)(b.Roll * Math.PI / 180)).ToArray();
-        _ik = new PinguInverseKinematics(boneCount, boneParents, bonePositions, boneRotations);
-
-        _animationSystem = new PinguAnimationSystem(hierarchy, characterData.AnimationClips, characterData.PhysicsParams);
-        _stateMachine = new PinguAnimationStateMachine(characterData.AnimationClips);
-        _behaviorTriggers = new PinguBehaviorTriggers(_stateMachine);
-        _physicsSolver = new PinguPhysicsSolver(boneCount, 0.01f, 0.9f);
-        _toolHolder = new PinguToolHolder(hierarchy);
-        _homeSceneRenderer = new PinguHomeSceneRenderer(homeScene);
-
+        InitFromGeneratedData();
         _isInitialized = true;
-
-        // Wire up pointer handlers
-        this.AddHandler(PointerPressedEvent, OnPointerPressed);
-        this.AddHandler(PointerReleasedEvent, OnPointerReleased);
+        WirePointerHandlers();
     }
 
+    /// <summary>
+    /// Parameterized constructor for DI.
+    /// </summary>
     public PinguCharacterView(
         PinguAnimationSystem animationSystem,
         PinguAnimationStateMachine stateMachine,
@@ -137,6 +107,54 @@ public partial class PinguCharacterView : Control
         _logger = logger;
         _random = random ?? new Random();
         _isInitialized = true;
+        WirePointerHandlers();
+    }
+
+    /// <summary>
+    /// Initialize all services from generated character data (used by default constructor).
+    /// </summary>
+    private void InitFromGeneratedData()
+    {
+        var generator = new PinguMeshGenerator();
+        var characterData = generator.Generate();
+        var loader = new PinguBoneLoader();
+        var hierarchy = loader.LoadBoneHierarchy(
+            System.Text.Json.JsonSerializer.Serialize(characterData.BoneHierarchy.Definitions,
+                new System.Text.Json.JsonSerializerOptions { WriteIndented = false }));
+
+        // Create the main renderer from generated character data
+        var animation = new PinguAnimationSystem(hierarchy, characterData.AnimationClips, characterData.PhysicsParams);
+        var npcManager = new PinguNPCManager();
+        var homeScene = loader.LoadHomeScene(
+            System.Text.Json.JsonSerializer.Serialize(characterData.BoneHierarchy.Definitions,
+                new System.Text.Json.JsonSerializerOptions { WriteIndented = false }));
+        var atlas = characterData.TextureAtlas ?? Array.Empty<byte>();
+        _pinguRenderer = new PinguRenderer(hierarchy, animation, npcManager, homeScene, atlas);
+        _pinguRenderer.Initialize(400, 400);
+
+        // Build IK inputs from resolved bones
+        var boneCount = hierarchy.ResolvedBones.Count;
+        var boneParents = hierarchy.ResolvedBones.Select(b => b.Parent?.Index ?? -1).ToArray();
+        var bonePositions = hierarchy.ResolvedBones.Select(b => new Vector3(b.X, b.Y, b.Z)).ToArray();
+        var boneRotations = hierarchy.ResolvedBones.Select(b => (float)(b.Roll * Math.PI / 180)).ToArray();
+        _ik = new PinguInverseKinematics(boneCount, boneParents, bonePositions, boneRotations);
+
+        // Create remaining services (reusing hierarchy)
+        _animationSystem = new PinguAnimationSystem(hierarchy, characterData.AnimationClips, characterData.PhysicsParams);
+        _stateMachine = new PinguAnimationStateMachine(characterData.AnimationClips);
+        _behaviorTriggers = new PinguBehaviorTriggers(_stateMachine);
+        _physicsSolver = new PinguPhysicsSolver(boneCount, 0.01f, 0.9f);
+        _toolHolder = new PinguToolHolder(hierarchy);
+        _homeSceneRenderer = new PinguHomeSceneRenderer(homeScene);
+    }
+
+    /// <summary>
+    /// Wire up pointer event handlers.
+    /// </summary>
+    private void WirePointerHandlers()
+    {
+        this.AddHandler(PointerPressedEvent, OnPointerPressed);
+        this.AddHandler(PointerReleasedEvent, OnPointerReleased);
     }
 
     /// <summary>
@@ -174,12 +192,12 @@ public partial class PinguCharacterView : Control
     /// </summary>
     public void Update(float deltaTime)
     {
-        _stateMachine.Update(deltaTime);
-        _behaviorTriggers.Update(deltaTime);
-        _toolHolder.Update(deltaTime);
+        _stateMachine!.Update(deltaTime);
+        _behaviorTriggers!.Update(deltaTime);
+        _toolHolder!.Update(deltaTime);
 
         // Update IK
-        _ik.UpdatePositions(new PinguBoneHierarchy());
+        _ik!.UpdatePositions(new PinguBoneHierarchy());
         _ik.Solve();
 
         // Update physics
@@ -188,7 +206,7 @@ public partial class PinguCharacterView : Control
         {
             positions.Add(new Vector3(_ik.BonePositions[i * 3], _ik.BonePositions[i * 3 + 1], _ik.BonePositions[i * 3 + 2]));
         }
-        _physicsSolver.Solve(positions, deltaTime);
+        _physicsSolver!.Solve(positions, deltaTime);
 
         // If pointer is held down, pause the animation
         if (_isPointerDown)
@@ -207,10 +225,10 @@ public partial class PinguCharacterView : Control
         canvas.Clear(SKColors.Transparent);
 
         // Draw home scene
-        _homeSceneRenderer.Render(canvas, _surfaceWidth, _surfaceHeight);
+        _homeSceneRenderer!.Render(canvas, _surfaceWidth, _surfaceHeight);
 
         // Draw penguin using the main renderer
-        if (_pinguRenderer.RenderBitmap != null)
+        if (_pinguRenderer!.RenderBitmap != null)
         {
             var bitmap = _pinguRenderer.RenderBitmap;
             var srcRect = new SKRect(0, 0, bitmap.Width, bitmap.Height);
@@ -219,7 +237,7 @@ public partial class PinguCharacterView : Control
         }
 
         // Draw tool attachments
-        for (var i = 0; i < _toolHolder.Attachments.Count; i++)
+        for (var i = 0; i < _toolHolder!.Attachments.Count; i++)
         {
             var attachment = _toolHolder.Attachments[i];
             var toolPos = _toolHolder.GetToolPosition(i, GetBonePositions());
@@ -238,7 +256,7 @@ public partial class PinguCharacterView : Control
     /// </summary>
     private IReadOnlyList<Vector3> GetBonePositions()
     {
-        var boneCount = _ik.BoneRotations.Length / 3;
+        var boneCount = _ik!.BoneRotations.Length / 3;
         var positions = new List<Vector3>();
         for (var i = 0; i < boneCount; i++)
         {
@@ -320,6 +338,15 @@ public partial class PinguCharacterView : Control
     protected override void OnDetachedFromVisualTree(VisualTreeAttachmentEventArgs e)
     {
         base.OnDetachedFromVisualTree(e);
+        StopRenderLoop();
+        _renderBitmap?.Dispose();
+    }
+
+    /// <summary>
+    /// Disposes resources.
+    /// </summary>
+    public void Dispose()
+    {
         StopRenderLoop();
         _renderBitmap?.Dispose();
     }
