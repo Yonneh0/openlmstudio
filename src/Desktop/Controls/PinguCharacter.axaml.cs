@@ -2,6 +2,7 @@ using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Controls.Shapes;
 using Avalonia.Interactivity;
+using Avalonia.VisualTree;
 using Microsoft.Extensions.Logging;
 using OpenLMStudio.Domain.Models;
 using OpenLMStudio.Infrastructure.Rendering;
@@ -46,7 +47,8 @@ public partial class PinguCharacter : UserControl
             logger: null);
 
         // Replace the CharacterView reference from XAML with our injected one
-        var existing = this.Find<PinguCharacterView>("CharacterView");
+        // Since PinguCharacterView is now a code-only control, find it by type
+        var existing = this.FindDescendantOfType<PinguCharacterView>();
         if (existing != null)
         {
             var parent = existing.Parent;
@@ -67,13 +69,16 @@ public partial class PinguCharacter : UserControl
         }
         else
         {
-            // Fallback: if CharacterView not found by name, set as border content
+            // Fallback: if CharacterView not found by type, set as border content
             var border = this.Find<Avalonia.Controls.Border>("pinguCharacterBorder");
             if (border != null)
             {
                 border.Child = _characterView;
             }
         }
+
+        // Start the render loop after the control is attached to the visual tree
+        _characterView.StartRenderLoop();
 
         _logger?.LogInformation("PinguCharacter initialized");
     }

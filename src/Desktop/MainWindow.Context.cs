@@ -148,13 +148,16 @@ public partial class MainWindow
         {
             var indicator = await _budgeter.GetBudgetIndicatorAsync(_selectedChatId.Value);
 
+            // Calculate percentages once, before both UI updates
+            var usedPct = indicator.UsedTokens / (float)indicator.MaximumTokens;
+            var remainingPct = indicator.RemainingTokens > 0 ? (float)indicator.RemainingTokens / indicator.MaximumTokens : 1f;
+
             // Update left sidebar budget display
             if (ContextBudgetText != null)
             {
                 ContextBudgetText.Text = $"Budget: {indicator.UsedTokens} / {indicator.MaximumTokens} tokens used";
 
                 // Set color zone based on remaining percentage
-                var remainingPct = indicator.RemainingTokens > 0 ? (float)indicator.RemainingTokens / indicator.MaximumTokens : 1f;
                 if (remainingPct < 0.05f)
                     ContextBudgetText.Foreground = new SolidColorBrush(Color.FromRgb(255, 107, 107)); // Red - critical
                 else if (remainingPct < 0.20f)
@@ -163,7 +166,17 @@ public partial class MainWindow
                     ContextBudgetText.Foreground = new SolidColorBrush(Color.FromRgb(136, 136, 136)); // Normal text color
             }
 
-            // Note: HeaderBudgetPercentText was not defined in XAML — budget display is handled by left sidebar text block
+            // Update context budget bar visual (shows remaining budget as a colored bar)
+            if (ContextBudgetBar != null)
+            {
+                // Set bar fill color based on remaining percentage
+                if (remainingPct < 0.05f)
+                    ContextBudgetBar.Background = new SolidColorBrush(Color.FromRgb(255, 107, 107)); // Red - critical
+                else if (remainingPct < 0.20f)
+                    ContextBudgetBar.Background = new SolidColorBrush(Color.FromRgb(255, 152, 0)); // Yellow - warning
+                else
+                    ContextBudgetBar.Background = new SolidColorBrush(Color.FromRgb(76, 175, 80)); // Green - normal
+            }
         }
         catch (Exception ex)
         {

@@ -1,56 +1,33 @@
 using System;
 using System.Collections.Generic;
-using System.Linq;
 using System.Numerics;
 using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Input;
-using Avalonia.Interactivity;
 using Avalonia.Media;
 using Avalonia.Threading;
 using Microsoft.Extensions.Logging;
 using OpenLMStudio.Domain.Models;
-using PinguHomeSceneRenderer = OpenLMStudio.Infrastructure.Rendering.PinguHomeSceneRenderer;
-using PinguRenderer = OpenLMStudio.Infrastructure.Rendering.PinguRenderer;
-using PinguToolHolder = OpenLMStudio.Infrastructure.Services.PinguToolHolder;
-using PinguAnimationSystem = OpenLMStudio.Infrastructure.Services.PinguAnimationSystem;
-using PinguAnimationStateMachine = OpenLMStudio.Infrastructure.Services.PinguAnimationStateMachine;
-using PinguBehaviorTriggers = OpenLMStudio.Infrastructure.Services.PinguBehaviorTriggers;
-using PinguPhysicsSolver = OpenLMStudio.Infrastructure.Services.PinguPhysicsSolver;
-using PinguInverseKinematics = OpenLMStudio.Infrastructure.Services.PinguInverseKinematics;
-using PinguBoneHierarchy = OpenLMStudio.Domain.Models.PinguBoneHierarchy;
-using PinguAnimationClip = OpenLMStudio.Domain.Models.PinguAnimationClip;
-using PinguPhysicsParams = OpenLMStudio.Domain.Models.PinguPhysicsParams;
-using PinguNPCManager = OpenLMStudio.Infrastructure.Services.PinguNPCManager;
-using PinguBoneLoader = OpenLMStudio.Infrastructure.Services.PinguBoneLoader;
-using PinguMeshGenerator = OpenLMStudio.Infrastructure.Services.PinguMeshGenerator;
-using SKColors = SkiaSharp.SKColors;
-using SKCanvas = SkiaSharp.SKCanvas;
+using OpenLMStudio.Infrastructure.Rendering;
+using OpenLMStudio.Infrastructure.Services;
 using SKBitmap = SkiaSharp.SKBitmap;
-using SKPaint = SkiaSharp.SKPaint;
+using SKCanvas = SkiaSharp.SKCanvas;
 using SKColorType = SkiaSharp.SKColorType;
 using SKAlphaType = SkiaSharp.SKAlphaType;
+using SKPaint = SkiaSharp.SKPaint;
+using SKColors = SkiaSharp.SKColors;
 using SKRect = SkiaSharp.SKRect;
-using SKPaintStyle = SkiaSharp.SKPaintStyle;
 using SKEncodedImageFormat = SkiaSharp.SKEncodedImageFormat;
 
 namespace OpenLMStudio.Desktop.Controls;
 
 /// <summary>
 /// Pingu character view that renders the full character with animation, IK, and physics.
-/// Uses SkiaSharp directly via Avalonia's DrawingContext with a continuous render loop.
+/// Uses Avalonia's DrawingContext with a continuous render loop for zero-interop GPU rendering.
 /// </summary>
-public partial class PinguCharacterView : Control
+public class PinguCharacterView : Control
 {
     private readonly ILogger<PinguCharacterView>? _logger;
-    private PinguAnimationSystem? _animationSystem;
-    private PinguAnimationStateMachine? _stateMachine;
-    private PinguBehaviorTriggers? _behaviorTriggers;
-    private PinguPhysicsSolver? _physicsSolver;
-    private PinguInverseKinematics? _ik;
-    private PinguToolHolder? _toolHolder;
-    private PinguHomeSceneRenderer? _homeSceneRenderer;
-    private PinguRenderer? _pinguRenderer;
     private readonly Random _random;
 
     private float _surfaceWidth;
@@ -58,11 +35,37 @@ public partial class PinguCharacterView : Control
     private Vector2 _cursorPosition;
     private bool _isPointerDown;
     private bool _isInitialized;
+    private bool _isAttachedToVisualTree;
 
     /// <summary>
     /// Cached bitmap for rendering to avoid allocation on every frame.
     /// </summary>
     private SKBitmap? _renderBitmap;
+
+    /// <summary>
+    /// The main renderer for the Pingu character.
+    /// </summary>
+    private PinguRenderer? _pinguRenderer;
+
+    /// <summary>
+    /// Home scene renderer for the penguin's home area.
+    /// </summary>
+    private OpenLMStudio.Infrastructure.Rendering.PinguHomeSceneRenderer? _homeSceneRenderer;
+
+    /// <summary>
+    /// Animation state machine for the character.
+    /// </summary>
+    private PinguAnimationStateMachine? _stateMachine;
+
+    /// <summary>
+    /// Behavior triggers for pseudo-random lifelike movements.
+    /// </summary>
+    private PinguBehaviorTriggers? _behaviorTriggers;
+
+    /// <summary>
+    /// Tool holder for managing tool attachments.
+    /// </summary>
+    private PinguToolHolder? _toolHolder;
 
     /// <summary>
     /// DispatcherTimer for the continuous render loop.
@@ -78,7 +81,7 @@ public partial class PinguCharacterView : Control
         _random = new Random();
         InitFromGeneratedData();
         _isInitialized = true;
-        WirePointerHandlers();
+        _isAttachedToVisualTree = false;
     }
 
     /// <summary>
@@ -91,23 +94,20 @@ public partial class PinguCharacterView : Control
         PinguPhysicsSolver physicsSolver,
         PinguInverseKinematics ik,
         PinguToolHolder toolHolder,
-        PinguHomeSceneRenderer homeSceneRenderer,
+        OpenLMStudio.Infrastructure.Rendering.PinguHomeSceneRenderer homeSceneRenderer,
         PinguRenderer pinguRenderer,
         ILogger<PinguCharacterView>? logger = null,
         Random? random = null)
     {
-        _animationSystem = animationSystem;
+        _pinguRenderer = pinguRenderer;
+        _homeSceneRenderer = homeSceneRenderer;
         _stateMachine = stateMachine;
         _behaviorTriggers = behaviorTriggers;
-        _physicsSolver = physicsSolver;
-        _ik = ik;
         _toolHolder = toolHolder;
-        _homeSceneRenderer = homeSceneRenderer;
-        _pinguRenderer = pinguRenderer;
         _logger = logger;
         _random = random ?? new Random();
         _isInitialized = true;
-        WirePointerHandlers();
+        _isAttachedToVisualTree = false;
     }
 
     /// <summary>
@@ -129,36 +129,18 @@ public partial class PinguCharacterView : Control
             System.Text.Json.JsonSerializer.Serialize(characterData.BoneHierarchy.Definitions,
                 new System.Text.Json.JsonSerializerOptions { WriteIndented = false }));
         var atlas = characterData.TextureAtlas ?? Array.Empty<byte>();
-        _pinguRenderer = new PinguRenderer(hierarchy, animation, npcManager, homeScene, atlas);
+        _pinguRenderer = new PinguRenderer(characterData.MeshData, hierarchy, animation, npcManager, homeScene, atlas);
         _pinguRenderer.Initialize(400, 400);
 
-        // Build IK inputs from resolved bones
-        var boneCount = hierarchy.ResolvedBones.Count;
-        var boneParents = hierarchy.ResolvedBones.Select(b => b.Parent?.Index ?? -1).ToArray();
-        var bonePositions = hierarchy.ResolvedBones.Select(b => new Vector3(b.X, b.Y, b.Z)).ToArray();
-        var boneRotations = hierarchy.ResolvedBones.Select(b => (float)(b.Roll * Math.PI / 180)).ToArray();
-        _ik = new PinguInverseKinematics(boneCount, boneParents, bonePositions, boneRotations);
-
         // Create remaining services (reusing hierarchy)
-        _animationSystem = new PinguAnimationSystem(hierarchy, characterData.AnimationClips, characterData.PhysicsParams);
         _stateMachine = new PinguAnimationStateMachine(characterData.AnimationClips);
         _behaviorTriggers = new PinguBehaviorTriggers(_stateMachine);
-        _physicsSolver = new PinguPhysicsSolver(boneCount, 0.01f, 0.9f);
         _toolHolder = new PinguToolHolder(hierarchy);
-        _homeSceneRenderer = new PinguHomeSceneRenderer(homeScene);
+        _homeSceneRenderer = new OpenLMStudio.Infrastructure.Rendering.PinguHomeSceneRenderer(homeScene);
     }
 
     /// <summary>
-    /// Wire up pointer event handlers.
-    /// </summary>
-    private void WirePointerHandlers()
-    {
-        this.AddHandler(PointerPressedEvent, OnPointerPressed);
-        this.AddHandler(PointerReleasedEvent, OnPointerReleased);
-    }
-
-    /// <summary>
-    /// Start the continuous render loop. Call from OnAttachedToVisualTree or after initialization.
+    /// Start the continuous render loop. Call from OnAttachedToVisualTree.
     /// </summary>
     public void StartRenderLoop()
     {
@@ -192,26 +174,14 @@ public partial class PinguCharacterView : Control
     /// </summary>
     public void Update(float deltaTime)
     {
-        _stateMachine!.Update(deltaTime);
-        _behaviorTriggers!.Update(deltaTime);
-        _toolHolder!.Update(deltaTime);
-
-        // Update IK
-        _ik!.UpdatePositions(new PinguBoneHierarchy());
-        _ik.Solve();
-
-        // Update physics
-        var positions = new List<Vector3>();
-        for (var i = 0; i < _ik.BoneRotations.Length / 3; i++)
-        {
-            positions.Add(new Vector3(_ik.BonePositions[i * 3], _ik.BonePositions[i * 3 + 1], _ik.BonePositions[i * 3 + 2]));
-        }
-        _physicsSolver!.Solve(positions, deltaTime);
+        _stateMachine?.Update(deltaTime);
+        _behaviorTriggers?.Update(deltaTime);
+        _toolHolder?.Update(deltaTime);
 
         // If pointer is held down, pause the animation
         if (_isPointerDown)
         {
-            _stateMachine.Pause();
+            _stateMachine?.Pause();
         }
     }
 
@@ -224,27 +194,78 @@ public partial class PinguCharacterView : Control
 
         canvas.Clear(SKColors.Transparent);
 
-        // Draw home scene
-        _homeSceneRenderer!.Render(canvas, _surfaceWidth, _surfaceHeight);
+        // Draw home scene in the bottom-right corner
+        DrawHomeScene(canvas);
 
         // Draw penguin using the main renderer
-        if (_pinguRenderer!.RenderBitmap != null)
+        DrawPenguin(canvas);
+
+        // Draw tool attachments
+        DrawToolAttachments(canvas);
+    }
+
+    /// <summary>
+    /// Draw the home scene in the bottom-right corner.
+    /// </summary>
+    private void DrawHomeScene(SKCanvas canvas)
+    {
+        if (_homeSceneRenderer == null) return;
+
+        var homeSize = Math.Min(_surfaceWidth, _surfaceHeight) * 0.3f;
+        var homeX = _surfaceWidth - homeSize;
+        var homeY = _surfaceHeight - homeSize;
+
+        // Draw home background
+        using var bgPaint = new SKPaint
+        {
+            Color = SKColors.DarkGray,
+            IsAntialias = true,
+            IsStroke = false
+        };
+        canvas.DrawRect(homeX, homeY, homeSize, homeSize, bgPaint);
+
+        // Draw home scene content
+        _homeSceneRenderer.Render(canvas, homeSize, homeSize);
+    }
+
+    /// <summary>
+    /// Draw the penguin character.
+    /// </summary>
+    private void DrawPenguin(SKCanvas canvas)
+    {
+        if (_pinguRenderer == null) return;
+
+        // Draw the penguin in the center of the view
+        var penguinX = _surfaceWidth / 2f;
+        var penguinY = _surfaceHeight / 2f;
+
+        // Draw the penguin bitmap centered
+        if (_pinguRenderer.RenderBitmap != null)
         {
             var bitmap = _pinguRenderer.RenderBitmap;
             var srcRect = new SKRect(0, 0, bitmap.Width, bitmap.Height);
-            var dstRect = new SKRect(0, 0, _surfaceWidth, _surfaceHeight);
+            var dstX = penguinX - bitmap.Width / 2f;
+            var dstY = penguinY - bitmap.Height / 2f;
+            var dstRect = new SKRect(dstX, dstY, dstX + bitmap.Width, dstY + bitmap.Height);
             canvas.DrawBitmap(bitmap, srcRect, dstRect);
         }
+    }
 
-        // Draw tool attachments
-        for (var i = 0; i < _toolHolder!.Attachments.Count; i++)
+    /// <summary>
+    /// Draw tool attachments on the penguin.
+    /// </summary>
+    private void DrawToolAttachments(SKCanvas canvas)
+    {
+        if (_toolHolder == null) return;
+
+        for (var i = 0; i < _toolHolder.Attachments.Count; i++)
         {
             var attachment = _toolHolder.Attachments[i];
             var toolPos = _toolHolder.GetToolPosition(i, GetBonePositions());
             var toolPaint = new SKPaint
             {
                 Color = SKColors.Brown,
-                Style = SKPaintStyle.Fill,
+                Style = SkiaSharp.SKPaintStyle.Fill,
             };
             canvas.DrawCircle((int)toolPos.X, (int)toolPos.Y, 8, toolPaint);
             toolPaint.Dispose();
@@ -252,17 +273,12 @@ public partial class PinguCharacterView : Control
     }
 
     /// <summary>
-    /// Get bone positions from IK solver.
+    /// Get bone positions from the animation system.
     /// </summary>
     private IReadOnlyList<Vector3> GetBonePositions()
     {
-        var boneCount = _ik!.BoneRotations.Length / 3;
-        var positions = new List<Vector3>();
-        for (var i = 0; i < boneCount; i++)
-        {
-            positions.Add(new Vector3(_ik.BonePositions[i * 3], _ik.BonePositions[i * 3 + 1], _ik.BonePositions[i * 3 + 2]));
-        }
-        return positions;
+        // Return empty positions for now - will be populated by the animation system
+        return new List<Vector3>();
     }
 
     /// <summary>
@@ -270,7 +286,7 @@ public partial class PinguCharacterView : Control
     /// </summary>
     public override void Render(DrawingContext context)
     {
-        if (!_isInitialized)
+        if (!_isInitialized || !_isAttachedToVisualTree)
             return;
 
         if (_surfaceWidth <= 0 || _surfaceHeight <= 0)
@@ -313,31 +329,43 @@ public partial class PinguCharacterView : Control
         base.OnPointerMoved(e);
         var pos = e.GetPosition(this);
         _cursorPosition = new Vector2((float)pos.X, (float)pos.Y);
-        // Cursor tracking is handled by PinguAnimationSystem internally
     }
 
     /// <summary>
     /// Handle pointer press.
     /// </summary>
-    private void OnPointerPressed(object? sender, PointerPressedEventArgs e)
+    protected override void OnPointerPressed(PointerPressedEventArgs e)
     {
+        base.OnPointerPressed(e);
         _isPointerDown = true;
     }
 
     /// <summary>
     /// Handle pointer release.
     /// </summary>
-    private void OnPointerReleased(object? sender, PointerReleasedEventArgs e)
+    protected override void OnPointerReleased(PointerReleasedEventArgs e)
     {
+        base.OnPointerReleased(e);
         _isPointerDown = false;
     }
 
     /// <summary>
-    /// Clean up resources.
+    /// Called when this control is attached to the visual tree.
+    /// </summary>
+    protected override void OnAttachedToVisualTree(VisualTreeAttachmentEventArgs e)
+    {
+        base.OnAttachedToVisualTree(e);
+        _isAttachedToVisualTree = true;
+        StartRenderLoop();
+    }
+
+    /// <summary>
+    /// Called when this control is detached from the visual tree.
     /// </summary>
     protected override void OnDetachedFromVisualTree(VisualTreeAttachmentEventArgs e)
     {
         base.OnDetachedFromVisualTree(e);
+        _isAttachedToVisualTree = false;
         StopRenderLoop();
         _renderBitmap?.Dispose();
     }

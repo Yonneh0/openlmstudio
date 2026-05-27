@@ -98,4 +98,14 @@ public interface IEngineLogger
     /// Clears logs for an engine.
     /// </summary>
     void ClearLogs(EngineType engineId);
+
+    /// <summary>
+    /// Gets the most recent log entries for an engine, sorted by timestamp descending.
+    /// </summary>
+    IEnumerable<EngineLogEntry> GetRecentLogs(EngineType engineId, int count = 20);
+
+    /// <summary>
+    /// Gets log entries for an engine filtered by minimum log level.
+    /// </summary>
+    IEnumerable<EngineLogEntry> GetLogsByLevel(EngineType engineId, LogLevel minLevel);
 }

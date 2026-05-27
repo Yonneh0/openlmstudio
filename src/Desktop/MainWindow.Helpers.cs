@@ -145,11 +145,10 @@ public partial class MainWindow
             ServerStatusText.Foreground = new SolidColorBrush(Color.FromRgb(76, 175, 80)); // Green
             ServerStatusTextStatusBar.Foreground = new SolidColorBrush(Color.FromRgb(76, 175, 80)); // Green
 
-            // Try to get port from the server service's configuration
-            var srv = _serverService as OpenLMStudio.Infrastructure.Services.ServerService;
-            if (srv?.Configuration != null)
+            // Try to get port from the server service's configuration (use interface property, not unsafe cast)
+            if (_serverService.Configuration != null)
             {
-                ServerPortText.Text = $"Port: {srv.Configuration.Port}";
+                ServerPortText.Text = $"Port: {_serverService.Configuration.Port}";
             }
         }
         else

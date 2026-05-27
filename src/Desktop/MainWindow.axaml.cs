@@ -70,7 +70,7 @@ public partial class MainWindow : Window
     private DispatcherTimer? _pinguRenderTimer;
 
     /// <summary>Flag indicating whether a streaming response is in progress.</summary>
-    private bool _isStreaming = false;
+    private volatile bool _isStreaming = false;
 
     /// <summary>Current send target ("MainAI" or "Pingu").</summary>
     private string _sendTarget = "MainAI";
@@ -129,8 +129,9 @@ public partial class MainWindow : Window
         // Set window title programmatically to avoid XAML entity reference issues with "&" character
         this.Title = "OpenLMStudio - Local LLM Server & Chat Client";
 
-        // Register keyboard shortcuts immediately after init so they fire regardless of focus.
-        this.KeyDown += OnMainWindowKeyDown;
+        // Keyboard shortcuts are registered via KeyboardService.Initialize() in OnMainWindowOpened
+        // to avoid duplicate registration (the constructor registration and KeyboardService would both
+        // fire OnMainWindowKeyDown, causing double execution of shortcuts)
 
         // Use pre-resolved dependencies from App.OnStartup — if none are provided (for testing), fall back to DI resolution attempt.
         _conversationManager = conversationManager ?? ResolveConversationManagerFromAppServices();
@@ -151,9 +152,6 @@ public partial class MainWindow : Window
 
         // Set up event handlers for UI interactions
         SetupEventHandlers();
-
-        // Load tab click handlers (they need access to this instance's ShowTab method)
-        AttachTabClickHandlers();
 
         // Wire up ToggleButton click handlers for left sidebar tabs
         WireUpLeftTabClickHandlers();
@@ -192,9 +190,9 @@ public partial class MainWindow : Window
         if (_pinguStore != null && _pinguAvatar == null)
         {
             _pinguAvatar = new PinguAvatar(_pinguStore);
-            // Find a suitable panel to host the avatar (e.g., a Border/Panel in the XAML)
+            // Find a suitable panel to host the avatar (e.g., a Border/Canvas in the XAML)
             // Try PinguCornerPanel first, fall back to the window's content
-            var target = this.FindControl<Panel>("PinguCornerPanel");
+            var target = this.FindControl<Canvas>("PinguCornerPanel");
             if (target != null)
                 target.Children.Add(_pinguAvatar);
             // If no panel found, the PinguCornerPanel will be defined in XAML
@@ -220,47 +218,21 @@ public partial class MainWindow : Window
 
         // Use PinguCornerPanel (which is already positioned in the bottom-right corner of the window)
         // to host the canvas so it doesn't interfere with the center pane content
-        var targetPanel = this.FindControl<Panel>("PinguCornerPanel");
+        var targetPanel = this.FindControl<Canvas>("PinguCornerPanel");
         if (targetPanel != null)
         {
-            // Clear existing children (PinguAvatar might already be there)
-            targetPanel.Children.Clear();
+            // Set the Canvas size to match the CenterPaneGrid
+            targetPanel.Width = CenterPaneGrid.Width - 400; // Leave room for right sidebar
+            targetPanel.Height = CenterPaneGrid.Height - 100; // Leave room for status bar
+            _pinguCanvas.Width = 350;
+            _pinguCanvas.Height = 350;
 
-            // Add the canvas directly to PinguCornerPanel
+            // Add the canvas directly to PinguCornerPanel (preserve any existing children like PinguAvatar)
             targetPanel.Children.Add(_pinguCanvas);
 
             // Position it in the bottom-right of the panel
             Canvas.SetRight(_pinguCanvas, 10);
             Canvas.SetBottom(_pinguCanvas, 10);
-        }
-        else
-        {
-            // Fallback: create a new panel in the bottom-right
-            var fallbackPanel = new Canvas
-            {
-                Width = 350,
-                Height = 350,
-                ZIndex = 10,
-                Background = new Avalonia.Media.SolidColorBrush(
-                    Avalonia.Media.Color.FromArgb(200, 26, 26, 30))
-            };
-
-            Canvas.SetRight(_pinguCanvas, 10);
-            Canvas.SetBottom(_pinguCanvas, 10);
-
-            fallbackPanel.Children.Add(_pinguCanvas);
-
-            // Insert into the root grid
-            var root = this.FindControl<Grid>("RootGrid");
-            if (root != null)
-            {
-                root.Children.Add(fallbackPanel);
-            }
-            else
-            {
-                // Last resort: use the window itself as a panel
-                this.Content = fallbackPanel;
-            }
         }
 
         // Initialize the renderer (this will load/create mesh, texture, etc.)
@@ -513,8 +485,7 @@ public partial class MainWindow : Window
         {
             // Turn off: reset turns to 0
             SetAgentTurns(0);
-            // Set background to BgTertiary so :hover can override
-            AgentModeToggle?.SetValue(Button.BackgroundProperty, (Avalonia.Media.ISolidColorBrush)(this.FindResource("BgTertiary") ?? Avalonia.Media.Brushes.Gray));
+            // Remove active class — XAML style will restore default background
             AgentModeToggle?.Classes.Remove("active");
         }
         else
@@ -522,8 +493,7 @@ public partial class MainWindow : Window
             // Turn on: set to default turns
             var defaultTurns = GetAgentDefaultTurns();
             SetAgentTurns(defaultTurns);
-            // Set background to AccentBlue so :hover will override to #1E88E5
-            AgentModeToggle?.SetValue(Button.BackgroundProperty, (Avalonia.Media.ISolidColorBrush)(this.FindResource("AccentBlue") ?? Avalonia.Media.Brushes.White));
+            // Add active class — XAML style will set AccentBlue background
             AgentModeToggle?.Classes.Add("active");
         }
     }
@@ -1439,6 +1409,11 @@ public partial class MainWindow : Window
         try
         {
             var appData = Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData);
+            if (string.IsNullOrEmpty(appData))
+            {
+                ShowError("Application data folder not found. Cannot open app folder.");
+                return;
+            }
             var openPath = Path.Combine(appData, "OpenLMStudio");
             var psi = new ProcessStartInfo
             {
@@ -1451,21 +1426,6 @@ public partial class MainWindow : Window
         {
             _logger?.LogError(ex, "Failed to open app folder");
             ShowError($"Failed to open app folder: {ex.Message}");
-        }
-    }
-
-    /// <summary>
-    /// Called when the window opens — updates the canvas wrapper size to match CenterPaneGrid.
-    /// </summary>
-    private void OnPinguCanvasOpened(object? sender, EventArgs e)
-    {
-        // Find the canvas wrapper and set its size to match CenterPaneGrid
-        var canvasWrapper = CenterPaneGrid.Children.OfType<Canvas>().FirstOrDefault(c => c.Width == 0);
-        if (canvasWrapper != null)
-        {
-            canvasWrapper.Width = CenterPaneGrid.Width;
-            canvasWrapper.Height = CenterPaneGrid.Height;
-            _logger?.LogInformation("PinguCanvas size set to {W}x{H}", canvasWrapper.Width, canvasWrapper.Height);
         }
     }
 

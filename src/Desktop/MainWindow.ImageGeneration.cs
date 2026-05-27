@@ -55,8 +55,8 @@ public partial class MainWindow
         var seed = long.TryParse(seedText ?? string.Empty, out var parsedSeed) ? parsedSeed : -1;
         var batchSize = (int)(ImageGenBatchSizeSlider?.Value ?? 1);
 
-        // Get resolution from selector
-        var resolutionText = ImageGenResolutionSelector?.SelectedItem?.ToString() ?? "512x512";
+        // Get resolution from selector — handle both TextBlock content and string content
+        var resolutionText = GetResolutionTextFromSelector();
         var resolution = ParseResolution(resolutionText);
 
         // Show progress
@@ -135,11 +135,36 @@ public partial class MainWindow
         }
     }
 
+    /// <summary>
+    /// Extracts the resolution text from the ImageGenResolutionSelector ComboBox.
+    /// Handles both TextBlock content (directly added to ComboBox) and string content.
+    /// </summary>
+    private string GetResolutionTextFromSelector()
+    {
+        if (ImageGenResolutionSelector?.SelectedItem == null)
+            return "512x512";
+
+        var item = ImageGenResolutionSelector.SelectedItem;
+
+        // If the item is a TextBlock, use its Text property
+        if (item is TextBlock tb && tb.Text != null)
+            return tb.Text;
+
+        // If the item is a ContentControl with TextBlock content, extract the text
+        if (item is ContentControl cc && cc.Content is TextBlock contentTb && contentTb.Text != null)
+            return contentTb.Text;
+
+        // Fall back to ToString() for other content types
+        var text = item.ToString();
+        return string.IsNullOrEmpty(text) ? "512x512" : text;
+    }
+
     private static (int Width, int Height) ParseResolution(string resolutionText)
     {
         try
         {
-            var parts = resolutionText.Replace("x", "x").Split('x');
+            // Split by 'x' to get width and height — handle both square (512x512) and non-square (1280x720) formats
+            var parts = resolutionText.Split('x');
             return (int.Parse(parts[0]), int.Parse(parts[1]));
         }
         catch
@@ -223,20 +248,28 @@ public partial class MainWindow
     {
         if (ImageGenResolutionSelector == null || defaultRes <= 0) return;
 
-        // Find existing item that matches and select it, or keep current selection
+        // Find existing item that matches the default resolution and select it.
+        // Match both square (512x512) and non-square (1280x720) formats.
+        var expectedSquare = $"{defaultRes}x{defaultRes}";
+        var expectedNonSquare1 = $"{defaultRes}x{defaultRes / 2}"; // e.g., 1024x512
+        var expectedNonSquare2 = $"{defaultRes / 2}x{defaultRes}"; // e.g., 512x1024
+
         foreach (var item in ImageGenResolutionSelector.Items.OfType<ContentControl>())
         {
-            if (item.Content is TextBlock tb && tb.Text?.Contains($"{defaultRes}") == true)
+            if (item.Content is TextBlock tb && tb.Text != null)
             {
-                ImageGenResolutionSelector.SelectedItem = item;
-                return;
+                if (tb.Text == expectedSquare || tb.Text == expectedNonSquare1 || tb.Text == expectedNonSquare2)
+                {
+                    ImageGenResolutionSelector.SelectedItem = item;
+                    return;
+                }
             }
         }
 
         // If no matching item found, add the default resolution to the list
         var newItem = new TextBlock
         {
-            Text = $"{defaultRes}x{defaultRes}",
+            Text = expectedSquare,
             Foreground = new SolidColorBrush(Color.FromRgb(204, 204, 204)),
             Padding = new Thickness(8)
         };

@@ -91,56 +91,46 @@ public partial class MainWindow
             panel.IsVisible = visible;
     }
 
+    /// <summary>
+    /// Updates the styling of tab TextBlocks based on which ToggleButton is currently checked.
+    /// Uses the ToggleButton.IsChecked property instead of string comparison for robustness.
+    /// </summary>
     private void UpdateActiveTab(string activeTabName)
     {
-        // Update styling for all tab TextBlocks to show which is active
-        var tabs = new List<TextBlock?>();
-
-        if (ChatTabContent != null)
-            tabs.Add(ChatTabContent.Children.OfType<TextBlock>().FirstOrDefault());
-
-        if (ServerTabContent != null)
-            tabs.Add(ServerTabContent.Children.OfType<TextBlock>().FirstOrDefault());
-
-        if (ModelsTabContent != null)
-            tabs.Add(ModelsTabContent.Children.OfType<TextBlock>().FirstOrDefault());
-
-        if (DevicesTabContent != null)
-            tabs.Add(DevicesTabContent.Children.OfType<TextBlock>().FirstOrDefault());
-
-        if (ContextTabContent != null)
-            tabs.Add(ContextTabContent.Children.OfType<TextBlock>().FirstOrDefault());
-
-
-        if (PinguTabContent != null)
-            tabs.Add(PinguTabContent.Children.OfType<TextBlock>().FirstOrDefault());
-
-        if (ImageGenTabContent != null)
-            tabs.Add(ImageGenTabContent.Children.OfType<TextBlock>().FirstOrDefault());
-
-
-        foreach (var tb in tabs)
+        // Map of ToggleButton to its corresponding StackPanel (tab content)
+        var tabMap = new (ToggleButton Button, StackPanel Panel)[]
         {
-            if (tb == null) continue;
+            (ChatTab!, ChatTabContent!),
+            (ServerTab!, ServerTabContent!),
+            (ModelsTab!, ModelsTabContent!),
+            (DevicesTab!, DevicesTabContent!),
+            (ContextTab!, ContextTabContent!),
+            (PinguTab!, PinguTabContent!),
+            (ImageGenTab!, ImageGenTabContent!),
+        };
 
-            // Only update the first TextBlock of each tab section (the tab title)
-            var parent = tb.Parent as Panel;
-            if (parent?.Name != null &&
-                new[] { "ChatTabContent", "ServerTabContent", "ModelsTabContent", "DevicesTabContent", "ContextTabContent", "PinguTabContent", "ImageGenTabContent" }
-                    .Contains(parent.Name))
+        foreach (var (button, panel) in tabMap)
+        {
+            // Skip if panel is not visible (not the active tab)
+            if (!panel.IsVisible)
+                continue;
+
+            // Update styling for the first TextBlock of the visible tab section
+            var firstTextBlock = panel.Children.OfType<TextBlock>().FirstOrDefault();
+            if (firstTextBlock == null)
+                continue;
+
+            // Use the ToggleButton's IsChecked property to determine active tab
+            // This is more robust than string comparison — it doesn't depend on the TextBlock content
+            if (button.IsChecked == true)
             {
-                if (activeTabName.Equals(tb.Text, StringComparison.OrdinalIgnoreCase) ||
-                    (activeTabName == "ImageGen" && tb.Text?.Equals("Image Generation") == true) ||
-                    (activeTabName == "Pingu" && tb.Text?.Equals("Pingu") == true))
-                {
-                    tb.Foreground = new SolidColorBrush(Color.FromRgb(79, 195, 247)); // AccentBlue
-                    tb.FontWeight = FontWeight.SemiBold;
-                }
-                else
-                {
-                    tb.Foreground = new SolidColorBrush(Color.FromRgb(204, 204, 204)); // TextPrimary
-                    tb.FontWeight = FontWeight.Normal;
-                }
+                firstTextBlock.Foreground = new SolidColorBrush(Color.FromRgb(79, 195, 247)); // AccentBlue
+                firstTextBlock.FontWeight = FontWeight.SemiBold;
+            }
+            else
+            {
+                firstTextBlock.Foreground = new SolidColorBrush(Color.FromRgb(204, 204, 204)); // TextPrimary
+                firstTextBlock.FontWeight = FontWeight.Normal;
             }
         }
     }

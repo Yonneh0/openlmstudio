@@ -304,9 +304,33 @@
                             </StackPanel>
                         </StackPanel>
 
-                        <!-- Pingu tab content -->
+                        <!-- Pingu tab content - agentic interaction -->
                         <StackPanel x:Name="PinguTabContent" IsVisible="False">
-                            <Controls:PinguPanel x:Name="LeftPinguPanel" Margin="0,8,0,0"/>
+                            <Border Background="{StaticResource BgSecondary}" CornerRadius="4" Margin="0,8,0,0">
+                                <StackPanel>
+                                    <TextBlock Text="Pingu Agent" FontWeight="SemiBold" Foreground="#4FC3F7" Padding="12,8"/>
+                                    <TextBlock Text="Control Pingu's behavior and interactions" Foreground="{StaticResource TextSecondary}" Padding="12,4" FontSize="12"/>
+                                    <Button x:Name="PinguWakeButton" Content="Wake Pingu" Background="#4FC3F7" Foreground="White" Padding="8,4" Margin="8,8,8,4" HorizontalAlignment="Stretch" Height="36"/>
+                                    <Button x:Name="PinguPauseButton" Content="Pause Pingu" Background="#FF9800" Foreground="White" Padding="8,4" Margin="8,4,8,4" HorizontalAlignment="Stretch" Height="36"/>
+                                    <Button x:Name="PinguResetButton" Content="Reset Pingu" Background="#FF6B6B" Foreground="White" Padding="8,4" Margin="8,4,8,8" HorizontalAlignment="Stretch" Height="36"/>
+                                </StackPanel>
+                            </Border>
+                            <Border Background="{StaticResource BgSecondary}" CornerRadius="4" Margin="0,8,0,0">
+                                <StackPanel>
+                                    <TextBlock Text="Pingu Tools" FontWeight="SemiBold" Foreground="#4FC3F7" Padding="12,8"/>
+                                    <Button x:Name="PinguTabSwitchTool" Content="Tab Switch" Background="#0E639C" Foreground="White" Padding="8,4" Margin="8,4,8,4" HorizontalAlignment="Stretch" Height="36"/>
+                                    <Button x:Name="PinguPanelToggleTool" Content="Toggle Panel" Background="#0E639C" Foreground="White" Padding="8,4" Margin="8,4,8,4" HorizontalAlignment="Stretch" Height="36"/>
+                                    <Button x:Name="PinguModelLoadTool" Content="Load Model" Background="#0E639C" Foreground="White" Padding="8,4" Margin="8,4,8,4" HorizontalAlignment="Stretch" Height="36"/>
+                                    <Button x:Name="PinguModelUnloadTool" Content="Unload Model" Background="#FF6B6B" Foreground="White" Padding="8,4" Margin="8,4,8,8" HorizontalAlignment="Stretch" Height="36"/>
+                                </StackPanel>
+                            </Border>
+                            <Border Background="{StaticResource BgSecondary}" CornerRadius="4" Margin="0,8,0,0">
+                                <StackPanel>
+                                    <TextBlock Text="Pingu Generation" FontWeight="SemiBold" Foreground="#4FC3F7" Padding="12,8"/>
+                                    <TextBlock Text="Click to generate a new Pingu" Foreground="{StaticResource TextSecondary}" Padding="12,4" FontSize="12"/>
+                                    <Button x:Name="PinguGenerateButton" Content="Generate Random Pingu" Background="#4FC3F7" Foreground="White" Padding="8,4" Margin="8,4,8,8" HorizontalAlignment="Stretch" Height="36"/>
+                                </StackPanel>
+                            </Border>
                         </StackPanel>
 
                         <!-- ImageGen tab content -->
@@ -385,41 +409,6 @@
                 </ScrollViewer>
             </Grid>
 
-        <!-- Bottom buttons -->
-            <StackPanel Grid.Row="2" Orientation="Horizontal" Margin="8,4,8,8">
-                <Button x:Name="LeftSettingsButton"
-                        Content="&#x2699;"
-                        Background="{StaticResource BgTertiary}"
-                        Foreground="{StaticResource TextPrimary}"
-                        Padding="6"
-                        Margin="0,0,4,0"
-                        Click="OnSettingsClicked"
-                        Cursor="Hand"
-                        Height="24"
-                        Width="24">
-                    <Button.Styles>
-                        <Style Selector="Button:pointerover">
-                            <Setter Property="Background" Value="#3A3A3E"/>
-                        </Style>
-                    </Button.Styles>
-                </Button>
-                <Button x:Name="LeftHelpButton"
-                        Content="&#x3F;"
-                        Background="{StaticResource BgTertiary}"
-                        Foreground="{StaticResource TextPrimary}"
-                        Padding="6"
-                        Margin="0,0,4,0"
-                        Click="OnStatusAboutClicked"
-                        Cursor="Hand"
-                        Height="24"
-                        Width="24">
-                    <Button.Styles>
-                        <Style Selector="Button:pointerover">
-                            <Setter Property="Background" Value="#3A3A3E"/>
-                        </Style>
-                    </Button.Styles>
-                </Button>
-            </StackPanel>
         </Grid>
 
         <!-- Invisible overlay to catch clicks outside the title while editing -->
@@ -433,7 +422,21 @@
 
         <!-- ===== CENTER PANE ===== -->
         <Grid x:Name="CenterPaneGrid" Grid.Row="1" Grid.Column="1" Background="#1A1A1E">
-            <Grid>
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="*"/>
+                <ColumnDefinition Width="Auto"/>
+            </Grid.ColumnDefinitions>
+            <Grid.RowDefinitions>
+                <RowDefinition Height="*"/>
+                <RowDefinition Height="Auto"/>
+            </Grid.RowDefinitions>
+
+            <!-- Inner Grid for chat content (left side of center pane) -->
+            <Grid Grid.Column="0" Grid.Row="0">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="Auto"/>
+                </Grid.ColumnDefinitions>
                 <Grid.RowDefinitions>
                     <RowDefinition Height="Auto"/>
                     <RowDefinition Height="*"/>
@@ -755,17 +758,10 @@
                     </Grid>
                 </Border>
             </Grid>
+            <!-- PinguCanvas positioned in the bottom-right of the center pane -->
+            <Canvas x:Name="PinguCornerPanel" Grid.Column="1" Grid.Row="1" IsVisible="True" Panel.ZIndex="100" Background="#1A1A1E" Width="350" Height="350"/>
         </Grid>
 
-        <!-- ===== PINGU CORNER PANEL (for PinguAvatar and PinguCanvas) ===== -->
-        <Panel x:Name="PinguCornerPanel" Grid.Row="1" Grid.Column="1" IsVisible="True" Panel.ZIndex="100" Background="Transparent">
-            <Panel.Width>
-                <Binding Path="Width" RelativeSource="{RelativeSource AncestorType=Grid}"/>
-            </Panel.Width>
-            <Panel.Height>
-                <Binding Path="Height" RelativeSource="{RelativeSource AncestorType=Grid}"/>
-            </Panel.Height>
-        </Panel>
 
         <!-- ===== RIGHT SIDEBAR (with Pingu home tile) ===== -->
         <Grid Grid.Row="1" Grid.Column="2" Background="{StaticResource BgPrimary}">
@@ -815,10 +811,14 @@
                 </StackPanel>
             </ScrollViewer>
             <!-- Pingu Home tile at the bottom of the sidebar -->
-            <Controls:PinguHomeTile Grid.Row="1"
-                                    x:Name="PinguHomeTile"
-                                    HorizontalAlignment="Stretch"
-                                    PointerPressed="OnPinguHomeTileClicked"/>
+            <Border Grid.Row="1"
+                    Background="{StaticResource BgSecondary}"
+                    Padding="0">
+                <Controls:PinguHomeTile x:Name="PinguHomeTile"
+                                        HorizontalAlignment="Stretch"
+                                        Height="120"
+                                        PointerPressed="OnPinguHomeTileClicked"/>
+            </Border>
         </Grid>
 
         <!-- Status bar -->

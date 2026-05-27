@@ -163,6 +163,10 @@ public partial class MainWindow
 
         try
         {
+            // Clear custom context borders when switching chats (prevents stale context segments)
+            _customContextBorders.Clear();
+            CustomContextSegmentsContainer?.Children.Clear();
+
             var messages = await _conversationManager.GetMessagesAsync(chatId);
 
             // Clear existing message display

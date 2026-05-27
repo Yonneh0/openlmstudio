@@ -69,11 +69,11 @@ public class LogViewerService
     {
         var domainEngine = engine switch
         {
-            DomainEngineType.Primary => OpenLMStudio.Domain.Models.EngineType.Primary,
-            DomainEngineType.SystemAI => OpenLMStudio.Domain.Models.EngineType.SystemAI,
-            DomainEngineType.Diffusion => OpenLMStudio.Domain.Models.EngineType.Diffusion,
-            DomainEngineType.Embedding => OpenLMStudio.Domain.Models.EngineType.Embedding,
-            _ => OpenLMStudio.Domain.Models.EngineType.Primary
+            DomainEngineType.Primary => Domain.Models.EngineType.Primary,
+            DomainEngineType.SystemAI => Domain.Models.EngineType.SystemAI,
+            DomainEngineType.Diffusion => Domain.Models.EngineType.Diffusion,
+            DomainEngineType.Embedding => Domain.Models.EngineType.Embedding,
+            _ => Domain.Models.EngineType.Primary
         };
 
         var entry = new LogEntry(

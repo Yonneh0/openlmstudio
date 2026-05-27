@@ -104,10 +104,12 @@ public partial class App : Avalonia.Application
         // use the configured logging provider (not NullLogger)
         serviceCollection.AddLogging(builder =>
             builder
+#pragma warning disable CS0618 // Type or member is obsolete — TimestampFormat is still functional
                 .AddConsole(options =>
                 {
                     options.TimestampFormat = "HH:mm:ss.fff ";
                 })
+#pragma warning restore CS0618
                 .AddDebug()
                 .SetMinimumLevel(LogLevel.Debug)
                 .AddFilter("OpenLMStudio", LogLevel.Information));

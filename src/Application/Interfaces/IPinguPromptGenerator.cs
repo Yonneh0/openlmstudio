@@ -25,7 +25,8 @@ public record PinguPromptContext(
     string? CurrentModelName,
     string? CurrentPinguMood,
     string? ActivePanel,
-    string? CurrentConversationSummary);
+    string? CurrentConversationSummary,
+    IReadOnlyList<EngineLogEntry> RecentLogEntries = null!);
 
 /// <summary>
 /// Generates context-aware system prompts for Pingu based on its assigned tasks and current state.

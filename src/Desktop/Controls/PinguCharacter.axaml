@@ -20,7 +20,7 @@
                 Foreground="#4FC3F7"
                 HorizontalAlignment="Center"
                 Margin="0,0,0,8" />
-            <controls:PinguCharacterView x:Name="CharacterView"
+            <controls:PinguCharacterView
                 Width="180"
                 Height="180"
                 HorizontalAlignment="Center" />

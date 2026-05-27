@@ -24,7 +24,7 @@ namespace OpenLMStudio.Infrastructure.Rendering;
 /// Renders a Pingu character using SkiaSharp on an Avalonia canvas.
 /// Renders mesh data as textured triangles with bone-based skinning.
 /// </summary>
-public class PinguRenderer
+public class PinguRenderer : IDisposable
 {
     private PinguMeshData? _mesh;
     private readonly PinguBoneHierarchy _hierarchy;
@@ -42,12 +42,16 @@ public class PinguRenderer
     private SKBitmap? _atlasBitmap;
     private SKCanvas? _canvas;
     private SKPaint? _paint;
+    private bool _disposed;
 
     /// <summary>
     /// Get the current render bitmap for copying into Avalonia.
     /// </summary>
     public SKBitmap? RenderBitmap => _bitmap;
 
+    /// <summary>
+    /// Creates a PinguRenderer with mesh data and all required services.
+    /// </summary>
     public PinguRenderer(
         PinguMeshData mesh,
         PinguBoneHierarchy hierarchy,
@@ -64,26 +68,6 @@ public class PinguRenderer
         _homeScene = homeScene;
         _textureAtlas = textureAtlas;
         _random = random ?? new Random();
-        _activePenguins = new List<PinguNPC> { _npcManager.Pingu };
-    }
-
-    /// <summary>
-    /// Simplified constructor without mesh data (for generated data).
-    /// </summary>
-    public PinguRenderer(
-        PinguBoneHierarchy hierarchy,
-        PinguAnimationSystem animation,
-        PinguNPCManager npcManager,
-        PinguHomeScene homeScene,
-        byte[] textureAtlas)
-    {
-        _hierarchy = hierarchy;
-        _animation = animation;
-        _npcManager = npcManager;
-        _homeScene = homeScene;
-        _textureAtlas = textureAtlas;
-        _mesh = new PinguMeshData();
-        _random = new Random();
         _activePenguins = new List<PinguNPC> { _npcManager.Pingu };
     }
 
@@ -129,6 +113,10 @@ public class PinguRenderer
     /// </summary>
     public void Dispose()
     {
+        if (_disposed)
+            return;
+
+        _disposed = true;
         _surface?.Dispose();
         _bitmap?.Dispose();
         _atlasBitmap?.Dispose();

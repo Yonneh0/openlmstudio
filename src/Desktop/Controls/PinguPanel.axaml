@@ -1,9 +1,10 @@
 <UserControl x:Class="OpenLMStudio.Desktop.Controls.PinguPanel"
     xmlns="https://github.com/avaloniaui"
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:controls="using:OpenLMStudio.Desktop.Controls"
     Width="320" Height="480">
 
-        <Border Background="#1E1E22"
+    <Border Background="#1E1E22"
             CornerRadius="12"
             Margin="8">
         <StackPanel Margin="16">
@@ -18,38 +19,165 @@
                         SelectedIndex="0">
                 <TabItem Header="Skills">
                     <StackPanel>
-                        <TextBlock Text="Skills"
-                                   FontSize="14"/>
+                        <TextBlock Text="Pingu Skills"
+                                   FontSize="14"
+                                   FontWeight="SemiBold"
+                                   Margin="0,0,0,8"/>
+                        <TextBlock Text="Idle Sway - Pingu gently sways back and forth"
+                                   FontSize="12"
+                                   Margin="0,0,0,4"/>
+                        <TextBlock Text="Eye Tracking - Pingu's eyes follow the mouse cursor"
+                                   FontSize="12"
+                                   Margin="0,0,0,4"/>
+                        <TextBlock Text="Random Twitches - Pingu occasionally twitches"
+                                   FontSize="12"
+                                   Margin="0,0,0,4"/>
+                        <TextBlock Text="Head Turns - Pingu turns to look at you"
+                                   FontSize="12"
+                                   Margin="0,0,0,4"/>
+                        <TextBlock Text="Scratching - Pingu scratches its leg"
+                                   FontSize="12"
+                                   Margin="0,0,0,4"/>
+                        <TextBlock Text="Sitting Down - Pingu sits down and gets up"
+                                   FontSize="12"
+                                   Margin="0,0,0,4"/>
+                        <TextBlock Text="Ear Flicking - Pingu flicks its ears"
+                                   FontSize="12"
+                                   Margin="0,0,0,4"/>
                     </StackPanel>
                 </TabItem>
                 <TabItem Header="Settings">
                     <StackPanel>
                         <TextBlock Text="Pingu Settings"
-                                   FontSize="14"/>
+                                   FontSize="14"
+                                   FontWeight="SemiBold"
+                                   Margin="0,0,0,8"/>
+                        <TextBlock Text="Animation Speed:"
+                                   FontSize="12"
+                                   Margin="0,0,0,4"/>
+                        <Slider x:Name="AnimationSpeedSlider"
+                                Minimum="0.5"
+                                Maximum="2.0"
+                                Value="1.0"
+                                Margin="0,0,0,8"/>
+                        <TextBlock Text="Behavior Frequency:"
+                                   FontSize="12"
+                                   Margin="0,0,0,4"/>
+                        <Slider x:Name="BehaviorFrequencySlider"
+                                Minimum="0.5"
+                                Maximum="2.0"
+                                Value="1.0"
+                                Margin="0,0,0,8"/>
+                        <TextBlock Text="Pingu Size:"
+                                   FontSize="12"
+                                   Margin="0,0,0,4"/>
+                        <Slider x:Name="PinguSizeSlider"
+                                Minimum="0.5"
+                                Maximum="2.0"
+                                Value="1.0"
+                                Margin="0,0,0,8"/>
                     </StackPanel>
                 </TabItem>
                 <TabItem Header="Models">
                     <StackPanel>
-                        <TextBlock Text="Models"
-                                   FontSize="14"/>
+                        <TextBlock Text="Penguin Models"
+                                   FontSize="14"
+                                   FontWeight="SemiBold"
+                                   Margin="0,0,0,8"/>
+                        <TextBlock Text="Active Penguin:"
+                                   FontSize="12"
+                                   FontWeight="SemiBold"
+                                   Margin="0,0,0,4"/>
+                        <TextBlock Text="Pingu (Default)"
+                                   FontSize="12"
+                                   Margin="0,0,0,8"/>
+                        <TextBlock Text="Available Models:"
+                                   FontSize="12"
+                                   FontWeight="SemiBold"
+                                   Margin="0,0,0,4"/>
+                        <TextBlock Text="Penguin - Default penguin"
+                                   FontSize="11"
+                                   Margin="0,0,0,2"/>
+                        <TextBlock Text="Penguin (Custom)"
+                                   FontSize="11"
+                                   Margin="0,0,0,2"/>
+                        <TextBlock Text="Penguin (Tiny)"
+                                   FontSize="11"
+                                   Margin="0,0,0,2"/>
                     </StackPanel>
                 </TabItem>
                 <TabItem Header="Compile">
                     <StackPanel>
                         <TextBlock Text="Compile"
-                                   FontSize="14"/>
+                                   FontSize="14"
+                                   FontWeight="SemiBold"
+                                   Margin="0,0,0,8"/>
+                        <TextBlock Text="Generate new character:"
+                                   FontSize="12"
+                                   Margin="0,0,0,4"/>
+                        <Button Content="Generate Random Penguin"
+                                Background="#0E639C"
+                                Foreground="White"
+                                Padding="8,4"
+                                Margin="0,0,0,8"/>
+                        <TextBlock Text="Export files:"
+                                   FontSize="12"
+                                   FontWeight="SemiBold"
+                                   Margin="0,0,0,4"/>
+                        <Button Content="Export Mesh"
+                                Background="#4FC3F7"
+                                Foreground="White"
+                                Padding="8,4"
+                                Margin="0,0,0,4"/>
+                        <Button Content="Export JSON"
+                                Background="#4FC3F7"
+                                Foreground="White"
+                                Padding="8,4"
+                                Margin="0,0,0,4"/>
+                        <Button Content="Export Texture"
+                                Background="#4FC3F7"
+                                Foreground="White"
+                                Padding="8,4"
+                                Margin="0,0,0,4"/>
                     </StackPanel>
                 </TabItem>
                 <TabItem Header="Logs">
                     <StackPanel>
-                        <TextBlock Text="Logs"
-                                   FontSize="14"/>
+                        <TextBlock Text="Pingu Logs"
+                                   FontSize="14"
+                                   FontWeight="SemiBold"
+                                   Margin="0,0,0,8"/>
+                        <TextBlock Text="No logs yet"
+                                   FontSize="12"
+                                   Foreground="#888888"
+                                   Margin="0,0,0,4"/>
                     </StackPanel>
                 </TabItem>
                 <TabItem Header="About">
                     <StackPanel>
                         <TextBlock Text="About Pingu"
-                                   FontSize="14"/>
+                                   FontSize="14"
+                                   FontWeight="SemiBold"
+                                   Margin="0,0,0,8"/>
+                        <TextBlock Text="Pingu is a cute penguin character that lives in your OpenLMStudio app."
+                                   FontSize="12"
+                                   Margin="0,0,0,4"/>
+                        <TextBlock Text="It can:"
+                                   FontSize="12"
+                                   FontWeight="SemiBold"
+                                   Margin="0,0,0,4"/>
+                        <TextBlock Text="• Watch you work"
+                                   FontSize="12"
+                                   Margin="0,0,0,4"/>
+                        <TextBlock Text="• React to your movements"
+                                   FontSize="12"
+                                   Margin="0,0,0,4"/>
+                        <TextBlock Text="• Do random cute things"
+                                   FontSize="12"
+                                   Margin="0,0,0,4"/>
+                        <TextBlock Text="• Keep you company while you work"
+                                   FontSize="12"
+                                   Margin="0,0,0,4"/>
                     </StackPanel>
                 </TabItem>
             </TabControl>

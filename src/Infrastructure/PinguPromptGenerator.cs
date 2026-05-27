@@ -3,6 +3,7 @@ using Microsoft.Extensions.Logging;
 using OpenLMStudio.Application.Interfaces;
 using OpenLMStudio.Domain.Models;
 using DomainModels = OpenLMStudio.Domain.Models;
+using AppLogLevel = OpenLMStudio.Application.Interfaces.LogLevel;
 
 namespace OpenLMStudio.Infrastructure;
 
@@ -19,6 +20,9 @@ public class PinguPromptGenerator : IPinguPromptGenerator
         _logger = logger;
     }
 
+    /// <summary>
+    /// Generates the full system prompt for Pingu given the current context, including recent log entries.
+    /// </summary>
     public string GenerateFullPrompt(PinguPromptContext context)
     {
         var sb = new StringBuilder();
@@ -63,6 +67,27 @@ public class PinguPromptGenerator : IPinguPromptGenerator
         {
             sb.AppendLine();
             sb.AppendLine($"## Model State: {context.CurrentModelName} {(context.IsModelLoaded ? "(loaded)" : "(available)")}");
+        }
+
+        // Log context injection
+        if (context.RecentLogEntries != null && context.RecentLogEntries.Count > 0)
+        {
+            sb.AppendLine();
+            sb.AppendLine("## Recent System Events");
+            foreach (var log in context.RecentLogEntries)
+            {
+                var time = log.Timestamp.ToString("HH:mm:ss");
+                var levelEmoji = log.Level switch
+                {
+                    AppLogLevel.Trace => "\U0001F535",
+                    AppLogLevel.Debug => "\U0001F535",
+                    AppLogLevel.Info => "\U0001F7E2",
+                    AppLogLevel.Warn => "\U0001F7E1",
+                    AppLogLevel.Error => "\U0001F534",
+                    _ => "\u26AA"
+                };
+                sb.AppendLine($"{levelEmoji} [{time}] [{log.Level}] {log.Message}");
+            }
         }
 
         return sb.ToString();

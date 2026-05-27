@@ -19,8 +19,6 @@ public class PinguHomeSceneRenderer : IDisposable
     /// </summary>
     private SKPaint _paint = new();
     private SKPaint _strokePaint = new() { Style = SKPaintStyle.Stroke, StrokeWidth = 2 };
-    private SKShader? _textureShader;
-
     private bool _disposed;
 
     public PinguHomeSceneRenderer(
@@ -34,14 +32,6 @@ public class PinguHomeSceneRenderer : IDisposable
     }
 
     /// <summary>
-    /// Set the texture shader for the home scene.
-    /// </summary>
-    public void SetTextureShader(SKShader shader)
-    {
-        _textureShader = shader;
-    }
-
-    /// <summary>
     /// Disposes the renderer and all associated resources.
     /// </summary>
     public void Dispose()
@@ -52,7 +42,6 @@ public class PinguHomeSceneRenderer : IDisposable
         _disposed = true;
         _paint?.Dispose();
         _strokePaint?.Dispose();
-        _textureShader?.Dispose();
     }
 
     /// <summary>
@@ -79,7 +68,7 @@ public class PinguHomeSceneRenderer : IDisposable
     /// </summary>
     public void SetBackgroundColor(string color)
     {
-        // Background color is stored in the home scene
+        _homeScene.BackgroundColor = color;
     }
 
     /// <summary>
@@ -87,19 +76,10 @@ public class PinguHomeSceneRenderer : IDisposable
     /// </summary>
     private void DrawBackground(SKCanvas canvas, float width, float height)
     {
-        // Gradient background
+        // Solid background color
         var bgPaint = new SKPaint
         {
-            Shader = SKShader.CreateLinearGradient(
-                new SKPoint(0, 0),
-                new SKPoint(width, height),
-                new SKColor[]
-                {
-                    ParseColor(_homeScene.BackgroundColor),
-                    SKColors.White,
-                },
-                new float[] { 0f, 1f },
-                SkiaSharp.SKShaderTileMode.Clamp),
+            Color = ParseColor(_homeScene.BackgroundColor),
             Style = SKPaintStyle.Fill,
         };
         canvas.DrawRect(0, 0, width, height, bgPaint);

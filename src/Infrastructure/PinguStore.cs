@@ -271,7 +271,7 @@ public class PinguStore : IPinguStore, IDisposable
         // Use texture atlas from character data
         var atlas = characterData.TextureAtlas ?? new byte[0];
 
-        var renderer = new PinguRenderer(hierarchy, animation, npcManager, homeScene, atlas);
+        var renderer = new PinguRenderer(characterData.MeshData, hierarchy, animation, npcManager, homeScene, atlas);
         renderer.Initialize(400, 400);
 
         return async (cursor, skBitmap, skCanvas) =>

@@ -5,6 +5,20 @@ using Microsoft.Extensions.Logging;
 namespace OpenLMStudio.Infrastructure.Services;
 
 /// <summary>
+/// Alias for the Microsoft.Extensions.Logging log level.
+/// </summary>
+public enum MLogLevel
+{
+    Trace = 0,
+    Debug = 1,
+    Information = 2,
+    Warning = 3,
+    Error = 4,
+    Critical = 5,
+    None = 6
+}
+
+/// <summary>
 /// Custom log scope provider for OpenLMStudio structured logging.
 /// Adds correlation IDs, component context, and user session tracking to all log output.
 /// Implements IDisposable instead of ILogScope since .NET Core doesn't expose that interface publicly — 
@@ -59,9 +73,11 @@ public class OpenLmStudioLogScope : IDisposable
             CurrentCorrelationId = null;
     }
 
+    /// <summary>
+    /// Writes a structured log entry with correlation context.
+    /// </summary>
     public void Write(string message, MLogLevel logLevel)
     {
-        // Build structured log entry with correlation context
         var builder = new System.Text.StringBuilder();
 
         if (CurrentCorrelationId != null)
@@ -77,6 +93,7 @@ public class OpenLmStudioLogScope : IDisposable
         builder.Append(message);
 
         // Write to the current log sink — the actual logging is done by the caller's ILogger
+        Console.WriteLine(builder.ToString());
     }
 
 }
@@ -90,9 +107,10 @@ public static class OpenLmStudioLoggingExtensions
     /// Creates a new log scope with component and session tracking.
     /// Automatically generates a correlation ID for request tracing.
     /// </summary>
-    public static IDisposable? BeginScopeWithCorrelation(this ILogger logger, string component, string sessionId)
+    public static IDisposable BeginScopeWithCorrelation(this ILogger logger, string component, string sessionId)
     {
         var correlationId = Guid.NewGuid().ToString("N")[..8]; // Short 8-char correlation ID
+        OpenLmStudioLogScope.CurrentCorrelationId = correlationId;
 
         var scope = new OpenLmStudioLogScope(component, sessionId);
 
@@ -119,7 +137,7 @@ public static class OpenLmStudioLoggingExtensions
             }
         }
 
-        logger.Log(logLevel, "OpenLMStudio Event: {EventName} CorrelationId={CorrelationId}", eventName, correlationId);
+        logger.Log((Microsoft.Extensions.Logging.LogLevel)logLevel, new Microsoft.Extensions.Logging.EventId(0, "OpenLMStudioEvent"), "OpenLMStudio Event: {EventName} CorrelationId={CorrelationId}", (eventName, correlationId), (Func<(string, string), Exception?, string>)((state, _) => state.Item1 + " " + state.Item2));
     }
 
     /// <summary>
