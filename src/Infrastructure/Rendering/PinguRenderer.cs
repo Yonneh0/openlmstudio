@@ -196,10 +196,7 @@ public class PinguRenderer : IDisposable
     /// </summary>
     private void DrawHomeScene(SKCanvas canvas)
     {
-        // Clear canvas
-        canvas.Clear(SKColors.White);
-
-        // Draw background
+        // Draw background (includes its own clear)
         DrawBackground(canvas);
 
         // Draw each home object
@@ -215,6 +212,9 @@ public class PinguRenderer : IDisposable
     /// </summary>
     private void DrawBackground(SKCanvas canvas)
     {
+        // Clear canvas first
+        canvas.Clear(SKColors.White);
+
         // Solid background color
         var bgPaint = new SKPaint
         {
@@ -260,8 +260,11 @@ public class PinguRenderer : IDisposable
                 break;
             default:
                 // Generic rectangle
-                _paint.Color = color;
-                canvas.DrawRect(x, y, w, h, _paint);
+                if (_paint != null)
+                {
+                    _paint.Color = color;
+                    canvas.DrawRect(x, y, w, h, _paint);
+                }
                 break;
         }
     }

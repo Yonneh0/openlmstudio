@@ -197,7 +197,7 @@ Implement a lightweight, hardware-accelerated 3D character system for the OpenLM
 **Goal: Consolidate all Pingu files into 1-2 files per project with clean separation of concerns.**
 
 #### 7.1 Consolidate Domain Models
-- [ ] Merge `PinguMesh.cs` + `PinguSkinWeights.cs` + `PinguHat.cs` + `PinguTool.cs` + `PinguAccessory.cs` + `PinguAnimationState.cs` + `PinguAnimationStateMachine.cs` + `PinguBone.cs` + `PinguBoneHierarchy` + `PinguPhysicsParams.cs` + `PinguPhysicsSolver.cs` + `PinguHomeScene.cs` + `PinguHomeSceneRenderer.cs` → `src/Domain/Models/PinguModels.cs`
+- [x] Merge `PinguMesh.cs` + `PinguSkinWeights.cs` + `PinguHat.cs` + `PinguTool.cs` + `PinguAccessory.cs` + `PinguAnimationState.cs` + `PinguAnimationStateMachine.cs` + `PinguBone.cs` + `PinguBoneHierarchy` + `PinguPhysicsParams.cs` + `PinguPhysicsSolver.cs` + `PinguHomeScene.cs` + `PinguHomeSceneRenderer.cs` → `src/Domain/Models/PinguModels.cs` (2026-05-28, v2)
 
 #### 7.2 Consolidate Infrastructure Services
 - [ ] Merge `PinguAnimationSystem.cs` + `PinguInverseKinematics.cs` + `PinguPhysicsSolver.cs` → `src/Infrastructure/Services/PinguAnimationSystem.cs`
