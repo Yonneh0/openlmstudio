@@ -5,7 +5,6 @@ using Avalonia.Interactivity;
 using Avalonia.VisualTree;
 using Microsoft.Extensions.Logging;
 using OpenLMStudio.Domain.Models;
-using OpenLMStudio.Infrastructure.Rendering;
 using OpenLMStudio.Infrastructure.Services;
 
 namespace OpenLMStudio.Desktop.Controls;

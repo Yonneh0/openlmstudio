@@ -8,7 +8,6 @@ using Avalonia.Media;
 using Avalonia.Threading;
 using Microsoft.Extensions.Logging;
 using OpenLMStudio.Domain.Models;
-using OpenLMStudio.Infrastructure.Rendering;
 using OpenLMStudio.Infrastructure.Services;
 using SKBitmap = SkiaSharp.SKBitmap;
 using SKCanvas = SkiaSharp.SKCanvas;
