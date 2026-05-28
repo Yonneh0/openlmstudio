@@ -37,13 +37,15 @@ public class UseSkill
 
             _logger?.LogInformation("use_skill: Activated skill '{SkillName}'", skillName);
             return ToolResult.Ok($"Skill '{skillName}' activated.")
-                with { DurationMs = stopwatch.ElapsedMilliseconds };
+                with
+            { DurationMs = stopwatch.ElapsedMilliseconds };
         }
         catch (Exception ex)
         {
             stopwatch.Stop();
             return ToolResult.Fail($"Error activating skill: {ex.Message}")
-                with { DurationMs = stopwatch.ElapsedMilliseconds };
+                with
+            { DurationMs = stopwatch.ElapsedMilliseconds };
         }
     }
 }
@@ -80,13 +82,15 @@ public class UseSubagents
 
             _logger?.LogInformation("use_subagents: Running {Count} subagents", prompts.Count);
             return ToolResult.Ok($"Summary of subagent results:\n\n{summary}")
-                with { DurationMs = stopwatch.ElapsedMilliseconds };
+                with
+            { DurationMs = stopwatch.ElapsedMilliseconds };
         }
         catch (Exception ex)
         {
             stopwatch.Stop();
             return ToolResult.Fail($"Error running subagents: {ex.Message}")
-                with { DurationMs = stopwatch.ElapsedMilliseconds };
+                with
+            { DurationMs = stopwatch.ElapsedMilliseconds };
         }
     }
 
@@ -124,13 +128,15 @@ public class NewTask
 
             _logger?.LogInformation("new_task: Created task with context");
             return ToolResult.Ok($"New task created with context:\n\n{context.Trim()}")
-                with { DurationMs = stopwatch.ElapsedMilliseconds };
+                with
+            { DurationMs = stopwatch.ElapsedMilliseconds };
         }
         catch (Exception ex)
         {
             stopwatch.Stop();
             return ToolResult.Fail($"Error creating new task: {ex.Message}")
-                with { DurationMs = stopwatch.ElapsedMilliseconds };
+                with
+            { DurationMs = stopwatch.ElapsedMilliseconds };
         }
     }
 }
@@ -219,7 +225,8 @@ public class PatchService
         {
             stopwatch.Stop();
             return ToolResult.Fail($"Error applying patch: {ex.Message}")
-                with { DurationMs = stopwatch.ElapsedMilliseconds };
+                with
+            { DurationMs = stopwatch.ElapsedMilliseconds };
         }
     }
 

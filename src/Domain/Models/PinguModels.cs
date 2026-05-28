@@ -350,17 +350,28 @@ public class PinguMeshData
         {
             Vertices = Vertices.Select(v => new PinguVertex
             {
-                X = v.X, Y = v.Y, Z = v.Z,
-                NormalX = v.NormalX, NormalY = v.NormalY, NormalZ = v.NormalZ,
-                U = v.U, V = v.V,
-                BoneIndex0 = v.BoneIndex0, BoneIndex1 = v.BoneIndex1,
-                BoneIndex2 = v.BoneIndex2, BoneIndex3 = v.BoneIndex3,
-                BoneWeight0 = v.BoneWeight0, BoneWeight1 = v.BoneWeight1,
-                BoneWeight2 = v.BoneWeight2, BoneWeight3 = v.BoneWeight3,
+                X = v.X,
+                Y = v.Y,
+                Z = v.Z,
+                NormalX = v.NormalX,
+                NormalY = v.NormalY,
+                NormalZ = v.NormalZ,
+                U = v.U,
+                V = v.V,
+                BoneIndex0 = v.BoneIndex0,
+                BoneIndex1 = v.BoneIndex1,
+                BoneIndex2 = v.BoneIndex2,
+                BoneIndex3 = v.BoneIndex3,
+                BoneWeight0 = v.BoneWeight0,
+                BoneWeight1 = v.BoneWeight1,
+                BoneWeight2 = v.BoneWeight2,
+                BoneWeight3 = v.BoneWeight3,
             }).ToList(),
             Triangles = Triangles.Select(t => new PinguTriangle
             {
-                Vertex0 = t.Vertex0, Vertex1 = t.Vertex1, Vertex2 = t.Vertex2,
+                Vertex0 = t.Vertex0,
+                Vertex1 = t.Vertex1,
+                Vertex2 = t.Vertex2,
                 ZOrder = t.ZOrder,
             }).ToList(),
             TextureAtlasBytes = TextureAtlasBytes?.ToArray(),
@@ -369,9 +380,9 @@ public class PinguMeshData
         };
     }
 
-    public void Clear() 
-    { 
-        Vertices.Clear(); 
+    public void Clear()
+    {
+        Vertices.Clear();
         Triangles.Clear();
         AtlasWidth = 512;
         AtlasHeight = 512;
@@ -473,12 +484,23 @@ public class PinguBone
 
     public PinguBone Clone() => new()
     {
-        Name = Name, Index = Index, ParentIndex = ParentIndex,
-        X = X, Y = Y, Z = Z,
-        Roll = Roll, Pitch = Pitch, Yaw = Yaw, Scale = Scale,
-        MinRoll = MinRoll, MaxRoll = MaxRoll,
-        MinPitch = MinPitch, MaxPitch = MaxPitch,
-        MinYaw = MinYaw, MaxYaw = MaxYaw, Depth = Depth,
+        Name = Name,
+        Index = Index,
+        ParentIndex = ParentIndex,
+        X = X,
+        Y = Y,
+        Z = Z,
+        Roll = Roll,
+        Pitch = Pitch,
+        Yaw = Yaw,
+        Scale = Scale,
+        MinRoll = MinRoll,
+        MaxRoll = MaxRoll,
+        MinPitch = MinPitch,
+        MaxPitch = MaxPitch,
+        MinYaw = MinYaw,
+        MaxYaw = MaxYaw,
+        Depth = Depth,
     };
 }
 
@@ -529,12 +551,22 @@ public class PinguBoneHierarchy
         {
             var bone = new PinguBone
             {
-                Name = def.Name, Index = def.Index, ParentIndex = def.ParentIndex,
-                X = def.X, Y = def.Y, Z = def.Z,
-                Roll = def.Roll, Pitch = def.Pitch, Yaw = def.Yaw, Scale = def.Scale,
-                MinRoll = def.MinRoll, MaxRoll = def.MaxRoll,
-                MinPitch = def.MinPitch, MaxPitch = def.MaxPitch,
-                MinYaw = def.MinYaw, MaxYaw = def.MaxYaw,
+                Name = def.Name,
+                Index = def.Index,
+                ParentIndex = def.ParentIndex,
+                X = def.X,
+                Y = def.Y,
+                Z = def.Z,
+                Roll = def.Roll,
+                Pitch = def.Pitch,
+                Yaw = def.Yaw,
+                Scale = def.Scale,
+                MinRoll = def.MinRoll,
+                MaxRoll = def.MaxRoll,
+                MinPitch = def.MinPitch,
+                MaxPitch = def.MaxPitch,
+                MinYaw = def.MinYaw,
+                MaxYaw = def.MaxYaw,
             };
             nameToBone[def.Name] = bone;
         }
@@ -817,11 +849,18 @@ public class PinguPhysicsParams
 
     public PinguPhysicsParams Clone() => new()
     {
-        Mass = Mass, Friction = Friction, Gravity = Gravity, IkStiffness = IkStiffness,
-        VelocityDamping = VelocityDamping, SpringStiffness = SpringStiffness,
-        SpringRestLength = SpringRestLength, AffectedByGravity = AffectedByGravity,
-        MaxWalkSpeed = MaxWalkSpeed, MaxRunSpeed = MaxRunSpeed,
-        Acceleration = Acceleration, Deceleration = Deceleration,
+        Mass = Mass,
+        Friction = Friction,
+        Gravity = Gravity,
+        IkStiffness = IkStiffness,
+        VelocityDamping = VelocityDamping,
+        SpringStiffness = SpringStiffness,
+        SpringRestLength = SpringRestLength,
+        AffectedByGravity = AffectedByGravity,
+        MaxWalkSpeed = MaxWalkSpeed,
+        MaxRunSpeed = MaxRunSpeed,
+        Acceleration = Acceleration,
+        Deceleration = Deceleration,
     };
 
     public bool HasConsistentSpeedLimits() => MaxWalkSpeed <= MaxRunSpeed;
@@ -942,9 +981,16 @@ public class PinguHomeObject
 
     public PinguHomeObject Clone() => new()
     {
-        Name = Name, Type = Type, X = X, Y = Y, Z = Z,
-        Width = Width, Height = Height, Color = Color,
-        IsInteractive = IsInteractive, InteractionAnimation = InteractionAnimation,
+        Name = Name,
+        Type = Type,
+        X = X,
+        Y = Y,
+        Z = Z,
+        Width = Width,
+        Height = Height,
+        Color = Color,
+        IsInteractive = IsInteractive,
+        InteractionAnimation = InteractionAnimation,
         IsVisible = IsVisible,
     };
 
@@ -990,8 +1036,11 @@ public class PinguHomeScene
 
     public static PinguHomeScene CreateDefault() => new()
     {
-        Name = "Default Home", BackgroundColor = "#1E1E22",
-        Width = 200f, Height = 200f, Depth = 100f,
+        Name = "Default Home",
+        BackgroundColor = "#1E1E22",
+        Width = 200f,
+        Height = 200f,
+        Depth = 100f,
         Objects = new List<PinguHomeObject>
         {
             PinguHomeObject.CreateDefaultIgloo(), PinguHomeObject.CreateDefaultSink(),

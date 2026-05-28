@@ -51,7 +51,8 @@ public class ActModeRespond
         {
             stopwatch.Stop();
             return ToolResult.Fail($"Error in act_mode_respond: {ex.Message}")
-                with { DurationMs = stopwatch.ElapsedMilliseconds };
+                with
+            { DurationMs = stopwatch.ElapsedMilliseconds };
         }
     }
 }
@@ -99,7 +100,8 @@ public class AttemptCompletion
         {
             stopwatch.Stop();
             return ToolResult.Fail($"Error in attempt_completion: {ex.Message}")
-                with { DurationMs = stopwatch.ElapsedMilliseconds };
+                with
+            { DurationMs = stopwatch.ElapsedMilliseconds };
         }
     }
 }
@@ -146,7 +148,8 @@ public class PlanModeRespond
         {
             stopwatch.Stop();
             return ToolResult.Fail($"Error in plan_mode_respond: {ex.Message}")
-                with { DurationMs = stopwatch.ElapsedMilliseconds };
+                with
+            { DurationMs = stopwatch.ElapsedMilliseconds };
         }
     }
 }
@@ -202,7 +205,8 @@ public class QuestionService
         {
             stopwatch.Stop();
             return ToolResult.Fail($"Error asking question: {ex.Message}")
-                with { DurationMs = stopwatch.ElapsedMilliseconds };
+                with
+            { DurationMs = stopwatch.ElapsedMilliseconds };
         }
     }
 }
