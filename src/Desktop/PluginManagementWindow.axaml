@@ -13,6 +13,7 @@
         <SolidColorBrush x:Key="AccentBlue" Color="#4FC3F7"/>
         <SolidColorBrush x:Key="AccentGreen" Color="#4CAF50"/>
         <SolidColorBrush x:Key="AccentRed" Color="#FF6B6B"/>
+        <SolidColorBrush x:Key="BorderDefault" Color="#333338"/>
     </Window.Resources>
 
     <Window.Styles>
@@ -23,6 +24,12 @@
             <Setter Property="BorderThickness" Value="0"/>
             <Setter Property="FontSize" Value="13"/>
         </Style>
+        <Style Selector="Button.pluginBtn:pointerover">
+            <Setter Property="Background" Value="#5CC8F7"/>
+        </Style>
+        <Style Selector="Button.pluginBtn:pressed">
+            <Setter Property="Background" Value="#3FA3D7"/>
+        </Style>
 
         <Style Selector="Button.pluginInstallBtn">
             <Setter Property="Background" Value="{StaticResource AccentGreen}"/>
@@ -30,6 +37,12 @@
             <Setter Property="Padding" Value="10,5"/>
             <Setter Property="BorderThickness" Value="0"/>
             <Setter Property="FontSize" Value="12"/>
+        </Style>
+        <Style Selector="Button.pluginInstallBtn:pointerover">
+            <Setter Property="Background" Value="#5CBF60"/>
+        </Style>
+        <Style Selector="Button.pluginInstallBtn:pressed">
+            <Setter Property="Background" Value="#3D9E40"/>
         </Style>
 
         <Style Selector="TextBox.pluginSearch">
@@ -45,24 +58,36 @@
             <Setter Property="FontSize" Value="14"/>
             <Setter Property="FontWeight" Value="SemiBold"/>
         </Style>
+        <Style Selector="TextBlock.pluginName:pointerover">
+            <Setter Property="Foreground" Value="{StaticResource AccentBlue}"/>
+        </Style>
 
         <Style Selector="TextBlock.pluginDescription">
             <Setter Property="Foreground" Value="{StaticResource TextSecondary}"/>
             <Setter Property="FontSize" Value="12"/>
+        </Style>
+        <Style Selector="TextBlock.pluginDescription:pointerover">
+            <Setter Property="Foreground" Value="{StaticResource TextPrimary}"/>
         </Style>
 
         <Style Selector="TextBlock.pluginVersion">
             <Setter Property="Foreground" Value="{StaticResource TextSecondary}"/>
             <Setter Property="FontSize" Value="11"/>
         </Style>
+        <Style Selector="TextBlock.pluginVersion:pointerover">
+            <Setter Property="Foreground" Value="{StaticResource TextPrimary}"/>
+        </Style>
 
         <Style Selector="Border.pluginCard">
             <Setter Property="Background" Value="{StaticResource BgSecondary}"/>
             <Setter Property="CornerRadius" Value="4"/>
             <Setter Property="BorderThickness" Value="1"/>
-            <Setter Property="BorderBrush" Value="#333333"/>
+            <Setter Property="BorderBrush" Value="{StaticResource BorderDefault}"/>
             <Setter Property="Padding" Value="16"/>
             <Setter Property="Margin" Value="0,0,0,8"/>
+        </Style>
+        <Style Selector="Border.pluginCard:pointerover">
+            <Setter Property="BorderBrush" Value="#444448"/>
         </Style>
 
         <Style Selector="Border.pluginCard:disabled">
@@ -72,9 +97,12 @@
         <Style Selector="StackPanel.pluginCard:disabled">
             <Setter Property="Opacity" Value="0.6"/>
         </Style>
+        <Style Selector="TextBlock.pluginCard:disabled">
+            <Setter Property="Opacity" Value="0.6"/>
+        </Style>
     </Window.Styles>
 
-    <Grid>
+    <Grid ExtendClientAreaToDecorationsHint="True">
         <Grid.RowDefinitions>
             <RowDefinition Height="Auto"/>
             <RowDefinition Height="*"/>
@@ -93,6 +121,7 @@
             <TextBox x:Name="PluginSearchBox"
                      Classes="pluginSearch"
                      Width="300"
+                     MinWidth="200"
                      PlaceholderText="Search plugins..."
                      Margin="0,0,8,0"/>
             <Button x:Name="RefreshPluginsBtn"
@@ -105,7 +134,7 @@
         </StackPanel>
 
         <!-- Plugin List -->
-        <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto">
+        <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto" MaxHeight="500">
             <StackPanel x:Name="PluginListPanel"/>
         </ScrollViewer>
 

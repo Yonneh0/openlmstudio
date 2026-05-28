@@ -103,6 +103,12 @@
         <Style Selector="Button.AgentModeToggle.active:hover">
             <Setter Property="Background" Value="#1E88E5"/>
         </Style>
+        <Style Selector="Button.AgentModeToggle:pressed">
+            <Setter Property="Background" Value="#1E88E5"/>
+        </Style>
+        <Style Selector="Button.AgentModeToggle.active:pressed">
+            <Setter Property="Background" Value="#0D47A1"/>
+        </Style>
         <Style Selector="ToggleButton.rightPanelTab"><Setter Property="Background" Value="{StaticResource BgTertiary}"/><Setter Property="Foreground" Value="{StaticResource TextPrimary}"/><Setter Property="Padding" Value="10,6"/><Setter Property="BorderThickness" Value="0"/><Setter Property="FontSize" Value="11"/><Setter Property="CornerRadius" Value="4"/></Style>
         <Style Selector="ToggleButton.rightPanelTab:checked"><Setter Property="Background" Value="{StaticResource AccentBlue}"/><Setter Property="Foreground" Value="White"/></Style>
         <Style Selector="TabItem.toolTab"><Setter Property="Padding" Value="8,4"/><Setter Property="Margin" Value="2,1"/><Setter Property="Background" Value="{StaticResource BgTertiary}"/><Setter Property="Foreground" Value="{StaticResource TextPrimary}"/><Setter Property="FontSize" Value="11"/><Setter Property="BorderThickness" Value="2,0,0,0"/><Setter Property="BorderBrush" Value="Transparent"/><Setter Property="CornerRadius" Value="3"/><Setter Property="Height" Value="24"/><Setter Property="MinHeight" Value="24"/><Setter Property="MaxHeight" Value="24"/><Setter Property="HorizontalContentAlignment" Value="Center"/><Setter Property="VerticalContentAlignment" Value="Center"/></Style>
@@ -902,7 +908,7 @@
                             </TextBlock>
                             <!-- Chat Title Edit (hidden by default) -->
                             <TextBox x:Name="ChatTitleEdit"
-                                     IsVisible="False"
+                                     IsVisible="{Binding IsChatTitleEditing}"
                                      Foreground="{StaticResource TextPrimary}"
                                      Background="{StaticResource BgTertiary}"
                                      BorderBrush="#3A3A3E"
@@ -972,7 +978,7 @@
                                                 Padding="4,1"
                                                 VerticalAlignment="Bottom"
                                                 HorizontalAlignment="Right"
-                                                Margin="0,0,-12,-4"
+                                                Margin="0,0,4,-4"
                                                 Click="OnAgentTurnsBadgeClicked"
                                                 IsHitTestVisible="True"
                                                 Background="{StaticResource AccentOrange}"
@@ -1069,6 +1075,10 @@
                                             <Style Selector="ToggleButton:pointerover">
                                                 <Setter Property="Background" Value="{Binding (ToggleButton.Background), RelativeSource={RelativeSource Self}}"/>
                                             </Style>
+                                            <Style Selector="ToggleButton:checked">
+                                                <Setter Property="Background" Value="{StaticResource AccentBlue}"/>
+                                                <Setter Property="Foreground" Value="White"/>
+                                            </Style>
                                         </ToggleButton.Styles>
                                     </ToggleButton>
                                         <ToggleButton x:Name="SafetyRead"
@@ -1087,6 +1097,10 @@
                                         <ToggleButton.Styles>
                                             <Style Selector="ToggleButton:pointerover">
                                                 <Setter Property="Background" Value="{Binding (ToggleButton.Background), RelativeSource={RelativeSource Self}}"/>
+                                            </Style>
+                                            <Style Selector="ToggleButton:checked">
+                                                <Setter Property="Background" Value="{StaticResource AccentBlue}"/>
+                                                <Setter Property="Foreground" Value="White"/>
                                             </Style>
                                         </ToggleButton.Styles>
                                     </ToggleButton>
@@ -1107,6 +1121,10 @@
                                             <Style Selector="ToggleButton:pointerover">
                                                 <Setter Property="Background" Value="{Binding (ToggleButton.Background), RelativeSource={RelativeSource Self}}"/>
                                             </Style>
+                                            <Style Selector="ToggleButton:checked">
+                                                <Setter Property="Background" Value="{StaticResource AccentBlue}"/>
+                                                <Setter Property="Foreground" Value="White"/>
+                                            </Style>
                                         </ToggleButton.Styles>
                                     </ToggleButton>
                                         <ToggleButton x:Name="SafetyExec"
@@ -1124,6 +1142,10 @@
                                         <ToggleButton.Styles>
                                             <Style Selector="ToggleButton:pointerover">
                                                 <Setter Property="Background" Value="{Binding (ToggleButton.Background), RelativeSource={RelativeSource Self}}"/>
+                                            </Style>
+                                            <Style Selector="ToggleButton:checked">
+                                                <Setter Property="Background" Value="{StaticResource AccentBlue}"/>
+                                                <Setter Property="Foreground" Value="White"/>
                                             </Style>
                                         </ToggleButton.Styles>
                                     </ToggleButton>
@@ -1183,7 +1205,7 @@
                 </Border>
             </Grid>
             <!-- PinguCanvas positioned in the bottom-right of the center pane -->
-            <Canvas x:Name="PinguCornerPanel" Grid.Column="1" Grid.Row="1" IsVisible="True" Panel.ZIndex="100" Background="#1A1A1E" Width="350" Height="350"/>
+            <Canvas x:Name="PinguCornerPanel" Grid.Column="1" Grid.Row="1" IsVisible="True" Panel.ZIndex="100" Background="#1A1A1E" MinWidth="200" MinHeight="200" MaxWidth="500" MaxHeight="500"/>
         </Grid>
 
 
