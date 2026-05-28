@@ -170,8 +170,6 @@
    - PinguService (~120 lines): Orchestrator wrapping all subsystems.
 ## src/Infrastructure/Services/PinguTools.cs - 662 lines - Consolidated Pingu Tools (6 tools)
    - 6 Pingu UI control tools: PinguTabSwitchTool, PinguPanelToggleTool, PinguGameIntegrationTool, PinguModelLoadTool, PinguModelTool, PinguWanderingTool.
-## src/Infrastructure/Rendering/PinguHomeSceneRenderer.cs - 306 lines - Home Scene Renderer for Pingu
-   - Renders Pingu home scene with igloo, sink, rug, ball, fishbowl, nest objects using SkiaSharp. Render, DrawBackground, DrawHomeObject, DrawIgloo, DrawSink.
 ## src/Infrastructure/Services/PinguRenderer.cs - 651 lines - SkiaSharp Renderer for Pingu
    - Renders Pingu characters using SkiaSharp on an Avalonia canvas. Initialize, Render, Resize, Dispose, DrawHomeScene, DrawPenguin, DrawMesh, DrawPenguinFallback.
 ## src/Infrastructure/Services/PluginRegistry.cs - 531 lines - Plugin Registry with Remote Registry, Sandbox Policies
