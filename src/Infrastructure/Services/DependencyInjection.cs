@@ -381,8 +381,8 @@ public static class DependencyInjection
         // ArchPromptService (merged into QEMUProcessManager) provides architecture-specific system prompts for cross-compilation
         services.AddSingleton<IArchPromptService, QEMUProcessManager>();
 
-        // VMStore provides reactive VM instance state storage
-        services.AddSingleton<IVMStore, VMStore>();
+        // VMStore (merged into QEMUProcessManager) provides reactive VM instance state storage
+        services.AddSingleton<IVMStore, QEMUProcessManager>();
 
         // EngineLogger provides structured logging with disk rotation for engine stdout/stderr
         services.AddSingleton<IEngineLogger, EngineLogger>();

@@ -13,13 +13,15 @@ namespace OpenLMStudio.Infrastructure.Services;
 /// <summary>
 /// Manages QEMU virtual machine instances with QMP protocol support and architecture-specific system prompts.
 /// </summary>
-public class QEMUProcessManager : OpenLMStudio.Application.Interfaces.IQEMUProcessManager, IArchPromptService, IDisposable
+public class QEMUProcessManager : OpenLMStudio.Application.Interfaces.IQEMUProcessManager, IArchPromptService, IVMStore, IDisposable
 {
     private readonly ILogger<QEMUProcessManager> _logger;
     private readonly ConcurrentDictionary<string, VMInstance> _instances = new();
     private readonly ConcurrentDictionary<string, Process> _processes = new();
     private int _qmpPortBase = 9100;
     private int _monPortBase = 10000;
+    private Timer? _stateTimer;
+    private object _stateLock = new();
 
     private static readonly Dictionary<ArchitectureType, string[]> _archBinaries = new()
     {
@@ -147,9 +149,36 @@ public class QEMUProcessManager : OpenLMStudio.Application.Interfaces.IQEMUProce
     public QEMUProcessManager(ILogger<QEMUProcessManager> logger)
     {
         _logger = logger;
+        _stateTimer = new Timer(OnStateTimerTick, null, Timeout.Infinite, Timeout.Infinite);
+        _stateTimer.Change(TimeSpan.FromSeconds(2), Timeout.InfiniteTimeSpan);
     }
 
     public IEnumerable<VMInstance> Instances => _instances.Values;
+    public event EventHandler? OnStateChanged;
+
+    public async Task AddAsync(VMInstance vm)
+    {
+        _instances.AddOrUpdate(vm.Id, vm, (k, v) => vm);
+        NotifyStateChanged();
+    }
+
+    public async Task RemoveAsync(string vmId)
+    {
+        _instances.TryRemove(vmId, out _);
+        NotifyStateChanged();
+    }
+
+    public async Task<VMInstance?> GetAsync(string vmId)
+    {
+        _instances.TryGetValue(vmId, out var vm);
+        return vm;
+    }
+
+    public async Task UpdateAsync(VMInstance vm)
+    {
+        _instances.AddOrUpdate(vm.Id, vm, (k, v) => vm);
+        NotifyStateChanged();
+    }
 
     /// <summary>
     /// Gets the actual System.Diagnostics.Process for the specified VM.
@@ -300,6 +329,7 @@ public class QEMUProcessManager : OpenLMStudio.Application.Interfaces.IQEMUProce
 
     public void Dispose()
     {
+        _stateTimer?.Dispose();
         foreach (var proc in _processes.Values)
         {
             try { proc.Kill(); } catch { }
@@ -394,6 +424,17 @@ public class QEMUProcessManager : OpenLMStudio.Application.Interfaces.IQEMUProce
             vm.State = newState;
             vm.UpdatedAt = DateTime.UtcNow;
         }
+    }
+
+    private void NotifyStateChanged()
+    {
+        OnStateChanged?.Invoke(this, EventArgs.Empty);
+    }
+
+    private void OnStateTimerTick(object? state)
+    {
+        NotifyStateChanged();
+        _stateTimer!.Change(TimeSpan.FromSeconds(2), Timeout.InfiniteTimeSpan);
     }
 
     private static async Task SendQMPMessageAsync(TextWriter writer, string command, Dictionary<string, object?>? args = null)

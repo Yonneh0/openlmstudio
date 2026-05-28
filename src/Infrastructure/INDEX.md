@@ -10,8 +10,8 @@
   - IPinguPromptGenerator implementation with GenerateFullPrompt, GenerateCompressedPrompt, GenerateForTaskType. Private prompt builders for TaskOrchestrator, UIControl, ModelManagement, GamePlay, Wandering, UserAssistant.
 ## src/Infrastructure/Services/PinguStore.cs - 236 lines - Reactive Pingu State Store
   - IPinguStore implementation with PinguEvent bus. UpdateMoodAsync, ToggleMenuAsync, SetActivePanelAsync, SetAwakeAsync, StartAwakeningSequenceAsync, StartBlinkTimerAsync, CompleteTaskAsync, HandleTaskErrorAsync.
-## src/Infrastructure/Services/QEMUProcessManager.cs - 326 lines - QEMU Virtual Machine Process Manager
-  - IQEMUProcessManager implementation with QMP protocol support. Contains _instances, _processes, _archBinaries. Methods: CreateVMAsync, StartVMAsync, PauseVMAsync, ResumeVMAsync, StopVMAsync, DeleteVMAsync, ExecuteQMPCommandAsync.
+## src/Infrastructure/Services/QEMUProcessManager.cs - ~450 lines - QEMU Virtual Machine Process Manager
+  - IQEMUProcessManager + IVMStore + IArchPromptService implementation with QMP protocol support. Contains _instances, _processes, _archBinaries, _stateTimer. Methods: CreateVMAsync, StartVMAsync, PauseVMAsync, ResumeVMAsync, StopVMAsync, DeleteVMAsync, ExecuteQMPCommandAsync, AddAsync, RemoveAsync, GetAsync, UpdateAsync.
 ## src/Infrastructure/Services/ResourceManager.cs - 122 lines - Resource Monitoring
   - IResourceManager implementation with VM-aware allocation. MonitorResourcesAsync, AdjustModelSettingsAsync, CompactPromptIfNeededAsync.
 ## src/Infrastructure/Services/AccessibilityService.cs - 94 lines - Accessibility Settings Manager
@@ -233,5 +233,3 @@
   - ISystemAICoordinator for orchestrating System AI with QEMU VMs. HandleCommandAsync, GetOrCreateArchVMAsync, ExecuteBugFixingWorkflowAsync, ExecuteCrossCompilationWorkflowAsync.
 ## src/Infrastructure/Services/ToolchainRegistry.cs - 91 lines - Architecture-Specific Compiler Toolchain Registry
   - IToolchainRegistry for downloading and caching architecture-specific compiler toolchains. GetToolchainAsync (downloads from GitHub releases).
-## src/Infrastructure/Services/VMStore.cs - 64 lines - Reactive VM Instance Store
-  - IVMStore and IDisposable for reactive VM instance management. AddAsync, RemoveAsync, GetAsync, UpdateAsync (all use AddOrUpdate and NotifyStateChanged).
