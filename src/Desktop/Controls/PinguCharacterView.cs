@@ -31,6 +31,14 @@ public class PinguCharacterView : Control, IDisposable
     private readonly ILogger<PinguCharacterView>? _logger;
     private readonly Random _random;
 
+    /// <summary>
+    /// Cached JSON serialization options for compact (non-indented) serialization.
+    /// </summary>
+    private static readonly System.Text.Json.JsonSerializerOptions _jsonCompactOptions = new()
+    {
+        WriteIndented = false
+    };
+
     private float _surfaceWidth;
     private float _surfaceHeight;
     private Vector2 _cursorPosition;
@@ -39,9 +47,10 @@ public class PinguCharacterView : Control, IDisposable
     private bool _isAttachedToVisualTree;
 
     /// <summary>
-    /// Cached bitmap for rendering to avoid allocation on every frame.
+    /// Cached bitmap from the renderer for Avalonia rendering.
     /// </summary>
-    private SKBitmap? _renderBitmap;
+    private SKBitmap? _cachedBitmap;
+
 
     /// <summary>
     /// The main renderer for the Pingu character.
@@ -133,14 +142,14 @@ public class PinguCharacterView : Control, IDisposable
             var loader = new PinguBoneLoader();
             var hierarchy = loader.LoadBoneHierarchy(
                 System.Text.Json.JsonSerializer.Serialize(characterData.BoneHierarchy.Definitions,
-                    new System.Text.Json.JsonSerializerOptions { WriteIndented = false }));
+                    _jsonCompactOptions));
 
             // Create the main renderer from generated character data
             var animation = new PinguAnimationSystem(hierarchy, characterData.AnimationClips, characterData.PhysicsParams);
             var npcManager = new PinguNPCManager();
             var homeScene = loader.LoadHomeScene(
                 System.Text.Json.JsonSerializer.Serialize(characterData.BoneHierarchy.Definitions,
-                    new System.Text.Json.JsonSerializerOptions { WriteIndented = false }));
+                    _jsonCompactOptions));
             var atlas = characterData.TextureAtlas ?? Array.Empty<byte>();
             _pinguRenderer = new PinguRenderer(characterData.MeshData, hierarchy, animation, npcManager, homeScene, atlas);
             _pinguRenderer.Initialize(400, 400);
@@ -187,6 +196,8 @@ public class PinguCharacterView : Control, IDisposable
 
     private void OnRenderTick(object? sender, EventArgs e)
     {
+        // Update animation state before rendering
+        Update(1f / 60f);
         InvalidateVisual();
     }
 
@@ -195,96 +206,29 @@ public class PinguCharacterView : Control, IDisposable
     /// </summary>
     public void Update(float deltaTime)
     {
-        _stateMachine?.Update(deltaTime);
-        _behaviorTriggers?.Update(deltaTime);
-        _toolHolder?.Update(deltaTime);
+        var adjustedDeltaTime = deltaTime * _animationSpeedMultiplier;
+        _stateMachine?.Update(adjustedDeltaTime);
+        _behaviorTriggers?.Update(adjustedDeltaTime);
+        _toolHolder?.Update(adjustedDeltaTime);
 
         // If pointer is held down, pause the animation
         if (_isPointerDown)
         {
             _stateMachine?.Pause();
         }
-    }
-
-    /// <summary>
-    /// Draw the home scene in the bottom-right corner.
-    /// </summary>
-    private void DrawHomeScene(SKCanvas canvas)
-    {
-        if (_homeSceneRenderer == null) return;
-
-        var homeSize = Math.Min(_surfaceWidth, _surfaceHeight) * 0.3f;
-        var homeX = _surfaceWidth - homeSize;
-        var homeY = _surfaceHeight - homeSize;
-
-        // Draw home background with rounded corners
-        using var bgPaint = new SKPaint
+        else
         {
-            Color = SKColors.DarkGray,
-            IsAntialias = true,
-            IsStroke = false
-        };
-        canvas.DrawRoundRect(homeX, homeY, homeSize, homeSize, homeSize / 10, homeSize / 10, bgPaint);
-
-        // Draw home scene content
-        _homeSceneRenderer.Render(canvas, homeSize, homeSize);
-    }
-
-    /// <summary>
-    /// Draw the penguin character.
-    /// </summary>
-    private void DrawPenguin(SKCanvas canvas)
-    {
-        if (_pinguRenderer == null) return;
-
-        // Draw the penguin in the center of the view
-        var penguinX = _surfaceWidth / 2f;
-        var penguinY = _surfaceHeight / 2f;
-
-        // Draw the penguin bitmap centered
-        if (_pinguRenderer.RenderBitmap != null)
-        {
-            var bitmap = _pinguRenderer.RenderBitmap;
-            var srcRect = new SKRect(0, 0, bitmap.Width, bitmap.Height);
-            var dstX = penguinX - bitmap.Width / 2f;
-            var dstY = penguinY - bitmap.Height / 2f;
-            var dstRect = new SKRect(dstX, dstY, dstX + bitmap.Width, dstY + bitmap.Height);
-            canvas.DrawBitmap(bitmap, srcRect, dstRect);
-        }
-    }
-
-    /// <summary>
-    /// Draw tool attachments on the penguin.
-    /// </summary>
-    private void DrawToolAttachments(SKCanvas canvas)
-    {
-        if (_toolHolder == null) return;
-
-        var bonePositions = GetBonePositions();
-        for (var i = 0; i < _toolHolder.Attachments.Count; i++)
-        {
-            var attachment = _toolHolder.Attachments[i];
-            var toolPos = _toolHolder.GetToolPosition(i, bonePositions);
-            using var toolPaint = new SKPaint
+            // Resume if previously paused
+            if (_stateMachine?.IsPaused == true)
             {
-                Color = SKColors.Brown,
-                Style = SkiaSharp.SKPaintStyle.Fill,
-            };
-            canvas.DrawCircle((int)toolPos.X, (int)toolPos.Y, 8, toolPaint);
+                _stateMachine?.Resume();
+            }
         }
-    }
-
-    /// <summary>
-    /// Get bone positions from the animation system.
-    /// </summary>
-    private IReadOnlyList<Vector3> GetBonePositions()
-    {
-        // Return empty positions for now - will be populated by the animation system
-        return new List<Vector3>();
     }
 
     /// <summary>
     /// Override Render to draw with SkiaSharp on the DrawingContext.
+    /// Uses PinguRenderer.Render() for all rendering (home scene, penguin, tools).
     /// </summary>
     public override void Render(DrawingContext context)
     {
@@ -294,30 +238,33 @@ public class PinguCharacterView : Control, IDisposable
         if (_surfaceWidth <= 0 || _surfaceHeight <= 0)
             return;
 
-        // Update animation before rendering
-        Update(1f / 60f);
+        // Use the renderer's bitmap and canvas
+        var bitmap = _pinguRenderer?.RenderBitmap;
+        var canvas = _pinguRenderer?.Canvas;
+        if (bitmap == null || canvas == null)
+            return;
 
-        // Reuse or create the bitmap if size changed
-        if (_renderBitmap == null || _renderBitmap.Width != (int)_surfaceWidth || _renderBitmap.Height != (int)_surfaceHeight)
-        {
-            _renderBitmap?.Dispose();
-            _renderBitmap = new SKBitmap((int)_surfaceWidth, (int)_surfaceHeight, SKColorType.Rgba8888, SKAlphaType.Premul);
-        }
+        // Render the scene (this also updates the animation internally)
+        _pinguRenderer?.Render(_cursorPosition, bitmap, canvas);
 
-        using var skCanvas = new SKCanvas(_renderBitmap);
-        skCanvas.Clear(SKColors.Transparent);
-        DrawHomeScene(skCanvas);
-        DrawPenguin(skCanvas);
-        DrawToolAttachments(skCanvas);
+        // Dispose the previous cached bitmap before creating a new one
+        var oldBitmap = _cachedBitmap;
+        _cachedBitmap = new SKBitmap((int)_surfaceWidth, (int)_surfaceHeight, SKColorType.Rgba8888, SKAlphaType.Premul);
 
-        // Encode bitmap to PNG and create Avalonia bitmap for display
+        // Copy the renderer's bitmap to our cached bitmap
+        using var dstCanvas = new SKCanvas(_cachedBitmap);
+        dstCanvas.DrawBitmap(bitmap, 0, 0);
+
+        // Copy the cached bitmap to the Avalonia DrawingContext
         using var skStream = new System.IO.MemoryStream();
-        _renderBitmap!.Encode(skStream, SKEncodedImageFormat.Png, 90);
+        _cachedBitmap.Encode(skStream, SKEncodedImageFormat.Png, 90);
         skStream.Position = 0;
-        var wBitmap = new Avalonia.Media.Imaging.Bitmap(skStream);
+        using var wBitmap = new Avalonia.Media.Imaging.Bitmap(skStream);
         var rect = new Avalonia.Rect(0, 0, _surfaceWidth, _surfaceHeight);
         context.DrawImage(wBitmap, rect);
-        // wBitmap is disposed by Avalonia when the DrawingContext is disposed
+
+        // Dispose old bitmap after rendering completes (to avoid race conditions)
+        oldBitmap?.Dispose();
     }
 
     /// <summary>
@@ -328,6 +275,12 @@ public class PinguCharacterView : Control, IDisposable
         base.OnSizeChanged(e);
         _surfaceWidth = (float)e.NewSize.Width;
         _surfaceHeight = (float)e.NewSize.Height;
+
+        // Resize the renderer if it's initialized
+        if (_pinguRenderer != null && _isInitialized)
+        {
+            _pinguRenderer.Resize((int)_surfaceWidth, (int)_surfaceHeight);
+        }
     }
 
     /// <summary>
@@ -376,7 +329,8 @@ public class PinguCharacterView : Control, IDisposable
         base.OnDetachedFromVisualTree(e);
         _isAttachedToVisualTree = false;
         StopRenderLoop();
-        _renderBitmap?.Dispose();
+        _cachedBitmap?.Dispose();
+        _cachedBitmap = null;
     }
 
     /// <summary>
@@ -402,7 +356,8 @@ public class PinguCharacterView : Control, IDisposable
 
         _disposed = true;
         StopRenderLoop();
-        _renderBitmap?.Dispose();
         _pinguRenderer?.Dispose();
+        _cachedBitmap?.Dispose();
+        _cachedBitmap = null;
     }
 }

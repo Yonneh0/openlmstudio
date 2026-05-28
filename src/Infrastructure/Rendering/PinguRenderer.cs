@@ -50,6 +50,11 @@ public class PinguRenderer : IDisposable
     public SKBitmap? RenderBitmap => _bitmap;
 
     /// <summary>
+    /// Get the current render canvas for direct drawing.
+    /// </summary>
+    public SKCanvas? Canvas => _canvas;
+
+    /// <summary>
     /// Creates a PinguRenderer with mesh data and all required services.
     /// </summary>
     public PinguRenderer(
@@ -89,7 +94,23 @@ public class PinguRenderer : IDisposable
     }
 
     /// <summary>
+    /// Get the current render surface.
+    /// </summary>
+    public SKSurface? Surface => _surface;
+
+    /// <summary>
+    /// Get the current render canvas.
+    /// </summary>
+    public SKCanvas? GetCanvas() => _canvas;
+
+    /// <summary>
+    /// Get the current render bitmap.
+    /// </summary>
+    public SKBitmap? GetBitmap() => _bitmap;
+
+    /// <summary>
     /// Render the scene into the provided bitmap and canvas.
+    /// Note: Animation must be updated separately via PinguAnimationSystem.Update() before calling this method.
     /// </summary>
     public void Render(Vector2 cursorPosition, SkiaSharp.SKBitmap bitmap, SkiaSharp.SKCanvas canvas)
     {
@@ -104,8 +125,31 @@ public class PinguRenderer : IDisposable
         // Draw each penguin
         foreach (var penguin in _activePenguins)
         {
-            DrawPenguin(penguin, cursorPosition, canvas, 1f / 60f);
+            DrawPenguin(penguin, cursorPosition, canvas);
         }
+    }
+
+    /// <summary>
+    /// Resize the renderer to a new size.
+    /// </summary>
+    public void Resize(int width, int height)
+    {
+        if (width == _surfaceWidth && height == _surfaceHeight)
+            return;
+
+        // Dispose old resources
+        _surface?.Dispose();
+        _bitmap?.Dispose();
+        _canvas?.Dispose();
+        _paint?.Dispose();
+
+        // Create new resources
+        _surfaceWidth = width;
+        _surfaceHeight = height;
+        _surface = SKSurface.Create(new SKImageInfo(width, height));
+        _canvas = _surface.Canvas;
+        _paint = new SKPaint { IsAntialias = true, IsStroke = false };
+        _bitmap = new SKBitmap(width, height, SkiaSharp.SKImageInfo.PlatformColorType, SKAlphaType.Premul);
     }
 
     /// <summary>
@@ -117,10 +161,11 @@ public class PinguRenderer : IDisposable
             return;
 
         _disposed = true;
+        // Dispose canvas before surface (canvas holds references to surface)
+        _canvas?.Dispose();
         _surface?.Dispose();
         _bitmap?.Dispose();
         _atlasBitmap?.Dispose();
-        _canvas?.Dispose();
         _paint?.Dispose();
     }
 
@@ -151,12 +196,10 @@ public class PinguRenderer : IDisposable
 
     /// <summary>
     /// Draw a penguin character using mesh data.
+    /// Note: Animation must be updated separately via PinguAnimationSystem.Update() before calling this method.
     /// </summary>
-    private void DrawPenguin(PinguNPC penguin, Vector2 cursorPosition, SKCanvas canvas, float deltaTime)
+    private void DrawPenguin(PinguNPC penguin, Vector2 cursorPosition, SKCanvas canvas)
     {
-        // Apply animation transforms with the actual frame delta (60fps default)
-        _animation.Update(deltaTime, cursorPosition);
-
         // Draw mesh if available
         if (_mesh != null && _mesh.Vertices.Count > 0)
         {
@@ -195,9 +238,10 @@ public class PinguRenderer : IDisposable
             var p2 = new SKPoint(v2.X + penguin.X, v2.Y + penguin.Y);
 
             // Compute average UV for the triangle (better than using just the first vertex)
+            // UV coordinates are already normalized (0-1 range), use directly for texture sampling
             var avgU = (v0.U + v1.U + v2.U) / 3f;
             var avgV = (v0.V + v1.V + v2.V) / 3f;
-            var avgUV = new SKPoint(avgU / _mesh.AtlasWidth, avgV / _mesh.AtlasHeight);
+            var avgUV = new SKPoint(avgU, avgV);
 
             // Create the triangle path
             using var path = new SKPath();
@@ -272,6 +316,89 @@ public class PinguRenderer : IDisposable
             hatPaint.Color = ParseColor(penguin.Hat.Color);
             var hatY = headY - 25;
             canvas.DrawOval(new SKRect(headX - 15, hatY - 10, headX + 15, hatY + 10), hatPaint);
+        }
+
+        // Draw tool if equipped
+        DrawTool(canvas, penguin, headX, headY);
+    }
+
+    /// <summary>
+    /// Draw a tool held by the penguin.
+    /// </summary>
+    private void DrawTool(SKCanvas canvas, PinguNPC penguin, float headX, float headY)
+    {
+        if (penguin.Tool == null || penguin.Tool.ToolType == PinguToolType.None)
+            return;
+
+        var toolType = penguin.Tool.ToolType;
+        var toolX = headX + 30; // Position to the right of the penguin
+        var toolY = headY + 10;
+
+        using var toolPaint = new SKPaint { IsAntialias = true, IsStroke = false };
+
+        switch (toolType)
+        {
+            case PinguToolType.Pickaxe:
+                // Draw pickaxe head
+                toolPaint.Color = ParseColor("#808080");
+                canvas.DrawOval(new SKRect(toolX, toolY - 5, toolX + 15, toolY + 5), toolPaint);
+                // Draw handle
+                toolPaint.Color = ParseColor("#8B4513");
+                canvas.DrawOval(new SKRect(toolX + 15, toolY - 2, toolX + 35, toolY + 2), toolPaint);
+                break;
+
+            case PinguToolType.Sledgehammer:
+                // Draw hammer head
+                toolPaint.Color = ParseColor("#404040");
+                canvas.DrawOval(new SKRect(toolX, toolY - 8, toolX + 20, toolY + 8), toolPaint);
+                // Draw handle
+                toolPaint.Color = ParseColor("#8B4513");
+                canvas.DrawOval(new SKRect(toolX + 20, toolY - 3, toolX + 50, toolY + 3), toolPaint);
+                break;
+
+            case PinguToolType.PokeStick:
+                // Draw stick
+                toolPaint.Color = ParseColor("#8B4513");
+                canvas.DrawOval(new SKRect(toolX, toolY - 2, toolX + 40, toolY + 2), toolPaint);
+                break;
+
+            case PinguToolType.Paintbrush:
+                // Draw brush handle
+                toolPaint.Color = ParseColor("#8B4513");
+                canvas.DrawOval(new SKRect(toolX, toolY - 2, toolX + 25, toolY + 2), toolPaint);
+                // Draw brush bristles
+                toolPaint.Color = ParseColor("#FF0000");
+                canvas.DrawOval(new SKRect(toolX + 25, toolY - 4, toolX + 35, toolY + 4), toolPaint);
+                break;
+
+            case PinguToolType.Crown:
+                // Draw crown
+                toolPaint.Color = ParseColor("#FFD700");
+                canvas.DrawOval(new SKRect(toolX - 10, toolY - 10, toolX + 10, toolY + 5), toolPaint);
+                // Crown points
+                canvas.DrawOval(new SKRect(toolX - 12, toolY - 15, toolX - 7, toolY - 10), toolPaint);
+                canvas.DrawOval(new SKRect(toolX - 2, toolY - 15, toolX + 3, toolY - 10), toolPaint);
+                canvas.DrawOval(new SKRect(toolX + 7, toolY - 15, toolX + 12, toolY - 10), toolPaint);
+                break;
+
+            case PinguToolType.Hat:
+                // Draw hat
+                toolPaint.Color = ParseColor("#000000");
+                canvas.DrawOval(new SKRect(toolX - 15, toolY - 15, toolX + 15, toolY + 5), toolPaint);
+                break;
+
+            case PinguToolType.ChefHat:
+                // Draw chef hat
+                toolPaint.Color = ParseColor("#FFFFFF");
+                canvas.DrawOval(new SKRect(toolX - 10, toolY - 15, toolX + 10, toolY + 5), toolPaint);
+                canvas.DrawOval(new SKRect(toolX - 15, toolY - 20, toolX + 15, toolY - 15), toolPaint);
+                break;
+
+            case PinguToolType.LabCoat:
+                // Draw lab coat
+                toolPaint.Color = ParseColor("#FFFFFF");
+                canvas.DrawOval(new SKRect(toolX - 12, toolY - 10, toolX + 12, toolY + 20), toolPaint);
+                break;
         }
     }
 
