@@ -50,14 +50,19 @@
         <Style Selector="TextBlock.linkLabel:pointerover">
             <Setter Property="Foreground" Value="#1E88E5"/>
         </Style>
+        <Style Selector="TextBlock.linkLabel:pressed">
+            <Setter Property="Foreground" Value="#1565C0"/>
+        </Style>
         <Style Selector="TextBlock.techName">
             <Setter Property="Foreground" Value="{StaticResource TextPrimary}"/>
             <Setter Property="FontSize" Value="10"/>
             <Setter Property="FontWeight" Value="SemiBold"/>
         </Style>
-        <Style Selector="TextBlock.techValue">
-            <Setter Property="Foreground" Value="{StaticResource TextSecondary}"/>
-            <Setter Property="FontSize" Value="10"/>
+        <Style Selector="TextBlock.techName:pointerover">
+            <Setter Property="Foreground" Value="{StaticResource AccentBlue}"/>
+        </Style>
+        <Style Selector="TextBlock.techValue:pointerover">
+            <Setter Property="Foreground" Value="{StaticResource TextPrimary}"/>
         </Style>
         <Style Selector="Border.aboutCard">
             <Setter Property="Background" Value="{StaticResource BgSecondary}"/>
@@ -70,6 +75,9 @@
             <Setter Property="CornerRadius" Value="6"/>
             <Setter Property="BorderBrush" Value="#333338"/>
             <Setter Property="BorderThickness" Value="1"/>
+        </Style>
+        <Style Selector="Border.sectionCard:pointerover">
+            <Setter Property="BorderBrush" Value="#444448"/>
         </Style>
     </Window.Styles>
 
@@ -93,7 +101,7 @@
                                 <TextBlock Text="  ·  " Foreground="{StaticResource TextMuted}" FontSize="10"/>
                                 <TextBlock x:Name="BuildTypeText" Text="Release" Foreground="{StaticResource AccentOrange}" FontSize="10"/>
                                 <TextBlock Text="  ·  " Foreground="{StaticResource TextMuted}" FontSize="10"/>
-                                <TextBlock x:Name="DirtyText" Foreground="{StaticResource AccentOrange}" FontSize="10"/>
+                                <TextBlock x:Name="DirtyText" Text="Dirty" Foreground="{StaticResource AccentOrange}" FontSize="10"/>
                             </StackPanel>
                         </Border>
                         <TextBlock Text="A cross-platform desktop application for running local AI models — text, images, and beyond." Foreground="{StaticResource TextSecondary}" FontSize="9" TextAlignment="Center" TextWrapping="Wrap" Margin="0,0,0,2"/>
@@ -131,104 +139,50 @@
                     <!-- Tech Stack -->
                     <TextBlock Text="Tech Stack" Classes="sectionTitle"/>
                     <Border Classes="sectionCard" Padding="8">
-                        <StackPanel>
-                            <Grid>
-                                <Grid.ColumnDefinitions>
-                                    <ColumnDefinition Width="140"/>
-                                    <ColumnDefinition Width="*"/>
-                                </Grid.ColumnDefinitions>
-                                <TextBlock Grid.Column="0" Text="Language / Framework" Classes="techName"/>
-                                <TextBlock Grid.Column="1" Text="C# / .NET 8" Classes="techValue"/>
-                            </Grid>
-                            <Grid Margin="0,4,0,0">
-                                <Grid.ColumnDefinitions>
-                                    <ColumnDefinition Width="140"/>
-                                    <ColumnDefinition Width="*"/>
-                                </Grid.ColumnDefinitions>
-                                <TextBlock Grid.Column="0" Text="UI Framework" Classes="techName"/>
-                                <TextBlock Grid.Column="1" Text="Avalonia UI 12.0.3" Classes="techValue"/>
-                            </Grid>
-                            <Grid Margin="0,4,0,0">
-                                <Grid.ColumnDefinitions>
-                                    <ColumnDefinition Width="140"/>
-                                    <ColumnDefinition Width="*"/>
-                                </Grid.ColumnDefinitions>
-                                <TextBlock Grid.Column="0" Text="HTTP Server" Classes="techName"/>
-                                <TextBlock Grid.Column="1" Text="ASP.NET Core Minimal APIs (Kestrel)" Classes="techValue"/>
-                            </Grid>
-                            <Grid Margin="0,4,0,0">
-                                <Grid.ColumnDefinitions>
-                                    <ColumnDefinition Width="140"/>
-                                    <ColumnDefinition Width="*"/>
-                                </Grid.ColumnDefinitions>
-                                <TextBlock Grid.Column="0" Text="Text Inference" Classes="techName"/>
-                                <TextBlock Grid.Column="1" Text="llama-cpp-net (GGUF)" Classes="techValue"/>
-                            </Grid>
-                            <Grid Margin="0,4,0,0">
-                                <Grid.ColumnDefinitions>
-                                    <ColumnDefinition Width="140"/>
-                                    <ColumnDefinition Width="*"/>
-                                </Grid.ColumnDefinitions>
-                                <TextBlock Grid.Column="0" Text="Image Generation" Classes="techName"/>
-                                <TextBlock Grid.Column="1" Text="ONNX Runtime + diffusers" Classes="techValue"/>
-                            </Grid>
-                            <Grid Margin="0,4,0,0">
-                                <Grid.ColumnDefinitions>
-                                    <ColumnDefinition Width="140"/>
-                                    <ColumnDefinition Width="*"/>
-                                </Grid.ColumnDefinitions>
-                                <TextBlock Grid.Column="0" Text="Embeddings" Classes="techName"/>
-                                <TextBlock Grid.Column="1" Text="ONNX Runtime + safetensors" Classes="techValue"/>
-                            </Grid>
-                            <Grid Margin="0,4,0,0">
-                                <Grid.ColumnDefinitions>
-                                    <ColumnDefinition Width="140"/>
-                                    <ColumnDefinition Width="*"/>
-                                </Grid.ColumnDefinitions>
-                                <TextBlock Grid.Column="0" Text="Database" Classes="techName"/>
-                                <TextBlock Grid.Column="1" Text="SQLite" Classes="techValue"/>
-                            </Grid>
-                            <Grid Margin="0,4,0,0">
-                                <Grid.ColumnDefinitions>
-                                    <ColumnDefinition Width="140"/>
-                                    <ColumnDefinition Width="*"/>
-                                </Grid.ColumnDefinitions>
-                                <TextBlock Grid.Column="0" Text="GPU Monitoring" Classes="techName"/>
-                                <TextBlock Grid.Column="1" Text="Vulkan.NET + nvidia-ml-net" Classes="techValue"/>
-                            </Grid>
-                            <Grid Margin="0,4,0,0">
-                                <Grid.ColumnDefinitions>
-                                    <ColumnDefinition Width="140"/>
-                                    <ColumnDefinition Width="*"/>
-                                </Grid.ColumnDefinitions>
-                                <TextBlock Grid.Column="0" Text="Security" Classes="techName"/>
-                                <TextBlock Grid.Column="1" Text="AES-256, SHA256" Classes="techValue"/>
-                            </Grid>
-                            <Grid Margin="0,4,0,0">
-                                <Grid.ColumnDefinitions>
-                                    <ColumnDefinition Width="140"/>
-                                    <ColumnDefinition Width="*"/>
-                                </Grid.ColumnDefinitions>
-                                <TextBlock Grid.Column="0" Text="MVVM Toolkit" Classes="techName"/>
-                                <TextBlock Grid.Column="1" Text="CommunityToolkit.Mvvm" Classes="techValue"/>
-                            </Grid>
-                            <Grid Margin="0,4,0,0">
-                                <Grid.ColumnDefinitions>
-                                    <ColumnDefinition Width="140"/>
-                                    <ColumnDefinition Width="*"/>
-                                </Grid.ColumnDefinitions>
-                                <TextBlock Grid.Column="0" Text="DI Container" Classes="techName"/>
-                                <TextBlock Grid.Column="1" Text="Microsoft.Extensions.DependencyInjection" Classes="techValue"/>
-                            </Grid>
-                            <Grid Margin="0,4,0,0">
-                                <Grid.ColumnDefinitions>
-                                    <ColumnDefinition Width="140"/>
-                                    <ColumnDefinition Width="*"/>
-                                </Grid.ColumnDefinitions>
-                                <TextBlock Grid.Column="0" Text="XAML Behaviors" Classes="techName"/>
-                                <TextBlock Grid.Column="1" Text="Avalonia.Xaml.Behaviors" Classes="techValue"/>
-                            </Grid>
-                        </StackPanel>
+                        <Grid>
+                            <Grid.RowDefinitions>
+                                <RowDefinition Height="Auto"/>
+                                <RowDefinition Height="Auto"/>
+                                <RowDefinition Height="Auto"/>
+                                <RowDefinition Height="Auto"/>
+                                <RowDefinition Height="Auto"/>
+                                <RowDefinition Height="Auto"/>
+                                <RowDefinition Height="Auto"/>
+                                <RowDefinition Height="Auto"/>
+                                <RowDefinition Height="Auto"/>
+                                <RowDefinition Height="Auto"/>
+                                <RowDefinition Height="Auto"/>
+                                <RowDefinition Height="Auto"/>
+                            </Grid.RowDefinitions>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="140"/>
+                                <ColumnDefinition Width="*"/>
+                            </Grid.ColumnDefinitions>
+                            <TextBlock Grid.Row="0" Grid.Column="0" Text="Language / Framework" Classes="techName"/>
+                            <TextBlock Grid.Row="0" Grid.Column="1" Text="C# / .NET 8" Classes="techValue"/>
+                            <TextBlock Grid.Row="1" Grid.Column="0" Text="UI Framework" Classes="techName" Margin="0,4,0,0"/>
+                            <TextBlock Grid.Row="1" Grid.Column="1" Text="Avalonia UI 12.0.3" Classes="techValue"/>
+                            <TextBlock Grid.Row="2" Grid.Column="0" Text="HTTP Server" Classes="techName" Margin="0,4,0,0"/>
+                            <TextBlock Grid.Row="2" Grid.Column="1" Text="ASP.NET Core Minimal APIs (Kestrel)" Classes="techValue"/>
+                            <TextBlock Grid.Row="3" Grid.Column="0" Text="Text Inference" Classes="techName" Margin="0,4,0,0"/>
+                            <TextBlock Grid.Row="3" Grid.Column="1" Text="llama-cpp-net (GGUF)" Classes="techValue"/>
+                            <TextBlock Grid.Row="4" Grid.Column="0" Text="Image Generation" Classes="techName" Margin="0,4,0,0"/>
+                            <TextBlock Grid.Row="4" Grid.Column="1" Text="ONNX Runtime + diffusers" Classes="techValue"/>
+                            <TextBlock Grid.Row="5" Grid.Column="0" Text="Embeddings" Classes="techName" Margin="0,4,0,0"/>
+                            <TextBlock Grid.Row="5" Grid.Column="1" Text="ONNX Runtime + safetensors" Classes="techValue"/>
+                            <TextBlock Grid.Row="6" Grid.Column="0" Text="Database" Classes="techName" Margin="0,4,0,0"/>
+                            <TextBlock Grid.Row="6" Grid.Column="1" Text="SQLite" Classes="techValue"/>
+                            <TextBlock Grid.Row="7" Grid.Column="0" Text="GPU Monitoring" Classes="techName" Margin="0,4,0,0"/>
+                            <TextBlock Grid.Row="7" Grid.Column="1" Text="Vulkan.NET + nvidia-ml-net" Classes="techValue"/>
+                            <TextBlock Grid.Row="8" Grid.Column="0" Text="Security" Classes="techName" Margin="0,4,0,0"/>
+                            <TextBlock Grid.Row="8" Grid.Column="1" Text="AES-256, SHA256" Classes="techValue"/>
+                            <TextBlock Grid.Row="9" Grid.Column="0" Text="MVVM Toolkit" Classes="techName" Margin="0,4,0,0"/>
+                            <TextBlock Grid.Row="9" Grid.Column="1" Text="CommunityToolkit.Mvvm" Classes="techValue"/>
+                            <TextBlock Grid.Row="10" Grid.Column="0" Text="DI Container" Classes="techName" Margin="0,4,0,0"/>
+                            <TextBlock Grid.Row="10" Grid.Column="1" Text="Microsoft.Extensions.DependencyInjection" Classes="techValue"/>
+                            <TextBlock Grid.Row="11" Grid.Column="0" Text="XAML Behaviors" Classes="techName" Margin="0,4,0,0"/>
+                            <TextBlock Grid.Row="11" Grid.Column="1" Text="Avalonia.Xaml.Behaviors" Classes="techValue"/>
+                        </Grid>
                     </Border>
 
                     <!-- Divider -->
