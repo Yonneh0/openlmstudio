@@ -54,10 +54,6 @@
   - IConversationManager implementation with file-based JSON persistence. ListChatsAsync, CreateChatAsync, LoadChatAsync, AddMessageAsync, SearchChatsAsync.
 ## src/Infrastructure/Services/ChatService.cs - 103 lines - Chat Service Wrapping IConversationManager
   - IChatService implementation with IConversationManager and ILogger. CreateChatAsync, GetChatAsync, ListChatsAsync, DeleteChatAsync, AddMessageAsync.
-## src/Infrastructure/Services/CodeDefinitionExtractorTool.cs - 202 lines - Code Definition Extractor for Multiple Languages
-  - ITool implementation with IGitRepositoryService. Supports C#, Python, TypeScript, JavaScript. Tool name "code_definitions".
-## src/Infrastructure/Services/CommandExecuteTool.cs - 93 lines - Command Execution Tool for Agent Sandbox
-  - ITool implementation with ICommandExecutionService. Tool name "CommandExecute". Parses Command/Timeout/EnvironmentVariables parameters.
 ## src/Infrastructure/Services/CommandExecutionService.cs - 128 lines - Sandboxed Command Execution Service
   - ICommandExecutionService with cross-platform sandboxing (cgroups v2 on Linux/macOS, Job Objects on Windows). ExecuteAsync, CancelAsync, KillAsync.
 ## src/Infrastructure/Services/CompilationHelper.cs - 118 lines - Static Compilation Helper for Cross-Platform Builds
@@ -104,22 +100,12 @@
   - IEngineLogger implementation for llama.cpp stdout/stderr structured logging. StartSessionAsync, StopSessionAsync, HandleEngineStdout, HandleEngineStderr.
 ## src/Infrastructure/Services/FileOperationsService.cs - 270 lines - File Operations Service for Agent Sandbox
   - IFileOperationsService and IDisposable. ReadFileAsync, WriteFileAsync, PatchFileAsync, SearchFilesAsync, ExploreProjectAsync.
-## src/Infrastructure/Services/FilePatchTool.cs - 92 lines - File Patch Tool for Agent Sandbox
-  - ITool implementation for safe file patching (add/remove lines). Tool name "FilePatch". Parses FilePath/LinesToAdd/LinesToRemove parameters.
-## src/Infrastructure/Services/FileReadTool.cs - 82 lines - File Read Tool for Agent Sandbox
-  - ITool implementation for safe file reading within agent sandbox. Tool name "FileRead". Parses FilePath/MaxLines parameters.
-## src/Infrastructure/Services/FileWriteTool.cs - 88 lines - File Write Tool for Agent Sandbox
-  - ITool implementation for file writing/creation within agent sandbox. Tool name "FileWrite". Parses FilePath/Content/Append parameters.
 ## src/Infrastructure/Services/GgufChatCompletionLoader.cs - 110 lines - GGUF Chat Completion Loader Adapter
   - IModelLoader and IDisposable for text generation models, wrapping LlamaCppChatCompletionService. LoadModelAsync, UnloadModelAsync, GetModelMetadataAsync.
 ## src/Infrastructure/Services/GgufModelDownloader.cs - 276 lines - GGUF Model Downloader with HuggingFace Support
   - Downloads GGUF models from HuggingFace and discovers local GGUF files. InferQuantizationFromFilename (27 patterns), InferModelNameFromFilename.
 ## src/Infrastructure/Services/GgufParser.cs - 917 lines - GGUF Model File Parser
   - GGUF format specification (magic 0x46554747, v1-v3). TagMap (51 entries). ParseHeaderAsync, ParseAsync, ReadKeyValuePairAsync, ReadValueByTypeAsync.
-## src/Infrastructure/Services/GitDiffTool.cs - 46 lines - Git Diff Tool for Agent Sandbox
-  - ITool for unified diff between two Git refs. Tool name "git_diff". Parses repo_path/old_ref/new_ref, outputs unified diff.
-## src/Infrastructure/Services/GitHistoryTool.cs - 138 lines - Git History, Blame, and Branches Tools
-  - 3 Git tools: GitHistoryTool (git_history), GitBlameTool (git_blame), GitBranchesTool (lists branches/tags/remotes).
 ## src/Infrastructure/Services/GitRepositoryService.cs - 551 lines - Git Repository Service with CLI Operations
   - IGitRepositoryService using git CLI. InitializeFromPathAsync, ListBranchesAsync, ListTagsAsync, ListCommitsAsync, GetDiffBetweenRefsAsync, GetBlameForFileAsync.
 ## src/Infrastructure/Services/HardwareDetector.cs - 134 lines - Hardware Detection for Backend Selection
@@ -192,16 +178,12 @@
   - IPluginRegistry implementation for plugin discovery, installation, and updates. SetRegistryUrl, GetSandboxPolicyAsync, InstallPluginAsync, UninstallPluginAsync.
 ## src/Infrastructure/Services/PluginSecurityValidator.cs - 122 lines - Plugin Provenance and Manifest Integrity Validator
   - IPluginSecurityValidator for SHA256 hash verification and manifest integrity checks. VerifyPluginHashAsync, VerifyManifestIntegrity, VerifyPluginArchiveAsync.
-## src/Infrastructure/Services/ProjectExplorerTool.cs - 73 lines - Project Explorer Tool for Agent Sandbox
-  - ITool and IDisposable for recursive directory listing. Tool name "ProjectExplorer". Parses RootPath/IncludeHiddenFiles parameters.
 ## src/Infrastructure/Services/RateLimitMiddleware.cs - 184 lines - Rate Limiting Middleware with Sliding Window Counter
   - RateLimitMiddleware (429 responses, X-RateLimit headers), RateLimitResult, InMemoryRateLimitService, RateLimitMiddlewareExtensions. Default 60 req/min.
 ## src/Infrastructure/Services/SafetensorParser.cs - 453 lines - Safetensors File Parser with SHA256/MD5 Hashing
   - Parses safetensors format (8-byte header size, JSON header, tensor metadata, sharded models). ParseHeaderAsync, ParseIndexAsync, ComputeSha256HashAsync.
 ## src/Infrastructure/Services/SandboxService.cs - 202 lines - Cross-Platform Process Sandbox
   - ISandboxService with cgroups v2 on Linux/macOS, Job Objects on Windows. _blockedCommands (14 commands), _restrictedEnvVars (11 vars). CreateProcessAsync, RunProcess.
-## src/Infrastructure/Services/SearchFilesTool.cs - 85 lines - SearchFiles Tool for Agent Sandbox
-  - ITool and IDisposable for regex search across project files. Tool name "SearchFiles". Parses Pattern/RootPath/MaxResults parameters.
 ## src/Infrastructure/Services/SelfSignedCertificateGenerator.cs - 497 lines - Self-Signed HTTPS Certificate Generator
   - ISelfSignedCertificateService for cross-platform HTTPS certificate generation. GenerateCertificateAsync (OpenSSL/dotnet dev-certs), TrustCertificateAsync (PowerShell).
 ## src/Infrastructure/Services/ServerLoadTestService.cs - 236 lines - Server Load Test Service
@@ -232,6 +214,19 @@
    - **TaskScheduler** (nested): In-memory wrapper around TaskSchedulerService with branch task caching. InjectTasksAsync, UpdateTaskStatusAsync, AbandonBranchAsync, PauseBranchAsync, ResumeBranchAsync.
 ## src/Infrastructure/Services/TaskValidationService.cs - 142 lines - AI-Powered Task Completion Validator
   - ITaskValidationService for validating task completion using Pingu (System AI). ValidateTaskCompletionAsync (ModelId: "default"), ValidateStructuredOutputAsync. ParseValidationResponse uses word-boundary-aware PASS detection.
+## src/Infrastructure/Services/Tools.cs - ~1,000 lines - Consolidated Tools (11 classes → 1 file)
+   - **ToolHelpers** (static): `TryGetString()`, `TryGetInt()` — shared helpers replacing duplicate methods across 5+ tools.
+   - **CodeDefinitionExtractorTool** (~202 lines): `ITool` with `IGitRepositoryService`. Extracts classes/functions/methods from C#, Python, TypeScript, JavaScript. Tool name "code_definitions".
+   - **CommandExecuteTool** (~93 lines): `ITool`, `IDisposable` with `ILogger<T>` and `ICommandExecutionService`. Runs shell commands in sandbox. Tool name "CommandExecute". Parses Command/Timeout/EnvironmentVariables.
+   - **FilePatchTool** (~92 lines): `ITool`, `IDisposable` with `ILogger<T>` and `IFileOperationsService`. Safe file patching (add/remove lines). Tool name "FilePatch". Parses FilePath/LinesToAdd/LinesToRemove.
+   - **FileReadTool** (~82 lines): `ITool`, `IDisposable` with `ILogger<T>` and `IFileOperationsService`. Reads file contents within sandbox. Tool name "FileRead". Parses FilePath/MaxLines.
+   - **FileWriteTool** (~88 lines): `ITool`, `IDisposable` with `ILogger<T>` and `IFileOperationsService`. Writes/creates files within sandbox. Tool name "FileWrite". Parses FilePath/Content/Append.
+   - **GitDiffTool** (~46 lines): `ITool` with `IGitRepositoryService`. Unified diff between two Git refs. Tool name "git_diff". Parses repo_path/old_ref/new_ref.
+   - **GitHistoryTool** (~46 lines): `ITool` with `IGitRepositoryService`. Lists recent git commits with author, date, message. Tool name "git_history".
+   - **GitBlameTool** (~46 lines): `ITool` with `IGitRepositoryService`. Line-by-line blame annotation for a file. Tool name "git_blame".
+   - **GitBranchesTool** (~46 lines): `ITool` with `IGitRepositoryService`. Lists branches, tags, and remotes. Tool name "git_branches".
+   - **ProjectExplorerTool** (~73 lines): `ITool`, `IDisposable` with `ILogger<T>` and `IFileOperationsService`. Recursive directory listing. Tool name "ProjectExplorer". Parses RootPath/IncludeHiddenFiles.
+   - **SearchFilesTool** (~85 lines): `ITool`, `IDisposable` with `ILogger<T>` and `IFileOperationsService`. Regex search across project files. Tool name "SearchFiles". Parses Pattern/RootPath/MaxResults.
 ## src/Infrastructure/Services/TokenEstimator.cs - 52 lines - Token Count Estimator with Length and Word-Based Methods
   - ITokenEstimator with static regex patterns. EstimateTokens ((text.Length+3)/4), EstimateTokensAdvanced, EstimateMessagesTokens, GetHumanReadableTokenCount.
 ## src/Infrastructure/Services/ToolRegistry.cs - 101 lines - Central Tool Discovery and Instantiation Registry
