@@ -1,7 +1,6 @@
 using Microsoft.Extensions.Logging;
 using OpenLMStudio.Application.Interfaces;
 using OpenLMStudio.Domain.Models;
-using OpenLMStudio.Infrastructure.Rendering;
 using OpenLMStudio.Infrastructure.Services;
 using SkiaSharp;
 using System.IO;

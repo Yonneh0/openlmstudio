@@ -22,7 +22,7 @@ using SKPaintStyle = SkiaSharp.SKPaintStyle;
 using SKPathArcSize = SkiaSharp.SKPathArcSize;
 using SKPathDirection = SkiaSharp.SKPathDirection;
 
-namespace OpenLMStudio.Infrastructure.Rendering;
+namespace OpenLMStudio.Infrastructure.Services;
 
 /// <summary>
 /// Renders a Pingu character using SkiaSharp on an Avalonia canvas.

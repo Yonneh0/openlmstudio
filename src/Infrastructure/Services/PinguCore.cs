@@ -4,8 +4,6 @@ using System.Text.Json;
 using System.Text.Json.Serialization;
 using Microsoft.Extensions.Logging;
 using OpenLMStudio.Domain.Models;
-using OpenLMStudio.Infrastructure.Rendering;
-
 namespace OpenLMStudio.Infrastructure.Services;
 
 /// <summary>
