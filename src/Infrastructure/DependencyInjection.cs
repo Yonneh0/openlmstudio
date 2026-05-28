@@ -114,17 +114,17 @@ public static class DependencyInjection
         // ---- Phase 5.8: Context Inheritance System ----
 
         // TaskContextInheritor propagates relevant context from parent to child tasks with budget-aware filtering
-        services.AddSingleton<ITaskContextInheritor, Services.TaskContextInheritor>();
+        services.AddSingleton<ITaskContextInheritor, Services.TaskService.TaskContextInheritor>();
 
         // ---- Phase 5.9: Fast Re-Injection Pipeline ----
 
         // TaskContextReinjectionService restores full context for paused/abandoned agent tasks in <100ms
-        services.AddSingleton<ITaskContextReinjectionService, Services.TaskContextReinjectionService>();
+        services.AddSingleton<ITaskContextReinjectionService, Services.TaskService.TaskContextReinjectionService>();
 
         // ---- Phase 5.10: Context Pruning on Completion ----
 
         // TaskContextPruner manages archive/compress-and-archive/discard strategies for task completion
-        services.AddSingleton<ITaskContextPruner, Services.TaskContextPruner>();
+        services.AddSingleton<ITaskContextPruner, Services.TaskService.TaskContextPruner>();
 
         // ---- Phase 3.4: HTTPS Certificate Generation ----
 
@@ -342,7 +342,7 @@ public static class DependencyInjection
         // ---- Phase 7: Task Completion Detection ----
 
         // TaskCompletionDetector detects whether an agent task has been completed based on tool results
-        services.AddSingleton<Application.Interfaces.ITaskCompletionDetector, Services.TaskCompletionDetector>();
+        services.AddSingleton<Application.Interfaces.ITaskCompletionDetector, Services.TaskService.TaskCompletionDetector>();
 
         // AgentProgressSummaryService generates human-readable progress summaries and completion reports
         services.AddSingleton<Application.Interfaces.IAgentProgressSummaryService, Services.AgentProgressSummaryService>();
@@ -351,7 +351,7 @@ public static class DependencyInjection
         services.AddSingleton<Application.Interfaces.ITaskValidationService, Services.TaskValidationService>();
 
         // TaskSchedulerService manages the shared task tree with access control (Pingu=admin, User=write, AIs=read-only)
-        services.AddSingleton<Application.Interfaces.ITaskScheduler, Services.TaskSchedulerService>();
+        services.AddSingleton<Application.Interfaces.ITaskScheduler, Services.TaskService.TaskSchedulerService>();
 
         // ---- Phase 10.5: Observability & Diagnostics ----
 

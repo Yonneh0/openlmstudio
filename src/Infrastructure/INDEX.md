@@ -218,25 +218,18 @@
   - ISystemAIClient for System AI (llama.cpp) inference engine. StartAsync (spawns llama-server), ChatAsync (HTTP POST streaming with SSE chunks).
 ## src/Infrastructure/Services/SystemAIManager.cs - 527 lines - System AI Manager for System AI Lifecycle
   - SystemAI lifecycle: engine binary download → model loading → server start → streaming. LoadModelAsync, SwitchActiveModel, UnloadModel, StartServerAsync.
-## src/Infrastructure/Services/TaskCompletionDetector.cs - 71 lines - Task Completion Detector with AI-Powered Validation
-  - ITaskCompletionDetector for detecting task completion based on tool results. DetectCompletionAsync, QuickHeuristicCheck.
-## src/Infrastructure/Services/TaskContextInheritor.cs - 117 lines - Parent-to-Child Task Context Propagation
-  - ITaskContextInheritor for propagating context from parent to child tasks. CreateChildInheritanceAsync (returns default snapshot if parent not found), RequestAdditionalContextFromParentAsync.
-## src/Infrastructure/Services/TaskContextPruner.cs - 70 lines - Task Context Pruning with Archive/Compress/Discard Strategies
-  - ITaskContextPruner for managing context pruning when tasks complete. ArchiveAsync, CompressAndArchiveAsync, DiscardAsync.
-## src/Infrastructure/Services/TaskContextReinjectionService.cs - 80 lines - Fast Re-Injection Pipeline for Quick Task Resumption
-  - ITaskContextReinjectionService for restoring full context from pre-compressed snapshot in <100ms. FastReinjectAsync, ResumeToolCallChainAsync, GetReinjectionSummaryAsync (ToolChainResumed based on ToolResultsCache.Count).
 ## src/Infrastructure/Services/TaskContextStore.cs - 934 lines - SQLite-Backed Task Context Snapshot Store
   - ITaskContextStore with SQLite-backed persistence for agentic task context snapshots. CreateAsync, GetByTaskIdAsync, UpdateAsync, DeleteAsync, ListAsync.
-## src/Infrastructure/Services/TaskProgressTracker.cs - 108 lines - Agentic Task Progress Tracker
-  - ITaskProgressTracker with ConcurrentDictionary-based tracking. Uses Interlocked for thread-safe ProgressPercentage/HasError/IterationCount. GetActive() snapshots Values with .ToList().
-## src/Infrastructure/Services/TaskScheduler.cs - 152 lines - Ordered Task Queue with Priority Scheduling
-  - ITaskScheduler for managing ordered task queue across branches. InjectTasksAsync, GetScheduledTasksAsync, CheckAndStartDependentTasksAsync.
-## src/Infrastructure/Services/TaskSchedulerService.cs - 459 lines - SQLite Task Scheduler with Priority-Ordered Scheduling
-  - ITaskScheduler and IDisposable for SQLite-backed task scheduling. InjectTasksAsync, GetScheduledTasksAsync (priority-ordered: High→Normal→Low), CheckAndStartDependentTasksAsync.
-## src/Infrastructure/Services/TaskService.cs - 278 lines - Agentic Task Manager with IAgent Execution
-  - ITaskService for managing agentic tasks. CreateTaskAsync, StartTaskAsync (clones agent, inherits context), StopTaskAsync, PauseTaskAsync, ResumeTaskAsync.
-  - Fixes: GetTaskResultAsync now uses task data directly (not disposed agent). NotifyStateChanged passes actual oldStatus. AgentTaskRequest uses named params. DI scope stored and disposed. Dispose() notifies pending tasks.
+## src/Infrastructure/Services/TaskService.cs - ~1200 lines - Consolidated Task Service (8 classes → 1 file)
+   - Consolidated from: TaskService, TaskScheduler, TaskSchedulerService, TaskCompletionDetector, TaskContextInheritor, TaskContextPruner, TaskContextReinjectionService, TaskProgressTracker.
+   - **TaskService** (outer): ITaskService with create/start/pause/abort/resume, agent lifecycle, context inheritance.
+   - **TaskCompletionDetector** (nested): AI-powered completion detection via TaskValidationService. DetectCompletionAsync, QuickHeuristicCheck.
+   - **TaskContextInheritor** (nested): Parent→Child context propagation with budget-aware filtering. CreateChildInheritanceAsync, RequestAdditionalContextFromParentAsync, FilterByRelevance.
+   - **TaskContextPruner** (nested): Archive/CompressAndArchive/Discard strategies.
+   - **TaskContextReinjectionService** (nested): Fast reinjection from compressed snapshot in <100ms. FastReinjectAsync, ResumeToolCallChainAsync, GetReinjectionSummaryAsync.
+   - **TaskProgressTracker** (nested): Stage/progress tracking with ConcurrentDictionary. UpdateStageAsync, ReportProgressAsync, RecordToolCallAsync, RecordErrorAsync.
+   - **TaskSchedulerService** (nested): SQLite-backed task scheduling with Tasks/ToolCalls/Branches tables. InjectTasksAsync, GetScheduledTasksAsync (priority-ordered), CheckAndStartDependentTasksAsync, MapTask.
+   - **TaskScheduler** (nested): In-memory wrapper around TaskSchedulerService with branch task caching. InjectTasksAsync, UpdateTaskStatusAsync, AbandonBranchAsync, PauseBranchAsync, ResumeBranchAsync.
 ## src/Infrastructure/Services/TaskValidationService.cs - 142 lines - AI-Powered Task Completion Validator
   - ITaskValidationService for validating task completion using Pingu (System AI). ValidateTaskCompletionAsync (ModelId: "default"), ValidateStructuredOutputAsync. ParseValidationResponse uses word-boundary-aware PASS detection.
 ## src/Infrastructure/Services/TokenEstimator.cs - 52 lines - Token Count Estimator with Length and Word-Based Methods
