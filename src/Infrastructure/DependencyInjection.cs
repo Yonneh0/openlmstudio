@@ -489,15 +489,6 @@ public static class DependencyInjection
             return new PinguToolHolder(boneHierarchy, logger);
         });
 
-        // PinguHomeSceneRenderer renders the Pingu home scene with igloo, sink, rug, ball, etc.
-        services.AddSingleton<Rendering.PinguHomeSceneRenderer>(resolver =>
-        {
-            var boneLoader = resolver.GetService<PinguBoneLoader>();
-            var homeScene = boneLoader?.LoadHomeScene() ?? Domain.Models.PinguHomeScene.CreateDefault();
-            var logger = resolver.GetService<Microsoft.Extensions.Logging.ILogger<Rendering.PinguHomeSceneRenderer>>();
-            return new Rendering.PinguHomeSceneRenderer(homeScene, logger);
-        });
-
         // PinguService orchestrates the entire Pingu system
         services.AddSingleton<PinguService>(resolver =>
         {

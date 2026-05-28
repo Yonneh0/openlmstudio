@@ -1,6 +1,7 @@
 using System.Numerics;
 using OpenLMStudio.Domain.Models;
 using OpenLMStudio.Infrastructure.Services;
+using SkiaSharp;
 using SKColor = SkiaSharp.SKColor;
 using SKImageInfo = SkiaSharp.SKImageInfo;
 using SKSurface = SkiaSharp.SKSurface;
@@ -17,6 +18,9 @@ using SKBlendMode = SkiaSharp.SKBlendMode;
 using SKMatrix = SkiaSharp.SKMatrix;
 using SKPoint = System.Numerics.Vector2;
 using SKPath = SkiaSharp.SKPath;
+using SKPaintStyle = SkiaSharp.SKPaintStyle;
+using SKPathArcSize = SkiaSharp.SKPathArcSize;
+using SKPathDirection = SkiaSharp.SKPathDirection;
 
 namespace OpenLMStudio.Infrastructure.Rendering;
 
@@ -109,6 +113,15 @@ public class PinguRenderer : IDisposable
     public SKBitmap? GetBitmap() => _bitmap;
 
     /// <summary>
+    /// Render just the home scene into the provided canvas (no penguin).
+    /// </summary>
+    public void RenderHomeSceneOnly(SkiaSharp.SKCanvas canvas)
+    {
+        canvas.Clear(SkiaSharp.SKColors.White);
+        DrawHomeScene(canvas);
+    }
+
+    /// <summary>
     /// Render the scene into the provided bitmap and canvas.
     /// Note: Animation must be updated separately via PinguAnimationSystem.Update() before calling this method.
     /// </summary>
@@ -170,28 +183,240 @@ public class PinguRenderer : IDisposable
     }
 
     /// <summary>
+    /// Set the background color of the home scene.
+    /// </summary>
+    public void SetBackgroundColor(string color)
+    {
+        _homeScene.BackgroundColor = color;
+    }
+
+    /// <summary>
     /// Draw the home scene.
     /// X/Y are normalized (0-1), Width/Height are in absolute pixels.
     /// </summary>
     private void DrawHomeScene(SKCanvas canvas)
     {
-        // Background
-        using var bgPaint = new SKPaint { IsAntialias = true, IsStroke = false };
-        bgPaint.Color = ParseColor(_homeScene.BackgroundColor);
-        canvas.DrawRect(new SKRect(0, 0, _surfaceWidth, _surfaceHeight), bgPaint);
+        // Clear canvas
+        canvas.Clear(SKColors.White);
 
-        // Draw objects
+        // Draw background
+        DrawBackground(canvas);
+
+        // Draw each home object
         foreach (var obj in _homeScene.Objects)
         {
-            var x = obj.X * _surfaceWidth;
-            var y = obj.Y * _surfaceHeight;
-            var w = obj.Width;
-            var h = obj.Height;
-
-            using var objPaint = new SKPaint { IsAntialias = true, IsStroke = false };
-            objPaint.Color = ParseColor(obj.Color);
-            canvas.DrawOval(new SKRect(x, y, x + w, y + h), objPaint);
+            if (!obj.IsVisible) continue;
+            DrawHomeObject(canvas, obj);
         }
+    }
+
+    /// <summary>
+    /// Draw the background of the home scene.
+    /// </summary>
+    private void DrawBackground(SKCanvas canvas)
+    {
+        // Solid background color
+        var bgPaint = new SKPaint
+        {
+            Color = ParseColor(_homeScene.BackgroundColor),
+            Style = SKPaintStyle.Fill,
+        };
+        canvas.DrawRect(0, 0, _surfaceWidth, _surfaceHeight, bgPaint);
+        bgPaint.Dispose();
+    }
+
+    /// <summary>
+    /// Draw a single home scene object.
+    /// X/Y are normalized (0-1), Width/Height are in absolute pixels.
+    /// </summary>
+    private void DrawHomeObject(SKCanvas canvas, PinguHomeObject obj)
+    {
+        var x = obj.X * _surfaceWidth;
+        var y = obj.Y * _surfaceHeight;
+        var w = obj.Width;
+        var h = obj.Height;
+
+        var color = ParseColor(obj.Color);
+
+        switch (obj.Type)
+        {
+            case "igloo":
+                DrawIgloo(canvas, x, y, w, h, color);
+                break;
+            case "sink":
+                DrawSink(canvas, x, y, w, h, color);
+                break;
+            case "rug":
+                DrawRug(canvas, x, y, w, h, color);
+                break;
+            case "ball":
+                DrawBall(canvas, x, y, w, h, color);
+                break;
+            case "fishbowl":
+                DrawFishBowl(canvas, x, y, w, h, color);
+                break;
+            case "nest":
+                DrawNest(canvas, x, y, w, h, color);
+                break;
+            default:
+                // Generic rectangle
+                _paint.Color = color;
+                canvas.DrawRect(x, y, w, h, _paint);
+                break;
+        }
+    }
+
+    /// <summary>
+    /// Draw an igloo.
+    /// </summary>
+    private void DrawIgloo(SKCanvas canvas, float x, float y, float w, float h, SKColor color)
+    {
+        // Semi-circle igloo shape
+        var path = new SKPath();
+        path.MoveTo(x, y + h);
+        path.ArcTo(x, y, x + w, SKPathArcSize.Small, SKPathDirection.Clockwise, 0, 0);
+        path.Close();
+
+        var iglooPaint = new SKPaint
+        {
+            Color = color,
+            Style = SKPaintStyle.Fill,
+        };
+        canvas.DrawPath(path, iglooPaint);
+        iglooPaint.Dispose();
+        path.Dispose();
+
+        // Door opening
+        var doorPaint = new SKPaint
+        {
+            Color = SKColors.Black,
+            Style = SKPaintStyle.Fill,
+        };
+        canvas.DrawCircle(x + w / 2, y + h * 0.6f, w * 0.2f, doorPaint);
+        doorPaint.Dispose();
+    }
+
+    /// <summary>
+    /// Draw a sink.
+    /// </summary>
+    private void DrawSink(SKCanvas canvas, float x, float y, float w, float h, SKColor color)
+    {
+        // Sink base
+        var sinkPaint = new SKPaint
+        {
+            Color = color,
+            Style = SKPaintStyle.Fill,
+        };
+        canvas.DrawRect(x, y, w, h, sinkPaint);
+        sinkPaint.Dispose();
+
+        // Faucet
+        var faucetPaint = new SKPaint
+        {
+            Color = SKColors.Gray,
+            Style = SKPaintStyle.Stroke,
+            StrokeWidth = 2,
+        };
+        canvas.DrawLine(x + w * 0.3f, y, x + w * 0.3f, y - h * 0.3f, faucetPaint);
+        canvas.DrawLine(x + w * 0.3f, y - h * 0.3f, x + w * 0.5f, y - h * 0.3f, faucetPaint);
+        faucetPaint.Dispose();
+    }
+
+    /// <summary>
+    /// Draw a rug.
+    /// </summary>
+    private void DrawRug(SKCanvas canvas, float x, float y, float w, float h, SKColor color)
+    {
+        // Elliptical rug
+        var rugPaint = new SKPaint
+        {
+            Color = color,
+            Style = SKPaintStyle.Fill,
+        };
+        canvas.DrawOval(x, y, w, h, rugPaint);
+        rugPaint.Dispose();
+
+        // Pattern
+        var patternPaint = new SKPaint
+        {
+            Color = SKColors.White,
+            Style = SKPaintStyle.Stroke,
+            StrokeWidth = 2,
+        };
+        canvas.DrawOval(x + w * 0.1f, y + h * 0.1f, w * 0.8f, h * 0.8f, patternPaint);
+        patternPaint.Dispose();
+    }
+
+    /// <summary>
+    /// Draw a ball.
+    /// </summary>
+    private void DrawBall(SKCanvas canvas, float x, float y, float w, float h, SKColor color)
+    {
+        var ballPaint = new SKPaint
+        {
+            Color = color,
+            Style = SKPaintStyle.Fill,
+        };
+        canvas.DrawCircle(x + w / 2, y + h / 2, Math.Min(w, h) / 2, ballPaint);
+        ballPaint.Dispose();
+
+        // Highlight
+        var highlightPaint = new SKPaint
+        {
+            Color = SKColors.White,
+            Style = SKPaintStyle.Fill,
+        };
+        canvas.DrawCircle(x + w * 0.35f, y + h * 0.35f, w * 0.15f, highlightPaint);
+        highlightPaint.Dispose();
+    }
+
+    /// <summary>
+    /// Draw a fishbowl.
+    /// </summary>
+    private void DrawFishBowl(SKCanvas canvas, float x, float y, float w, float h, SKColor color)
+    {
+        // Bowl
+        var bowlPaint = new SKPaint
+        {
+            Color = color,
+            Style = SKPaintStyle.Fill,
+            IsAntialias = true,
+        };
+        canvas.DrawCircle(x + w / 2, y + h / 2, Math.Min(w, h) / 2, bowlPaint);
+        bowlPaint.Dispose();
+
+        // Fish
+        var fishPaint = new SKPaint
+        {
+            Color = SKColors.Orange,
+            Style = SKPaintStyle.Fill,
+        };
+        canvas.DrawCircle(x + w * 0.5f, y + h * 0.5f, w * 0.15f, fishPaint);
+        fishPaint.Dispose();
+    }
+
+    /// <summary>
+    /// Draw a nest.
+    /// </summary>
+    private void DrawNest(SKCanvas canvas, float x, float y, float w, float h, SKColor color)
+    {
+        var nestPaint = new SKPaint
+        {
+            Color = color,
+            Style = SKPaintStyle.Fill,
+        };
+        canvas.DrawOval(x, y, w, h, nestPaint);
+        nestPaint.Dispose();
+
+        // Eggs
+        var eggPaint = new SKPaint
+        {
+            Color = SKColors.White,
+            Style = SKPaintStyle.Fill,
+        };
+        canvas.DrawCircle(x + w * 0.3f, y + h * 0.4f, w * 0.1f, eggPaint);
+        canvas.DrawCircle(x + w * 0.6f, y + h * 0.45f, w * 0.08f, eggPaint);
+        eggPaint.Dispose();
     }
 
     /// <summary>

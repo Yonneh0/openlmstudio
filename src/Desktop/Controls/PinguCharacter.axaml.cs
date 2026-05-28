@@ -26,7 +26,6 @@ public partial class PinguCharacter : UserControl
         PinguPhysicsSolver physicsSolver,
         PinguInverseKinematics ik,
         PinguToolHolder toolHolder,
-        global::OpenLMStudio.Infrastructure.Rendering.PinguHomeSceneRenderer homeSceneRenderer,
         PinguRenderer pinguRenderer,
         ILogger<PinguCharacter>? logger = null)
     {
@@ -42,7 +41,6 @@ public partial class PinguCharacter : UserControl
             physicsSolver,
             ik,
             toolHolder,
-            homeSceneRenderer,
             pinguRenderer,
             logger: null);
 

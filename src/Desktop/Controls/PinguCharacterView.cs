@@ -10,7 +10,6 @@ using Microsoft.Extensions.Logging;
 using OpenLMStudio.Domain.Models;
 using OpenLMStudio.Infrastructure.Rendering;
 using OpenLMStudio.Infrastructure.Services;
-using PinguHomeSceneRenderer = OpenLMStudio.Infrastructure.Rendering.PinguHomeSceneRenderer;
 using SKBitmap = SkiaSharp.SKBitmap;
 using SKCanvas = SkiaSharp.SKCanvas;
 using SKColorType = SkiaSharp.SKColorType;
@@ -57,10 +56,6 @@ public class PinguCharacterView : Control, IDisposable
     /// </summary>
     private PinguRenderer? _pinguRenderer;
 
-    /// <summary>
-    /// Home scene renderer for the penguin's home area.
-    /// </summary>
-    private PinguHomeSceneRenderer? _homeSceneRenderer;
 
     /// <summary>
     /// Animation state machine for the character.
@@ -114,13 +109,11 @@ public class PinguCharacterView : Control, IDisposable
         PinguPhysicsSolver physicsSolver,
         PinguInverseKinematics ik,
         PinguToolHolder toolHolder,
-        PinguHomeSceneRenderer homeSceneRenderer,
         PinguRenderer pinguRenderer,
         ILogger<PinguCharacterView>? logger = null,
         Random? random = null)
     {
         _pinguRenderer = pinguRenderer;
-        _homeSceneRenderer = homeSceneRenderer;
         _stateMachine = stateMachine;
         _behaviorTriggers = behaviorTriggers;
         _toolHolder = toolHolder;
@@ -158,7 +151,6 @@ public class PinguCharacterView : Control, IDisposable
             _stateMachine = new PinguAnimationStateMachine(characterData.AnimationClips);
             _behaviorTriggers = new PinguBehaviorTriggers(_stateMachine);
             _toolHolder = new PinguToolHolder(hierarchy);
-            _homeSceneRenderer = new PinguHomeSceneRenderer(homeScene);
 
             // Initialize animation state machine to Idle state
             _stateMachine?.TransitionTo(PinguAnimationState.Idle);
