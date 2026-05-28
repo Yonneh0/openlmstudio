@@ -178,30 +178,20 @@
   - OpenLmStudioLogScope with correlation IDs, component context, session tracking. OpenLmStudioLoggingExtensions with BeginScopeWithCorrelation, LogOpenLmStudioEvent.
 ## src/Infrastructure/Services/PerformanceBenchmarkService.cs - 232 lines - Performance Benchmark Service
   - BenchmarkResult records and benchmarking for model load, chat completion, image generation. BenchmarkModelLoadAsync, BenchmarkChatCompletionAsync, BenchmarkImageGenerationAsync.
-## src/Infrastructure/Services/PinguSystemPrompts.cs - 118 lines - Pingu System Prompts
-  - PinguSystemPrompts with 4 const strings: TaskOrchestrator (~75-line prompt), TaskOrchestratorCompressed (~20-line), Assistant (~10-line).
+## src/Infrastructure/Services/PinguCore.cs - ~2600 lines - Consolidated Pingu System (12 partial classes)
+   - PinguMeshGenerator (~350 lines): Mesh, bone hierarchy, animation clips, texture atlas generation.
+   - PinguBoneLoader (~100 lines): JSON serialization for bones, animations, physics.
+   - PinguAnimationStateMachine (~200 lines): State machine with blending between states.
+   - PinguBehaviorTriggers (~130 lines): Weighted behavior triggers (Twitch, HeadTurn, Scratch, EarFlick, Blink, SittingDown, SittingUp).
+   - PinguInverseKinematics (~140 lines): CCD IK solver for limbs.
+   - PinguAnimationSystem (~300 lines): Real-time animation & physics solver (IK, bone transforms).
+   - PinguPhysicsSolver (~120 lines): Distance constraints, velocity damping, gravity.
+   - PinguToolHolder (~110 lines): Tool attachment system.
+   - PinguNPCManager (~160 lines): NPC character management, tasks, roles, movement.
+   - PinguSystemPrompts (~80 lines): Static system prompts (TaskOrchestrator, TaskOrchestratorCompressed, Assistant).
+   - PinguService (~120 lines): Orchestrator wrapping all subsystems.
 ## src/Infrastructure/Services/PinguTools.cs - 662 lines - Consolidated Pingu Tools (6 tools)
-  - 6 Pingu UI control tools: PinguTabSwitchTool, PinguPanelToggleTool, PinguGameIntegrationTool, PinguModelLoadTool, PinguModelTool, PinguWanderingTool.
-## src/Infrastructure/Services/PinguAnimationSystem.cs - 362 lines - Real-Time Animation and Physics Solver
-  - Real-time animation and physics for Pingu characters. Supports IK, bone transforms, animation blending, physics. Update, GetBoneWorldPosition, SetIKTarget.
-## src/Infrastructure/Services/PinguNPCManager.cs - 160 lines - NPC Manager for Pingu Characters
-  - Manages Pingu NPC characters, tasks, roles, tools, movement. AddGuestPingu, MoveTo, SetRole, EquipTool, QueueTask, Update.
-## src/Infrastructure/Services/PinguAnimationStateMachine.cs - 257 lines - Pingu Animation State Machine Service
-  - PinguAnimationStateMachine service for animation state transitions, blending, and behavior triggers. TransitionTo, Update, GetBlendedAnimation, TriggerBehavior.
-## src/Infrastructure/Services/PinguBehaviorTriggers.cs - 195 lines - Pingu Behavior Triggers Service
-  - PinguBehaviorTriggers for random behavior triggers with weighted probability (Twitch, HeadTurn, Scratch, EarFlick, Blink, SittingDown, SittingUp).
-## src/Infrastructure/Services/PinguInverseKinematics.cs - 217 lines - Pingu IK Solver Service
-  - CCD (Cyclic Coordinate Descent) IK solver for Pingu limbs. SetTarget, ClearTargets, UpdatePositions, Solve.
-## src/Infrastructure/Services/PinguPhysicsSolver.cs - 195 lines - Pingu Physics Solver Service
-  - PinguPhysicsSolver for Pingu physics simulation. PhysicsParams (mass, friction, gravity, IK stiffness, velocity damping). Solve, UpdateVelocities, ApplyForces.
-## src/Infrastructure/Services/PinguService.cs - 160 lines - Pingu System Orchestrator
-  - Orchestrates the entire Pingu system - mesh generation, animation, NPC, rendering. Initialize, Render, Update, MovePinguTo, SetPinguRole, EquipPinguTool.
-## src/Infrastructure/Services/PinguMeshGenerator.cs - 350 lines - Mesh Generator for Pingu Character
-  - Generates Pingu mesh data files (pingu.mesh, pingu.json, pingu.png) in memory. Generate (mesh + hierarchy + animations + physics + texture atlas).
-## src/Infrastructure/Services/PinguBoneLoader.cs - 90 lines - Bone Hierarchy Loader
-  - Loads Pingu bone hierarchy from JSON files or generating default data. LoadFromJson, LoadFromResources, GenerateDefault, LoadBoneHierarchy, SaveBoneHierarchy.
-## src/Infrastructure/Services/PinguToolHolder.cs - 138 lines - Pingu Tool Holder Implementation
-  - PinguToolHolder for managing which bone holds which tool. ToolAttachment record. EquipTool, UnequipTool, GetCurrentTool, Update, GetToolPosition.
+   - 6 Pingu UI control tools: PinguTabSwitchTool, PinguPanelToggleTool, PinguGameIntegrationTool, PinguModelLoadTool, PinguModelTool, PinguWanderingTool.
 ## src/Infrastructure/Rendering/PinguHomeSceneRenderer.cs - 306 lines - Home Scene Renderer for Pingu
   - Renders Pingu home scene with igloo, sink, rug, ball, fishbowl, nest objects using SkiaSharp. Render, DrawBackground, DrawHomeObject, DrawIgloo, DrawSink.
 ## src/Infrastructure/Rendering/PinguRenderer.cs - 422 lines - SkiaSharp Renderer for Pingu
