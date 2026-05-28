@@ -146,16 +146,8 @@
   - LoRA adapter weight merging with ONNX Runtime. LoadAdapterAsync, MergeAdapterAsync (applies W_base + alpha/rank * delta_W), SaveMergedSafetensors.
 ## src/Infrastructure/Services/MainAIManager.cs - 609 lines - MainAI Manager for Text Generation
   - Primary text generation engine lifecycle with multi-model support. LoadModelAsync, SwitchActiveModel, UnloadModel, StartServerAsync, BuildServerArgs.
-## src/Infrastructure/Services/McpClient.cs - 339 lines - MCP Stdio Client
-  - IMcpClient and IDisposable for MCP stdio transport. ConnectAsync (spawns process, sends initialize, discovers tools), ListToolsAsync, CallToolAsync.
-## src/Infrastructure/Services/McpPromptAccessor.cs - 136 lines - MCP Prompt Accessor and List Tools
-  - 2 MCP tools: McpPromptAccessor (MCPGetPrompt) and McpPromptListTool (MCPPromptsList). Both use IMcpClient and ILogger.
-## src/Infrastructure/Services/McpResourceAccessor.cs - 76 lines - MCP Resource Accessor Tool
-  - ITool for accessing MCP server resources by URI. Name="MCPResourceAccess". Parses ResourceUri/MimeType, calls _mcpClient.CallToolAsync.
-## src/Infrastructure/Services/McpSseClient.cs - 355 lines - MCP SSE Client
-  - IMcpClient and IDisposable for MCP SSE transport. ConnectAsync (SSE connection, initialize, discover tools), ListenForNotificationsAsync.
-## src/Infrastructure/Services/McpToolCaller.cs - 79 lines - MCP Tool Caller
-  - ITool for invoking tools from connected MCP servers. Name="MCPToolCall". Parses ToolName/Arguments, calls _mcpClient.CallToolAsync.
+## src/Infrastructure/Services/McpService.cs - 958 lines - Consolidated MCP Cluster
+  - Transport layer: IMcpClient interface, McpToolDefinition, McpToolResult, McpStdioClient (stdio transport), McpSseClient (SSE transport), McpMessage, McpSseMessage. Tool layer: McpToolCaller (MCPToolCall), McpPromptAccessor (MCPGetPrompt), McpPromptListTool (MCPPromptsList), McpResourceAccessor (MCPResourceAccess).
 ## src/Infrastructure/Services/MemoryManager.cs - 165 lines - GPU VRAM and CPU Memory Tracker
   - IMemoryManager for tracking GPU VRAM and CPU memory allocations with eviction scoring. RegisterModel, RecordAccess, GetEvictionPriority, GetModelToEvict.
 ## src/Infrastructure/Services/ModelCacheCleanupService.cs - 166 lines - Model Cache Cleanup Service
