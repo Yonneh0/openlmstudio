@@ -207,8 +207,8 @@ public class PinguRenderer : IDisposable
             path.Close();
 
             // Create a bitmap shader that samples from the atlas using the average UV coordinates
-            var localMatrix = SKMatrix.CreateScale(_mesh.AtlasWidth, _mesh.AtlasHeight)
-                .PostConcat(SKMatrix.CreateTranslation(avgUV.X * _mesh.AtlasWidth, avgUV.Y * _mesh.AtlasHeight));
+            // The translation positions the texture at the correct UV offset within the atlas
+            var localMatrix = SKMatrix.CreateTranslation(avgUV.X * _mesh.AtlasWidth, avgUV.Y * _mesh.AtlasHeight);
             using var textureShader = SKShader.CreateBitmap(
                 _atlasBitmap,
                 SKShaderTileMode.Clamp,

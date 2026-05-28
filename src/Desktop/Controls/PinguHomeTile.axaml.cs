@@ -98,10 +98,20 @@ public partial class PinguHomeTile : UserControl, IDisposable
         var avaloniaBitmap = new Avalonia.Media.Imaging.Bitmap(stream);
 
         // Set as canvas background with UniformToFill stretch
+        // Note: Avalonia manages the ImageBrush source disposal automatically
         canvas.Background = new Avalonia.Media.ImageBrush(avaloniaBitmap)
         {
             Stretch = Avalonia.Media.Stretch.UniformToFill,
         };
+    }
+
+    /// <summary>
+    /// Called when the tile is removed from the visual tree.
+    /// </summary>
+    protected override void OnDetachedFromVisualTree(VisualTreeAttachmentEventArgs e)
+    {
+        base.OnDetachedFromVisualTree(e);
+        Dispose();
     }
 
     /// <summary>

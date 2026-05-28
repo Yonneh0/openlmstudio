@@ -10,6 +10,7 @@ using Microsoft.Extensions.Logging;
 using OpenLMStudio.Domain.Models;
 using OpenLMStudio.Infrastructure.Rendering;
 using OpenLMStudio.Infrastructure.Services;
+using PinguHomeSceneRenderer = OpenLMStudio.Infrastructure.Rendering.PinguHomeSceneRenderer;
 using SKBitmap = SkiaSharp.SKBitmap;
 using SKCanvas = SkiaSharp.SKCanvas;
 using SKColorType = SkiaSharp.SKColorType;
@@ -25,7 +26,7 @@ namespace OpenLMStudio.Desktop.Controls;
 /// Pingu character view that renders the full character with animation, IK, and physics.
 /// Uses Avalonia's DrawingContext with a continuous render loop for zero-interop GPU rendering.
 /// </summary>
-public class PinguCharacterView : Control
+public class PinguCharacterView : Control, IDisposable
 {
     private readonly ILogger<PinguCharacterView>? _logger;
     private readonly Random _random;
@@ -50,7 +51,7 @@ public class PinguCharacterView : Control
     /// <summary>
     /// Home scene renderer for the penguin's home area.
     /// </summary>
-    private OpenLMStudio.Infrastructure.Rendering.PinguHomeSceneRenderer? _homeSceneRenderer;
+    private PinguHomeSceneRenderer? _homeSceneRenderer;
 
     /// <summary>
     /// Animation state machine for the character.
@@ -71,6 +72,16 @@ public class PinguCharacterView : Control
     /// DispatcherTimer for the continuous render loop.
     /// </summary>
     private DispatcherTimer? _renderTimer;
+
+    /// <summary>
+    /// Flag to track disposal state.
+    /// </summary>
+    private bool _disposed;
+
+    /// <summary>
+    /// Animation speed multiplier (1.0 = normal speed).
+    /// </summary>
+    private float _animationSpeedMultiplier = 1.0f;
 
     /// <summary>
     /// Default constructor for XAML.
@@ -94,7 +105,7 @@ public class PinguCharacterView : Control
         PinguPhysicsSolver physicsSolver,
         PinguInverseKinematics ik,
         PinguToolHolder toolHolder,
-        OpenLMStudio.Infrastructure.Rendering.PinguHomeSceneRenderer homeSceneRenderer,
+        PinguHomeSceneRenderer homeSceneRenderer,
         PinguRenderer pinguRenderer,
         ILogger<PinguCharacterView>? logger = null,
         Random? random = null)
@@ -115,28 +126,38 @@ public class PinguCharacterView : Control
     /// </summary>
     private void InitFromGeneratedData()
     {
-        var generator = new PinguMeshGenerator();
-        var characterData = generator.Generate();
-        var loader = new PinguBoneLoader();
-        var hierarchy = loader.LoadBoneHierarchy(
-            System.Text.Json.JsonSerializer.Serialize(characterData.BoneHierarchy.Definitions,
-                new System.Text.Json.JsonSerializerOptions { WriteIndented = false }));
+        try
+        {
+            var generator = new PinguMeshGenerator();
+            var characterData = generator.Generate();
+            var loader = new PinguBoneLoader();
+            var hierarchy = loader.LoadBoneHierarchy(
+                System.Text.Json.JsonSerializer.Serialize(characterData.BoneHierarchy.Definitions,
+                    new System.Text.Json.JsonSerializerOptions { WriteIndented = false }));
 
-        // Create the main renderer from generated character data
-        var animation = new PinguAnimationSystem(hierarchy, characterData.AnimationClips, characterData.PhysicsParams);
-        var npcManager = new PinguNPCManager();
-        var homeScene = loader.LoadHomeScene(
-            System.Text.Json.JsonSerializer.Serialize(characterData.BoneHierarchy.Definitions,
-                new System.Text.Json.JsonSerializerOptions { WriteIndented = false }));
-        var atlas = characterData.TextureAtlas ?? Array.Empty<byte>();
-        _pinguRenderer = new PinguRenderer(characterData.MeshData, hierarchy, animation, npcManager, homeScene, atlas);
-        _pinguRenderer.Initialize(400, 400);
+            // Create the main renderer from generated character data
+            var animation = new PinguAnimationSystem(hierarchy, characterData.AnimationClips, characterData.PhysicsParams);
+            var npcManager = new PinguNPCManager();
+            var homeScene = loader.LoadHomeScene(
+                System.Text.Json.JsonSerializer.Serialize(characterData.BoneHierarchy.Definitions,
+                    new System.Text.Json.JsonSerializerOptions { WriteIndented = false }));
+            var atlas = characterData.TextureAtlas ?? Array.Empty<byte>();
+            _pinguRenderer = new PinguRenderer(characterData.MeshData, hierarchy, animation, npcManager, homeScene, atlas);
+            _pinguRenderer.Initialize(400, 400);
 
-        // Create remaining services (reusing hierarchy)
-        _stateMachine = new PinguAnimationStateMachine(characterData.AnimationClips);
-        _behaviorTriggers = new PinguBehaviorTriggers(_stateMachine);
-        _toolHolder = new PinguToolHolder(hierarchy);
-        _homeSceneRenderer = new OpenLMStudio.Infrastructure.Rendering.PinguHomeSceneRenderer(homeScene);
+            // Create remaining services (reusing hierarchy)
+            _stateMachine = new PinguAnimationStateMachine(characterData.AnimationClips);
+            _behaviorTriggers = new PinguBehaviorTriggers(_stateMachine);
+            _toolHolder = new PinguToolHolder(hierarchy);
+            _homeSceneRenderer = new PinguHomeSceneRenderer(homeScene);
+
+            // Initialize animation state machine to Idle state
+            _stateMachine?.TransitionTo(PinguAnimationState.Idle);
+        }
+        catch (Exception ex)
+        {
+            _logger?.LogError(ex, "Failed to initialize PinguCharacterView from generated data");
+        }
     }
 
     /// <summary>
@@ -170,7 +191,7 @@ public class PinguCharacterView : Control
     }
 
     /// <summary>
-    /// Update the character for one frame. Call from render loop.
+    /// Update the character for one frame. Call from render loop before Render().
     /// </summary>
     public void Update(float deltaTime)
     {
@@ -186,25 +207,6 @@ public class PinguCharacterView : Control
     }
 
     /// <summary>
-    /// Render the character to the canvas.
-    /// </summary>
-    public void Render(SKCanvas canvas)
-    {
-        if (_surfaceWidth <= 0 || _surfaceHeight <= 0) return;
-
-        canvas.Clear(SKColors.Transparent);
-
-        // Draw home scene in the bottom-right corner
-        DrawHomeScene(canvas);
-
-        // Draw penguin using the main renderer
-        DrawPenguin(canvas);
-
-        // Draw tool attachments
-        DrawToolAttachments(canvas);
-    }
-
-    /// <summary>
     /// Draw the home scene in the bottom-right corner.
     /// </summary>
     private void DrawHomeScene(SKCanvas canvas)
@@ -215,14 +217,14 @@ public class PinguCharacterView : Control
         var homeX = _surfaceWidth - homeSize;
         var homeY = _surfaceHeight - homeSize;
 
-        // Draw home background
+        // Draw home background with rounded corners
         using var bgPaint = new SKPaint
         {
             Color = SKColors.DarkGray,
             IsAntialias = true,
             IsStroke = false
         };
-        canvas.DrawRect(homeX, homeY, homeSize, homeSize, bgPaint);
+        canvas.DrawRoundRect(homeX, homeY, homeSize, homeSize, homeSize / 10, homeSize / 10, bgPaint);
 
         // Draw home scene content
         _homeSceneRenderer.Render(canvas, homeSize, homeSize);
@@ -258,17 +260,17 @@ public class PinguCharacterView : Control
     {
         if (_toolHolder == null) return;
 
+        var bonePositions = GetBonePositions();
         for (var i = 0; i < _toolHolder.Attachments.Count; i++)
         {
             var attachment = _toolHolder.Attachments[i];
-            var toolPos = _toolHolder.GetToolPosition(i, GetBonePositions());
-            var toolPaint = new SKPaint
+            var toolPos = _toolHolder.GetToolPosition(i, bonePositions);
+            using var toolPaint = new SKPaint
             {
                 Color = SKColors.Brown,
                 Style = SkiaSharp.SKPaintStyle.Fill,
             };
             canvas.DrawCircle((int)toolPos.X, (int)toolPos.Y, 8, toolPaint);
-            toolPaint.Dispose();
         }
     }
 
@@ -286,11 +288,14 @@ public class PinguCharacterView : Control
     /// </summary>
     public override void Render(DrawingContext context)
     {
-        if (!_isInitialized || !_isAttachedToVisualTree)
+        if (_disposed || !_isInitialized || !_isAttachedToVisualTree)
             return;
 
         if (_surfaceWidth <= 0 || _surfaceHeight <= 0)
             return;
+
+        // Update animation before rendering
+        Update(1f / 60f);
 
         // Reuse or create the bitmap if size changed
         if (_renderBitmap == null || _renderBitmap.Width != (int)_surfaceWidth || _renderBitmap.Height != (int)_surfaceHeight)
@@ -301,14 +306,18 @@ public class PinguCharacterView : Control
 
         using var skCanvas = new SKCanvas(_renderBitmap);
         skCanvas.Clear(SKColors.Transparent);
-        Render(skCanvas);
+        DrawHomeScene(skCanvas);
+        DrawPenguin(skCanvas);
+        DrawToolAttachments(skCanvas);
 
-        var rect = new Avalonia.Rect(0, 0, _surfaceWidth, _surfaceHeight);
+        // Encode bitmap to PNG and create Avalonia bitmap for display
         using var skStream = new System.IO.MemoryStream();
         _renderBitmap!.Encode(skStream, SKEncodedImageFormat.Png, 90);
         skStream.Position = 0;
         var wBitmap = new Avalonia.Media.Imaging.Bitmap(skStream);
+        var rect = new Avalonia.Rect(0, 0, _surfaceWidth, _surfaceHeight);
         context.DrawImage(wBitmap, rect);
+        // wBitmap is disposed by Avalonia when the DrawingContext is disposed
     }
 
     /// <summary>
@@ -371,11 +380,29 @@ public class PinguCharacterView : Control
     }
 
     /// <summary>
+    /// Set the animation speed multiplier.
+    /// </summary>
+    public void SetAnimationSpeed(float speed)
+    {
+        _animationSpeedMultiplier = Math.Max(0.1f, Math.Min(3.0f, speed));
+    }
+
+    /// <summary>
+    /// Get the current animation speed multiplier.
+    /// </summary>
+    public float GetAnimationSpeed() => _animationSpeedMultiplier;
+
+    /// <summary>
     /// Disposes resources.
     /// </summary>
     public void Dispose()
     {
+        if (_disposed)
+            return;
+
+        _disposed = true;
         StopRenderLoop();
         _renderBitmap?.Dispose();
+        _pinguRenderer?.Dispose();
     }
 }

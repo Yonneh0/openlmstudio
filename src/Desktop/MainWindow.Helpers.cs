@@ -545,81 +545,12 @@ public partial class MainWindow
 
     private void OnRightAnalysisTabClick(object? sender, RoutedEventArgs e) { }
 
-    // ---- Settings Window ----
-
-    private void OnSettingsClicked(object? sender, RoutedEventArgs e)
-    {
-        try
-        {
-            var settingsWin = new SettingsWindow();
-
-            if (Owner is Window ownerWindow)
-                settingsWin.ShowDialog(ownerWindow);
-            else
-                settingsWin.Show();
-        }
-        catch (Exception ex)
-        {
-            _logger?.LogError(ex, "Failed to open settings window");
-            ShowError($"Failed to open settings: {ex.Message}");
-        }
-    }
-
     // ---- Keyboard Shortcuts (kept for early-init before KeyboardService is ready) ----
-
+    // NOTE: KeyboardService now handles all keyboard shortcuts. This method is kept
+    // as a no-op for backward compatibility with any code that might call it directly.
     private void OnMainWindowKeyDown(object? sender, KeyEventArgs e)
     {
-        // Ctrl+N: New Chat
-        if (e.KeyModifiers.HasFlag(KeyModifiers.Control) && e.Key == Key.N)
-        {
-            OnNewChatClicked(null, new RoutedEventArgs());
-            e.Handled = true;
-            return;
-        }
-
-        // Ctrl+M: Toggle Model List
-        if (e.KeyModifiers.HasFlag(KeyModifiers.Control) && e.Key == Key.M)
-        {
-            ShowTab("Models");
-            e.Handled = true;
-            return;
-        }
-
-        // Ctrl+S: Toggle Server
-        if (e.KeyModifiers.HasFlag(KeyModifiers.Control) && e.Key == Key.S)
-        {
-            OnServerStartStopClicked(null, new RoutedEventArgs());
-            e.Handled = true;
-            return;
-        }
-
-        // Ctrl+K: Toggle Context Panel
-        if (e.KeyModifiers.HasFlag(KeyModifiers.Control) && e.Key == Key.K)
-        {
-            ShowTab("Context");
-            UpdateRightSidebarTab("Context");
-            e.Handled = true;
-            return;
-        }
-
-        // Ctrl+L: Settings
-        if (e.KeyModifiers.HasFlag(KeyModifiers.Control) && e.Key == Key.L)
-        {
-            OnSettingsClicked(null, new RoutedEventArgs());
-            e.Handled = true;
-            return;
-        }
-
-        // Escape: Close popups
-        if (e.Key == Key.Escape)
-        {
-            if (GitLogPopup != null)
-                GitLogPopup.SetValue(Avalonia.Controls.Primitives.Popup.IsOpenProperty, false);
-            if (ToolCallPopup != null)
-                ToolCallPopup.SetValue(Avalonia.Controls.Primitives.Popup.IsOpenProperty, false);
-            e.Handled = true;
-            return;
-        }
+        // No-op: KeyboardService now handles all keyboard shortcuts.
     }
 
     // ---- Window State Persistence ----

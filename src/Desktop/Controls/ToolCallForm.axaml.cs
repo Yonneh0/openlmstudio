@@ -13,7 +13,7 @@ using Avalonia.Media;
 using Avalonia.Platform.Storage;
 using Avalonia.Threading;
 using Microsoft.Extensions.Logging;
-using OpenLMStudio.Application.Services.Agent;
+using OpenLMStudio.Domain.Interfaces;
 using OpenLMStudio.Domain.Models;
 
 /// <summary>
@@ -22,7 +22,7 @@ using OpenLMStudio.Domain.Models;
 public partial class ToolCallForm : UserControl, IDisposable
 {
     private readonly ToolDefinition _toolDefinition;
-    private readonly AgentToolExecutor _toolExecutor;
+    private readonly IAgentToolExecutor _toolExecutor;
     private readonly ILogger<ToolCallForm>? _logger;
     private readonly Dictionary<string, object> _parameterValues;
     private readonly Action<ToolCallForm>? _onCancel;
@@ -44,7 +44,7 @@ public partial class ToolCallForm : UserControl, IDisposable
     /// <summary>
     /// Creates a new ToolCallForm for the given tool definition.
     /// </summary>
-    public ToolCallForm(ToolDefinition toolDefinition, AgentToolExecutor toolExecutor, ILogger<ToolCallForm>? logger = null)
+    public ToolCallForm(ToolDefinition toolDefinition, IAgentToolExecutor toolExecutor, ILogger<ToolCallForm>? logger = null)
     {
         InitializeComponent();
         _toolDefinition = toolDefinition ?? throw new ArgumentNullException(nameof(toolDefinition));
@@ -58,7 +58,7 @@ public partial class ToolCallForm : UserControl, IDisposable
     /// <summary>
     /// Creates a new ToolCallForm with a custom execute callback.
     /// </summary>
-    public ToolCallForm(ToolDefinition toolDefinition, AgentToolExecutor toolExecutor, Func<ToolCallForm, Task> onExecute, ILogger<ToolCallForm>? logger = null)
+    public ToolCallForm(ToolDefinition toolDefinition, IAgentToolExecutor toolExecutor, Func<ToolCallForm, Task> onExecute, ILogger<ToolCallForm>? logger = null)
     {
         InitializeComponent();
         _toolDefinition = toolDefinition ?? throw new ArgumentNullException(nameof(toolDefinition));
@@ -73,7 +73,7 @@ public partial class ToolCallForm : UserControl, IDisposable
     /// <summary>
     /// Creates a new ToolCallForm with a custom cancel callback.
     /// </summary>
-    public ToolCallForm(ToolDefinition toolDefinition, AgentToolExecutor toolExecutor, Action<ToolCallForm> onCancel, ILogger<ToolCallForm>? logger = null)
+    public ToolCallForm(ToolDefinition toolDefinition, IAgentToolExecutor toolExecutor, Action<ToolCallForm> onCancel, ILogger<ToolCallForm>? logger = null)
     {
         InitializeComponent();
         _toolDefinition = toolDefinition ?? throw new ArgumentNullException(nameof(toolDefinition));

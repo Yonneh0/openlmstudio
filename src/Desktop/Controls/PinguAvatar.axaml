@@ -27,10 +27,13 @@
                  Width="20" Height="8"
                  Fill="Black"/>
 
-        <!-- Blink overlay (hides eyes when blinking) -->
+        <!-- Blink overlay (hides eyes when blinking) - positioned over the eyes at top-center -->
         <Border x:Name="BlinkOverlay"
-                Width="70" Height="70"
-                Background="White"
-                IsHitTestVisible="False"/>
+                Width="22" Height="10"
+                Background="Black"
+                IsHitTestVisible="False"
+                HorizontalAlignment="Center"
+                VerticalAlignment="Top"
+                Margin="0,18,0,0"/>
     </Panel>
 </UserControl>

@@ -27,8 +27,9 @@ public partial class MainWindow
         SetTabVisibility(ContextTabContent, tabName == "Context");
         SetTabVisibility(PinguTabContent, tabName == "Pingu");
         SetTabVisibility(ImageGenTabContent, tabName == "ImageGen");
+        SetTabVisibility(SettingsTabContent, tabName == "Settings");
 
-        // Update ToggleButton checked state
+        // Update ToggleButton checked state (all left sidebar tabs are now ToggleButtons)
         SetToggleButtonChecked(ChatTab, tabName == "Chat");
         SetToggleButtonChecked(ServerTab, tabName == "Server");
         SetToggleButtonChecked(ModelsTab, tabName == "Models");
@@ -36,6 +37,7 @@ public partial class MainWindow
         SetToggleButtonChecked(ContextTab, tabName == "Context");
         SetToggleButtonChecked(PinguTab, tabName == "Pingu");
         SetToggleButtonChecked(ImageGenTab, tabName == "ImageGen");
+        SetToggleButtonChecked(SettingsTab, tabName == "Settings");
 
         // Update server status
         switch (tabName)
@@ -71,18 +73,17 @@ public partial class MainWindow
     /// </summary>
     public void SwitchToTab(int index)
     {
-        var tabs = new[] { "Chat", "Server", "Models", "Devices", "Context", "Pingu", "ImageGen" };
+        var tabs = new[] { "Chat", "Server", "Models", "Devices", "Context", "Pingu", "ImageGen", "Settings" };
         if (index >= 0 && index < tabs.Length)
             ShowTab(tabs[index]);
     }
 
     /// <summary>
-    /// Handles ToggleButton click changes — updates styling and right sidebar.
+    /// No longer needed — ToggleButtons handle their own click events via OnLeftTabClick.
     /// </summary>
     private void OnLeftTabControlSelectionChanged(object? sender, SelectionChangedEventArgs e)
     {
-        // No longer needed since we use ToggleButtons with direct click handlers.
-        // Kept for compatibility with any remaining TabControl-based code.
+        // No-op: ToggleButtons handle their own click events via OnLeftTabClick.
     }
 
     private void SetTabVisibility(StackPanel? panel, bool visible)
@@ -92,13 +93,13 @@ public partial class MainWindow
     }
 
     /// <summary>
-    /// Updates the styling of tab TextBlocks based on which ToggleButton is currently checked.
-    /// Uses the ToggleButton.IsChecked property instead of string comparison for robustness.
+    /// Updates the styling of tab TextBlocks based on which tab is currently selected.
+    /// Uses the ToggleButton.IsChecked property for all left sidebar tabs.
     /// </summary>
     private void UpdateActiveTab(string activeTabName)
     {
         // Map of ToggleButton to its corresponding StackPanel (tab content)
-        var tabMap = new (ToggleButton Button, StackPanel Panel)[]
+        var tabMap = new (ToggleButton Tab, StackPanel Panel)[]
         {
             (ChatTab!, ChatTabContent!),
             (ServerTab!, ServerTabContent!),
@@ -109,7 +110,7 @@ public partial class MainWindow
             (ImageGenTab!, ImageGenTabContent!),
         };
 
-        foreach (var (button, panel) in tabMap)
+        foreach (var (tab, panel) in tabMap)
         {
             // Skip if panel is not visible (not the active tab)
             if (!panel.IsVisible)
@@ -122,7 +123,7 @@ public partial class MainWindow
 
             // Use the ToggleButton's IsChecked property to determine active tab
             // This is more robust than string comparison — it doesn't depend on the TextBlock content
-            if (button.IsChecked == true)
+            if (tab.IsChecked == true)
             {
                 firstTextBlock.Foreground = new SolidColorBrush(Color.FromRgb(79, 195, 247)); // AccentBlue
                 firstTextBlock.FontWeight = FontWeight.SemiBold;
@@ -131,6 +132,17 @@ public partial class MainWindow
             {
                 firstTextBlock.Foreground = new SolidColorBrush(Color.FromRgb(204, 204, 204)); // TextPrimary
                 firstTextBlock.FontWeight = FontWeight.Normal;
+            }
+        }
+
+        // SettingsTab is also a ToggleButton now — handle it the same way
+        if (SettingsTabContent?.IsVisible == true)
+        {
+            var firstTextBlock = SettingsTabContent.Children.OfType<TextBlock>().FirstOrDefault();
+            if (firstTextBlock != null && SettingsTab.IsChecked == true)
+            {
+                firstTextBlock.Foreground = new SolidColorBrush(Color.FromRgb(79, 195, 247)); // AccentBlue
+                firstTextBlock.FontWeight = FontWeight.SemiBold;
             }
         }
     }

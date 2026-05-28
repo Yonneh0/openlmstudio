@@ -84,7 +84,6 @@
   - Configuration for System AI (llama.cpp) client. Properties: ModelPath, Port (8081), SystemPrompt, Temperature (0.3), TopP (0.9), MemoryLock, RecommendedBackend, GpuLayers (35). (~49 lines)
 ## src/Domain/Models/TaskModels.cs - Task Models
   - Large file (852 lines). Enums: TaskPriority, AgentState, AgentStateExtended, TaskBranchStatus, CheckpointType. Classes: TaskEntity, TaskBranch, TaskCheckpoint, TaskContextSnapshot (with AiAnalysis), AgentTaskState, AgentTaskProgress, AgentTaskChecklistItem, AgentTaskSettings (with GenerateUlid), AgentAutoApprovalSettings, AgentBrowserSettings, AgentFocusChainSettings. Records: AgenticTask, AgentToolCallRecord. (~852 lines)
-## src/Domain/Models/ToolAndRegistryModels.cs - Tool and Registry Models
-  - ToolDefinition record, ToolAvailability enum, ToolResult record (with Ok/Fail/WithImages static methods), ToolRegistry class (Register, RegisterRange, GetTool, ListTools, IsToolAvailable, Unregister, Clear), McpServerConfig class with nested McpToolInfo/McpResourceInfo records, BrowserSession class (with Create/Close). (~258 lines)
+## src/Domain/Models/ToolAndRegistry
 ## src/Domain/OpenLMStudio.Domain.csproj - Domain Project File
   - Minimal .NET 8 SDK-style project file with ImplicitUsings and Nullable enabled. Single package reference: System.Text.Json 8.0.5. Root namespace: OpenLMStudio.Domain. (~14 lines)

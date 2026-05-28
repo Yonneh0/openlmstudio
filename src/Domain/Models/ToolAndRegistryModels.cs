@@ -79,8 +79,9 @@ public record ToolResult
 /// <summary>
 /// Registry of all available tools for the agent.
 /// Provides lookup and registration of tool definitions.
+/// Note: This is distinct from Infrastructure.Services.ToolRegistry which handles tool discovery/instantiation.
 /// </summary>
-public class ToolRegistry
+public class ToolAvailabilityRegistry
 {
     private readonly Dictionary<string, ToolDefinition> _tools = new();
     private readonly object _lock = new();

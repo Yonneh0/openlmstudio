@@ -54,7 +54,55 @@ public partial class PinguPanel : UserControl, IDisposable
             };
             if (PanelTabs.SelectedIndex != tabIndex)
                 PanelTabs.SelectedIndex = tabIndex;
+
+            // Update slider values when state changes
+            UpdateSliders(e.State);
         });
+    }
+
+    private void UpdateSliders(PinguState state)
+    {
+        // Update animation speed slider
+        if (AnimationSpeedSlider != null)
+        {
+            AnimationSpeedSlider.Value = Math.Max(AnimationSpeedSlider.Minimum, Math.Min(AnimationSpeedSlider.Maximum, state.AnimationSpeedMultiplier));
+        }
+
+        // Update behavior frequency slider
+        if (BehaviorFrequencySlider != null)
+        {
+            BehaviorFrequencySlider.Value = Math.Max(BehaviorFrequencySlider.Minimum, Math.Min(BehaviorFrequencySlider.Maximum, state.BehaviorFrequencyMultiplier));
+        }
+
+        // Update pingu size slider
+        if (PinguSizeSlider != null)
+        {
+            PinguSizeSlider.Value = Math.Max(PinguSizeSlider.Minimum, Math.Min(PinguSizeSlider.Maximum, state.PinguSizeMultiplier));
+        }
+    }
+
+    private void OnAnimationSpeedSliderValueChanged(object? sender, RangeBaseValueChangedEventArgs e)
+    {
+        if (_pingu != null)
+        {
+            _pingu.AnimationSpeedMultiplier = (float)e.NewValue;
+        }
+    }
+
+    private void OnBehaviorFrequencySliderValueChanged(object? sender, RangeBaseValueChangedEventArgs e)
+    {
+        if (_pingu != null)
+        {
+            _pingu.BehaviorFrequencyMultiplier = (float)e.NewValue;
+        }
+    }
+
+    private void OnPinguSizeSliderValueChanged(object? sender, RangeBaseValueChangedEventArgs e)
+    {
+        if (_pingu != null)
+        {
+            _pingu.PinguSizeMultiplier = (float)e.NewValue;
+        }
     }
 
     /// <summary>

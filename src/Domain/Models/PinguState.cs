@@ -65,6 +65,11 @@ public class PinguState
     public double BlinkIntervalMin { get; set; } = 1.5;
     public double BlinkIntervalMax { get; set; } = 3.0;
 
+    // Animation and appearance multipliers (exposed via PinguStore)
+    public float AnimationSpeedMultiplier { get; set; } = 1.0f;
+    public float BehaviorFrequencyMultiplier { get; set; } = 1.0f;
+    public float PinguSizeMultiplier { get; set; } = 1.0f;
+
     // Awakening state
     public bool IsAwake { get; set; }
     public bool HasGguf { get; set; }

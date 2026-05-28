@@ -88,6 +88,21 @@ public interface IPinguStore
     Task IdleAsync();
 
     /// <summary>
+    /// Animation speed multiplier (1.0 = normal speed).
+    /// </summary>
+    float AnimationSpeedMultiplier { get; set; }
+
+    /// <summary>
+    /// Behavior frequency multiplier (1.0 = normal frequency).
+    /// </summary>
+    float BehaviorFrequencyMultiplier { get; set; }
+
+    /// <summary>
+    /// Pingu size multiplier (1.0 = normal size).
+    /// </summary>
+    float PinguSizeMultiplier { get; set; }
+
+    /// <summary>
     /// Creates a PinguRenderer for GPU rendering of the Pingu character.
     /// Returns a function that renders the scene given a cursor position, bitmap, and canvas.
     /// </summary>

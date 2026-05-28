@@ -44,6 +44,52 @@
             <Setter Property="Height" Value="24"/>
             <Setter Property="VerticalContentAlignment" Value="Center"/>
         </Style>
+        <!-- VS Code-style TabStrip tabs (left sidebar) -->
+        <Style Selector="ToggleButton.vscodeTab">
+            <Setter Property="Padding" Value="12,8"/>
+            <Setter Property="Margin" Value="0,0,0,0"/>
+            <Setter Property="Background" Value="Transparent"/>
+            <Setter Property="Foreground" Value="{StaticResource TextPrimary}"/>
+            <Setter Property="FontSize" Value="13"/>
+            <Setter Property="BorderThickness" Value="3,0,0,0"/>
+            <Setter Property="BorderBrush" Value="Transparent"/>
+            <Setter Property="CornerRadius" Value="0"/>
+            <Setter Property="MinHeight" Value="32"/>
+            <Setter Property="HorizontalContentAlignment" Value="Center"/>
+            <Setter Property="VerticalContentAlignment" Value="Center"/>
+            <Setter Property="Cursor" Value="Hand"/>
+        </Style>
+        <Style Selector="ToggleButton.vscodeTab:checked">
+            <Setter Property="Background" Value="{StaticResource BgTertiary}"/>
+            <Setter Property="BorderBrush" Value="{StaticResource AccentBlue}"/>
+            <Setter Property="Foreground" Value="{StaticResource AccentBlue}"/>
+        </Style>
+        <Style Selector="ToggleButton.vscodeTab:pointerover">
+            <Setter Property="Background" Value="#3A3A3E"/>
+        </Style>
+        <!-- VS Code-style nested TabStrip tabs (settings sub-tabs) -->
+        <Style Selector="TabItem.settingsSubTab">
+            <Setter Property="Padding" Value="12,6"/>
+            <Setter Property="Margin" Value="0,0,0,0"/>
+            <Setter Property="Background" Value="{StaticResource BgTertiary}"/>
+            <Setter Property="Foreground" Value="{StaticResource TextPrimary}"/>
+            <Setter Property="FontSize" Value="12"/>
+            <Setter Property="BorderThickness" Value="0,0,0,2"/>
+            <Setter Property="BorderBrush" Value="Transparent"/>
+            <Setter Property="CornerRadius" Value="0"/>
+            <Setter Property="MinHeight" Value="28"/>
+            <Setter Property="HorizontalContentAlignment" Value="Center"/>
+            <Setter Property="VerticalContentAlignment" Value="Center"/>
+            <Setter Property="Cursor" Value="Hand"/>
+        </Style>
+        <Style Selector="TabItem.settingsSubTab:selected">
+            <Setter Property="Background" Value="{StaticResource BgSecondary}"/>
+            <Setter Property="BorderBrush" Value="{StaticResource AccentBlue}"/>
+            <Setter Property="Foreground" Value="{StaticResource AccentBlue}"/>
+        </Style>
+        <Style Selector="TabItem.settingsSubTab:pointerover">
+            <Setter Property="Background" Value="#3A3A3E"/>
+        </Style>
         <Style Selector="Button.AgentModeToggle.off">
             <Setter Property="Background" Value="#2D2D30"/>
         </Style>
@@ -146,33 +192,116 @@
                 <RowDefinition Height="Auto"/>
             </Grid.RowDefinitions>
 
-            <WrapPanel x:Name="LeftTabButtonsPanel" Margin="4,0,4,0">
-                <!-- Settings button at beginning of tab row -->
-                <Button x:Name="SettingsButton"
-                        Content="&#x2699;&#xFE0E;"
-                        Tag="Settings"
-                        Classes="settingsTab"
-                        Padding="0"
-                        Margin="0,0,2,0"
-                        Background="{StaticResource BgTertiary}"
-                        Foreground="{StaticResource TextPrimary}"
-                        BorderThickness="2,0,0,0"
-                        BorderBrush="Transparent"
-                        FontSize="16"
-                        Height="24"
-                        MinWidth="24"
-                        HorizontalContentAlignment="Center"
-                        VerticalContentAlignment="Center"
-                        Cursor="Hand"/>
-                <!-- Tab buttons -->
-                <ToggleButton x:Name="ChatTab" Content="Chats" Classes="toolTab" IsChecked="True" Tag="Chat" MinHeight="24" VerticalContentAlignment="Center"/>
-                <ToggleButton x:Name="ServerTab" Content="Server" Classes="toolTab" Tag="Server" MinHeight="24" VerticalContentAlignment="Center"/>
-                <ToggleButton x:Name="ModelsTab" Content="Models" Classes="toolTab" Tag="Models" MinHeight="24" VerticalContentAlignment="Center"/>
-                <ToggleButton x:Name="DevicesTab" Content="Devices" Classes="toolTab" Tag="Devices" MinHeight="24" VerticalContentAlignment="Center"/>
-                <ToggleButton x:Name="ContextTab" Content="Context" Classes="toolTab" Tag="Context" MinHeight="24" VerticalContentAlignment="Center"/>
-                <ToggleButton x:Name="PinguTab" Content="Pingu" Classes="toolTab" Tag="Pingu" MinHeight="24" VerticalContentAlignment="Center"/>
-                <ToggleButton x:Name="ImageGenTab" Content="ImageGen" Classes="toolTab" Tag="ImageGen" MinHeight="24" VerticalContentAlignment="Center"/>
-            </WrapPanel>
+            <!-- VS Code-style TabStrip for left sidebar tabs -->
+            <StackPanel x:Name="LeftTabStripPanel"
+                        Orientation="Horizontal"
+                        Background="Transparent">
+                <!-- Settings tab -->
+                <ToggleButton x:Name="SettingsTab"
+                              Classes="vscodeTab"
+                              Tag="Settings"
+                              Height="32"
+                              Padding="4,8"
+                              HorizontalContentAlignment="Center"
+                              VerticalContentAlignment="Center"
+                              Cursor="Hand"
+                              Click="OnLeftTabClick"
+                              ToolTip.Tip="Settings">
+                    <TextBlock Text="&#x2699;&#xFE0E;" FontSize="16" TextAlignment="Center"/>
+                </ToggleButton>
+                <!-- Chat tab -->
+                <ToggleButton x:Name="ChatTab"
+                              Classes="vscodeTab"
+                              Tag="Chat"
+                              IsChecked="True"
+                              Height="32"
+                              Padding="4,8"
+                              HorizontalContentAlignment="Center"
+                              VerticalContentAlignment="Center"
+                              Cursor="Hand"
+                              Click="OnLeftTabClick"
+                              ToolTip.Tip="Chat">
+                    <TextBlock Text="&#x1F4AC;" FontSize="16" TextAlignment="Center"/>
+                </ToggleButton>
+                <!-- Server tab -->
+                <ToggleButton x:Name="ServerTab"
+                              Classes="vscodeTab"
+                              Tag="Server"
+                              Height="32"
+                              Padding="4,8"
+                              HorizontalContentAlignment="Center"
+                              VerticalContentAlignment="Center"
+                              Cursor="Hand"
+                              Click="OnLeftTabClick"
+                              ToolTip.Tip="Server">
+                    <TextBlock Text="&#x1F5A5;" FontSize="16" TextAlignment="Center"/>
+                </ToggleButton>
+                <!-- Models tab -->
+                <ToggleButton x:Name="ModelsTab"
+                              Classes="vscodeTab"
+                              Tag="Models"
+                              Height="32"
+                              Padding="4,8"
+                              HorizontalContentAlignment="Center"
+                              VerticalContentAlignment="Center"
+                              Cursor="Hand"
+                              Click="OnLeftTabClick"
+                              ToolTip.Tip="Models">
+                    <TextBlock Text="&#x1F4E6;" FontSize="16" TextAlignment="Center"/>
+                </ToggleButton>
+                <!-- Devices tab -->
+                <ToggleButton x:Name="DevicesTab"
+                              Classes="vscodeTab"
+                              Tag="Devices"
+                              Height="32"
+                              Padding="4,8"
+                              HorizontalContentAlignment="Center"
+                              VerticalContentAlignment="Center"
+                              Cursor="Hand"
+                              Click="OnLeftTabClick"
+                              ToolTip.Tip="Devices">
+                    <TextBlock Text="&#x1F527;" FontSize="16" TextAlignment="Center"/>
+                </ToggleButton>
+                <!-- Context tab -->
+                <ToggleButton x:Name="ContextTab"
+                              Classes="vscodeTab"
+                              Tag="Context"
+                              Height="32"
+                              Padding="4,8"
+                              HorizontalContentAlignment="Center"
+                              VerticalContentAlignment="Center"
+                              Cursor="Hand"
+                              Click="OnLeftTabClick"
+                              ToolTip.Tip="Context">
+                    <TextBlock Text="&#x1F4CB;" FontSize="16" TextAlignment="Center"/>
+                </ToggleButton>
+                <!-- Pingu tab -->
+                <ToggleButton x:Name="PinguTab"
+                              Classes="vscodeTab"
+                              Tag="Pingu"
+                              Height="32"
+                              Padding="4,8"
+                              HorizontalContentAlignment="Center"
+                              VerticalContentAlignment="Center"
+                              Cursor="Hand"
+                              Click="OnLeftTabClick"
+                              ToolTip.Tip="Pingu">
+                    <TextBlock Text="&#x1F427;" FontSize="16" TextAlignment="Center"/>
+                </ToggleButton>
+                <!-- ImageGen tab -->
+                <ToggleButton x:Name="ImageGenTab"
+                              Classes="vscodeTab"
+                              Tag="ImageGen"
+                              Height="32"
+                              Padding="4,8"
+                              HorizontalContentAlignment="Center"
+                              VerticalContentAlignment="Center"
+                              Cursor="Hand"
+                              Click="OnLeftTabClick"
+                              ToolTip.Tip="ImageGen">
+                    <TextBlock Text="&#x1F3A8;" FontSize="16" TextAlignment="Center"/>
+                </ToggleButton>
+            </StackPanel>
 
             <Grid Grid.Row="1">
                 <Grid.RowDefinitions>
@@ -189,12 +318,9 @@
                             <StackPanel x:Name="ChatListPanel" Margin="0,4,0,0">
                                 <TextBlock Text="No chats loaded" Foreground="{StaticResource TextMuted}" Padding="12,8" FontSize="12"/>
                             </StackPanel>
-                            <Border Background="{StaticResource BgSecondary}" CornerRadius="4" Margin="0,16,0,0">
-                                <TextBlock Text="Folders" FontWeight="SemiBold" Foreground="#4FC3F7" Padding="8,8"/>
-                            </Border>
                             <!-- + New Chat button moved into Chats container -->
                             <Border Background="{StaticResource BgSecondary}" CornerRadius="4" Margin="8,16,8,8">
-                                <Button x:Name="NewChatButton" Content="+ New Chat" Background="#0E639C" Foreground="White" Padding="12,6" FontSize="13" HorizontalAlignment="Stretch" Height="36"/>
+                                <Button x:Name="NewChatButton" Content="+ New Chat" Background="#0E639C" Foreground="White" Padding="12,6" FontSize="13" HorizontalAlignment="Stretch" Height="36" ToolTip.Tip="Create a new chat session"/>
                             </Border>
                         </StackPanel>
 
@@ -204,7 +330,7 @@
                                 <StackPanel>
                                     <TextBlock x:Name="ServerStatusText" Text="Server: Stopped" Foreground="{StaticResource AccentRed}" Padding="12,8"/>
                                     <TextBlock x:Name="ServerPortText" Text="Port: 8080" Padding="12,4"/>
-                                    <Button x:Name="LeftServerStartStopButton" Content="Start Server" Background="#0E639C" Foreground="White" Padding="8,4" Margin="8,8,8,8" HorizontalAlignment="Stretch" Height="36"/>
+                                    <Button x:Name="LeftServerStartStopButton" Content="Start Server" Background="#0E639C" Foreground="White" Padding="8,4" Margin="8,8,8,8" HorizontalAlignment="Stretch" Height="36" ToolTip.Tip="Start or stop the local server"/>
                                 </StackPanel>
                             </Border>
                         </StackPanel>
@@ -214,7 +340,7 @@
                             <StackPanel>
                                 <TextBlock Text="No models loaded" Foreground="{StaticResource TextMuted}" Padding="12,8" FontSize="12"/>
                             </StackPanel>
-                            <Button x:Name="AddModelButton" Content="+ Add Model" Background="#0E639C" Foreground="White" Padding="8,4" Margin="8,8,8,0" HorizontalAlignment="Stretch" Height="36"/>
+                            <Button x:Name="AddModelButton" Content="+ Add Model" Background="#0E639C" Foreground="White" Padding="8,4" Margin="8,8,8,0" HorizontalAlignment="Stretch" Height="36" ToolTip.Tip="Add a new model"/>
                         </StackPanel>
 
                         <!-- Devices tab content -->
@@ -232,7 +358,7 @@
                                     <TextBlock x:Name="ContextLengthRightText" Text="Context: 4096 tokens" Padding="12,4"/>
                                 </StackPanel>
                             </Border>
-                            <Button x:Name="LoadModelButton" Content="Load Model" Background="#0E639C" Foreground="White" Padding="8,4" Margin="8,8,8,0" HorizontalAlignment="Stretch" Height="36"/>
+                            <Button x:Name="LoadModelButton" Content="Load Model" Background="#0E639C" Foreground="White" Padding="8,4" Margin="8,8,8,0" HorizontalAlignment="Stretch" Height="36" ToolTip.Tip="Load a model for inference"/>
                         </StackPanel>
 
                         <!-- Context tab content -->
@@ -255,7 +381,7 @@
                             <Border Background="{StaticResource BgSecondary}" CornerRadius="4" Margin="0,8,0,0">
                                 <StackPanel x:Name="ContextInjectionSection">
                                     <TextBlock Text="Custom Context:" Foreground="{StaticResource TextPrimary}" Padding="12,4"/>
-                                    <Button x:Name="InjectCustomContextBtn" Content="+ Add Custom Context" Background="#0E639C" Foreground="White" Padding="8,4" Margin="8,4,8,8" HorizontalAlignment="Stretch" Height="32"/>
+                                    <Button x:Name="InjectCustomContextBtn" Content="+ Add Custom Context" Background="#0E639C" Foreground="White" Padding="8,4" Margin="8,4,8,8" HorizontalAlignment="Stretch" Height="32" ToolTip.Tip="Add custom context to the conversation"/>
                                 </StackPanel>
                             </Border>
                             <Border Background="{StaticResource BgSecondary}" CornerRadius="4" Margin="0,8,0,0">
@@ -298,7 +424,7 @@
                                         </ComboBox>
                                         <TextBlock Text="Content:" Foreground="{StaticResource TextPrimary}" Padding="12,4"/>
                                         <TextBox x:Name="CustomContextContentInput" Foreground="{StaticResource TextPrimary}" Background="{StaticResource BgTertiary}" BorderThickness="0" Margin="8,4,8,8" Height="80" AcceptsReturn="True"/>
-                                        <Button x:Name="CustomContextInjectBtn" Content="Inject Context" Background="#4FC3F7" Foreground="White" Padding="12,4" Height="36" Margin="8"/>
+                                        <Button x:Name="CustomContextInjectBtn" Content="Inject Context" Background="#4FC3F7" Foreground="White" Padding="12,4" Height="36" Margin="8" ToolTip.Tip="Inject the custom context"/>
                                     </StackPanel>
                                 </Border>
                             </StackPanel>
@@ -310,27 +436,314 @@
                                 <StackPanel>
                                     <TextBlock Text="Pingu Agent" FontWeight="SemiBold" Foreground="#4FC3F7" Padding="12,8"/>
                                     <TextBlock Text="Control Pingu's behavior and interactions" Foreground="{StaticResource TextSecondary}" Padding="12,4" FontSize="12"/>
-                                    <Button x:Name="PinguWakeButton" Content="Wake Pingu" Background="#4FC3F7" Foreground="White" Padding="8,4" Margin="8,8,8,4" HorizontalAlignment="Stretch" Height="36"/>
-                                    <Button x:Name="PinguPauseButton" Content="Pause Pingu" Background="#FF9800" Foreground="White" Padding="8,4" Margin="8,4,8,4" HorizontalAlignment="Stretch" Height="36"/>
-                                    <Button x:Name="PinguResetButton" Content="Reset Pingu" Background="#FF6B6B" Foreground="White" Padding="8,4" Margin="8,4,8,8" HorizontalAlignment="Stretch" Height="36"/>
+                                    <Button x:Name="PinguWakeButton" Content="Wake Pingu" Background="#4FC3F7" Foreground="White" Padding="8,4" Margin="8,8,8,4" HorizontalAlignment="Stretch" Height="36" ToolTip.Tip="Wake up Pingu"/>
+                                    <Button x:Name="PinguPauseButton" Content="Pause Pingu" Background="#FF9800" Foreground="White" Padding="8,4" Margin="8,4,8,4" HorizontalAlignment="Stretch" Height="36" ToolTip.Tip="Pause Pingu"/>
+                                    <Button x:Name="PinguResetButton" Content="Reset Pingu" Background="#FF6B6B" Foreground="White" Padding="8,4" Margin="8,4,8,8" HorizontalAlignment="Stretch" Height="36" ToolTip.Tip="Reset Pingu"/>
                                 </StackPanel>
                             </Border>
                             <Border Background="{StaticResource BgSecondary}" CornerRadius="4" Margin="0,8,0,0">
                                 <StackPanel>
                                     <TextBlock Text="Pingu Tools" FontWeight="SemiBold" Foreground="#4FC3F7" Padding="12,8"/>
-                                    <Button x:Name="PinguTabSwitchTool" Content="Tab Switch" Background="#0E639C" Foreground="White" Padding="8,4" Margin="8,4,8,4" HorizontalAlignment="Stretch" Height="36"/>
-                                    <Button x:Name="PinguPanelToggleTool" Content="Toggle Panel" Background="#0E639C" Foreground="White" Padding="8,4" Margin="8,4,8,4" HorizontalAlignment="Stretch" Height="36"/>
-                                    <Button x:Name="PinguModelLoadTool" Content="Load Model" Background="#0E639C" Foreground="White" Padding="8,4" Margin="8,4,8,4" HorizontalAlignment="Stretch" Height="36"/>
-                                    <Button x:Name="PinguModelUnloadTool" Content="Unload Model" Background="#FF6B6B" Foreground="White" Padding="8,4" Margin="8,4,8,8" HorizontalAlignment="Stretch" Height="36"/>
+                                    <Button x:Name="PinguTabSwitchTool" Content="Tab Switch" Background="#0E639C" Foreground="White" Padding="8,4" Margin="8,4,8,4" HorizontalAlignment="Stretch" Height="36" ToolTip.Tip="Switch tabs"/>
+                                    <Button x:Name="PinguPanelToggleTool" Content="Toggle Panel" Background="#0E639C" Foreground="White" Padding="8,4" Margin="8,4,8,4" HorizontalAlignment="Stretch" Height="36" ToolTip.Tip="Toggle panels"/>
+                                    <Button x:Name="PinguModelLoadTool" Content="Load Model" Background="#0E639C" Foreground="White" Padding="8,4" Margin="8,4,8,4" HorizontalAlignment="Stretch" Height="36" ToolTip.Tip="Load a model"/>
+                                    <Button x:Name="PinguModelUnloadTool" Content="Unload Model" Background="#FF6B6B" Foreground="White" Padding="8,4" Margin="8,4,8,8" HorizontalAlignment="Stretch" Height="36" ToolTip.Tip="Unload a model"/>
                                 </StackPanel>
                             </Border>
                             <Border Background="{StaticResource BgSecondary}" CornerRadius="4" Margin="0,8,0,0">
                                 <StackPanel>
                                     <TextBlock Text="Pingu Generation" FontWeight="SemiBold" Foreground="#4FC3F7" Padding="12,8"/>
                                     <TextBlock Text="Click to generate a new Pingu" Foreground="{StaticResource TextSecondary}" Padding="12,4" FontSize="12"/>
-                                    <Button x:Name="PinguGenerateButton" Content="Generate Random Pingu" Background="#4FC3F7" Foreground="White" Padding="8,4" Margin="8,4,8,8" HorizontalAlignment="Stretch" Height="36"/>
+                                    <Button x:Name="PinguGenerateButton" Content="Generate Random Pingu" Background="#4FC3F7" Foreground="White" Padding="8,4" Margin="8,4,8,8" HorizontalAlignment="Stretch" Height="36" ToolTip.Tip="Generate a random Pingu"/>
                                 </StackPanel>
                             </Border>
+                        </StackPanel>
+
+                        <!-- Settings tab content - with nested sub-tabs -->
+                        <StackPanel x:Name="SettingsTabContent" IsVisible="False">
+                            <!-- Nested TabStrip for settings sub-tabs -->
+                            <TabControl x:Name="SettingsSubTabsControl"
+                                        Background="Transparent"
+                                        BorderThickness="0">
+                                <TabControl.ItemsPanel>
+                                    <ItemsPanelTemplate>
+                                        <StackPanel Orientation="Horizontal" HorizontalAlignment="Center"/>
+                                    </ItemsPanelTemplate>
+                                </TabControl.ItemsPanel>
+                                <!-- Server sub-tab -->
+                                <TabItem x:Name="SettingsServerSubTab"
+                                         Classes="settingsSubTab"
+                                         Tag="Server"
+                                         IsSelected="True">
+                                    <TabItem.Header>
+                                        <TextBlock Text="&#x1F5A5;" FontSize="14" TextAlignment="Center"/>
+                                    </TabItem.Header>
+                                </TabItem>
+                                <!-- Model sub-tab -->
+                                <TabItem x:Name="SettingsModelSubTab"
+                                         Classes="settingsSubTab"
+                                         Tag="Model">
+                                    <TabItem.Header>
+                                        <TextBlock Text="&#x1F4E6;" FontSize="14" TextAlignment="Center"/>
+                                    </TabItem.Header>
+                                </TabItem>
+                                <!-- Agent sub-tab -->
+                                <TabItem x:Name="SettingsAgentSubTab"
+                                         Classes="settingsSubTab"
+                                         Tag="Agent">
+                                    <TabItem.Header>
+                                        <TextBlock Text="&#x1F916;" FontSize="14" TextAlignment="Center"/>
+                                    </TabItem.Header>
+                                </TabItem>
+                                <!-- Plugin sub-tab -->
+                                <TabItem x:Name="SettingsPluginSubTab"
+                                         Classes="settingsSubTab"
+                                         Tag="Plugin">
+                                    <TabItem.Header>
+                                        <TextBlock Text="&#x1F50C;" FontSize="14" TextAlignment="Center"/>
+                                    </TabItem.Header>
+                                </TabItem>
+                                <!-- Data Privacy sub-tab -->
+                                <TabItem x:Name="SettingsPrivacySubTab"
+                                         Classes="settingsSubTab"
+                                         Tag="DataPrivacy">
+                                    <TabItem.Header>
+                                        <TextBlock Text="&#x1F512;" FontSize="14" TextAlignment="Center"/>
+                                    </TabItem.Header>
+                                </TabItem>
+                            </TabControl>
+
+                            <!-- Server settings panel -->
+                            <StackPanel x:Name="SettingsServerPanel">
+                                <Border Background="{StaticResource BgSecondary}" CornerRadius="4" Padding="20" Margin="0,8,0,16">
+                                    <TextBlock Text="Server Settings" FontWeight="SemiBold" Foreground="#4FC3F7" FontSize="18"/>
+                                </Border>
+                                <StackPanel Classes="settingItem">
+                                    <TextBlock Classes="settingLabel" Text="Server Port"/>
+                                    <TextBlock Classes="settingDescription" Text="The port the local API server will listen on. Default: 8080"/>
+                                    <TextBox x:Name="SettingsPortInput" Classes="settingInput">
+                                        <TextBox.Text>8080</TextBox.Text>
+                                    </TextBox>
+                                </StackPanel>
+                                <StackPanel Classes="settingItem">
+                                    <TextBlock Classes="settingLabel" Text="Enable HTTPS"/>
+                                    <TextBlock Classes="settingDescription" Text="Use HTTPS for the local server (generates self-signed certificate automatically)"/>
+                                    <CheckBox x:Name="SettingsHttpsEnabledCheckbox" Classes="settingToggle">
+                                        <CheckBox.Content>Enable HTTPS</CheckBox.Content>
+                                    </CheckBox>
+                                </StackPanel>
+                                <StackPanel Classes="settingItem">
+                                    <TextBlock Classes="settingLabel" Text="API Key (Optional)"/>
+                                    <TextBlock Classes="settingDescription" Text="If set, clients must include this key in the Authorization header to use the API"/>
+                                    <TextBox x:Name="SettingsApiKeyInput" Classes="settingInput"/>
+                                </StackPanel>
+                                <StackPanel Classes="settingItem">
+                                    <TextBlock Classes="settingLabel" Text="Rate Limiting (Requests/Minute)"/>
+                                    <TextBlock Classes="settingDescription" Text="Maximum number of requests per minute from a single client. 0 = no limit."/>
+                                    <TextBox x:Name="SettingsRateLimitInput" Classes="settingInput">
+                                        <TextBox.Text>60</TextBox.Text>
+                                    </TextBox>
+                                </StackPanel>
+                                <StackPanel Classes="settingItem">
+                                    <TextBlock Classes="settingLabel" Text="Default Context Length (Tokens)"/>
+                                    <TextBlock Classes="settingDescription" Text="Maximum number of tokens for the context window. Default: 4096."/>
+                                    <TextBox x:Name="SettingsContextLengthInput" Classes="settingInput">
+                                        <TextBox.Text>4096</TextBox.Text>
+                                    </TextBox>
+                                </StackPanel>
+                            </StackPanel>
+
+                            <!-- Model settings panel -->
+                            <StackPanel x:Name="SettingsModelPanel" IsVisible="False">
+                                <Border Background="{StaticResource BgSecondary}" CornerRadius="4" Padding="20" Margin="0,8,0,16">
+                                    <TextBlock Text="Model Settings" FontWeight="SemiBold" Foreground="#4FC3F7" FontSize="18"/>
+                                </Border>
+                                <StackPanel Classes="settingItem">
+                                    <TextBlock Classes="settingLabel" Text="Default Model"/>
+                                    <TextBlock Classes="settingDescription" Text="Model to use when no explicit model is selected."/>
+                                    <ComboBox x:Name="SettingsDefaultModelSelector" Foreground="{StaticResource TextPrimary}" Background="{StaticResource BgTertiary}" Padding="8,6">
+                                        <TextBlock Text="Not Selected"/>
+                                    </ComboBox>
+                                </StackPanel>
+                                <StackPanel Classes="settingItem">
+                                    <TextBlock Classes="settingLabel" Text="GPU Layer Offloading (n-gpu-layers)"/>
+                                    <TextBlock Classes="settingDescription" Text="Number of layers to offload to GPU. 0 = CPU only. -1 = auto-detect."/>
+                                    <Slider x:Name="SettingsGpuOffloadSlider" Minimum="-1" Maximum="999" Value="-1"/>
+                                </StackPanel>
+                                <StackPanel Classes="settingItem">
+                                    <TextBlock Classes="settingLabel" Text="Context Length Override"/>
+                                    <TextBlock Classes="settingDescription" Text="Override the default context window size. Leave empty to use model native context."/>
+                                    <TextBox x:Name="SettingsContextLengthOverrideInput" Classes="settingInput"/>
+                                </StackPanel>
+                                <StackPanel Classes="settingItem">
+                                    <TextBlock Classes="settingLabel" Text="Default Temperature"/>
+                                    <TextBlock Classes="settingDescription" Text="Controls randomness in responses. Higher = more creative, lower = more deterministic."/>
+                                    <Slider x:Name="SettingsTemperatureSlider" Minimum="0" Maximum="2" Value="0.7"/>
+                                </StackPanel>
+                                <StackPanel Classes="settingItem">
+                                    <TextBlock Classes="settingLabel" Text="Default Top-P"/>
+                                    <TextBlock Classes="settingDescription" Text="Nucleus sampling parameter. Controls diversity by only considering tokens with cumulative probability >= top_p."/>
+                                    <Slider x:Name="SettingsTopPValueSlider" Minimum="0" Maximum="1" Value="1.0"/>
+                                </StackPanel>
+                                <StackPanel Classes="settingItem">
+                                    <TextBlock Classes="settingLabel" Text="Default Max Tokens"/>
+                                    <TextBlock Classes="settingDescription" Text="Maximum number of tokens to generate in responses. 0 = no limit."/>
+                                    <TextBox x:Name="SettingsMaxTokensInput" Classes="settingInput">
+                                        <TextBox.Text>4096</TextBox.Text>
+                                    </TextBox>
+                                </StackPanel>
+                                <Border Background="{StaticResource BgSecondary}" CornerRadius="4" Padding="20" Margin="0,8,0,16">
+                                    <TextBlock Text="Image Generation Defaults" FontWeight="SemiBold" Foreground="#4FC3F7" FontSize="16"/>
+                                </Border>
+                                <StackPanel Classes="settingItem">
+                                    <TextBlock Classes="settingLabel" Text="Default Resolution"/>
+                                    <ComboBox x:Name="SettingsImageResInput" Foreground="{StaticResource TextPrimary}" Background="{StaticResource BgTertiary}" Padding="8,6">
+                                        <TextBlock Text="512x512"/>
+                                        <TextBlock Text="768x768"/>
+                                        <TextBlock Text="1024x1024"/>
+                                    </ComboBox>
+                                </StackPanel>
+                                <StackPanel Classes="settingItem">
+                                    <TextBlock Classes="settingLabel" Text="Default Steps"/>
+                                    <Slider x:Name="SettingsImageStepsSlider" Minimum="1" Maximum="100" Value="30"/>
+                                </StackPanel>
+                                <StackPanel Classes="settingItem">
+                                    <TextBlock Classes="settingLabel" Text="Default CFG Scale"/>
+                                    <Slider x:Name="SettingsImageCfgSlider" Minimum="1.0" Maximum="20.0" Value="7.5"/>
+                                </StackPanel>
+                                <Border Background="{StaticResource BgSecondary}" CornerRadius="4" Padding="20" Margin="0,8,0,16">
+                                    <TextBlock Text="Context Compression Defaults" FontWeight="SemiBold" Foreground="#4FC3F7" FontSize="16"/>
+                                </Border>
+                                <StackPanel Classes="settingItem">
+                                    <TextBlock Classes="settingLabel" Text="Default Compression Strategy"/>
+                                    <ComboBox x:Name="SettingsCompressionStrategyInput" Foreground="{StaticResource TextPrimary}" Background="{StaticResource BgTertiary}" Padding="8,6">
+                                        <TextBlock Text="None"/>
+                                        <TextBlock Text="Light"/>
+                                        <TextBlock Text="Medium"/>
+                                        <TextBlock Text="Aggressive"/>
+                                    </ComboBox>
+                                </StackPanel>
+                                <StackPanel Classes="settingItem">
+                                    <TextBlock Classes="settingLabel" Text="Default Token Budget (per chat)"/>
+                                    <TextBox x:Name="SettingsTokenBudgetInput" Classes="settingInput">
+                                        <TextBox.Text>4096</TextBox.Text>
+                                    </TextBox>
+                                </StackPanel>
+                            </StackPanel>
+
+                            <!-- Agent settings panel -->
+                            <StackPanel x:Name="SettingsAgentPanel" IsVisible="False">
+                                <Border Background="{StaticResource BgSecondary}" CornerRadius="4" Padding="20" Margin="0,8,0,16">
+                                    <TextBlock Text="Agent Settings" FontWeight="SemiBold" Foreground="#4FC3F7" FontSize="18"/>
+                                </Border>
+                                <StackPanel Classes="settingItem">
+                                    <TextBlock Classes="settingLabel" Text="Max Agent Iterations"/>
+                                    <TextBlock Classes="settingDescription" Text="Maximum number of iterations an agent task can run before being stopped."/>
+                                    <TextBox x:Name="SettingsAgentIterationLimitInput" Classes="settingInput">
+                                        <TextBox.Text>50</TextBox.Text>
+                                    </TextBox>
+                                </StackPanel>
+                                <StackPanel Classes="settingItem">
+                                    <TextBlock Classes="settingLabel" Text="Agent Default Turns"/>
+                                    <TextBlock Classes="settingDescription" Text="Number of turns added when Agent Mode is toggled on. When toggled off, turns reset to 0."/>
+                                    <TextBox x:Name="SettingsAgentDefaultTurnsInput" Classes="settingInput">
+                                        <TextBox.Text>10</TextBox.Text>
+                                    </TextBox>
+                                </StackPanel>
+                                <StackPanel Classes="settingItem">
+                                    <TextBlock Classes="settingLabel" Text="Auto-Commit File Threshold (KB)"/>
+                                    <TextBlock Classes="settingDescription" Text="Files smaller than this size will be auto-committed without user review."/>
+                                    <TextBox x:Name="SettingsAgentAutoCommitSizeInput" Classes="settingInput">
+                                        <TextBox.Text>1024</TextBox.Text>
+                                    </TextBox>
+                                </StackPanel>
+                                <StackPanel Classes="settingItem">
+                                    <TextBlock Classes="settingLabel" Text="Require Plan Approval for Risky Operations"/>
+                                    <CheckBox x:Name="SettingsAgentPlanApprovalCheckbox" Classes="settingToggle">
+                                        <CheckBox.Content>Require approval before executing risky operations (file writes, commands)</CheckBox.Content>
+                                    </CheckBox>
+                                </StackPanel>
+                            </StackPanel>
+
+                            <!-- Plugin settings panel -->
+                            <StackPanel x:Name="SettingsPluginPanel" IsVisible="False">
+                                <Border Background="{StaticResource BgSecondary}" CornerRadius="4" Padding="20" Margin="0,8,0,16">
+                                    <TextBlock Text="Plugin and MCP Settings" FontWeight="SemiBold" Foreground="#4FC3F7" FontSize="18"/>
+                                </Border>
+                                <StackPanel Classes="settingItem">
+                                    <TextBlock Classes="settingLabel" Text="Plugin Registry URL"/>
+                                    <TextBlock Classes="settingDescription" Text="URL of the plugin registry to download plugins from. Leave empty for local-only plugins."/>
+                                    <TextBox x:Name="SettingsPluginRegistryUrlInput" Classes="settingInput"/>
+                                </StackPanel>
+                                <StackPanel Classes="settingItem">
+                                    <TextBlock Classes="settingLabel" Text="Auto-Update Check Interval (minutes)"/>
+                                    <TextBlock Classes="settingDescription" Text="How often to check for plugin updates. Set to 0 to disable auto-updates."/>
+                                    <TextBox x:Name="SettingsPluginUpdateIntervalInput" Classes="settingInput">
+                                        <TextBox.Text>60</TextBox.Text>
+                                    </TextBox>
+                                </StackPanel>
+                                <StackPanel Classes="settingItem">
+                                    <TextBlock Classes="settingLabel" Text="Default Plugin Sandbox Policy"/>
+                                    <ComboBox x:Name="SettingsPluginSandboxPolicyInput" Foreground="{StaticResource TextPrimary}" Background="{StaticResource BgTertiary}" Padding="8,6">
+                                        <TextBlock Text="Strict (No filesystem access)"/>
+                                        <TextBlock Text="Restricted (Read-only filesystem)"/>
+                                        <TextBlock Text="Full (Unrestricted)"/>
+                                    </ComboBox>
+                                </StackPanel>
+                                <Border Background="{StaticResource BgSecondary}" CornerRadius="4" Padding="20" Margin="0,8,0,16">
+                                    <TextBlock Text="MCP Client Defaults" FontWeight="SemiBold" Foreground="#4FC3F7" FontSize="16"/>
+                                </Border>
+                                <StackPanel Classes="settingItem">
+                                    <TextBlock Classes="settingLabel" Text="MCP Client Timeout (seconds)"/>
+                                    <TextBox x:Name="SettingsMcptimeoutInput" Classes="settingInput">
+                                        <TextBox.Text>30</TextBox.Text>
+                                    </TextBox>
+                                </StackPanel>
+                                <StackPanel Classes="settingItem">
+                                    <TextBlock Classes="settingLabel" Text="Maximum Tools per MCP Server"/>
+                                    <TextBox x:Name="SettingsMaxToolsPerServerInput" Classes="settingInput">
+                                        <TextBox.Text>50</TextBox.Text>
+                                    </TextBox>
+                                </StackPanel>
+                            </StackPanel>
+
+                            <!-- Data Privacy settings panel -->
+                            <StackPanel x:Name="SettingsPrivacyPanel" IsVisible="False">
+                                <Border Background="{StaticResource BgSecondary}" CornerRadius="4" Padding="20" Margin="0,8,0,16">
+                                    <TextBlock Text="Data Privacy and Storage" FontWeight="SemiBold" Foreground="#4FC3F7" FontSize="16"/>
+                                </Border>
+                                <StackPanel Classes="settingItem">
+                                    <TextBlock Classes="settingLabel" Text="Encrypt Conversations at Rest"/>
+                                    <TextBlock Classes="settingDescription" Text="AES-256 encrypt all conversation data stored on disk. Requires a master password."/>
+                                    <CheckBox x:Name="SettingsEncryptionEnabledCheckbox" Classes="settingToggle">
+                                        <CheckBox.Content>Enable encryption</CheckBox.Content>
+                                    </CheckBox>
+                                </StackPanel>
+                                <StackPanel Classes="settingItem">
+                                    <TextBlock Classes="settingLabel" Text="Default Conversation Export Format"/>
+                                    <ComboBox x:Name="SettingsExportFormatInput" Foreground="{StaticResource TextPrimary}" Background="{StaticResource BgTertiary}" Padding="8,6">
+                                        <TextBlock Text="JSON"/>
+                                        <TextBlock Text="Markdown"/>
+                                        <TextBlock Text="HTML"/>
+                                    </ComboBox>
+                                </StackPanel>
+                                <Border Background="{StaticResource BgSecondary}" CornerRadius="4" Padding="20" Margin="0,8,0,16">
+                                    <TextBlock Text="Model Cache Cleanup" FontWeight="SemiBold" Foreground="#4FC3F7" FontSize="16"/>
+                                </Border>
+                                <StackPanel Classes="settingItem">
+                                    <TextBlock Classes="settingLabel" Text="Least Recently Used Model Cache Timeout (days)"/>
+                                    <TextBlock Classes="settingDescription" Text="Models not used within this period may be unloaded to free memory."/>
+                                    <TextBox x:Name="SettingsCacheTimeoutInput" Classes="settingInput">
+                                        <TextBox.Text>30</TextBox.Text>
+                                    </TextBox>
+                                </StackPanel>
+                                <StackPanel Classes="settingItem">
+                                    <TextBlock Classes="settingLabel" Text="Auto-Cleanup Orphaned Model Files"/>
+                                    <CheckBox x:Name="SettingsAutoCleanupCheckbox" Classes="settingToggle">
+                                        <CheckBox.Content>Delete model files that are no longer in the registry</CheckBox.Content>
+                                    </CheckBox>
+                                </StackPanel>
+                            </StackPanel>
                         </StackPanel>
 
                         <!-- ImageGen tab content -->
@@ -368,15 +781,15 @@
                                         <Slider x:Name="ImageGenCfgSlider" Minimum="1.0" Maximum="20.0" Value="7.5" IsSnapToTickEnabled="True" TickFrequency="0.5" Margin="8,0,8,0"/>
                                         <TextBlock Text="{Binding ElementName=ImageGenCfgSlider, Path=Value, StringFormat={}{0:F1}}" Width="35" Foreground="{StaticResource TextSecondary}"/>
                                     </DockPanel>
-                                    <DockPanel Margin="8,4,8,4">
-                                        <TextBlock Text="Seed:" Width="70" Foreground="{StaticResource TextSecondary}"/>
-                                        <TextBox x:Name="ImageGenSeedInput" Foreground="{StaticResource TextPrimary}" Background="{StaticResource BgTertiary}" BorderThickness="0" Margin="8,0,0,0" Width="120" Height="28"/>
-                                        <Button x:Name="RandomSeedButton" Content="&#x1F3B2;" Background="#0E639C" Foreground="White" Padding="6,4" Margin="8,0,0,0"/>
+                                        <DockPanel Margin="8,4,8,4">
+                                            <TextBlock Text="Seed:" Width="70" Foreground="{StaticResource TextSecondary}"/>
+                                            <TextBox x:Name="ImageGenSeedInput" Foreground="{StaticResource TextPrimary}" Background="{StaticResource BgTertiary}" BorderThickness="0" Margin="8,0,0,0" Width="120" Height="28"/>
+                                            <Button x:Name="RandomSeedButton" Content="&#x1F3B2;" Background="#0E639C" Foreground="White" Padding="6,4" Margin="8,0,0,0" ToolTip.Tip="Generate a random seed"/>
                                     </DockPanel>
                                 </StackPanel>
                             </Border>
                             <Border Background="{StaticResource BgSecondary}" CornerRadius="4" Margin="0,8,0,0">
-                                <Button x:Name="ImageGenGenerateBtn" Content="Generate Image" Background="#4FC3F7" Foreground="White" Padding="12,4" Height="40" Margin="8"/>
+                                <Button x:Name="ImageGenGenerateBtn" Content="Generate Image" Background="#4FC3F7" Foreground="White" Padding="12,4" Height="40" Margin="8" ToolTip.Tip="Generate the image"/>
                             </Border>
                             <TextBlock x:Name="ImageGenProgressText" Foreground="{StaticResource TextMuted}" Padding="12,4" FontSize="12"/>
                             <Border Background="{StaticResource BgSecondary}" CornerRadius="4" Margin="0,8,0,0">
@@ -514,7 +927,8 @@
                             Cursor="Hand"
                             HorizontalAlignment="Right"
                             Margin="0,0,16,0"
-                            Click="OnDeleteChatClicked">
+                            Click="OnDeleteChatClicked"
+                            ToolTip.Tip="Delete this chat session">
                         <Button.Styles>
                             <Style Selector="Button:pointerover">
                                 <Setter Property="Background" Value="#DC2626"/>
@@ -549,7 +963,8 @@
                                     <Grid Width="44" Height="44" Margin="0,0,2,0">
                                         <Button x:Name="AgentModeToggle" Content="&#x1F916;" FontSize="34" Padding="0" Classes="AgentModeToggle" Foreground="{StaticResource AccentBlue}" Cursor="Hand"
                                                 HorizontalAlignment="Center" VerticalAlignment="Center"
-                                                HorizontalContentAlignment="Center" VerticalContentAlignment="Center"/>
+                                                HorizontalContentAlignment="Center" VerticalContentAlignment="Center"
+                                                ToolTip.Tip="Toggle agent mode"/>
                                         <!-- Floating turns count badge - clickable, positioned to the very bottom right -->
                                         <Button x:Name="AgentTurnsBadge"
                                                 Cursor="Hand"
@@ -561,7 +976,8 @@
                                                 Click="OnAgentTurnsBadgeClicked"
                                                 IsHitTestVisible="True"
                                                 Background="{StaticResource AccentOrange}"
-                                                Foreground="White">
+                                                Foreground="White"
+                                                ToolTip.Tip="Agent turns count">
                                             <Button.Styles>
                                                 <Style Selector="Button:pointerover">
                                                     <Setter Property="Background" Value="{Binding Background, RelativeSource={RelativeSource Self}}"/>
@@ -584,7 +1000,8 @@
                                                     Click="OnPlanClicked"
                                                     Classes="active"
                                                     HorizontalContentAlignment="Center"
-                                                    VerticalContentAlignment="Center">
+                                                    VerticalContentAlignment="Center"
+                                                    ToolTip.Tip="Switch to Plan mode">
                                                 <Button.Styles>
                                                     <Style Selector="Button">
                                                         <Setter Property="Background" Value="#2D2D30"/>
@@ -608,7 +1025,8 @@
                                                     Click="OnActClicked"
                                                     Padding="0,0"
                                                     HorizontalContentAlignment="Center"
-                                                    VerticalContentAlignment="Center">
+                                                    VerticalContentAlignment="Center"
+                                                    ToolTip.Tip="Switch to Act mode">
                                                 <Button.Styles>
                                                     <Style Selector="Button">
                                                         <Setter Property="Background" Value="#2D2D30"/>
@@ -645,7 +1063,8 @@
                                                   HorizontalAlignment="Center"
                                                   VerticalAlignment="Center"
                                                   HorizontalContentAlignment="Center"
-                                                  VerticalContentAlignment="Center">
+                                                  VerticalContentAlignment="Center"
+                                                  ToolTip.Tip="Web safety">
                                         <ToggleButton.Styles>
                                             <Style Selector="ToggleButton:pointerover">
                                                 <Setter Property="Background" Value="{Binding (ToggleButton.Background), RelativeSource={RelativeSource Self}}"/>
@@ -663,7 +1082,8 @@
                                                   HorizontalAlignment="Center"
                                                   VerticalAlignment="Center"
                                                   HorizontalContentAlignment="Center"
-                                                  VerticalContentAlignment="Center">
+                                                  VerticalContentAlignment="Center"
+                                                  ToolTip.Tip="Read safety">
                                         <ToggleButton.Styles>
                                             <Style Selector="ToggleButton:pointerover">
                                                 <Setter Property="Background" Value="{Binding (ToggleButton.Background), RelativeSource={RelativeSource Self}}"/>
@@ -681,7 +1101,8 @@
                                                   HorizontalAlignment="Center"
                                                   VerticalAlignment="Center"
                                                   HorizontalContentAlignment="Center"
-                                                  VerticalContentAlignment="Center">
+                                                  VerticalContentAlignment="Center"
+                                                  ToolTip.Tip="Edit safety">
                                         <ToggleButton.Styles>
                                             <Style Selector="ToggleButton:pointerover">
                                                 <Setter Property="Background" Value="{Binding (ToggleButton.Background), RelativeSource={RelativeSource Self}}"/>
@@ -698,7 +1119,8 @@
                                                   HorizontalAlignment="Center"
                                                   VerticalAlignment="Center"
                                                   HorizontalContentAlignment="Center"
-                                                  VerticalContentAlignment="Center">
+                                                  VerticalContentAlignment="Center"
+                                                  ToolTip.Tip="Execute safety">
                                         <ToggleButton.Styles>
                                             <Style Selector="ToggleButton:pointerover">
                                                 <Setter Property="Background" Value="{Binding (ToggleButton.Background), RelativeSource={RelativeSource Self}}"/>
@@ -722,7 +1144,8 @@
                                             Padding="0"
                                             Click="OnToolsButtonClicked"
                                             Cursor="Hand"
-                                            Grid.Column="1">
+                                            Grid.Column="1"
+                                            ToolTip.Tip="Open tools">
                                         <Button.Styles>
                                             <Style Selector="Button">
                                                 <Setter Property="Background" Value="{StaticResource BgTertiary}"/>
@@ -740,7 +1163,8 @@
                                             Foreground="White"
                                             Padding="0"
                                             Click="OnSendMessageClicked"
-                                            Cursor="Hand">
+                                            Cursor="Hand"
+                                            ToolTip.Tip="Send the message">
                                         <Button.Styles>
                                             <Style Selector="Button">
                                                 <Setter Property="Background" Value="{StaticResource AccentBlue}"/>
@@ -763,53 +1187,17 @@
         </Grid>
 
 
-        <!-- ===== RIGHT SIDEBAR (with Pingu home tile) ===== -->
+        <!-- ===== RIGHT SIDEBAR (simplified - only Active Tasks header + Pingu home tile) ===== -->
         <Grid Grid.Row="1" Grid.Column="2" Background="{StaticResource BgPrimary}">
             <Grid.RowDefinitions>
                 <RowDefinition Height="*"/>
                 <RowDefinition Height="Auto"/>
             </Grid.RowDefinitions>
-            <!-- The existing RightSidebarPanel (scrollable content) -->
-            <ScrollViewer Grid.Row="0" VerticalScrollBarVisibility="Auto">
-                <StackPanel x:Name="RightTabContentPanel">
-                    <!-- Tasks tab -->
-                    <StackPanel x:Name="RightTasksContent" IsVisible="True">
-                        <TextBlock Text="Active Tasks" FontWeight="SemiBold" Foreground="#4FC3F7" Padding="16,12,16,8" FontSize="14"/>
-                        <TextBlock x:Name="RightActiveTasksText" Text="No active tasks" Foreground="{StaticResource TextMuted}" Padding="16,8" FontSize="12"/>
-                    </StackPanel>
-                    <!-- Context tab -->
-                    <StackPanel x:Name="RightContextContent" IsVisible="False">
-                        <TextBlock Text="Context Window" FontWeight="SemiBold" Foreground="#4FC3F7" Padding="16,12,16,8" FontSize="14"/>
-                        <Border Background="{StaticResource BgSecondary}" CornerRadius="4" Margin="8,4,8,8">
-                            <StackPanel>
-                                <TextBlock Text="Used:" Foreground="{StaticResource TextPrimary}" Padding="12,4"/>
-                                <TextBlock x:Name="RightContextUsedText" Text="0 / 4096 tokens" Foreground="{StaticResource AccentBlue}" Padding="12,4"/>
-                                <Border x:Name="RightContextBar" Background="#3A3A3E" CornerRadius="4" Height="6" Margin="12,4,12,8"/>
-                            </StackPanel>
-                        </Border>
-                        <Border Background="{StaticResource BgSecondary}" CornerRadius="4" Margin="8,4,8,8">
-                            <StackPanel>
-                                <TextBlock Text="Compression:" Foreground="{StaticResource TextPrimary}" Padding="12,4"/>
-                                <TextBlock x:Name="RightCompressionText" Text="None" Foreground="{StaticResource TextSecondary}" Padding="12,4"/>
-                            </StackPanel>
-                        </Border>
-                    </StackPanel>
-                    <!-- Info tab -->
-                    <StackPanel x:Name="RightInfoContent" IsVisible="False">
-                        <TextBlock Text="System Info" FontWeight="SemiBold" Foreground="#4FC3F7" Padding="16,12,16,8" FontSize="14"/>
-                        <Border Background="{StaticResource BgSecondary}" CornerRadius="4" Margin="8,4,8,8">
-                            <StackPanel>
-                                <TextBlock Text="CPU:" Foreground="{StaticResource TextPrimary}" Padding="12,4"/>
-                                <TextBlock x:Name="RightCpuText" Text="Loading..." Foreground="{StaticResource TextSecondary}" Padding="12,4"/>
-                                <TextBlock Text="RAM:" Foreground="{StaticResource TextPrimary}" Padding="12,4"/>
-                                <TextBlock x:Name="RightRamText" Text="Loading..." Foreground="{StaticResource TextSecondary}" Padding="12,4"/>
-                                <TextBlock Text="GPU:" Foreground="{StaticResource TextPrimary}" Padding="12,4"/>
-                                <TextBlock x:Name="RightGpuText" Text="Loading..." Foreground="{StaticResource TextSecondary}" Padding="12,4"/>
-                            </StackPanel>
-                        </Border>
-                    </StackPanel>
-                </StackPanel>
-            </ScrollViewer>
+            <!-- Simplified: only Active Tasks header -->
+            <StackPanel Grid.Row="0" VerticalAlignment="Top">
+                <TextBlock Text="Active Tasks" FontWeight="SemiBold" Foreground="#4FC3F7" Padding="16,12,16,8" FontSize="14"/>
+                <TextBlock x:Name="RightActiveTasksText" Text="No active tasks" Foreground="{StaticResource TextMuted}" Padding="16,8" FontSize="12"/>
+            </StackPanel>
             <!-- Pingu Home tile at the bottom of the sidebar -->
             <Border Grid.Row="1"
                     Background="{StaticResource BgSecondary}"
@@ -845,7 +1233,8 @@
                             Padding="8,0"
                             FontSize="14"
                             Cursor="Hand"
-                            Click="OnStatusFolderClicked">
+                            Click="OnStatusFolderClicked"
+                            ToolTip.Tip="Open app folder">
                         <Button.Styles>
                             <Style Selector="Button:pointerover">
                                 <Setter Property="Background" Value="{StaticResource BgTertiary}"/>
@@ -860,7 +1249,8 @@
                             Padding="8,0"
                             FontSize="14"
                             Cursor="Hand"
-                            Click="OnStatusNewChatClicked">
+                            Click="OnStatusNewChatClicked"
+                            ToolTip.Tip="Load example chats">
                         <Button.Styles>
                             <Style Selector="Button:pointerover">
                                 <Setter Property="Background" Value="{StaticResource BgTertiary}"/>
@@ -875,7 +1265,8 @@
                             Padding="8,0"
                             FontSize="14"
                             Cursor="Hand"
-                            Click="OnStatusResetClicked">
+                            Click="OnStatusResetClicked"
+                            ToolTip.Tip="Reset the app">
                         <Button.Styles>
                             <Style Selector="Button:pointerover">
                                 <Setter Property="Background" Value="{StaticResource BgTertiary}"/>
@@ -890,7 +1281,8 @@
                             Padding="8,0"
                             FontSize="14"
                             Cursor="Hand"
-                            Click="OnStatusAboutClicked">
+                            Click="OnStatusAboutClicked"
+                            ToolTip.Tip="About OpenLMStudio">
                         <Button.Styles>
                             <Style Selector="Button:pointerover">
                                 <Setter Property="Background" Value="{StaticResource BgTertiary}"/>
@@ -947,7 +1339,8 @@
                                     Foreground="{StaticResource TextSecondary}"
                                     Padding="6,2"
                                     FontSize="12"
-                                    Click="OnCloseToolPopupClicked"/>
+                                    Click="OnCloseToolPopupClicked"
+                                    ToolTip.Tip="Close the tool popup"/>
                         </Grid>
                     </Border>
                     <!-- Tool list -->

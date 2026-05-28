@@ -369,10 +369,6 @@ public partial class MainWindow : Window
         if (ImageGenModelSelector != null)
             ImageGenModelSelector.SelectionChanged += OnImageGenModelSelectorSelectionChanged;
 
-        // Settings button
-        if (SettingsButton != null)
-            SettingsButton.Click += OnSettingsClicked;
-
         // Git status bar
         if (GitStatusBorder != null)
             GitStatusBorder.PointerPressed += OnGitStatusClicked;
@@ -1005,121 +1001,141 @@ public partial class MainWindow : Window
     }
 
     /// <summary>
-    /// Wires up ToggleButton click handlers for the left sidebar tabs.
-    /// Each button is wired exactly once during MainWindow constructor.
+    /// Wires up ToggleButton Click handlers for the left sidebar tabs.
+    /// All tabs are ToggleButtons with Click events wired to OnLeftTabClick for mutual exclusivity.
     /// </summary>
     private void WireUpLeftTabClickHandlers()
     {
-        var tabs = new (ToggleButton button, string tabName)[]
+        // All ToggleButtons already have Click="OnLeftTabClick" in XAML.
+        // This method is kept for any additional programmatic wiring if needed.
+    }
+
+    /// <summary>
+    /// Wires up the Settings sub-tab TabItems (Server/Model/Agent/Plugin/Privacy).
+    /// </summary>
+    private void WireUpSettingsSubTabs()
+    {
+        var subTabs = new (TabItem button, string tabName)[]
         {
-            (ChatTab, "Chat"),
-            (ServerTab, "Server"),
-            (ModelsTab, "Models"),
-            (DevicesTab, "Devices"),
-            (ContextTab, "Context"),
-            (PinguTab, "Pingu"),
-            (ImageGenTab, "ImageGen"),
+            (SettingsServerSubTab, "Server"),
+            (SettingsModelSubTab, "Model"),
+            (SettingsAgentSubTab, "Agent"),
+            (SettingsPluginSubTab, "Plugin"),
+            (SettingsPrivacySubTab, "DataPrivacy"),
         };
 
-        foreach (var (button, tabName) in tabs)
+        foreach (var (button, tabName) in subTabs)
         {
             if (button != null)
             {
-                button.Click += OnLeftTabClicked;
+                // TabItem doesn't have Click event in Avalonia — use PointerPressed instead
+                button.PointerPressed += OnSettingsSubTabPointerPressed;
             }
         }
     }
 
     /// <summary>
     /// Handles clicks on the left sidebar ToggleButton tabs.
+    /// Ensures mutual exclusivity — only one tab can be active at a time.
     /// </summary>
-    private void OnLeftTabClicked(object? sender, RoutedEventArgs e)
+    private void OnLeftTabClick(object? sender, RoutedEventArgs e)
     {
-        if (sender is ToggleButton tab && tab.Tag is string tabName)
+        if (sender is not ToggleButton clickedTab)
+            return;
+
+        var tabName = clickedTab.Tag as string;
+        if (string.IsNullOrEmpty(tabName))
+            return;
+
+        // Uncheck all other tabs (mutual exclusivity)
+        var allTabs = new ToggleButton[]
         {
-            if (tabName == "Context")
-                UpdateRightSidebarTab("Context");
-            ShowTab(tabName);
+            SettingsTab, ChatTab, ServerTab, ModelsTab,
+            DevicesTab, ContextTab, PinguTab, ImageGenTab
+        };
+
+        foreach (var tab in allTabs)
+        {
+            if (tab != null && tab != clickedTab)
+                tab.IsChecked = false;
+        }
+
+        // Check the clicked tab
+        clickedTab.IsChecked = true;
+
+        // Show the tab content
+        ShowTab(tabName);
+
+        // Update right sidebar for Context tab
+        if (tabName == "Context")
+            UpdateRightSidebarTab("Context");
+    }
+
+    /// <summary>
+    /// Handles PointerPressed on the settings sub-tab TabItems.
+    /// </summary>
+    private void OnSettingsSubTabPointerPressed(object? sender, PointerEventArgs e)
+    {
+        // Only process left mouse clicks
+        var tabItem = (TabItem)sender!;
+        var point = e.GetCurrentPoint(tabItem);
+        if (!point.Properties.IsLeftButtonPressed)
+            return;
+
+        var subTabName = tabItem.Tag as string;
+
+        if (string.IsNullOrEmpty(subTabName))
+        {
+            subTabName = tabItem.Name;
+        }
+
+        // Hide all settings panels
+        SettingsServerPanel?.SetValue(StackPanel.IsVisibleProperty, false);
+        SettingsModelPanel?.SetValue(StackPanel.IsVisibleProperty, false);
+        SettingsAgentPanel?.SetValue(StackPanel.IsVisibleProperty, false);
+        SettingsPluginPanel?.SetValue(StackPanel.IsVisibleProperty, false);
+        SettingsPrivacyPanel?.SetValue(StackPanel.IsVisibleProperty, false);
+
+        // Show the selected panel
+        switch (subTabName)
+        {
+            case "Server":
+                SettingsServerPanel?.SetValue(StackPanel.IsVisibleProperty, true);
+                break;
+            case "Model":
+                SettingsModelPanel?.SetValue(StackPanel.IsVisibleProperty, true);
+                break;
+            case "Agent":
+                SettingsAgentPanel?.SetValue(StackPanel.IsVisibleProperty, true);
+                break;
+            case "Plugin":
+                SettingsPluginPanel?.SetValue(StackPanel.IsVisibleProperty, true);
+                break;
+            case "DataPrivacy":
+                SettingsPrivacyPanel?.SetValue(StackPanel.IsVisibleProperty, true);
+                break;
+            default:
+                _logger?.LogWarning("Unknown settings sub-tab: {SubTabName}", subTabName);
+                break;
         }
     }
 
     /// <summary>
-    /// Wires up the right sidebar tab toggles (Tasks, Context, Info).
-    /// Now uses the scrollable content StackPanel to host the tabs.
+    /// Right sidebar is now simplified - only "Active Tasks" header and Pingu home tile.
+    /// No tab handling needed.
     /// </summary>
     private void WireUpRightSidebarTabs()
     {
-        // The right sidebar now uses a simple StackPanel with StackPanel children
-        // for Tasks, Context, and Info tabs. We wire up the tab switching
-        // through the individual tab buttons that are added in XAML.
+        // No-op: right sidebar is now simplified to just "Active Tasks" header + Pingu home tile.
     }
 
     /// <summary>
-    /// Handles clicks on the right sidebar ToggleButton tabs.
-    /// Uses the Tag property to determine which tab was clicked, avoiding null reference issues.
-    /// </summary>
-    private void OnRightSidebarTabClicked(object? sender, RoutedEventArgs e)
-    {
-        if (sender is not ToggleButton tab)
-            return;
-
-        // Get the tab name from Tag property (set in XAML)
-        var tabName = tab.Tag as string;
-        if (string.IsNullOrEmpty(tabName))
-        {
-            // Fallback to Name property if Tag is not set
-            tabName = tab.Name;
-        }
-
-        // Hide all content panels first
-        RightTasksContent?.SetValue(StackPanel.IsVisibleProperty, false);
-        RightContextContent?.SetValue(StackPanel.IsVisibleProperty, false);
-        RightInfoContent?.SetValue(StackPanel.IsVisibleProperty, false);
-
-        // Show the selected panel based on Tag
-        switch (tabName)
-        {
-            case "Tasks":
-                RightTasksContent?.SetValue(StackPanel.IsVisibleProperty, true);
-                break;
-            case "Context":
-                RightContextContent?.SetValue(StackPanel.IsVisibleProperty, true);
-                break;
-            case "Info":
-                RightInfoContent?.SetValue(StackPanel.IsVisibleProperty, true);
-                break;
-            default:
-                _logger?.LogWarning("Unknown right sidebar tab: {TabName}", tabName);
-                break;
-        }
-    }
-
-    /// <summary>
-    /// Programmatically switches the right sidebar tab.
+    /// Right sidebar is now simplified - only "Active Tasks" header and Pingu home tile.
+    /// No tab handling needed.
     /// </summary>
     private void UpdateRightSidebarTab(string tabName)
     {
-        // Hide all content panels first
-        RightTasksContent?.SetValue(StackPanel.IsVisibleProperty, false);
-        RightContextContent?.SetValue(StackPanel.IsVisibleProperty, false);
-        RightInfoContent?.SetValue(StackPanel.IsVisibleProperty, false);
-
-        // Show the selected panel
-        switch (tabName)
-        {
-            case "Tasks":
-                RightTasksContent?.SetValue(StackPanel.IsVisibleProperty, true);
-                break;
-            case "Context":
-                RightContextContent?.SetValue(StackPanel.IsVisibleProperty, true);
-                break;
-            case "Info":
-                RightInfoContent?.SetValue(StackPanel.IsVisibleProperty, true);
-                break;
-            default:
-                _logger?.LogWarning("Unknown right sidebar tab: {TabName}", tabName);
-                break;
-        }
+        // No-op: right sidebar is now simplified to just "Active Tasks" header + Pingu home tile.
     }
 
     // =========================================================================
@@ -1222,7 +1238,7 @@ public partial class MainWindow : Window
     /// </summary>
     private void OnToolsButtonClicked(object? sender, RoutedEventArgs e)
     {
-        // Try to resolve AgentToolExecutor if not already resolved
+        // Ensure AgentToolExecutor is resolved
         if (_agentToolExecutor == null)
         {
             _agentToolExecutor = ResolveAgentToolExecutorFromAppServices();
@@ -1258,14 +1274,10 @@ public partial class MainWindow : Window
     /// </summary>
     private void PopulateToolList()
     {
-        if (ToolListPanel == null)
+        if (ToolListPanel == null || _agentToolExecutor == null)
             return;
 
-        var executor = _agentToolExecutor as AgentToolExecutor;
-        if (executor == null)
-            return;
-
-        var tools = executor.ListAvailableTools();
+        var tools = _agentToolExecutor.ListAvailableTools();
         ToolListPanel.Children.Clear();
 
         foreach (var tool in tools.OrderBy(t => t.Name))
@@ -1292,7 +1304,7 @@ public partial class MainWindow : Window
 
             btn.Click += (s, ev) =>
             {
-                ShowToolCallForm(tool, executor);
+                ShowToolCallForm(tool, _agentToolExecutor);
             };
 
             ToolListPanel.Children.Add(btn);
@@ -1302,7 +1314,7 @@ public partial class MainWindow : Window
     /// <summary>
     /// Shows the ToolCallForm popup for the given tool.
     /// </summary>
-    private void ShowToolCallForm(ToolDefinition tool, AgentToolExecutor executor)
+    private void ShowToolCallForm(ToolDefinition tool, IAgentToolExecutor executor)
     {
         // Close the tool list popup
         if (ToolCallPopup != null)
@@ -1556,42 +1568,53 @@ public static class KeyboardService
     }
 
     /// <summary>
-    /// Caches the cached tab items to avoid repeated visual tree traversal.
+    /// Caches the cached tab toggle buttons to avoid repeated visual tree traversal.
     /// </summary>
-    private static List<TabItem>? _cachedTabItems;
+    private static List<ToggleButton>? _cachedTabButtons;
     private static DateTime _lastCacheTime;
     private static readonly TimeSpan CacheTtl = TimeSpan.FromSeconds(2);
 
     /// <summary>
     /// Cycles the active tab by the given direction (+1 for forward, -1 for backward).
-    /// Uses cached tab items to avoid repeated visual tree traversal.
+    /// Uses cached toggle buttons to avoid repeated visual tree traversal.
     /// </summary>
     public static void CycleTab(int direction)
     {
         if (_mainWindow == null) return;
 
         // Invalidate cache if it's stale
-        if (_cachedTabItems == null || DateTime.UtcNow - _lastCacheTime > CacheTtl)
+        if (_cachedTabButtons == null || DateTime.UtcNow - _lastCacheTime > CacheTtl)
         {
-            _cachedTabItems = _mainWindow.GetVisualDescendants()
-                .OfType<TabControl>()
-                .SelectMany(tc => tc.Items.Cast<TabItem>())
-                .ToList();
+            // Look for ToggleButton elements in the left sidebar StackPanel via visual tree
+            var leftPanel = _mainWindow.GetVisualDescendants()
+                .OfType<StackPanel>()
+                .FirstOrDefault(p => p.Name == "LeftTabStripPanel");
+            _cachedTabButtons = leftPanel?.Children.OfType<ToggleButton>().ToList();
             _lastCacheTime = DateTime.UtcNow;
         }
 
-        // Find the currently selected tab
-        var selected = _cachedTabItems?.FirstOrDefault(t => t.IsSelected);
+        // Find the currently checked tab
+        var selected = _cachedTabButtons?.FirstOrDefault(t => t.IsChecked == true);
         if (selected == null) return;
 
-        var parent = selected.GetVisualParent<TabControl>();
-        if (parent == null) return;
-
-        var items = parent.Items.Cast<TabItem>().ToList();
+        var items = _cachedTabButtons!;
         var index = items.IndexOf(selected);
         if (index < 0) return;
 
         var nextIndex = (index + direction + items.Count) % items.Count;
-        items[nextIndex].IsSelected = true;
+        // Uncheck all tabs first
+        foreach (var tab in items)
+        {
+            tab.IsChecked = false;
+        }
+        // Check the next tab
+        items[nextIndex].IsChecked = true;
+
+        // Show the tab content
+        var tabName = items[nextIndex].Tag as string;
+        if (!string.IsNullOrEmpty(tabName))
+        {
+            _mainWindow.ShowTab(tabName);
+        }
     }
 }

@@ -36,6 +36,33 @@ public class PinguStore : IPinguStore, IDisposable
     public PinguState State => _state;
     public event EventHandler<PinguStateChangedEventArgs>? OnStateChanged;
 
+    /// <summary>
+    /// Animation speed multiplier (1.0 = normal speed).
+    /// </summary>
+    public float AnimationSpeedMultiplier
+    {
+        get => _state.AnimationSpeedMultiplier;
+        set => _state.AnimationSpeedMultiplier = value;
+    }
+
+    /// <summary>
+    /// Behavior frequency multiplier (1.0 = normal frequency).
+    /// </summary>
+    public float BehaviorFrequencyMultiplier
+    {
+        get => _state.BehaviorFrequencyMultiplier;
+        set => _state.BehaviorFrequencyMultiplier = value;
+    }
+
+    /// <summary>
+    /// Pingu size multiplier (1.0 = normal size).
+    /// </summary>
+    public float PinguSizeMultiplier
+    {
+        get => _state.PinguSizeMultiplier;
+        set => _state.PinguSizeMultiplier = value;
+    }
+
     public PinguStore(ILogger<PinguStore>? logger = null)
     {
         _state = new PinguState();
@@ -274,8 +301,13 @@ public class PinguStore : IPinguStore, IDisposable
         var renderer = new PinguRenderer(characterData.MeshData, hierarchy, animation, npcManager, homeScene, atlas);
         renderer.Initialize(400, 400);
 
+        // Initialize animation state machine to Idle state
+        animation.SetAnimationClip("Idle");
+
         return async (cursor, skBitmap, skCanvas) =>
         {
+            // Update animation before rendering
+            animation.Update(1f / 60f, cursor);
             renderer.Render(cursor, skBitmap, skCanvas);
             await Task.CompletedTask;
         };

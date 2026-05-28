@@ -23,7 +23,7 @@ public class AgentToolExecutor : IAgentToolExecutor
     private readonly PatchService _patchService;
     private readonly WebFetchService _webFetchService;
     private readonly QuestionService _questionService;
-    private readonly ToolRegistry _toolRegistry;
+    private readonly ToolAvailabilityRegistry _toolRegistry;
     private readonly ILogger<AgentToolExecutor> _logger;
     private bool _isPlanMode;
 
@@ -36,7 +36,7 @@ public class AgentToolExecutor : IAgentToolExecutor
         PatchService patchService,
         WebFetchService webFetchService,
         QuestionService questionService,
-        ToolRegistry toolRegistry,
+        ToolAvailabilityRegistry toolRegistry,
         ILogger<AgentToolExecutor>? logger = null)
     {
         _fileSystem = fileSystem;
@@ -218,7 +218,9 @@ public class AgentToolExecutor : IAgentToolExecutor
     {
         if (!parameters.TryGetValue("command", out var command))
             return ToolResult.Fail("Missing required parameter: command");
-        if (!parameters.TryGetValue("requiresApproval", out var requiresApproval))
+        // Support both camelCase and snake_case parameter names for compatibility
+        if (!parameters.TryGetValue("requiresApproval", out var requiresApproval) &&
+            !parameters.TryGetValue("requires_approval", out requiresApproval))
             return ToolResult.Fail("Missing required parameter: requires_approval");
 
         return await _commandExecutor.ExecuteAsync(
@@ -249,10 +251,26 @@ public class AgentToolExecutor : IAgentToolExecutor
         if (!parameters.TryGetValue("arguments", out var arguments))
             return ToolResult.Fail("Missing required parameter: arguments");
 
+        // The arguments parameter should be a JSON string per the IMcpService interface.
+        // If it's a Dictionary, serialize it to JSON. If it's already a string, use it as-is.
+        string argsJson;
+        if (arguments is Dictionary<string, object> dict)
+        {
+            argsJson = System.Text.Json.JsonSerializer.Serialize(dict);
+        }
+        else if (arguments?.ToString() != null)
+        {
+            argsJson = arguments.ToString()!;
+        }
+        else
+        {
+            argsJson = "{}";
+        }
+
         return await _mcpService.UseToolAsync(
             serverName?.ToString() ?? string.Empty,
             toolName?.ToString() ?? string.Empty,
-            arguments?.ToString() ?? string.Empty);
+            argsJson);
     }
 
     private async Task<ToolResult> ExecuteAccessMcpResource(Dictionary<string, object> parameters)
@@ -403,7 +421,8 @@ public class AgentToolExecutor : IAgentToolExecutor
     {
         try
         {
-            var result = await _commandExecutor.ExecuteAsync(command, false, timeoutSeconds, null);
+            var workingDir = options?.TryGetValue("workingDirectory", out var wd) == true ? (wd?.ToString() ?? string.Empty) : null;
+            var result = await _commandExecutor.ExecuteAsync(command, false, timeoutSeconds, workingDir);
             return result.Output ?? string.Empty;
         }
         catch (Exception ex)
