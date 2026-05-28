@@ -42,7 +42,7 @@ public class TaskValidationService : ITaskValidationService
         {
             var prompt = BuildValidationPrompt(task, resultSummary);
             var request = new ChatRequest(
-                ModelId: "",
+                ModelId: "default",
                 Messages: new List<Message>
                 {
                     new() { Role = MessageRole.System, Content = "You are a task validation assistant. Review the task results and determine if the task has been completed successfully." },
@@ -83,7 +83,7 @@ public class TaskValidationService : ITaskValidationService
                 """;
 
             var request = new ChatRequest(
-                ModelId: "",
+                ModelId: "default",
                 Messages: new List<Message>
                 {
                     new() { Role = MessageRole.System, Content = "You are a structured output validator." },
@@ -134,7 +134,10 @@ public class TaskValidationService : ITaskValidationService
     private static TaskValidationResult ParseValidationResponse(string response, AgenticTask task)
     {
         var normalized = response.Trim().ToUpperInvariant();
-        var passed = normalized.Contains("PASS");
+        // Use word-boundary-aware check: PASS should not be part of another word like "PASSIONATE"
+        var hasPass = normalized.Contains(" PASS") || normalized.Contains("PASS\n") || normalized.Contains("PASS\r\n") || normalized.StartsWith("PASS") || normalized.Contains("PASS:") || normalized.Contains("PASS.");
+        var hasFail = normalized.Contains("FAIL");
+        var passed = hasPass && !hasFail;
         var message = response.Trim().Length > 500 ? response[..500] : response.Trim();
         var retrySuggestion = passed ? null : response.Contains("RETRY") ? response.Split("RETRY", StringSplitOptions.None).LastOrDefault()?.Trim() : null;
         return new TaskValidationResult(passed, message, retrySuggestion);

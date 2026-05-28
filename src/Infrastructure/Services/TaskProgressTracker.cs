@@ -9,20 +9,23 @@ namespace OpenLMStudio.Infrastructure.Services;
 public class TaskProgressTracker : ITaskProgressTracker, IDisposable
 {
     private readonly ConcurrentDictionary<string, TrackerEntry> _entries = new();
+    private int _progressPercentage;
+    private int _hasError;
+    private int _iterationCount;
 
-    public int ProgressPercentage { get; set; }
+    public int ProgressPercentage => _progressPercentage;
 
-    public bool HasError { get; set; }
+    public bool HasError => _hasError != 0;
 
     public string? ErrorMessage { get; set; }
 
-    public int IterationCount { get; set; }
+    public int IterationCount => _iterationCount;
 
-    public bool IsIterationLimitExceeded => IterationCount >= 50; // Default max iterations for the task
+    public bool IsIterationLimitExceeded => _iterationCount >= 50; // Default max iterations for the task
 
     private TrackerEntry? GetActive()
     {
-        foreach (var entry in _entries.Values)
+        foreach (var entry in _entries.Values.ToList())
             if (!entry.Completed)
                 return entry;
         return null;
@@ -35,14 +38,15 @@ public class TaskProgressTracker : ITaskProgressTracker, IDisposable
     public async Task UpdateStageAsync(TaskProgressStage newStage)
     {
         if (newStage == TaskProgressStage.Failed && !HasError)
-            HasError = true;
+            Interlocked.Exchange(ref _hasError, 1);
 
-        ProgressPercentage = newStage switch
+        var newProgress = newStage switch
         {
             TaskProgressStage.Completed => 100,
-            TaskProgressStage.Reviewing => Math.Clamp(ProgressPercentage + 25, 0, 99),
-            _ => Math.Clamp(ProgressPercentage + 10, 0, 99)
+            TaskProgressStage.Reviewing => Math.Clamp(_progressPercentage + 25, 0, 99),
+            _ => Math.Clamp(_progressPercentage + 10, 0, 99)
         };
+        Interlocked.Exchange(ref _progressPercentage, newProgress);
 
         // Update the active entry's stage
         var active = GetActive();
@@ -52,7 +56,7 @@ public class TaskProgressTracker : ITaskProgressTracker, IDisposable
                 active.Completed = true;
             else if (newStage == TaskProgressStage.Failed)
             {
-                HasError = true;
+                Interlocked.Exchange(ref _hasError, 1);
                 ErrorMessage ??= "Task failed";
             }
             else if (!active.Completed)
@@ -67,7 +71,7 @@ public class TaskProgressTracker : ITaskProgressTracker, IDisposable
         if (percentage < 0 || percentage > 100)
             throw new ArgumentOutOfRangeException(nameof(percentage), "Progress must be between 0 and 100.");
 
-        ProgressPercentage = percentage;
+        Interlocked.Exchange(ref _progressPercentage, percentage);
 
         var active = GetActive();
         if (active != null && !HasError && percentage == 100)
@@ -78,23 +82,23 @@ public class TaskProgressTracker : ITaskProgressTracker, IDisposable
     {
         if (!success && !HasError)
         {
-            HasError = true;
+            Interlocked.Exchange(ref _hasError, 1);
             ErrorMessage = $"Tool '{toolName}' failed after {durationMs:F1}ms with result: {result}";
         }
 
         // Increment iteration count on each tool call for loop detection
-        IterationCount++;
+        Interlocked.Increment(ref _iterationCount);
         if (IsIterationLimitExceeded && !HasError)
-            HasError = true;
+            Interlocked.Exchange(ref _hasError, 1);
 
         // Record to underlying tracker entry — handled by iteration count increment above
     }
 
     public async Task RecordErrorAsync(string errorMessage)
     {
-        HasError = true;
+        Interlocked.Exchange(ref _hasError, 1);
         ErrorMessage = errorMessage;
-        ProgressPercentage = 0;
+        Interlocked.Exchange(ref _progressPercentage, 0);
     }
 
     public void Dispose() { _entries.Clear(); }

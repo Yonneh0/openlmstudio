@@ -49,7 +49,7 @@ public class TaskContextReinjectionService : ITaskContextReinjectionService, IDi
             return;
 
         // The tool results cache already contains the cached output from the interrupted call.
-        // No need to re-execute — just resume from the next logical step in the chain.
+        // Resume from the next logical step in the chain.
         _logger?.LogInformation("Resumed tool call chain for TaskId={TaskId} at CallId={CallId}", taskId, resumeFromCallId);
     }
 
@@ -67,7 +67,7 @@ public class TaskContextReinjectionService : ITaskContextReinjectionService, IDi
         {
             RestoredTokenCount = restoredCount,
             ToolResultsRestored = snapshot.ToolResultsCache.Count,
-            ToolChainResumed = false,
+            ToolChainResumed = snapshot.ToolResultsCache.Count > 0,
             PreviousState = snapshot.CurrentState.ToString(),
             RemainingBudgetTokens = 0 // Caller must determine via IContextWindowBudgeter
         };

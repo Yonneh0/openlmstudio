@@ -8,7 +8,7 @@ namespace OpenLMStudio.Infrastructure.Services;
 /// <summary>
 /// Manages agentic tasks — creation, execution via IAgent, dependency tracking, and persistence.
 /// </summary>
-public class TaskService : ITaskService
+public class TaskService : ITaskService, IDisposable
 {
     private readonly ILogger<TaskService>? _logger;
     private readonly IAgent? _agent;
@@ -18,6 +18,7 @@ public class TaskService : ITaskService
     private readonly Dictionary<Guid, AgenticTask> _tasks = new();
     private readonly Dictionary<Guid, IAgent> _agentInstances = new();
     private readonly Dictionary<Guid, CancellationTokenSource> _activeCts = new();
+    private readonly Dictionary<Guid, IServiceScope> _taskScopes = new();
     private readonly object _lock = new();
 
     public TaskService(
@@ -61,6 +62,7 @@ public class TaskService : ITaskService
         AgenticTask? task;
         IAgent agentInstance;
         CancellationTokenSource cts;
+        IServiceScope scope;
 
         lock (_lock)
         {
@@ -84,9 +86,10 @@ public class TaskService : ITaskService
             _activeCts[taskId] = cts;
 
             // Clone the shared agent for this task
-            var scope = _serviceProvider.CreateScope();
+            scope = _serviceProvider.CreateScope();
             agentInstance = scope.ServiceProvider.GetRequiredService<IAgent>();
             _agentInstances[taskId] = agentInstance;
+            _taskScopes[taskId] = scope;
         }
 
         // Build context: inherit from parent if exists
@@ -110,9 +113,9 @@ public class TaskService : ITaskService
         var request = new AgentTaskRequest(
             taskId,
             task.Description,
-            null!,
-            initialContext,
-            task.MaxIterations);
+            AvailableTools: null!,
+            InitialContext: initialContext,
+            MaxIterations: task.MaxIterations);
 
         // Run agent execution on background thread
         _ = Task.Run(async () =>
@@ -123,33 +126,36 @@ public class TaskService : ITaskService
 
                 lock (_lock)
                 {
+                    var oldStatus = task.Status;
                     task.Status = Domain.Models.TaskStatus.Completed;
                     task.Summary = result.Summary;
                     task.CompletedAt = DateTime.UtcNow;
                     task.ToolCalls = result.ToolCalls.ToList();
+                    NotifyStateChanged(taskId, oldStatus, Domain.Models.TaskStatus.Completed, result.Summary);
                 }
 
-                NotifyStateChanged(taskId, Domain.Models.TaskStatus.Running, Domain.Models.TaskStatus.Completed, result.Summary);
                 _logger?.LogInformation("Task completed: {TaskId}", taskId);
             }
             catch (OperationCanceledException)
             {
                 lock (_lock)
                 {
+                    var oldStatus = task.Status;
                     task.Status = Domain.Models.TaskStatus.Cancelled;
                     task.CompletedAt = DateTime.UtcNow;
+                    NotifyStateChanged(taskId, oldStatus, Domain.Models.TaskStatus.Cancelled, "Task cancelled.");
                 }
-                NotifyStateChanged(taskId, Domain.Models.TaskStatus.Running, Domain.Models.TaskStatus.Cancelled, "Task cancelled.");
             }
             catch (Exception ex)
             {
                 lock (_lock)
                 {
+                    var oldStatus = task.Status;
                     task.Status = Domain.Models.TaskStatus.Failed;
                     task.ErrorMessage = ex.Message;
                     task.CompletedAt = DateTime.UtcNow;
+                    NotifyStateChanged(taskId, oldStatus, Domain.Models.TaskStatus.Failed, ex.Message);
                 }
-                NotifyStateChanged(taskId, Domain.Models.TaskStatus.Running, Domain.Models.TaskStatus.Failed, ex.Message);
                 _logger?.LogError(ex, "Task failed: {TaskId}", taskId);
             }
             finally
@@ -166,7 +172,7 @@ public class TaskService : ITaskService
         }, cts.Token);
     }
 
-    public Task PauseTaskAsync(Guid taskId)
+    public async Task PauseTaskAsync(Guid taskId)
     {
         IAgent? agentInstance;
         AgenticTask? task;
@@ -180,10 +186,10 @@ public class TaskService : ITaskService
             task.Status = Domain.Models.TaskStatus.Paused;
         }
 
-        return agentInstance.PauseAsync();
+        await agentInstance.PauseAsync();
     }
 
-    public Task ResumeTaskAsync(Guid taskId, CancellationToken ct = default)
+    public async Task ResumeTaskAsync(Guid taskId, CancellationToken ct = default)
     {
         IAgent? agentInstance;
         AgenticTask? task;
@@ -197,7 +203,7 @@ public class TaskService : ITaskService
             task.Status = Domain.Models.TaskStatus.Running;
         }
 
-        return agentInstance.ResumeAsync(ct);
+        await agentInstance.ResumeAsync(ct);
     }
 
     public async Task AbortTaskAsync(Guid taskId)
@@ -221,12 +227,12 @@ public class TaskService : ITaskService
         {
             if (task != null)
             {
+                var oldStatus = task.Status;
                 task.Status = Domain.Models.TaskStatus.Cancelled;
                 task.CompletedAt = DateTime.UtcNow;
+                NotifyStateChanged(taskId, oldStatus, Domain.Models.TaskStatus.Cancelled, "Task aborted.");
             }
         }
-
-        NotifyStateChanged(taskId, Domain.Models.TaskStatus.Running, Domain.Models.TaskStatus.Cancelled, "Task aborted.");
     }
 
     public async Task<AgentTaskResult?> GetTaskResultAsync(Guid taskId)
@@ -240,15 +246,7 @@ public class TaskService : ITaskService
         if (task == null || task.Status != Domain.Models.TaskStatus.Completed)
             return null;
 
-        IAgent? agentInstance;
-        lock (_lock)
-        {
-            _agentInstances.TryGetValue(taskId, out agentInstance);
-        }
-
-        if (agentInstance == null)
-            return null;
-
+        // Use task data directly instead of relying on agent instance (which may have been disposed)
         return new AgentTaskResult(
             taskId,
             Domain.Models.AgentState.Completed,
@@ -267,12 +265,22 @@ public class TaskService : ITaskService
     {
         lock (_lock)
         {
+            // Notify about pending tasks before disposal
+            foreach (var task in _tasks.Values.Where(t => t.Status == Domain.Models.TaskStatus.Running))
+            {
+                task.Status = Domain.Models.TaskStatus.Cancelled;
+                NotifyStateChanged(task.Id, Domain.Models.TaskStatus.Running, Domain.Models.TaskStatus.Cancelled, "Disposed.");
+            }
+
             foreach (var cts in _activeCts.Values)
                 cts?.Dispose();
             _activeCts.Clear();
             foreach (var agent in _agentInstances.Values)
                 agent?.Dispose();
             _agentInstances.Clear();
+            foreach (var scope in _taskScopes.Values)
+                scope?.Dispose();
+            _taskScopes.Clear();
         }
     }
 }

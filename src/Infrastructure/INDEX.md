@@ -221,23 +221,24 @@
 ## src/Infrastructure/Services/TaskCompletionDetector.cs - 71 lines - Task Completion Detector with AI-Powered Validation
   - ITaskCompletionDetector for detecting task completion based on tool results. DetectCompletionAsync, QuickHeuristicCheck.
 ## src/Infrastructure/Services/TaskContextInheritor.cs - 117 lines - Parent-to-Child Task Context Propagation
-  - ITaskContextInheritor for propagating context from parent to child tasks. CreateChildInheritanceAsync, RequestAdditionalContextFromParentAsync.
+  - ITaskContextInheritor for propagating context from parent to child tasks. CreateChildInheritanceAsync (returns default snapshot if parent not found), RequestAdditionalContextFromParentAsync.
 ## src/Infrastructure/Services/TaskContextPruner.cs - 70 lines - Task Context Pruning with Archive/Compress/Discard Strategies
   - ITaskContextPruner for managing context pruning when tasks complete. ArchiveAsync, CompressAndArchiveAsync, DiscardAsync.
 ## src/Infrastructure/Services/TaskContextReinjectionService.cs - 80 lines - Fast Re-Injection Pipeline for Quick Task Resumption
-  - ITaskContextReinjectionService for restoring full context from pre-compressed snapshot in <100ms. FastReinjectAsync, ResumeToolCallChainAsync.
+  - ITaskContextReinjectionService for restoring full context from pre-compressed snapshot in <100ms. FastReinjectAsync, ResumeToolCallChainAsync, GetReinjectionSummaryAsync (ToolChainResumed based on ToolResultsCache.Count).
 ## src/Infrastructure/Services/TaskContextStore.cs - 934 lines - SQLite-Backed Task Context Snapshot Store
   - ITaskContextStore with SQLite-backed persistence for agentic task context snapshots. CreateAsync, GetByTaskIdAsync, UpdateAsync, DeleteAsync, ListAsync.
 ## src/Infrastructure/Services/TaskProgressTracker.cs - 108 lines - Agentic Task Progress Tracker
-  - ITaskProgressTracker with ConcurrentDictionary-based tracking. UpdateStageAsync, ReportProgressAsync, RecordToolCallAsync, CheckIterationLimit.
+  - ITaskProgressTracker with ConcurrentDictionary-based tracking. Uses Interlocked for thread-safe ProgressPercentage/HasError/IterationCount. GetActive() snapshots Values with .ToList().
 ## src/Infrastructure/Services/TaskScheduler.cs - 152 lines - Ordered Task Queue with Priority Scheduling
   - ITaskScheduler for managing ordered task queue across branches. InjectTasksAsync, GetScheduledTasksAsync, CheckAndStartDependentTasksAsync.
 ## src/Infrastructure/Services/TaskSchedulerService.cs - 459 lines - SQLite Task Scheduler with Priority-Ordered Scheduling
   - ITaskScheduler and IDisposable for SQLite-backed task scheduling. InjectTasksAsync, GetScheduledTasksAsync (priority-ordered: High→Normal→Low), CheckAndStartDependentTasksAsync.
 ## src/Infrastructure/Services/TaskService.cs - 278 lines - Agentic Task Manager with IAgent Execution
   - ITaskService for managing agentic tasks. CreateTaskAsync, StartTaskAsync (clones agent, inherits context), StopTaskAsync, PauseTaskAsync, ResumeTaskAsync.
-## src/Infrastructure/Services/TaskValidationService.cs - 134 lines - AI-Powered Task Completion Validator
-  - ITaskValidationService for validating task completion using Pingu (System AI). ValidateTaskCompletionAsync, ValidateStructuredOutputAsync.
+  - Fixes: GetTaskResultAsync now uses task data directly (not disposed agent). NotifyStateChanged passes actual oldStatus. AgentTaskRequest uses named params. DI scope stored and disposed. Dispose() notifies pending tasks.
+## src/Infrastructure/Services/TaskValidationService.cs - 142 lines - AI-Powered Task Completion Validator
+  - ITaskValidationService for validating task completion using Pingu (System AI). ValidateTaskCompletionAsync (ModelId: "default"), ValidateStructuredOutputAsync. ParseValidationResponse uses word-boundary-aware PASS detection.
 ## src/Infrastructure/Services/TokenEstimator.cs - 52 lines - Token Count Estimator with Length and Word-Based Methods
   - ITokenEstimator with static regex patterns. EstimateTokens ((text.Length+3)/4), EstimateTokensAdvanced, EstimateMessagesTokens, GetHumanReadableTokenCount.
 ## src/Infrastructure/Services/ToolRegistry.cs - 101 lines - Central Tool Discovery and Instantiation Registry

@@ -33,7 +33,19 @@ public class TaskContextInheritor : ITaskContextInheritor, IDisposable
     {
         var parentSnapshot = await _taskContextStore.GetByTaskIdAsync(parentTaskId);
         if (parentSnapshot == null)
-            throw new InvalidOperationException($"Parent task context not found for TaskId: {parentTaskId}");
+        {
+            // Return a default snapshot instead of throwing, for robustness
+            return new TaskContextSnapshot
+            {
+                TaskId = childTaskId,
+                Description = "No parent context available",
+                CurrentState = AgentState.Planning,
+                CompressedContext = new(),
+                ToolResultsCache = new(),
+                CreatedAt = DateTime.UtcNow,
+                UpdatedAt = DateTime.UtcNow,
+            };
+        }
 
         // Build inherited snapshot — only propagate the most relevant info based on budget
         var childSnapshot = new TaskContextSnapshot
