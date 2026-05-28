@@ -1,5 +1,5 @@
-## src/Desktop/AboutWindow.axaml - 289 lines - Dark-themed About dialog
-  - XAML window with embedded styles showing version badge (v1.0.0), runtime info (.NET 8, OS, arch), tech stack table, and external links. Fixed-size 448x341 popup.
+## src/Desktop/AboutWindow.axaml - ~300 lines - Dark-themed About dialog
+   - XAML window with embedded styles showing version badge (v1.0.0), runtime info (.NET 8, OS, arch), tech stack table, and external links. Fixed-size 448x341 popup. Features: DirtyText with "Dirty" text, linkLabel :pressed state, techName/techValue :pointerover styles, sectionCard :pointerover border, consolidated Tech Stack Grid with shared ColumnDefinitions, :pressed emoji badges.
 ## src/Desktop/AboutWindow.axaml.cs - 156 lines - AboutWindow code-behind
   - Reads version from assembly, git info, runtime/OS/arch. OnVersionBadgeClicked shows git log popup via Avalonia Popup control.
 ## src/Desktop/AccessibilityService.cs - 121 lines - AccessibilityService
@@ -50,8 +50,8 @@
   - Internal static GitInfo class with const Commit/Branch/Dirty/FullName/FullBranch/Log.
 ## src/Desktop/IAccessibilityService.cs - 27 lines - IAccessibilityService
   - Simple interface: IsHighContrastMode, IsScreenReaderMode, RefreshAccessibilityStateAsync.
-## src/Desktop/MainWindow.axaml - 956 lines - MainWindow
-  - Full application shell: 3-column layout (280px left sidebar, 4* center pane, 320px right sidebar). Dark theme with 30+ embedded styles.
+## src/Desktop/MainWindow.axaml - ~970 lines - MainWindow
+   - Full application shell: 3-column layout (280px left sidebar, 4* center pane, 320px right sidebar). Dark theme with 30+ embedded styles. Features: ChatTitleEdit with IsVisible binding, AgentTurnsBadge with positive margin (4,-4), PinguCornerPanel responsive dimensions (MinWidth/MinHeight/MaxWidth/MaxHeight), AgentModeToggle :pressed state, Safety toggles (WWW/Read/Edit/Exec) with :checked styles, Plan/Act toggle buttons with :pointerover, vscodeTab :pointerover state, settingsSubTab :pointerover state, ChatTitleDisplay :pointerover style, pluginBtn :pressed styles, BorderDefault resource for consistent borders.
 ## src/Desktop/MainWindow.axaml.cs - 1610 lines - MainWindow code-behind
   - Core window logic: DI constructor, tab management, chat title editing, message sending, Pingu avatar panel, AgentMode toggle, Safety toggles.
 ## src/Desktop/MainWindow.ChatMessages.cs - 645 lines - MainWindow.ChatMessages
@@ -70,8 +70,8 @@
   - SDK: Microsoft.NET.Sdk. WinExe, net8.0, nullable/implicit usings. Multi-platform with Avalonia 12.0.3.
 ## src/Desktop/PanelService.cs - 93 lines - PanelService
   - Static MainWindow reference pattern. IPanelService implementation with 14 panel names mapped to control names.
-## src/Desktop/PluginManagementWindow.axaml - 120 lines - PluginManagementWindow
-  - 900x700 plugin management dialog with dark theme, toolbar, plugin cards, status bar.
+## src/Desktop/PluginManagementWindow.axaml - ~130 lines - PluginManagementWindow
+   - 900x700 plugin management dialog with dark theme, toolbar, plugin cards, status bar. Features: ExtendClientAreaToDecorationsHint, BorderDefault resource for consistent borders, pluginBtn :pressed/:pointerover states, pluginInstallBtn :pressed/:pointerover states, pluginCard :pointerover border, pluginName/Description/Version :pointerover styles, pluginCard TextBlock :disabled style, PluginSearchBox MinWidth=200, ScrollViewer MaxHeight=500.
 ## src/Desktop/PluginManagementWindow.cs - 451 lines - PluginManagementWindow
   - Full plugin management: RefreshPlugins, RenderPluginCardsAsync, OnSearchTextChanged, OnTogglePluginClicked, OnPolicyChanged, OnUninstallPlugin.
 ## src/Desktop/TabService.cs - 109 lines - TabService
