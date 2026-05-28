@@ -15,6 +15,14 @@ public class TaskValidationService : ITaskValidationService
     private readonly IPinguPromptGenerator _promptGenerator;
     private readonly IChatCompletionService _chatCompletion;
 
+    /// <summary>
+    /// Cached JSON serialization options for consistent formatting.
+    /// </summary>
+    private static readonly JsonSerializerOptions _jsonOptions = new()
+    {
+        WriteIndented = true
+    };
+
     public TaskValidationService(
         ILogger<TaskValidationService> logger,
         IPinguPromptGenerator promptGenerator,
@@ -67,7 +75,7 @@ public class TaskValidationService : ITaskValidationService
                 # Structured Output Validation
                 Task: {task.Description}
                 Expected Output Fields: {task.OutputFields}
-                Actual Output: {JsonSerializer.Serialize(outputFields, new JsonSerializerOptions { WriteIndented = true })}
+                Actual Output: {JsonSerializer.Serialize(outputFields, _jsonOptions)}
                 Validation Criteria: {task.ValidationCriteria}
 
                 Validate that the output fields match the expected schema and meet the validation criteria.

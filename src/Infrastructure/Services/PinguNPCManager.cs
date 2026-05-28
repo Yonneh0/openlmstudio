@@ -50,6 +50,7 @@ public class PinguNPCManager
     /// <summary>
     /// Move a penguin to a target position.
     /// Velocity is initialized based on the distance to the target for immediate movement response.
+    /// The velocity is then gradually damped over time in UpdatePingu.
     /// </summary>
     public void MoveTo(PinguNPC pingu, float targetX, float targetY, float duration)
     {
@@ -159,23 +160,38 @@ public class PinguNPCManager
 
     private void UpdatePingu(PinguNPC pingu, float deltaTime)
     {
-        // Update movement
+        // Update movement using velocity from MoveTo, damped over time
         var dx = pingu.TargetX - pingu.X;
         var dy = pingu.TargetY - pingu.Y;
         var dist = (float)Math.Sqrt(dx * dx + dy * dy);
 
         if (dist > 1f)
         {
-            pingu.VelocityX = dx / dist * pingu.Physics.MaxWalkSpeed;
-            pingu.VelocityY = dy / dist * pingu.Physics.MaxWalkSpeed;
+            // Update rotation to face target
+            pingu.Rotation = (float)Math.Atan2(dy, dx);
+
+            // Calculate target speed based on remaining distance and time
+            var remainingTime = pingu.MoveDuration - pingu.MoveProgress * pingu.MoveDuration;
+            var targetSpeed = Math.Min(pingu.Physics.MaxWalkSpeed, dist / Math.Max(0.01f, remainingTime));
+
+            // Recalculate velocity magnitude based on remaining distance
+            pingu.VelocityX = dx / dist * targetSpeed;
+            pingu.VelocityY = dy / dist * targetSpeed;
+
+            // Apply velocity damping
+            pingu.VelocityX *= pingu.Physics.VelocityDamping;
+            pingu.VelocityY *= pingu.Physics.VelocityDamping;
+
             pingu.X += pingu.VelocityX * deltaTime;
             pingu.Y += pingu.VelocityY * deltaTime;
-            pingu.Rotation = (float)Math.Atan2(dy, dx);
+
+            // Update move progress
+            pingu.MoveProgress += deltaTime / pingu.MoveDuration;
         }
         else
         {
-            pingu.VelocityX *= pingu.Physics.VelocityDamping;
-            pingu.VelocityY *= pingu.Physics.VelocityDamping;
+            pingu.VelocityX = 0f;
+            pingu.VelocityY = 0f;
             pingu.IsMoving = false;
         }
 

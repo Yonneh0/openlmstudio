@@ -23,7 +23,7 @@ public partial class PinguHomeTile : UserControl, IDisposable
     private bool _disposed;
     private bool _isAwake;
     private readonly PinguHomeSceneRenderer _homeRenderer;
-    private SKBitmap? _cachedBitmap;
+    private SkiaSharp.SKBitmap? _cachedBitmap;
 
     public PinguHomeTile()
     {
@@ -124,5 +124,6 @@ public partial class PinguHomeTile : UserControl, IDisposable
 
         _disposed = true;
         _cachedBitmap?.Dispose();
+        _cachedBitmap = null;
     }
 }

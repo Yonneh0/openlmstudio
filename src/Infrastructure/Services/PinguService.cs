@@ -80,10 +80,13 @@ public class PinguService : IDisposable
     /// </summary>
     public void Render(System.Numerics.Vector2 cursorPosition)
     {
-        if (_renderer.RenderBitmap != null)
+        // Use the renderer's internal bitmap and canvas directly
+        // Avoids creating a new canvas every frame
+        var bitmap = _renderer.RenderBitmap;
+        var canvas = _renderer.Canvas;
+        if (bitmap != null && canvas != null)
         {
-            // Render directly into the renderer's internal bitmap (no redundant canvas creation)
-            _renderer.Render(cursorPosition, _renderer.RenderBitmap, new SkiaSharp.SKCanvas(_renderer.RenderBitmap));
+            _renderer.Render(cursorPosition, bitmap, canvas);
         }
     }
 

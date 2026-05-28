@@ -31,6 +31,14 @@ public class EngineConfigService : IEngineConfigService
     private readonly ILogger<EngineConfigService> _logger;
     private readonly string _configPath;
 
+    /// <summary>
+    /// Cached JSON serialization options for consistent formatting.
+    /// </summary>
+    private static readonly JsonSerializerOptions _jsonOptions = new()
+    {
+        WriteIndented = true
+    };
+
     public EngineConfigService(ILogger<EngineConfigService> logger, string? configPath = null)
     {
         _logger = logger;
@@ -78,10 +86,7 @@ public class EngineConfigService : IEngineConfigService
             if (!string.IsNullOrEmpty(directory))
                 Directory.CreateDirectory(directory);
 
-            var json = JsonSerializer.Serialize(config, new JsonSerializerOptions
-            {
-                WriteIndented = true
-            });
+            var json = JsonSerializer.Serialize(config, _jsonOptions);
 
             // Write to temp file first, then rename for atomicity
             var tempPath = _configPath + ".tmp";

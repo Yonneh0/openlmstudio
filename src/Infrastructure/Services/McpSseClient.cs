@@ -19,6 +19,14 @@ public class McpSseClient : IMcpClient, IDisposable
     private string? _sseEndpointUrl;
     private volatile bool _isConnected;
 
+    /// <summary>
+    /// Cached JSON serialization options for null-ignoring serialization.
+    /// </summary>
+    private static readonly JsonSerializerOptions _jsonNullIgnoreOptions = new()
+    {
+        DefaultIgnoreCondition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull
+    };
+
     /// <inheritdoc />
     public bool IsConnected => _isConnected && _httpClient != null;
 
@@ -246,7 +254,7 @@ public class McpSseClient : IMcpClient, IDisposable
     {
         if (_httpClient == null || _sseEndpointUrl == null) return null;
 
-        var json = JsonSerializer.Serialize(message, new JsonSerializerOptions { DefaultIgnoreCondition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull });
+        var json = JsonSerializer.Serialize(message, _jsonNullIgnoreOptions);
         var content = new StringContent(json, Encoding.UTF8, "application/json");
 
         try

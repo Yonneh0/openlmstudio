@@ -263,6 +263,7 @@ public class PinguStore : IPinguStore, IDisposable
     public void Dispose()
     {
         _blinkTimer?.Dispose();
+        GC.SuppressFinalize(this);
     }
 
     /// <summary>

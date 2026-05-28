@@ -19,6 +19,14 @@ public class AgentTaskCheckpointService : IAgentTaskCheckpointService
     private readonly ILogger<AgentTaskCheckpointService> _logger;
     private readonly object _lock = new();
 
+    /// <summary>
+    /// Cached JSON serialization options for consistent formatting.
+    /// </summary>
+    private static readonly JsonSerializerOptions _jsonOptions = new()
+    {
+        WriteIndented = true
+    };
+
     public AgentTaskCheckpointService(
         IFileSystem? fileSystem = null,
         string? checkpointDirectory = null,
@@ -52,7 +60,7 @@ public class AgentTaskCheckpointService : IAgentTaskCheckpointService
             checkpoints.Add(checkpoint);
 
             var checkpointPath = Path.Combine(taskDir, $"checkpoint_{checkpoint.Version}.json");
-            var json = JsonSerializer.Serialize(checkpoint, new JsonSerializerOptions { WriteIndented = true });
+            var json = JsonSerializer.Serialize(checkpoint, _jsonOptions);
             await _fileSystem.File.WriteAllTextAsync(checkpointPath, json, ct);
 
             _logger?.LogDebug("Checkpoint saved for task {TaskId} version {Version}", taskId, checkpoint.Version);

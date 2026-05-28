@@ -19,6 +19,14 @@ public class AgentTaskStateService : IAgentTaskStateService
     private readonly ILogger<AgentTaskStateService> _logger;
     private readonly object _lock = new();
 
+    /// <summary>
+    /// Cached JSON serialization options for consistent formatting.
+    /// </summary>
+    private static readonly JsonSerializerOptions _jsonOptions = new()
+    {
+        WriteIndented = true
+    };
+
     public AgentTaskStateService(
         IFileSystem? fileSystem = null,
         string? stateDirectory = null,
@@ -76,7 +84,7 @@ public class AgentTaskStateService : IAgentTaskStateService
             if (!string.IsNullOrEmpty(dir))
                 _fileSystem.Directory.CreateDirectory(dir);
 
-            var json = JsonSerializer.Serialize(state, new JsonSerializerOptions { WriteIndented = true });
+            var json = JsonSerializer.Serialize(state, _jsonOptions);
             await _fileSystem.File.WriteAllTextAsync(statePath, json, ct);
 
             lock (_lock)

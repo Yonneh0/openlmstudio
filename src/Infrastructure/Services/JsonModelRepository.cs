@@ -19,6 +19,15 @@ public class JsonModelRepository : IModelRepository, IDisposable
     private readonly string _indexDirectory;
     private readonly List<string> _modelSearchPaths;
 
+    /// <summary>
+    /// Cached JSON serialization options for consistent formatting with camel case naming.
+    /// </summary>
+    private static readonly JsonSerializerOptions _jsonCamelOptions = new()
+    {
+        WriteIndented = true,
+        PropertyNamingPolicy = JsonNamingPolicy.CamelCase
+    };
+
     // Cached index of models (in-memory for performance)
     private Dictionary<string, ModelMetadata>? _indexedGgufModels;
     private Dictionary<string, MultiModalModelMetadata>? _indexedMultiModalModels;
@@ -509,24 +518,14 @@ public class JsonModelRepository : IModelRepository, IDisposable
             // Save GGUF models as the primary index (backward compatible)
             if (_indexedGgufModels != null && _indexedGgufModels.Count > 0)
             {
-                var options = new JsonSerializerOptions
-                {
-                    WriteIndented = true,
-                    PropertyNamingPolicy = JsonNamingPolicy.CamelCase
-                };
-                File.WriteAllText(indexPath, JsonSerializer.Serialize(_indexedGgufModels, options));
+                File.WriteAllText(indexPath, JsonSerializer.Serialize(_indexedGgufModels, _jsonCamelOptions));
             }
 
             // Also save multi-modal index separately for efficient lookup
             if (_indexedMultiModalModels != null && _indexedMultiModalModels.Count > 0)
             {
                 var mmIndexPath = Path.Combine(_indexDirectory, "model-index-multimodal.json");
-                var options = new JsonSerializerOptions
-                {
-                    WriteIndented = true,
-                    PropertyNamingPolicy = JsonNamingPolicy.CamelCase
-                };
-                File.WriteAllText(mmIndexPath, JsonSerializer.Serialize(_indexedMultiModalModels, options));
+                File.WriteAllText(mmIndexPath, JsonSerializer.Serialize(_indexedMultiModalModels, _jsonCamelOptions));
             }
         }
         catch (Exception ex)

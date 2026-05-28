@@ -11,6 +11,14 @@ public class PinguBoneLoader
 {
     private readonly ILogger<PinguBoneLoader>? _logger;
 
+    /// <summary>
+    /// Cached JSON serialization options for consistent formatting.
+    /// </summary>
+    private static readonly JsonSerializerOptions _jsonOptions = new()
+    {
+        WriteIndented = true
+    };
+
     public PinguBoneLoader(ILogger<PinguBoneLoader>? logger = null)
     {
         _logger = logger;
@@ -35,7 +43,7 @@ public class PinguBoneLoader
     /// </summary>
     public string SaveBoneHierarchy(PinguBoneHierarchy hierarchy)
     {
-        return JsonSerializer.Serialize(hierarchy.Definitions, new JsonSerializerOptions { WriteIndented = true });
+        return JsonSerializer.Serialize(hierarchy.Definitions, _jsonOptions);
     }
 
     /// <summary>
@@ -51,7 +59,7 @@ public class PinguBoneLoader
     /// </summary>
     public string SaveAnimationClips(List<PinguAnimationClip> clips)
     {
-        return JsonSerializer.Serialize(clips, new JsonSerializerOptions { WriteIndented = true });
+        return JsonSerializer.Serialize(clips, _jsonOptions);
     }
 
     /// <summary>
@@ -67,7 +75,7 @@ public class PinguBoneLoader
     /// </summary>
     public string SavePhysicsParams(PinguPhysicsParams paramsData)
     {
-        return JsonSerializer.Serialize(paramsData, new JsonSerializerOptions { WriteIndented = true });
+        return JsonSerializer.Serialize(paramsData, _jsonOptions);
     }
 
     /// <summary>

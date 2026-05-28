@@ -19,7 +19,7 @@ public class PinguCanvas : Control
     private bool _cursorActive;
     private int _width;
     private int _height;
-    private SKBitmap? _renderBitmap;
+    private SkiaSharp.SKBitmap? _renderBitmap;
 
     public PinguCanvas()
     {
@@ -91,6 +91,7 @@ public class PinguCanvas : Control
         base.OnDetachedFromVisualTree(e);
         _renderFunc = null;
         _renderBitmap?.Dispose();
+        _renderBitmap = null;
     }
 
     public override void Render(DrawingContext context)
@@ -123,7 +124,7 @@ public class PinguCanvas : Control
         var wBitmap = new Avalonia.Media.Imaging.Bitmap(skStream);
         context.DrawImage(wBitmap, rect);
 
-        // Dispose old bitmap after rendering completes
+        // Dispose old bitmap after rendering completes (to avoid race conditions)
         oldBitmap?.Dispose();
     }
 }

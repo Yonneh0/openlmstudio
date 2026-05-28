@@ -40,6 +40,11 @@ public class PinguAnimationStateMachine
     public PinguAnimationClip? CurrentClip { get; private set; }
 
     /// <summary>
+    /// Previous animation clip (used during blending transitions).
+    /// </summary>
+    private PinguAnimationClip? _previousClip;
+
+    /// <summary>
     /// Cached lookup from PinguAnimationState enum value to animation clip.
     /// </summary>
     private readonly Dictionary<PinguAnimationState, PinguAnimationClip?> _clipByName;
@@ -58,6 +63,11 @@ public class PinguAnimationStateMachine
     /// Priority levels for animations (higher = more important).
     /// </summary>
     private readonly Dictionary<PinguAnimationState, int> _animationPriorities;
+
+    /// <summary>
+    /// Whether the animation is currently paused.
+    /// </summary>
+    private bool _isPaused;
 
     public PinguAnimationStateMachine(
         List<PinguAnimationClip> clips,
@@ -140,6 +150,9 @@ public class PinguAnimationStateMachine
             return;
         }
 
+        // Save the current clip as the previous clip for blending
+        _previousClip = CurrentClip;
+
         // Find the clip for the new state
         // First try exact enum name match, then fall back to any available clip
         var clip = _clipByName.GetValueOrDefault(newState) ?? _clips.FirstOrDefault();
@@ -157,6 +170,10 @@ public class PinguAnimationStateMachine
     /// </summary>
     public void Update(float deltaTime)
     {
+        // Skip all updates if paused
+        if (_isPaused)
+            return;
+
         _stateTimer += deltaTime;
 
         // Update blend factor
@@ -194,16 +211,22 @@ public class PinguAnimationStateMachine
 
     /// <summary>
     /// Get the blended bone transformation for the current state.
+    /// Returns the primary (new) clip, secondary (previous) clip for blending, and the blend factor.
     /// </summary>
     public (PinguAnimationClip? PrimaryClip, PinguAnimationClip? SecondaryClip, float BlendFactor) GetBlendedAnimation()
     {
         if (CurrentClip == null)
-            return (null, null, 1);
+        {
+            // If no clip is loaded, return the default Idle clip
+            var defaultClip = _clips.FirstOrDefault(c => c.Name == "Idle") ?? _clips.FirstOrDefault();
+            return (defaultClip, null, 1);
+        }
 
         if (BlendFactor >= 1)
             return (CurrentClip, null, 1);
 
-        return (CurrentClip, null, BlendFactor);
+        // During blending, return both the new and previous clips
+        return (CurrentClip, _previousClip, BlendFactor);
     }
 
     /// <summary>
@@ -235,9 +258,7 @@ public class PinguAnimationStateMachine
     /// </summary>
     public void Pause()
     {
-        // Set a high priority flag by transitioning to a temporary state
-        // The animation continues but no new behaviors are triggered
-        _stateTimer = float.MaxValue;
+        _isPaused = true;
     }
 
     /// <summary>
@@ -245,31 +266,13 @@ public class PinguAnimationStateMachine
     /// </summary>
     public void Resume()
     {
-        _stateTimer = 0;
+        _isPaused = false;
     }
 
     /// <summary>
-    /// Check behavior triggers for random behaviors.
+    /// Whether the animation is currently paused.
     /// </summary>
-    private void CheckBehaviorTriggers(float deltaTime)
-    {
-        if (_random.NextDouble() > 0.01 * deltaTime) return;
-
-        var cumulative = 0.0;
-        foreach (var (state, weight) in _behaviorTriggers)
-        {
-            cumulative += weight;
-            if (_random.NextDouble() < weight)
-            {
-                // Only trigger if not currently doing a conflicting behavior
-                if (IsCompatible(CurrentState, state))
-                {
-                    TransitionTo(state);
-                    break;
-                }
-            }
-        }
-    }
+    public bool IsPaused => _isPaused;
 
     /// <summary>
     /// Check if two animation states are compatible (can run concurrently).
@@ -289,5 +292,20 @@ public class PinguAnimationStateMachine
         }
 
         return true;
+    }
+
+    /// <summary>
+    /// Check for random behavior triggers.
+    /// </summary>
+    private void CheckBehaviorTriggers(float deltaTime)
+    {
+        foreach (var (state, weight) in _behaviorTriggers)
+        {
+            if (_random.NextDouble() < weight * deltaTime && IsCompatible(CurrentState, state))
+            {
+                TransitionTo(state);
+                break; // Only one behavior at a time
+            }
+        }
     }
 }

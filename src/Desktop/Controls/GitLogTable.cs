@@ -178,7 +178,7 @@ public class GitLogTable : ContentControl
     /// <summary>
     /// Creates a fresh separator Border for use in the header row.
     /// </summary>
-    private Border CreateNewSeparator()
+    private static Border CreateNewSeparator()
     {
         return new Border
         {
@@ -252,7 +252,7 @@ public class GitLogTable : ContentControl
         SetValue(ContentControl.ContentProperty, _outerBorder);
     }
 
-    private TextBlock CreateHeaderCell(string text, IBrush foreground)
+    private static TextBlock CreateHeaderCell(string text, IBrush foreground)
     {
         return new TextBlock
         {
@@ -268,7 +268,7 @@ public class GitLogTable : ContentControl
         };
     }
 
-    private Border CreateSeparator()
+    private static Border CreateSeparator()
     {
         return new Border
         {

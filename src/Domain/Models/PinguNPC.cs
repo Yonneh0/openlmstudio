@@ -123,6 +123,8 @@ public class PinguNPC
     /// </summary>
     public void MoveTo(float targetX, float targetY, float duration)
     {
+        _moveStartX = X;
+        _moveStartY = Y;
         TargetX = targetX;
         TargetY = targetY;
         MoveDuration = duration;
@@ -130,8 +132,8 @@ public class PinguNPC
         IsMoving = true;
 
         // Calculate velocity for has-reached-target detection
-        var dx = targetX - X;
-        var dy = targetY - Y;
+        var dx = targetX - _moveStartX;
+        var dy = targetY - _moveStartY;
         var distance = (float)Math.Sqrt(dx * dx + dy * dy);
         VelocityX = distance > 0 ? dx / distance : 0f;
         VelocityY = distance > 0 ? dy / distance : 0f;
@@ -161,16 +163,23 @@ public class PinguNPC
             var t = MoveProgress;
             var easedT = t < 0.5f ? 4 * t * t * t : 1 - Math.Pow(-2 * t + 2, 3) / 2f;
 
-            X = X + (TargetX - X) * (float)easedT;
-            Y = Y + (TargetY - Y) * (float)easedT;
+            // Calculate position from start to target using eased progress
+            var dx = TargetX - _moveStartX;
+            var dy = TargetY - _moveStartY;
+            X = _moveStartX + dx * (float)easedT;
+            Y = _moveStartY + dy * (float)easedT;
 
             // Update velocity based on movement
-            var dx = TargetX - X;
-            var dy = TargetY - Y;
             VelocityX = dx / MoveDuration;
             VelocityY = dy / MoveDuration;
         }
     }
+
+    /// <summary>
+    /// Start position for movement interpolation (set when MoveTo is called).
+    /// </summary>
+    private float _moveStartX;
+    private float _moveStartY;
 }
 
 /// <summary>

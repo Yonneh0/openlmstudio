@@ -124,11 +124,8 @@ public class PinguAnimationSystem
             }
         }
 
-        // Apply IK
+        // Apply IK (includes cursor tracking for eyes)
         ApplyInverseKinematics(deltaTime);
-
-        // Apply cursor tracking (eyes follow cursor)
-        ApplyEyeTracking(deltaTime);
 
         // Apply body tilt toward cursor
         ApplyBodyTilt(deltaTime);
@@ -155,6 +152,7 @@ public class PinguAnimationSystem
     /// <summary>
     /// Recompute bone positions from hierarchy + transforms.
     /// Walks up the parent chain accumulating offsets from each bone's local position.
+    /// Roll/Pitch/Yaw are rotation angles and must NOT be applied as position offsets.
     /// </summary>
     private void RecomputeBonePositions()
     {
@@ -166,20 +164,15 @@ public class PinguAnimationSystem
             var py = bone.Y;
             var pz = bone.Z;
 
-            // Walk up the parent chain accumulating offsets
-            var current = bone.Parent;
-            while (current != null)
+            // Walk up the parent chain accumulating offsets, starting from the bone itself
+            var current = bone;
+            while (current.Parent != null)
             {
+                current = current.Parent;
                 px += current.X;
                 py += current.Y;
                 pz += current.Z;
-                current = current.Parent;
             }
-
-            // Apply per-bone transform offsets
-            px += _boneRoll[i];
-            py += _bonePitch[i];
-            pz += _boneYaw[i];
 
             _bonePositions[i * 3] = px;
             _bonePositions[i * 3 + 1] = py;
@@ -335,7 +328,7 @@ public class PinguAnimationSystem
 
     private void ApplyInverseKinematics(float deltaTime)
     {
-        // Simple IK for head toward cursor
+        // Simple IK for head toward cursor - consolidates both IK and eye tracking into one method
         if (_cursorActive)
         {
             var headIndex = _boneHierarchy.ResolvedBones.FindIndex(b => b.Name == "head");
@@ -346,24 +339,10 @@ public class PinguAnimationSystem
                 var dy = _cursorPosition.Y - headPos.Y;
                 var angle = (float)Math.Atan2(dy, dx);
 
+                // IK stiffness for head rotation toward cursor
                 _boneYaw[headIndex] += (angle - _boneYaw[headIndex]) * _physics.IkStiffness * deltaTime * 60f;
             }
         }
-    }
-
-    private void ApplyEyeTracking(float deltaTime)
-    {
-        var headIndex = _boneHierarchy.ResolvedBones.FindIndex(b => b.Name == "head");
-        if (headIndex < 0 || !_cursorActive)
-            return;
-
-        var headPos = GetBoneWorldPosition(headIndex);
-        var dx = _cursorPosition.X - headPos.X;
-        var dy = _cursorPosition.Y - headPos.Y;
-        var angle = (float)Math.Atan2(dy, dx);
-
-        // Apply eye tracking to the head bone
-        _boneYaw[headIndex] += (angle - _boneYaw[headIndex]) * 0.1f * deltaTime * 60f;
     }
 
     private void ApplyBodyTilt(float deltaTime)

@@ -16,6 +16,14 @@ public class BinaryRegistry
     private readonly object _lock = new();
     private Dictionary<string, BinaryInfo>? _cache;
 
+    /// <summary>
+    /// Cached JSON serialization options for consistent formatting.
+    /// </summary>
+    private static readonly JsonSerializerOptions _jsonOptions = new()
+    {
+        WriteIndented = true
+    };
+
     public BinaryRegistry(ILogger<BinaryRegistry> logger, string? registryPath = null)
     {
         _logger = logger;
@@ -76,7 +84,7 @@ public class BinaryRegistry
             buildFlags = info.BuildFlags,
             binaryPath = binaryPath
         };
-        File.WriteAllText(manifestPath, JsonSerializer.Serialize(manifest, new JsonSerializerOptions { WriteIndented = true }));
+        File.WriteAllText(manifestPath, JsonSerializer.Serialize(manifest, _jsonOptions));
 
         info = info with { ManifestPath = manifestPath };
 
@@ -119,7 +127,7 @@ public class BinaryRegistry
         Directory.CreateDirectory(manifestDir);
         var manifestPath = Path.Combine(manifestDir, "build-info.json");
         var manifest = new { name, buildFlags, buildDate = info.BuildDate, binaryPath };
-        File.WriteAllText(manifestPath, JsonSerializer.Serialize(manifest, new JsonSerializerOptions { WriteIndented = true }));
+        File.WriteAllText(manifestPath, JsonSerializer.Serialize(manifest, _jsonOptions));
 
         info = info with { ManifestPath = manifestPath };
 
@@ -217,7 +225,7 @@ public class BinaryRegistry
                 Directory.CreateDirectory(dir);
 
             var tempPath = _registryPath + ".tmp";
-            var json = JsonSerializer.Serialize(_cache!.Values.ToList(), new JsonSerializerOptions { WriteIndented = true });
+            var json = JsonSerializer.Serialize(_cache!.Values.ToList(), _jsonOptions);
             File.WriteAllText(tempPath, json);
             File.Move(tempPath, _registryPath, overwrite: true);
         }

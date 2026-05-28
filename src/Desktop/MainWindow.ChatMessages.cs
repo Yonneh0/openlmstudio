@@ -449,7 +449,7 @@ public partial class MainWindow
     /// <summary>
     /// Creates a formatted panel displaying a tool call with function name, arguments, and result.
     /// </summary>
-    private StackPanel CreateToolCallPanel(ToolCall toolCall)
+    private static StackPanel CreateToolCallPanel(ToolCall toolCall)
     {
         var panel = new StackPanel
         {
@@ -529,11 +529,7 @@ public partial class MainWindow
         try
         {
             var doc = System.Text.Json.JsonDocument.Parse(json);
-            var options = new System.Text.Json.JsonSerializerOptions
-            {
-                WriteIndented = true
-            };
-            return System.Text.Json.JsonSerializer.Serialize(doc.RootElement, options);
+            return System.Text.Json.JsonSerializer.Serialize(doc.RootElement, _jsonFormatOptions);
         }
         catch
         {

@@ -19,6 +19,14 @@ public class AgentTaskProgressService : IAgentTaskProgressService
     private readonly ILogger<AgentTaskProgressService> _logger;
     private readonly object _lock = new();
 
+    /// <summary>
+    /// Cached JSON serialization options for consistent formatting.
+    /// </summary>
+    private static readonly JsonSerializerOptions _jsonOptions = new()
+    {
+        WriteIndented = true
+    };
+
     public AgentTaskProgressService(
         IFileSystem? fileSystem = null,
         string? progressDirectory = null,
@@ -138,7 +146,7 @@ public class AgentTaskProgressService : IAgentTaskProgressService
             if (!string.IsNullOrEmpty(dir))
                 _fileSystem.Directory.CreateDirectory(dir);
 
-            var json = JsonSerializer.Serialize(progress, new JsonSerializerOptions { WriteIndented = true });
+            var json = JsonSerializer.Serialize(progress, _jsonOptions);
             await _fileSystem.File.WriteAllTextAsync(progressPath, json, ct);
 
             lock (_lock)

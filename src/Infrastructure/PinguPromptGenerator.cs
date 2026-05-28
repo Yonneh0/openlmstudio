@@ -153,7 +153,7 @@ public class PinguPromptGenerator : IPinguPromptGenerator
     // Individual prompt builders
     // =========================================================================
 
-    private string BuildTaskOrchestratorPrompt(PinguPromptContext context)
+    private static string BuildTaskOrchestratorPrompt(PinguPromptContext context)
     {
         var sb = new StringBuilder();
         sb.AppendLine("## Your Role");
@@ -195,7 +195,7 @@ public class PinguPromptGenerator : IPinguPromptGenerator
         return sb.ToString();
     }
 
-    private string BuildTaskOrchestratorCompressed(PinguPromptContext context)
+    private static string BuildTaskOrchestratorCompressed(PinguPromptContext context)
     {
         var sb = new StringBuilder();
         sb.AppendLine("You are Pingu, the System AI Mascot of OpenLMStudio. You are the admin of the shared task scheduler tree.");
@@ -220,7 +220,7 @@ public class PinguPromptGenerator : IPinguPromptGenerator
         return sb.ToString();
     }
 
-    private string BuildUIControlPrompt(PinguPromptContext context)
+    private static string BuildUIControlPrompt(PinguPromptContext context)
     {
         var sb = new StringBuilder();
         sb.AppendLine("## Your Role");
@@ -252,7 +252,7 @@ public class PinguPromptGenerator : IPinguPromptGenerator
         return sb.ToString();
     }
 
-    private string BuildModelManagementPrompt(PinguPromptContext context)
+    private static string BuildModelManagementPrompt(PinguPromptContext context)
     {
         var sb = new StringBuilder();
         sb.AppendLine("## Your Role");
@@ -284,7 +284,7 @@ public class PinguPromptGenerator : IPinguPromptGenerator
         return sb.ToString();
     }
 
-    private string BuildGamePlayPrompt(PinguPromptContext context)
+    private static string BuildGamePlayPrompt(PinguPromptContext context)
     {
         var sb = new StringBuilder();
         sb.AppendLine("## Your Role");
@@ -307,7 +307,7 @@ public class PinguPromptGenerator : IPinguPromptGenerator
         return sb.ToString();
     }
 
-    private string BuildWanderingPrompt(PinguPromptContext context)
+    private static string BuildWanderingPrompt(PinguPromptContext context)
     {
         var sb = new StringBuilder();
         sb.AppendLine("## Your Role");
@@ -335,7 +335,7 @@ public class PinguPromptGenerator : IPinguPromptGenerator
         return sb.ToString();
     }
 
-    private string BuildUserAssistantPrompt(PinguPromptContext context)
+    private static string BuildUserAssistantPrompt(PinguPromptContext context)
     {
         var sb = new StringBuilder();
         sb.AppendLine("You are Pingu, the System AI Mascot of OpenLMStudio. You are a helpful, direct, and efficient assistant.");
@@ -351,7 +351,7 @@ public class PinguPromptGenerator : IPinguPromptGenerator
         return sb.ToString();
     }
 
-    private string BuildModelRunPrompt(PinguPromptContext context)
+    private static string BuildModelRunPrompt(PinguPromptContext context)
     {
         var sb = new StringBuilder();
         sb.AppendLine("## Your Role");
@@ -373,7 +373,7 @@ public class PinguPromptGenerator : IPinguPromptGenerator
         return sb.ToString();
     }
 
-    private string BuildWorkflowPrompt(PinguPromptContext context)
+    private static string BuildWorkflowPrompt(PinguPromptContext context)
     {
         var sb = new StringBuilder();
         sb.AppendLine("## Your Role");

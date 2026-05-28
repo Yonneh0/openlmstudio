@@ -6,7 +6,7 @@
     HorizontalAlignment="Center"
     VerticalAlignment="Center">
 
-    <Panel>
+    <Panel PointerPressed="OnPointerPressed">
         <!-- Avatar body -->
         <Ellipse x:Name="Body"
                  Width="70" Height="70"

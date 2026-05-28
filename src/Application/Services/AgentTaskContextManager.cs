@@ -20,6 +20,14 @@ public class AgentTaskContextManager : IAgentTaskContextManager
     private readonly ILogger<AgentTaskContextManager> _logger;
     private readonly object _lock = new();
 
+    /// <summary>
+    /// Cached JSON serialization options for consistent formatting.
+    /// </summary>
+    private static readonly JsonSerializerOptions _jsonOptions = new()
+    {
+        WriteIndented = true
+    };
+
     public AgentTaskContextManager(
         IFileSystem? fileSystem = null,
         string? contextDirectory = null,
@@ -55,7 +63,7 @@ public class AgentTaskContextManager : IAgentTaskContextManager
             if (segments != null && segments.Count > maxMessages)
             {
                 var truncated = segments.Skip(segments.Count - maxMessages).ToList();
-                var json = JsonSerializer.Serialize(truncated, new JsonSerializerOptions { WriteIndented = true });
+                var json = JsonSerializer.Serialize(truncated, _jsonOptions);
                 await _fileSystem.File.WriteAllTextAsync(historyPath, json, ct);
             }
         }

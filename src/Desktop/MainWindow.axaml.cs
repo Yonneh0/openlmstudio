@@ -99,6 +99,14 @@ public partial class MainWindow : Window
     /// </summary>
     public IEnumerable<Controls.GitLogEntry> GitLogEntries { get; private set; } = Array.Empty<Controls.GitLogEntry>();
 
+    /// <summary>
+    /// Cached JSON serialization options for consistent formatting.
+    /// </summary>
+    private static readonly System.Text.Json.JsonSerializerOptions _jsonFormatOptions = new()
+    {
+        WriteIndented = true
+    };
+
     public MainWindow(
         ILogger<MainWindow>? logger,
         IConversationManager? conversationManager = null,

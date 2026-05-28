@@ -19,6 +19,14 @@ public class ContextSnapshotManager : IDisposable
     private readonly ILogger<ContextSnapshotManager> _logger;
     private readonly object _lock = new();
 
+    /// <summary>
+    /// Cached JSON serialization options for consistent formatting.
+    /// </summary>
+    private static readonly JsonSerializerOptions _jsonOptions = new()
+    {
+        WriteIndented = true
+    };
+
     public ContextSnapshotManager(
         IFileSystem? fileSystem = null,
         string? snapshotDirectory = null,
@@ -91,7 +99,7 @@ public class ContextSnapshotManager : IDisposable
             if (!string.IsNullOrEmpty(dir))
                 _fileSystem.Directory.CreateDirectory(dir);
 
-            var json = JsonSerializer.Serialize(snapshot, new JsonSerializerOptions { WriteIndented = true });
+            var json = JsonSerializer.Serialize(snapshot, _jsonOptions);
             await _fileSystem.File.WriteAllTextAsync(snapshotPath, json, ct);
 
             lock (_lock)

@@ -86,13 +86,17 @@ public class PinguBehaviorTriggers
 
     /// <summary>
     /// Check if a behavior can be triggered based on context and cooldown.
+    /// The ContextCheck receives the current animation state from the state machine,
+    /// not the behavior being checked, so it can determine if the current state
+    /// allows the behavior to be triggered.
     /// </summary>
     public bool CanTriggerBehavior(PinguAnimationState behavior)
     {
         var definition = GetBehaviorDefinition(behavior);
         if (definition.ContextCheck == null) return true;
 
-        return definition.ContextCheck(behavior);
+        // Pass the current animation state to the context check
+        return definition.ContextCheck(_stateMachine.CurrentState);
     }
 
     /// <summary>
@@ -149,7 +153,7 @@ public class PinguBehaviorTriggers
 
             if (_random.NextDouble() < definition.Probability * deltaTime / 10)
             {
-                if (definition.ContextCheck?.Invoke(definition.State) != false)
+                if (definition.ContextCheck?.Invoke(_stateMachine.CurrentState) != false)
                 {
                     TriggerBehavior(definition.State);
                 }
