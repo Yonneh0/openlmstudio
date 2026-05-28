@@ -378,8 +378,8 @@ public static class DependencyInjection
         // QEMUProcessManager manages VM lifecycle and QMP protocol communication
         services.AddSingleton<IQEMUProcessManager, QEMUProcessManager>();
 
-        // ArchPromptService provides architecture-specific system prompts for cross-compilation
-        services.AddSingleton<IArchPromptService, ArchPromptService>();
+        // ArchPromptService (merged into QEMUProcessManager) provides architecture-specific system prompts for cross-compilation
+        services.AddSingleton<IArchPromptService, QEMUProcessManager>();
 
         // VMStore provides reactive VM instance state storage
         services.AddSingleton<IVMStore, VMStore>();
