@@ -92,12 +92,12 @@ public class PinguBoneLoader
             Depth = 100f,
             Objects = new List<PinguHomeObject>
             {
-                PinguHomeScene.CreateDefaultIgloo(),
-                PinguHomeScene.CreateDefaultSink(),
-                PinguHomeScene.CreateDefaultRug(),
-                PinguHomeScene.CreateDefaultBall(),
-                PinguHomeScene.CreateDefaultFishBowl(),
-                PinguHomeScene.CreateDefaultNest(),
+                PinguHomeObject.CreateDefaultIgloo(),
+                PinguHomeObject.CreateDefaultSink(),
+                PinguHomeObject.CreateDefaultRug(),
+                PinguHomeObject.CreateDefaultBall(),
+                PinguHomeObject.CreateDefaultFishBowl(),
+                PinguHomeObject.CreateDefaultNest(),
             }
         };
 

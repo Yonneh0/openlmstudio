@@ -1,111 +1,110 @@
-## src/Desktop/AboutWindow.axaml - AboutWindow.axaml - Dark-themed About dialog
-  - ~289 lines. XAML-only window with embedded styles for dark theme. Shows version badge (v1.0.0, commit, branch, build type), runtime info (.NET 8, OS, arch), full tech stack table (llama-cpp-net, ONNX, Vulkan, SQLite), and external links. Fixed-size 448x341 popup window with scrollable content.
-## src/Desktop/AboutWindow.axaml.cs - AboutWindow code-behind (~156 lines)
-  - Namespace: OpenLMStudio.Desktop. Reads version from assembly, git info from GitInfo static class, runtime/OS/arch via RuntimeInformation. OnVersionBadgeClicked shows git log popup via Avalonia Popup control. Has OnCloseClicked, GetGitLog (spawns git CLI), and OnLoaded override.
-## src/Desktop/AccessibilityService.cs - AccessibilityService (~121 lines)
-  - Namespace: OpenLMStudio.Desktop. Concrete implementation of IAccessibilityService. Detects high-contrast mode via theme variant, screen reader support, sets accessibility properties on controls, registers keyboard shortcuts. Uses ILogger and Window DI.
-## src/Desktop/App.axaml - App.axaml (~8 lines)
-  - Minimal Avalonia Application root. Sets dark theme via RequestedThemeVariant="Dark", loads FluentTheme style. Entry point class is OpenLMStudio.Desktop.App.
-## src/Desktop/App.axaml.cs - App code-behind (~277 lines)
-  - Namespace: OpenLMStudio.Desktop. Static Main() entry point. Static ApplicationServices property. Initialize() builds DI (AddApplicationTypes, AddInfrastructureServices, AddDesktopServices), creates MainWindow via DI with ILoggerFactory/IConversationManager/IServerService/IModelRepository. WriteFatalError() writes to debug console and appdata logs. ShowError() creates error dialog window.
-## src/Desktop/AssemblyInfo.cs - AssemblyInfo.cs (7 lines)
-  - Minimal assembly metadata. Sets AssemblyCopyright. References GeneratedGitInfo.cs for git commit/branch constants.
-## src/Desktop/AvaloniaMarkdownRenderer.cs - AvaloniaMarkdownRenderer (~211 lines)
-  - Namespace: OpenLMStudio.Desktop.Services. Implements IMarkdownRenderer. Converts markdown→HTML via Markdig→custom HTML-to-markdown converter (supports pre/code blocks, bold, italic, links, headers, lists, entities).
-## src/Desktop/Controls/GitLogEntry.cs - GitLogEntry (8 lines)
-   - Namespace: OpenLMStudio.Desktop.Controls. Simple C# record with Hash/Author/Message properties.
-## src/Desktop/Controls/GitLogTable.cs - GitLogTable (~440 lines)
-   - Namespace: OpenLMStudio.Desktop.Controls. Custom Avalonia control displaying git log entries in a 3-column table (hash/author/message). Built entirely in code-behind (no XAML). Supports hover effects, alternating row colors, selection, clipboard copy on click, and a close button. Uses StyledProperty Entries + CloseRequested. Fixed: removed duplicate CloseRequested event firing, fixed CreateNewSeparator vs CreateSeparator method duplication, added null check in OnRowPointerPressed, fixed CloseRequestedEvent with CloseRequestedEventArgs, improved resource lookups for close button colors, added pointer events for hover effects.
-## src/Desktop/Controls/MainModelSelector.axaml - MainModelSelector (~113 lines)
-  - Namespace: OpenLMStudio.Desktop.Controls. Avalonia UserControl for displaying main AI model info: name, status badge, engine/backend, port, GPU memory bar, download progress, model list with ItemsControl. Dark-themed with accent colors.
-## src/Desktop/Controls/MainModelSelector.axaml.cs - MainModelSelector code-behind (~549 lines)
-  - Namespace: OpenLMStudio.Desktop.Controls. Manages MainAI model lifecycle: DI constructors + parameterless, SetManager(), DiscoverModelsAsync(), LoadModelAsync (file picker), Stop/Restart, advanced settings dialog. Event handlers for MainAIStateChanged/LogEntryReceived. Includes MainModelItem record. **Fixed**: ShowDialog parent window (null-checked, uses throw InvalidOperationException instead of new Window()), fixed ModelPathText binding (uses TextBlock.TextProperty), added ActiveModelPath null check in OnRestartClicked, added null checks in UpdateUI for activeSlot.
-## src/Desktop/Controls/PinguAvatar.axaml - PinguAvatar (~36 lines)
-  - Namespace: OpenLMStudio.Desktop.Controls. 80x80 UserControl with white penguin body, black eyes/mouth. Blink overlay, mood-based body color (thinking=blue, happy=gold, error=red, working=green).
-## src/Desktop/Controls/PinguAvatar.axaml.cs - PinguAvatar code-behind (~137 lines)
-  - Namespace: OpenLMStudio.Desktop.Controls. Implements IDisposable. Listens to IPinguStore, updates mouth color/size, body color, blink overlay, bob animation via ScaleTransform. Has mouth tick timer and click-to-toggle-menu. **Fixed**: ArgumentNullException in constructor for pingu parameter, GC.SuppressFinalize in Dispose, _pingu null check in OnPointerPressed, OnMouthTick now uses this as state object, OnBlinkTick properly captures state, added try-catch in OnPointerPressed, fixed catch block (removed unused ex variable), added ArgumentNullException for pingu in constructor.
-## src/Desktop/Controls/PinguCanvas.cs - PinguCanvas (~120 lines)
-##   - Namespace: OpenLMStudio.Desktop.Controls. SkiaSharp-backed canvas control for rendering Pingu characters. Embeds directly in the Avalonia visual tree using public override void Render(DrawingContext). Creates SKBitmap, renders via SkiaSharp.SKCanvas, calls render function, converts to Avalonia Bitmap via PNG encoding. Supports cursor tracking for eye tracking, pointer events, and size changes.
-## src/Desktop/Controls/PinguCharacterView.cs - PinguCharacterView (~350 lines)
-##   - Namespace: OpenLMStudio.Desktop.Controls. Full Pingu character rendering with animation, IK, and physics. Uses Avalonia's DrawingContext with continuous render loop for zero-interop GPU rendering. Includes PinguRenderer, home scene renderer, animation state machine, behavior triggers, tool holder, physics solver, and inverse kinematics. **FIXED**: Double-rendering pipeline (removed home scene from PinguRenderer.DrawHomeScene), animation update never called (added Update() in Render loop), Render signature mismatch (changed from SKCanvas to DrawingContext), memory leak in Render() (dispose old bitmap), PinguRenderer paint objects not disposed (added try-finally), missing using statements (added Infrastructure.Services), PinguHomeTile ImageBrush error (use Source property instead of ImageSource), PinguHomeTile Source disposal error (Avalonia manages disposal automatically), IPinguStore missing properties (added AnimationSpeedMultiplier, BehaviorFrequencyMultiplier, PinguSizeMultiplier), PinguHomeSceneRenderer duplicate file (removed src/Infrastructure/Services/PinguHomeSceneRenderer.cs), PinguHomeSceneRenderer home scene integration into rendering pipeline, animation double-update (removed internal animation update from PinguRenderer.Render, now updated separately via PinguAnimationSystem.Update()), movement position tracking bug (added _moveStartX/_moveStartY to PinguNPC for correct interpolation), PinguCharacterView.Dispose() memory leak (added _cachedBitmap disposal in Dispose method).
-## src/Desktop/Controls/PinguHomeTile.axaml - PinguHomeTile (~17 lines)
-  - Namespace: OpenLMStudio.Desktop.Controls. Minimal UserControl: 120x120 border with BgSecondary background, CornerRadius=24, shows "Pingu" text centered.
-## src/Desktop/Controls/PinguHomeTile.axaml.cs - PinguHomeTile code-behind (~43 lines)
-  - Namespace: OpenLMStudio.Desktop.Controls. Implements IDisposable with _isAwake flag. Constructor accepts optional IPinguStore DI, stores in _pingu. OnTileClicked triggers _pingu.StartAwakeningSequenceAsync() with try-catch. **Fixed**: Added _pingu null check, added _isAwake guard, added IDisposable with Dispose() method, added pointer press handler.
-## src/Desktop/Controls/PinguPanel.axaml - PinguPanel (~58 lines)
-  - Namespace: OpenLMStudio.Desktop.Controls. 320x480 panel with BgSecondary background, CornerRadius=12. Contains 6 tabs: Skills/Settings/Models/Compile/Logs/About. Uses TabControl for panel switching.
-## src/Desktop/Controls/PinguPanel.axaml.cs - PinguPanel code-behind (~61 lines)
-  - Namespace: OpenLMStudio.Desktop.Controls. Implements IDisposable. Constructor accepts optional IPinguStore DI. SetPinguStore() subscribes to OnStateChanged event. OnPinguStateChanged updates TabControl SelectedIndex based on PinguPanelType enum (Skills=0 through About=5). **Fixed**: Added IDisposable with Dispose() method, null-checked PanelTabs in OnPinguStateChanged, added null checks in SetPinguStore, added Dispatcher.UIThread.InvokeAsync for thread safety.
-## src/Desktop/Controls/SystemModelSelector.axaml - SystemModelSelector (~90 lines)
-  - Namespace: OpenLMStudio.Desktop.Controls. Similar to MainModelSelector but for SystemAI: name/status badge, model type indicator (SystemAI), engine/backend, port, settings row, status info, download progress. Dark-themed with accent colors.
-## src/Desktop/Controls/SystemModelSelector.axaml.cs - SystemModelSelector code-behind (~515 lines)
-  - Namespace: OpenLMStudio.Desktop.Controls. Mirrors MainModelSelector for SystemAI: DI constructors, SetManager(), DiscoverModelsAsync(), LoadModelAsync (file picker), Stop/Restart. Uses SystemAIManager, SystemAIStateChanged, SystemAIState. Includes advanced settings dialog.
-## src/Desktop/Controls/ToolCallForm.axaml - ToolCallForm (~61 lines)
-  - Namespace: OpenLMStudio.Desktop.Controls. 420px wide UserControl with tool name/icon header, Execute/Cancel buttons, scrollable parameter form, and green result area. Dynamic parameter input generation.
-## src/Desktop/Controls/ToolCallForm.axaml.cs - ToolCallForm code-behind (~420 lines)
-   - Namespace: OpenLMStudio.Desktop.Controls. Full-featured: 3 constructors with optional ILogger<ToolCallForm> parameter, BuildForm() generates input controls from ToolDefinition.ParameterSchema. Smart parameter detection (path→file picker, content→multiline, startLine/endLine→NumericUpDown, requiresApproval→toggle). GetToolIcon() maps tool names to emoji icons. Execute/Cancel handlers with result display. IDisposable with popup cleanup. **Fixed**: Removed dead CreateInputControl method (duplicate of CreateParameterRow logic), fixed GetResource<T> to handle null properly (IBrush cast fallback), added null checks in BuildForm and SetParameterValue, fixed thread safety in OnCancelClicked/Dispose using Interlocked.Exchange, improved popup cleanup (sets Child=null), added ILogger support for resource warnings and errors, added ArgumentNullException for toolDefinition/toolExecutor parameters, changed GetToolIcon to static, added CancellationToken using.
-## src/Desktop/Controls/VMConsole.axaml - VMConsole (~51 lines)
-  - Namespace: OpenLMStudio.Desktop.Controls. Terminal-like control: 800x400, dark #0C0C0C background, toolbar with Clear/Copy buttons, ScrollViewer wrapping Canvas for terminal rendering.
-## src/Desktop/Controls/VMConsole.axaml.cs - VMConsole code-behind (~302 lines)
-  - Namespace: OpenLMStudio.Desktop.Controls. Full terminal emulator: 100x40 grid, Consolas font. ParseAnsi() parses ANSI escape sequences (colors, bold). ConsoleLine/AnsiChar records. AppendOutput/AppendPrompt/Clear methods. Keyboard input (Enter, Back, Escape, A-Z). Canvas-based rendering with colored text and cursor rectangle.
-## src/Desktop/Controls/VMPanel.axaml - VMPanel (~43 lines)
-  - Namespace: OpenLMStudio.Desktop.Controls. 400x500 sidebar panel for QEMU VM management: VM list (bound to VMInstance model), Start/Stop/Pause/Resume buttons, console output TextBox. Uses IVMStore and IQEMUProcessManager.
-## src/Desktop/Controls/VMPanel.axaml.cs - VMPanel code-behind (~65 lines)
-  - Namespace: OpenLMStudio.Desktop.Controls. Simple: 1 constructor with optional IVMStore/IQEMUProcessManager DI, InitializeViewModel() populates VM list, 4 async VM lifecycle methods (Start/Stop/Pause/Resume) with try-catch.
-## src/Desktop/Controls/VMWizardStep1.axaml - VMWizardStep1 (~43 lines)
-  - Namespace: OpenLMStudio.Desktop.Controls. Step 1 of 5 VM creation wizard: VM name TextBox, architecture ComboBox, accelerator ComboBox, hardware info display. DataContext bound to QEMU.VMCreationForm.
-## src/Desktop/Controls/VMWizardStep1.axaml.cs - VMWizardStep1 code-behind (~66 lines)
-  - Namespace: OpenLMStudio.Desktop.Controls. DI constructor with IQEMUProcessManager + Action callback. InitializeControls() populates architecture (all ArchitectureType except AVR) and accelerator enums from IQEMUProcessManager. Event handlers for Arch/Accel/Name changes. GetForm() returns VMCreationForm.
-## src/Desktop/Controls/VMWizardStep2.axaml - VMWizardStep2 (~50 lines)
-  - Namespace: OpenLMStudio.Desktop.Controls. Step 2 of 5 VM creation wizard: CPU cores slider (1-32), RAM slider (256-32768 MB), Disk size slider (1-500 GB). All with tick marks, snap-to-tick, and live value display.
-## src/Desktop/Controls/VMWizardStep2.axaml.cs - VMWizardStep2 code-behind (~53 lines)
-  - Namespace: OpenLMStudio.Desktop.Controls. Step 2: CPU/RAM/Disk sliders. DI constructor with Action<VMCreationForm> callback. Initializes slider ValueChanged handlers for Cpu/Ram/Disk. GetForm() returns VMCreationForm with CpuCores/RamMB/DiskSizeGB.
-## src/Desktop/Controls/VMWizardStep3.axaml - VMWizardStep3 (~31 lines)
-  - Namespace: OpenLMStudio.Desktop.Controls. Step 3 of 5 VM creation wizard: Disk images management. Add Disk button, DiskCountText, ListBox bound to QEMU.DiskImageConfig with Format/Media/File columns.
-## src/Desktop/Controls/VMWizardStep3.axaml.cs - VMWizardStep3 code-behind (~67 lines)
-  - Namespace: OpenLMStudio.Desktop.Controls. Step 3: Disk images management. DI constructor with Action<VMCreationForm> callback. ObservableCollection<DiskImageConfig> for DiskList. OnAddDiskClicked uses StorageProvider.OpenFilePickerAsync with qcow2/raw/vdi/vhdx/vmdk filters. DiskImageConfig(Id="disk-{n}", Media="disk", Format=Qcow2, File). GetForm() returns VMCreationForm with DiskImages.
-## src/Desktop/Controls/VMWizardStep4.axaml - VMWizardStep4 (~31 lines)
-  - Namespace: OpenLMStudio.Desktop.Controls. Step 4 of 5 VM creation wizard: Network devices management. Add Network button, NetCountText, ListBox bound to QEMU.NetworkDeviceConfig with Id/BackendType/MacAddress columns.
-## src/Desktop/Controls/VMWizardStep4.axaml.cs - VMWizardStep4 code-behind (~52 lines)
-  - Namespace: OpenLMStudio.Desktop.Controls. Simple: 1 constructor with Action callback, ObservableCollection<NetworkDeviceConfig> for NetList. OnAddNetClicked creates new NetworkDeviceConfig with generated MAC address. UpdateNetCount updates label. GetForm() returns VMCreationForm with NetworkDevices.
-## src/Desktop/Controls/VMWizardStep5.axaml - VMWizardStep5 (~21 lines)
-  - Namespace: OpenLMStudio.Desktop.Controls. Step 5 of 5 VM creation wizard: Review and create summary. Read-only TextBox with Consolas monospace font showing VM configuration summary.
-## src/Desktop/Controls/VMWizardStep5.axaml.cs - VMWizardStep5 code-behind (~44 lines)
-  - Namespace: OpenLMStudio.Desktop.Controls. Minimal: 1 parameterless constructor. UpdateReview() builds VM config summary from VMC using StringBuilder (name/arch/accelerator/cpu/ram/disk, disk images, network devices).
-## src/Desktop/DependencyInjection.cs - DependencyInjection (~62 lines)
-  - Namespace: OpenLMStudio.Desktop. Static class with AddInfrastructureServices() and AddDesktopServices(). Registers 25+ singleton services: IServerService, IModelRepository, IChatCompletionService, IChatContextManager, PinguStore, PanelService, TabService, AvaloniaMarkdownRenderer, BinaryRegistry, EngineBinaryDownloader, GGUF parsers, MainAIManager, SystemAIManager, FileConversationManager, AppDataDirectoryResolver, SqliteDatabaseFactory.
-## src/Desktop/GeneratedGitInfo.cs - GeneratedGitInfo (8 lines)
-  - Namespace: OpenLMStudio.Desktop. Internal static GitInfo class with const Commit/Branch/Dirty/FullName/FullBranch/Log. Generated by build system, contains commit hash (af35df7), branch (main), dirty flag, and full git log string.
-## src/Desktop/IAccessibilityService.cs - IAccessibilityService (27 lines)
-  - Namespace: OpenLMStudio.Desktop. Simple interface: IsHighContrastMode (bool), IsScreenReaderMode (bool), RefreshAccessibilityStateAsync(). Avalonia-specific control operations handled by concrete AccessibilityService implementation.
-## src/Desktop/MainWindow.axaml - MainWindow (~956 lines)
-    - Namespace: OpenLMStudio.Desktop. Full application shell: 3-column layout (280px left sidebar, 4* center pane, 320px right sidebar). Dark theme with 30+ embedded styles (BgPrimary=#1E1E22, BgSecondary=#252529, AccentBlue=#4FC3F7). Header with MainModelSelector + SystemModelSelector. Left sidebar tabs (Chat/Server/Models/Devices/Context/Pingu/ImageGen/Settings) with VS Code-style TabStrip — **FIXED**: replaced broken TabControl with StackPanel+ToggleButton for tab headers (SettingsTab is now a TabItem), all tabs are ToggleButtons with mutual exclusivity via Click="OnLeftTabClick". Settings tab contains nested sub-tabs (Server/Model/Agent/Plugin/DataPrivacy) — SettingsWindow has been migrated into the main window. Center pane: token count, streaming indicator, chat title (editable), message display, input area with AgentMode toggle, Plan/Act toggle, Safety mode toggles (WWW/Read/Edit/Exec), Tools button, Send button with context menu. Right sidebar: "Active Tasks" header + Pingu home tile at bottom. Status bar with Git status, hardware info, folder/new chat/reset/about buttons. GitLogPopup and ToolCallPopup.
-## src/Desktop/MainWindow.axaml.cs - MainWindow (~1610 lines)
-    - Namespace: OpenLMStudio.Desktop. Core window logic: DI constructor (IModelRepository, IChatCompletionService, IConversationManager, IMainAIManager, ISystemAIManager, IChatContextManager, IAgentToolExecutor, ILoggerFactory, IServerService). Tab management (ShowTab, RefreshChatListAsync), chat title editing (OnChatTitleClicked, OnChatTitleLostFocus, OnChatTitleKeyDown), message sending (OnSendMessageClicked with streaming), Pingu avatar panel (OnPinguAvatarClicked), AgentMode toggle (OnAgentModeClicked), AgentTurns badge (OnAgentTurnsBadgeClicked), Plan/Act toggle (OnPlanClicked/OnActClicked), Safety toggles (OnSafetyToggleClicked), Tools button (OnToolsButtonClicked with PopulateToolList, ShowToolCallForm), status bar buttons (OnStatusFolderClicked, OnStatusNewChatClicked, OnStatusAboutClicked, OnStatusResetClicked), DeleteChatButton, GitLogPopup (OnGitLogOverlayClicked), Send target selection (OnSendTargetSelected). Includes KeyboardService static class with Ctrl+N/S, Ctrl+Shift+S, Ctrl+Enter, Ctrl+Tab shortcuts. **Fixed**: StreamResponseViaServerAsync SSE parsing, OnServerStartStopClicked config reuse, ShowError/ShowStaticError consolidation, CreateMessageBorder image detection (byte array vs base64), _pinguAvatar disposal, KeyboardService.CycleTab uses GetVisualDescendants instead of FindChild<T> (FindChild is private and inaccessible from static class), left sidebar tabs use ToggleButton.IsChecked instead of TabItem.IsSelected for mutual exclusivity via OnLeftTabClick handler.
-## src/Desktop/MainWindow.ChatMessages.cs - MainWindow.ChatMessages (~645 lines)
-   - Namespace: OpenLMStudio.Desktop. Chat list management: RefreshChatListAsync() (null-checked, creates empty-state TextBlock), CreateChatListItem() (null-checked Tag/Parent, async token count via Task.Run+Dispatcher.UIThread), OnChatItemClicked() (null-checked ChatListPanel.Children.OfType<Button>), OnNewChatClicked() (fire-and-forget via ConfigureAwait(false)). Message loading: LoadConversationMessagesAsync() (null-checked, creates welcome message, calls CreateMessageBorder, RefreshContextBudgetAsync, ScrollToBottomAsync). Message rendering: CreateMessageBorder() (null-checked Content/Content.Length, role-based styling, markdown rendering via _markdownRenderer, image output rendering with improved base64 detection using length+comma+ASCII checks). Tool call display: CreateToolCallPanel() (null-checked FunctionName/ArgumentsJson/Result, FormatJson with System.Text.Json). Context controls: OnMessagePinClicked/OnMessageSuppressClicked (null-checked _contextManager/_selectedChatId, uses Tag as Guid? for messageId lookup). **Fixed**: Image detection for byte arrays vs base64 strings (was treating small byte arrays as base64).
-## src/Desktop/MainWindow.Context.cs - MainWindow.Context (~250 lines)
-  - Namespace: OpenLMStudio.Desktop. Context budget management: RefreshContextBudgetAsync() (null-checked _contextManager/_selectedChatId, calls GetContextBudgetAsync, updates ContextBudgetBar with colored visual bar based on remaining budget percentage, updates ContextBudgetText), UpdateContextBudgetUI() (sets background color based on usage percentage, creates colored status badges). Context injection: OnInjectCustomContextClicked() (null-checked CustomContextContentInput, creates new ContextSegment), ShowContextInjectionPanel/HideContextInjectionPanel. Context segment management: OnCustomContextInjectClicked() (null-checked CustomContextContentInput/ContextInjectionTypeSelector, creates segment with type), UpdateCustomContextSegments() (builds UI for each segment with role label/status badge/remove button, uses ConcurrentDictionary<Guid,Border> for tracking). Context compression: UpdateCompressedSegments() (displays compressed segments with token counts), OnCompressionChanged (updates _contextCompressionLevel from ContextCompressionSelector). Context segments panel: ContextSegmentsPanel, CompressedSegmentsContainer, CustomContextSegmentsContainer, CustomContextInjectionPanel. **Fixed**: Added visual bar update based on remaining budget percentage (green/yellow/red).
-## src/Desktop/MainWindow.Helpers.cs - MainWindow.Helpers (~770 lines)
-   - Namespace: OpenLMStudio.Desktop. Message sending: OnSendMessageClicked() (creates user message, calls GetAssistantResponseAsync), OnMessageInputKeyDown (Enter/Ctrl+Enter). Server controls: OnServerStartStopClicked (start/stop with existing config, fixed config reuse bug), UpdateServerStatus() (updates status text/port/color), OnServerStateChanged. Model list: RefreshModelListAsync (null-checked ModelsTabContent, creates model borders). Device status: OnRefreshDevicesClicked, UpdateDeviceStatusAsync (uses IDeviceMonitor for CPU/RAM/GPU info). DI resolution: GetAppServiceProvider (reflection on App.ApplicationServices), ResolveConversationManagerFromAppServices, ResolveServerServiceFromAppServices, ResolveModelRepositoryFromAppServices, ResolveChatCompletionServiceFromAppServices, ResolveContextManagerFromAppServices, ResolveBudgeterFromAppServices, ResolveWindowSettingsFromAppServices. Window state: LoadWindowStateAsync (restores Width/Height/ActiveTab/SelectedChatId), SaveWindowStateAsync (saves WindowStateSettings), OnClosing. Keyboard: OnMainWindowKeyDown (Ctrl+N/M/S/K/L). Dialogs: ShowError (null-checked Owner, consolidated from ShowError+ShowStaticError), ShowStaticError (via IClassicDesktopStyleApplicationLifetime). Navigation: ShowTab, OnSettingsClicked (uses ShowError now), OnOpenModelClicked (StorageProvider.OpenFilePickerAsync), OnExitClicked, OnOpenMinesweeperClicked/OnOpenTetrisClicked/OnOpenSnakeClicked/OnOpenJezzballClicked/OnOpenSolitaireClicked (no-op). Utility: FindScrollViewer, FindDirectDescendant, FindChild, FindGridInVisualTree, EstimateTokenCount.
-## src/Desktop/MainWindow.ImageGeneration.cs - MainWindow.ImageGeneration (~280 lines)
-  - Namespace: OpenLMStudio.Desktop. Image generation: OnImageGenGenerateClicked() (null-checked _diffusionPipeline via DI, reads prompt/negativePrompt/steps/cfgScale/seed/batchSize from UI, calls GenerateImageAsync, displays result with metadata). OnImageGenModelSelectorSelectionChanged() (SearchMultiModalModelsAsync with ModelType.ImageGeneration filter, discovers Diffusion+VAE models, populates ImageGenModelSelector dropdown with size). UpdateDefaultResolution() (matches defaultRes to existing items using precise string comparison, adds if not found). GetResolutionTextFromSelector() (extracts resolution text from ComboBox handling TextBlock/ContentControl types). OnRandomSeedClicked (generates Random int). **Fixed**: Resolution parsing now uses proper TextBlock.Text extraction instead of ToString(), fixed UpdateDefaultResolution to use exact string comparison instead of Contains() to prevent duplicate items.
-## src/Desktop/MainWindow.Streaming.cs - MainWindow.Streaming (~328 lines)
-  - Namespace: OpenLMStudio.Desktop. Streaming responses: GetAssistantResponseAsync() (creates assistantBorder with placeholder, shows streaming indicator, tries server streaming first then falls back to local service). StreamResponseViaServerAsync() (HTTP POST to localhost:{port}/v1/chat/completions with stream=true, SSE parsing token-by-token, markdown rendering via _markdownRenderer). StreamResponseViaLocalServiceAsync() (GetStreamingCompletionAsync with ChatRequest, foreach async chunk parsing). Connection reset handling with reconnection retry.
-## src/Desktop/MainWindow.TabManager.cs - MainWindow.TabManager (~200 lines)
-  - Namespace: OpenLMStudio.Desktop. Tab navigation: ShowTab() (sets _activeTab, toggles StackPanel visibility for Chat/Server/Models/Devices/Context/Pingu/ImageGen, updates ToggleButton.IsChecked for SettingsTab via SetToggleButtonChecked, calls UpdateServerStatus/RefreshModelListAsync/UpdateDeviceStatusAsync/RefreshContextBudgetAsync based on tab). SwitchToTab() (converts int index to tab name). UpdateActiveTab() (updates TextBlock Foreground/FontWeight for active tab using ToggleButton.IsChecked property instead of string comparison). UpdateRightSidebarTab(). Pointer press handlers for all tabs (OnChatTabPointerPressed, OnServerTabPointerPressed, etc.). **Fixed**: UpdateActiveTab now uses ToggleButton.IsChecked instead of string comparison for robustness, SettingsTab handled separately with SetToggleButtonChecked since it's a TabItem not ToggleButton.
-## src/Desktop/OpenLMStudio.Desktop.csproj - OpenLMStudio.Desktop (~114 lines)
-  - SDK: Microsoft.NET.Sdk. WinExe, net8.0, nullable/implicit usings. Multi-platform: win-x64, win-arm64, osx-arm64, osx-x64, linux-x64, linux-arm64. SelfContained+PublishSingleFile. Avalonia 12.0.3 (core, Desktop, Fluent, Inter) + conditional Win32/MacOS. CommunityToolkit.Mvvm 8.3.2 + Avalonia.Xaml.Behaviors. Global usings: Avalonia.Interactivity/Controls/Controls.Primitives/Input/Media/Layout/Platform.Storage + System.IO/.Collections.Generic/Linq/Text/Threading.Tasks. References Domain/Application/Infrastructure projects.
-## src/Desktop/PanelService.cs - PanelService (~93 lines)
-  - Namespace: OpenLMStudio.Desktop. Static MainWindow reference pattern. IPanelService implementation with Dictionary<string,string> mapping 14 panel names (LeftSidebar, RightSidebar, Context, Status, BottomPane, Agent, ImageGeneration, Pingu, Games, Chat, Server, Models, Devices, PinguTab) to control names. Methods: SetWindow(), IsPanelVisible(), TogglePanelAsync(), ShowPanelAsync(), HidePanelAsync(). Uses Window.Find<Panel>().
-## src/Desktop/PluginManagementWindow.axaml - PluginManagementWindow (~120 lines)
-  - Namespace: OpenLMStudio.Desktop. 900x700 plugin management dialog with dark theme (30+ styles). Header with RegistryUrlDisplay, toolbar (search TextBox, Refresh/Install buttons), ScrollViewer with PluginListPanel, status bar with PluginCountLabel. Plugin card styles with disabled states.
-## src/Desktop/PluginManagementWindow.cs - PluginManagementWindow (~451 lines)
-  - Namespace: OpenLMStudio.Desktop. Full plugin management: DI constructor (ILogger, IServiceProvider, resolves IPluginRegistry). RefreshPlugins(), RenderPluginCardsAsync() (creates card with name/version/description/Install/Enable/Policy/Uninstall controls), OnSearchTextChanged (filters by name/description/id), OnTogglePluginClicked, OnPolicyChanged (Strict/Restricted/Full sandbox policies), OnUninstallPluginClicked, OnInstallPlugin (URL input dialog), OnInstallPluginFromUrl (remote/local PluginDefinition). ShowConfirmAsync/ShowError helpers.
-## src/Desktop/TabService.cs - TabService (~109 lines)
-  - Namespace: OpenLMStudio.Desktop. Static MainWindow reference pattern. ITabService implementation. 6 tabs: Chat, Server, Models, Devices, Context, Image Generation. ActiveTab property uses reflection on _activeTab field + TabControl.SelectedItem. SwitchTabViaToggleButton() maps tab names to ToggleButton IDs (ChatTab/ServerTab/ModelsTab/DevicesTab/ContextTab/PinguTab/ImageGenTab). SwitchTabAsync() tries MainTabControl first, falls back to ToggleButton.
-## src/Desktop/VMWizardWindow.axaml - VMWizardWindow (~63 lines)
-  - Namespace: OpenLMStudio.Desktop. 600x550 Window for VM creation wizard. 3-row Grid: header (title+subtitle), scrollable ContentControl WizardContent for wizard steps, footer with Cancel/Previous/Next/Create buttons. Design.DataContext uses QEMU.VMC
-  - Uses Light theme (#F5F5F5 content background). QEMU namespace reference from Domain project.
-## src/Desktop/VMWizardWindow.axaml.cs - VMWizardWindow code-behind (~188 lines)
-  - Namespace: OpenLMStudio.Desktop. 5-step VM creation wizard. DI constructor (IQEMUProcessManager, HardwareDetector). Initializes steps 1-5 via ShowStep() with UpdateForm callbacks. OnCreateClicked builds VMCreationConfig (CpuTopology, RamBytes conversion) and calls _qemuManager.CreateVMAsync(). Hardware detection via _hardwareDetector.DetectAsync() on open.
+## src/Desktop/AboutWindow.axaml - 289 lines - Dark-themed About dialog
+  - XAML window with embedded styles showing version badge (v1.0.0), runtime info (.NET 8, OS, arch), tech stack table, and external links. Fixed-size 448x341 popup.
+## src/Desktop/AboutWindow.axaml.cs - 156 lines - AboutWindow code-behind
+  - Reads version from assembly, git info, runtime/OS/arch. OnVersionBadgeClicked shows git log popup via Avalonia Popup control.
+## src/Desktop/AccessibilityService.cs - 121 lines - AccessibilityService
+  - Concrete implementation of IAccessibilityService. Detects high-contrast mode, screen reader support, sets accessibility properties on controls.
+## src/Desktop/App.axaml - 8 lines - Minimal Avalonia Application root
+  - Sets dark theme via RequestedThemeVariant="Dark", loads FluentTheme style.
+## src/Desktop/App.axaml.cs - 277 lines - App code-behind
+  - Static Main() entry point. Initialize() builds DI, creates MainWindow via DI. WriteFatalError() writes to debug console.
+## src/Desktop/AssemblyInfo.cs - 7 lines - AssemblyInfo.cs
+  - Sets AssemblyCopyright. References GeneratedGitInfo.cs for git commit/branch constants.
+## src/Desktop/AvaloniaMarkdownRenderer.cs - 211 lines - AvaloniaMarkdownRenderer
+  - IMarkdownRenderer implementation using Markdig with AdvancedExtensions, Abbreviations, Mathematics, YamlFrontMatter.
+## src/Desktop/Controls/GitLogEntry.cs - 8 lines - GitLogEntry record
+  - Simple record with Hash/Author/Message properties.
+## src/Desktop/Controls/GitLogTable.cs - 440 lines - GitLogTable
+  - Custom Avalonia control displaying git log entries in 3-column table (hash/author/message). Supports hover effects, selection, clipboard copy.
+## src/Desktop/Controls/MainModelSelector.axaml - 113 lines - MainModelSelector
+  - UserControl for displaying main AI model info: name, status badge, engine/backend, port, GPU memory bar, download progress.
+## src/Desktop/Controls/MainModelSelector.axaml.cs - 549 lines - MainModelSelector code-behind
+  - Manages MainAI model lifecycle: DiscoverModelsAsync, LoadModelAsync, Stop/Restart, advanced settings dialog.
+## src/Desktop/Controls/PinguAvatar.axaml - 36 lines - PinguAvatar
+  - 80x80 UserControl with white penguin body, black eyes/mouth. Blink overlay, mood-based body color.
+## src/Desktop/Controls/PinguAvatar.axaml.cs - 137 lines - PinguAvatar code-behind
+  - Listens to IPinguStore, updates mouth color/size, body color, blink overlay, bob animation via ScaleTransform.
+## src/Desktop/Controls/PinguCanvas.cs - 120 lines - PinguCanvas
+  - SkiaSharp-backed canvas control for rendering Pingu characters in the Avalonia visual tree.
+## src/Desktop/Controls/PinguCharacterView.cs - 350 lines - PinguCharacterView
+  - Full Pingu character rendering with animation, IK, and physics. Uses Avalonia DrawingContext with continuous render loop.
+## src/Desktop/Controls/PinguHomeTile.axaml - 17 lines - PinguHomeTile
+  - 120x120 border with BgSecondary background, CornerRadius=24, shows "Pingu" text centered.
+## src/Desktop/Controls/PinguHomeTile.axaml.cs - 43 lines - PinguHomeTile code-behind
+  - Implements IDisposable. OnTileClicked triggers _pingu.StartAwakeningSequenceAsync().
+## src/Desktop/Controls/PinguPanel.axaml - 58 lines - PinguPanel
+  - 320x480 panel with 6 tabs: Skills/Settings/Models/Compile/Logs/About. Uses TabControl.
+## src/Desktop/Controls/PinguPanel.axaml.cs - 61 lines - PinguPanel code-behind
+  - Implements IDisposable. SetPinguStore() subscribes to OnStateChanged event.
+## src/Desktop/Controls/SystemModelSelector.axaml - 90 lines - SystemModelSelector
+  - Similar to MainModelSelector but for SystemAI: name/status badge, model type indicator, engine/backend, port.
+## src/Desktop/Controls/SystemModelSelector.axaml.cs - 515 lines - SystemModelSelector code-behind
+  - Mirrors MainModelSelector for SystemAI: DiscoverModelsAsync, LoadModelAsync, Stop/Restart.
+## src/Desktop/Controls/ToolCallForm.axaml - 61 lines - ToolCallForm
+  - 420px wide UserControl with tool name/icon header, Execute/Cancel buttons, scrollable parameter form, green result area.
+## src/Desktop/Controls/ToolCallForm.axaml.cs - 420 lines - ToolCallForm code-behind
+  - Full-featured: BuildForm() generates input controls from ToolDefinition.ParameterSchema. Smart parameter detection.
+## src/Desktop/Controls/VMConsole.axaml - 51 lines - VMConsole
+  - Terminal-like control: 800x400, dark background, toolbar with Clear/Copy buttons, Canvas for terminal rendering.
+## src/Desktop/Controls/VMConsole.axaml.cs - 302 lines - VMConsole code-behind
+  - Full terminal emulator: 100x40 grid, Consolas font. ParseAnsi() parses ANSI escape sequences.
+## src/Desktop/Controls/VMPanel.axaml - 43 lines - VMPanel
+  - 400x500 sidebar panel for QEMU VM management: VM list, Start/Stop/Pause/Resume buttons, console output.
+## src/Desktop/Controls/VMPanel.axaml.cs - 65 lines - VMPanel code-behind
+  - Simple: InitializeViewModel() populates VM list, 4 async VM lifecycle methods.
+## src/Desktop/Controls/VMWizardStep1.axaml - 43 lines - VMWizardStep1
+  - Step 1 of 5 VM creation wizard: VM name TextBox, architecture ComboBox, accelerator ComboBox, hardware info.
+## src/Desktop/Controls/VMWizardStep1.axaml.cs - 66 lines - VMWizardStep1 code-behind
+  - DI constructor with IQEMUProcessManager. InitializeControls() populates architecture and accelerator enums.
+## src/Desktop/Controls/VMWizardStep2.axaml - 50 lines - VMWizardStep2
+  - Step 2 of 5 VM creation wizard: CPU cores slider (1-32), RAM slider (256-32768 MB), Disk size slider (1-500 GB).
+## src/Desktop/Controls/VMWizardStep2.axaml.cs - 53 lines - VMWizardStep2 code-behind
+  - Step 2: CPU/RAM/Disk sliders with ValueChanged handlers. GetForm() returns VMCreationForm.
+## src/Desktop/Controls/VMWizardStep3.axaml - 31 lines - VMWizardStep3
+  - Step 3 of 5 VM creation wizard: Disk images management. Add Disk button, ListBox for DiskImageConfig.
+## src/Desktop/Controls/VMWizardStep3.axaml.cs - 67 lines - VMWizardStep3 code-behind
+  - Step 3: Disk images management. OnAddDiskClicked uses StorageProvider.OpenFilePickerAsync.
+## src/Desktop/Controls/VMWizardStep4.axaml - 31 lines - VMWizardStep4
+  - Step 4 of 5 VM creation wizard: Network devices management. Add Network button, ListBox for NetworkDeviceConfig.
+## src/Desktop/Controls/VMWizardStep4.axaml.cs - 52 lines - VMWizardStep4 code-behind
+  - Simple: OnAddNetClicked creates new NetworkDeviceConfig with generated MAC address.
+## src/Desktop/Controls/VMWizardStep5.axaml - 21 lines - VMWizardStep5
+  - Step 5 of 5 VM creation wizard: Review and create summary. Read-only TextBox with Consolas font.
+## src/Desktop/Controls/VMWizardStep5.axaml.cs - 44 lines - VMWizardStep5 code-behind
+  - Minimal: UpdateReview() builds VM config summary from VMC using StringBuilder.
+## src/Desktop/DependencyInjection.cs - 62 lines - DependencyInjection
+  - Static class with AddInfrastructureServices() and AddDesktopServices(). Registers 25+ singleton services.
+## src/Desktop/GeneratedGitInfo.cs - 8 lines - GeneratedGitInfo
+  - Internal static GitInfo class with const Commit/Branch/Dirty/FullName/FullBranch/Log.
+## src/Desktop/IAccessibilityService.cs - 27 lines - IAccessibilityService
+  - Simple interface: IsHighContrastMode, IsScreenReaderMode, RefreshAccessibilityStateAsync.
+## src/Desktop/MainWindow.axaml - 956 lines - MainWindow
+  - Full application shell: 3-column layout (280px left sidebar, 4* center pane, 320px right sidebar). Dark theme with 30+ embedded styles.
+## src/Desktop/MainWindow.axaml.cs - 1610 lines - MainWindow code-behind
+  - Core window logic: DI constructor, tab management, chat title editing, message sending, Pingu avatar panel, AgentMode toggle, Safety toggles.
+## src/Desktop/MainWindow.ChatMessages.cs - 645 lines - MainWindow.ChatMessages
+  - Chat list management, message loading, message rendering, tool call display, context controls.
+## src/Desktop/MainWindow.Context.cs - 250 lines - MainWindow.Context
+  - Context budget management, context injection, context segment management, context compression, context segments panel.
+## src/Desktop/MainWindow.Helpers.cs - 770 lines - MainWindow.Helpers
+  - Message sending, server controls, model list, device status, DI resolution, window state, keyboard shortcuts, dialogs.
+## src/Desktop/MainWindow.ImageGeneration.cs - 280 lines - MainWindow.ImageGeneration
+  - Image generation: GenerateImageAsync, ImageGenModelSelector, resolution management, random seed.
+## src/Desktop/MainWindow.Streaming.cs - 328 lines - MainWindow.Streaming
+  - Streaming responses: GetAssistantResponseAsync, StreamResponseViaServerAsync (SSE), StreamResponseViaLocalServiceAsync.
+## src/Desktop/MainWindow.TabManager.cs - 200 lines - MainWindow.TabManager
+  - Tab navigation: ShowTab, SwitchToTab, UpdateActiveTab, pointer press handlers for all tabs.
+## src/Desktop/OpenLMStudio.Desktop.csproj - 114 lines - OpenLMStudio.Desktop project file
+  - SDK: Microsoft.NET.Sdk. WinExe, net8.0, nullable/implicit usings. Multi-platform with Avalonia 12.0.3.
+## src/Desktop/PanelService.cs - 93 lines - PanelService
+  - Static MainWindow reference pattern. IPanelService implementation with 14 panel names mapped to control names.
+## src/Desktop/PluginManagementWindow.axaml - 120 lines - PluginManagementWindow
+  - 900x700 plugin management dialog with dark theme, toolbar, plugin cards, status bar.
+## src/Desktop/PluginManagementWindow.cs - 451 lines - PluginManagementWindow
+  - Full plugin management: RefreshPlugins, RenderPluginCardsAsync, OnSearchTextChanged, OnTogglePluginClicked, OnPolicyChanged, OnUninstallPlugin.
+## src/Desktop/TabService.cs - 109 lines - TabService
+  - Static MainWindow reference pattern. ITabService implementation with 6 tabs and ToggleButton-based switching.
+## src/Desktop/VMWizardWindow.axaml - 63 lines - VMWizardWindow
+  - 600x550 Window for VM creation wizard. 3-row Grid with header, scrollable WizardContent, footer buttons.
+## src/Desktop/VMWizardWindow.axaml.cs - 188 lines - VMWizardWindow code-behind
+  - 5-step VM creation wizard. DI constructor with IQEMUProcessManager, HardwareDetector.

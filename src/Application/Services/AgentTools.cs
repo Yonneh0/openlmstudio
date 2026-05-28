@@ -9,6 +9,136 @@ using Microsoft.Extensions.Logging.Abstractions;
 using OpenLMStudio.Domain.Interfaces;
 using OpenLMStudio.Domain.Models;
 
+// ============================================================================
+// UseSkill
+// ============================================================================
+
+/// <summary>
+/// Stub implementation for use_skill tool.
+/// Loads and activates a skill.
+/// </summary>
+public class UseSkill
+{
+    private readonly ILogger<UseSkill> _logger;
+
+    public UseSkill(ILogger<UseSkill>? logger = null)
+    {
+        _logger = logger ?? NullLogger<UseSkill>.Instance;
+    }
+
+    public async Task<ToolResult> ActivateAsync(string skillName)
+    {
+        var stopwatch = System.Diagnostics.Stopwatch.StartNew();
+
+        try
+        {
+            if (string.IsNullOrWhiteSpace(skillName))
+                return ToolResult.Fail("Missing required parameter: skill_name");
+
+            _logger?.LogInformation("use_skill: Activated skill '{SkillName}'", skillName);
+            return ToolResult.Ok($"Skill '{skillName}' activated.")
+                with { DurationMs = stopwatch.ElapsedMilliseconds };
+        }
+        catch (Exception ex)
+        {
+            stopwatch.Stop();
+            return ToolResult.Fail($"Error activating skill: {ex.Message}")
+                with { DurationMs = stopwatch.ElapsedMilliseconds };
+        }
+    }
+}
+
+// ============================================================================
+// UseSubagents
+// ============================================================================
+
+/// <summary>
+/// Stub implementation for use_subagents tool.
+/// Runs up to 5 focused in-process subagents in parallel.
+/// </summary>
+public class UseSubagents
+{
+    private readonly ILogger<UseSubagents> _logger;
+
+    public UseSubagents(ILogger<UseSubagents>? logger = null)
+    {
+        _logger = logger ?? NullLogger<UseSubagents>.Instance;
+    }
+
+    public async Task<ToolResult> RunAsync(List<string> prompts)
+    {
+        var stopwatch = System.Diagnostics.Stopwatch.StartNew();
+
+        try
+        {
+            if (prompts.Count == 0)
+                return ToolResult.Fail("Missing required parameter: prompt_1");
+            if (prompts.Count > 5)
+                return ToolResult.Fail("Too many prompts (max 5).");
+
+            var summary = string.Join("\n", prompts.Select((p, i) => $"Subagent {i + 1}: {p}"));
+
+            _logger?.LogInformation("use_subagents: Running {Count} subagents", prompts.Count);
+            return ToolResult.Ok($"Summary of subagent results:\n\n{summary}")
+                with { DurationMs = stopwatch.ElapsedMilliseconds };
+        }
+        catch (Exception ex)
+        {
+            stopwatch.Stop();
+            return ToolResult.Fail($"Error running subagents: {ex.Message}")
+                with { DurationMs = stopwatch.ElapsedMilliseconds };
+        }
+    }
+
+    private async Task<string> ProcessSubagentAsync(string prompt)
+    {
+        return $"[Stub] Result for: {prompt}";
+    }
+}
+
+// ============================================================================
+// NewTask
+// ============================================================================
+
+/// <summary>
+/// Stub implementation for new_task tool.
+/// Creates a new task with preloaded context.
+/// </summary>
+public class NewTask
+{
+    private readonly ILogger<NewTask> _logger;
+
+    public NewTask(ILogger<NewTask>? logger = null)
+    {
+        _logger = logger ?? NullLogger<NewTask>.Instance;
+    }
+
+    public async Task<ToolResult> CreateAsync(string context)
+    {
+        var stopwatch = System.Diagnostics.Stopwatch.StartNew();
+
+        try
+        {
+            if (string.IsNullOrWhiteSpace(context))
+                return ToolResult.Fail("Missing required parameter: context");
+
+            _logger?.LogInformation("new_task: Created task with context");
+            return ToolResult.Ok($"New task created with context:\n\n{context.Trim()}")
+                with { DurationMs = stopwatch.ElapsedMilliseconds };
+        }
+        catch (Exception ex)
+        {
+            stopwatch.Stop();
+            return ToolResult.Fail($"Error creating new task: {ex.Message}")
+                with { DurationMs = stopwatch.ElapsedMilliseconds };
+        }
+    }
+}
+
+// ============================================================================
+// PatchService
+// ============================================================================
+
 /// <summary>
 /// Implements apply_patch tool for applying V4A diff format patches to files.
 /// Fully implemented with ADD, UPDATE, DELETE, MOVE operations.
@@ -89,14 +219,10 @@ public class PatchService
         {
             stopwatch.Stop();
             return ToolResult.Fail($"Error applying patch: {ex.Message}")
-                with
-            { DurationMs = stopwatch.ElapsedMilliseconds };
+                with { DurationMs = stopwatch.ElapsedMilliseconds };
         }
     }
 
-    /// <summary>
-    /// Parses a V4A diff format patch into individual operations.
-    /// </summary>
     private List<PatchOperationInfo> ParsePatch(string patchContent)
     {
         var operations = new List<PatchOperationInfo>();
@@ -129,7 +255,6 @@ public class PatchService
             }
             else if (trimmed.StartsWith("@@") && trimmed.EndsWith("@@"))
             {
-                // Extract the class/function name from the context line
                 var contextLine = trimmed;
                 if (operations.Count > 0)
                     operations[operations.Count - 1] = operations[operations.Count - 1] with { Context = contextLine };

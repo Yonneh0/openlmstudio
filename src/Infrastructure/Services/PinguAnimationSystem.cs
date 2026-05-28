@@ -369,6 +369,7 @@ public class PinguAnimationSystem
         var chestIndex = _chestBoneIndex;
         var leftEarIndex = _leftEarBoneIndex;
         var rightEarIndex = _rightEarBoneIndex;
+        var rightArmIndex = _boneHierarchy.ResolvedBones.FindIndex(b => b.Name == "rightArm");
 
         // Random twitch — ~0.1% chance per frame, lasts 0.3s
         if (_random.NextDouble() < 0.001f)
@@ -385,8 +386,8 @@ public class PinguAnimationSystem
         // Random scratch — ~0.05% chance per frame, lasts 2.0s
         if (_random.NextDouble() < 0.0005f)
             TriggerScratch();
-        if (_currentTime - _lastScratchTime < 2.0f)
-            _boneRoll[8] += (float)(_random.NextDouble() * 15 - 7) * deltaTime;
+        if (_currentTime - _lastScratchTime < 2.0f && rightArmIndex >= 0)
+            _boneRoll[rightArmIndex] += (float)(_random.NextDouble() * 15 - 7) * deltaTime;
 
         // Random ear flick — ~0.3% chance per frame, lasts 0.5s
         if (_random.NextDouble() < 0.003f)
