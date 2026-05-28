@@ -210,10 +210,8 @@
   - IServerService for OpenLMStudio server with Kestrel. StartAsync (WebApplication.CreateBuilder, ConfigureKestrel, CORS, rate limiting, API key auth), StopAsync.
 ## src/Infrastructure/Services/SqliteTaskRepository.cs - 343 lines - SQLite Task Repository with Priority Scheduling
   - ITaskRepository with SQLite-backed task persistence. CreateTaskAsync, GetTaskAsync, UpdateTaskAsync, DeleteTaskAsync, GetPendingTasks.
-## src/Infrastructure/Services/SseEventBuffer.cs - 140 lines - SSE Event Buffer for Streaming Reconnection
-  - ISseEventBuffer interface, SseBufferedEvent record, SseEventBuffer class. RecordEvent, GetEventsFromId, CompleteStreamAsync, HasBufferedEvents.
-## src/Infrastructure/Services/SseReconnectService.cs - 196 lines - SSE Reconnection Service with Session Resumption
-  - ISseReconnectService interface, StreamedChatSession record, SseReconnectService class. RegisterConnection, UnregisterConnection, GetReconnectContextAsync.
+## src/Infrastructure/Services/SseService.cs - ~330 lines - Consolidated SSE Cluster (SseEventBuffer + SseReconnectService)
+   - ISseEventBuffer + SseBufferedEvent + SseEventBuffer (event buffering for reconnection replay). ISseReconnectService + StreamedChatSession + SseReconnectService (session tracking). SseServiceExtensions (AddSseEventBuffering, AddSseReconnectTracking).
 ## src/Infrastructure/Services/SyntaxHighlightingMarkdownRenderer.cs - 99 lines - Markdown Renderer with Syntax Highlighting
   - IMarkdownRenderer with Markdig-based rendering. Render (Markdig→HTML with code block language detection), ExtractPlainText.
 ## src/Infrastructure/Services/SystemAIClient.cs - 318 lines - System AI Client for llama.cpp Server Communication
