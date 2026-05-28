@@ -3,7 +3,7 @@ using OpenLMStudio.Domain.Models;
 using System.IO.Compression;
 using System.Text.Json;
 
-namespace OpenLMStudio.Infrastructure;
+namespace OpenLMStudio.Infrastructure.Services;
 
 /// <summary>
 /// Registry for architecture-specific compiler toolchains.

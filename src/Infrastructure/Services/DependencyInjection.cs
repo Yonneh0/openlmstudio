@@ -5,7 +5,7 @@ using OpenLMStudio.Application.Services;
 using OpenLMStudio.Infrastructure;
 using OpenLMStudio.Infrastructure.Services;
 
-namespace OpenLMStudio.Infrastructure;
+namespace OpenLMStudio.Infrastructure.Services;
 
 /// <summary>
 /// Service collection extensions for the Infrastructure layer.

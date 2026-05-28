@@ -8,7 +8,7 @@ using System.Text;
 using System.Text.Json;
 using System.Text.Json.Nodes;
 
-namespace OpenLMStudio.Infrastructure;
+namespace OpenLMStudio.Infrastructure.Services;
 
 /// <summary>
 /// Manages QEMU virtual machine instances with QMP protocol support.

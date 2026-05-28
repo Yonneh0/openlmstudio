@@ -2,7 +2,7 @@ using Microsoft.Extensions.Logging;
 using OpenLMStudio.Application.Interfaces;
 using OpenLMStudio.Domain.Models;
 
-namespace OpenLMStudio.Infrastructure;
+namespace OpenLMStudio.Infrastructure.Services;
 
 /// <summary>
 /// Orchestrates System AI with QEMU VMs for cross-architecture workflows.

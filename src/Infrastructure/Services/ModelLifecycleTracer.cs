@@ -5,7 +5,7 @@ global using System.Runtime.CompilerServices;
 global using Microsoft.Extensions.Logging;
 global using MLogLevel = Microsoft.Extensions.Logging.LogLevel;
 
-namespace OpenLMStudio.Infrastructure;
+namespace OpenLMStudio.Infrastructure.Services;
 
 /// <summary>
 /// No-op ILogger for when DI is not configured.
@@ -13,8 +13,8 @@ namespace OpenLMStudio.Infrastructure;
 internal class NoOpLogger<T> : ILogger<T>
 {
     public IDisposable? BeginScope<TState>(TState state) where TState : notnull => null;
-    public bool IsEnabled(MLogLevel logLevel) => true;
-    public void Log<TState>(MLogLevel logLevel, EventId eventId, TState state, Exception? exception, Func<TState, Exception?, string> formatter) { }
+    public bool IsEnabled(Microsoft.Extensions.Logging.LogLevel logLevel) => true;
+    public void Log<TState>(Microsoft.Extensions.Logging.LogLevel logLevel, EventId eventId, TState state, Exception? exception, Func<TState, Exception?, string> formatter) { }
 }
 
 /// <summary>

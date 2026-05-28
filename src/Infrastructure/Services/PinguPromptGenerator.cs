@@ -5,7 +5,7 @@ using OpenLMStudio.Domain.Models;
 using DomainModels = OpenLMStudio.Domain.Models;
 using AppLogLevel = OpenLMStudio.Application.Interfaces.LogLevel;
 
-namespace OpenLMStudio.Infrastructure;
+namespace OpenLMStudio.Infrastructure.Services;
 
 /// <summary>
 /// Generates context-aware system prompts for Pingu based on its assigned tasks and current state.

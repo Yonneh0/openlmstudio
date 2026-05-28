@@ -1,4 +1,4 @@
-namespace OpenLMStudio.Infrastructure;
+namespace OpenLMStudio.Infrastructure.Services;
 
 /// <summary>
 /// Structured logging extensions for OpenLMStudio services.

@@ -5,7 +5,7 @@ global using System.Linq;
 global using Microsoft.Extensions.Logging;
 global using OpenLMStudio.Application.Interfaces;
 
-namespace OpenLMStudio.Infrastructure;
+namespace OpenLMStudio.Infrastructure.Services;
 
 /// <summary>
 /// Traces agent tool calls including duration, success/failure, and resource consumption per call.

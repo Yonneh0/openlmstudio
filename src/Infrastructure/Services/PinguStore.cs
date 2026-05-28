@@ -6,7 +6,7 @@ using OpenLMStudio.Infrastructure.Services;
 using SkiaSharp;
 using System.IO;
 
-namespace OpenLMStudio.Infrastructure;
+namespace OpenLMStudio.Infrastructure.Services;
 
 /// <summary>
 /// Event published by PinguStore for cross-component communication.
