@@ -44,34 +44,6 @@
   - 420px wide UserControl with tool name/icon header, Execute/Cancel buttons, scrollable parameter form, green result area.
 ## src/Desktop/Controls/ToolCallForm.axaml.cs - 420 lines - ToolCallForm code-behind
   - Full-featured: BuildForm() generates input controls from ToolDefinition.ParameterSchema. Smart parameter detection.
-## src/Desktop/Controls/VMConsole.axaml - 51 lines - VMConsole
-  - Terminal-like control: 800x400, dark background, toolbar with Clear/Copy buttons, Canvas for terminal rendering.
-## src/Desktop/Controls/VMConsole.axaml.cs - 302 lines - VMConsole code-behind
-  - Full terminal emulator: 100x40 grid, Consolas font. ParseAnsi() parses ANSI escape sequences.
-## src/Desktop/Controls/VMPanel.axaml - 43 lines - VMPanel
-  - 400x500 sidebar panel for QEMU VM management: VM list, Start/Stop/Pause/Resume buttons, console output.
-## src/Desktop/Controls/VMPanel.axaml.cs - 65 lines - VMPanel code-behind
-  - Simple: InitializeViewModel() populates VM list, 4 async VM lifecycle methods.
-## src/Desktop/Controls/VMWizardStep1.axaml - 43 lines - VMWizardStep1
-  - Step 1 of 5 VM creation wizard: VM name TextBox, architecture ComboBox, accelerator ComboBox, hardware info.
-## src/Desktop/Controls/VMWizardStep1.axaml.cs - 66 lines - VMWizardStep1 code-behind
-  - DI constructor with IQEMUProcessManager. InitializeControls() populates architecture and accelerator enums.
-## src/Desktop/Controls/VMWizardStep2.axaml - 50 lines - VMWizardStep2
-  - Step 2 of 5 VM creation wizard: CPU cores slider (1-32), RAM slider (256-32768 MB), Disk size slider (1-500 GB).
-## src/Desktop/Controls/VMWizardStep2.axaml.cs - 53 lines - VMWizardStep2 code-behind
-  - Step 2: CPU/RAM/Disk sliders with ValueChanged handlers. GetForm() returns VMCreationForm.
-## src/Desktop/Controls/VMWizardStep3.axaml - 31 lines - VMWizardStep3
-  - Step 3 of 5 VM creation wizard: Disk images management. Add Disk button, ListBox for DiskImageConfig.
-## src/Desktop/Controls/VMWizardStep3.axaml.cs - 67 lines - VMWizardStep3 code-behind
-  - Step 3: Disk images management. OnAddDiskClicked uses StorageProvider.OpenFilePickerAsync.
-## src/Desktop/Controls/VMWizardStep4.axaml - 31 lines - VMWizardStep4
-  - Step 4 of 5 VM creation wizard: Network devices management. Add Network button, ListBox for NetworkDeviceConfig.
-## src/Desktop/Controls/VMWizardStep4.axaml.cs - 52 lines - VMWizardStep4 code-behind
-  - Simple: OnAddNetClicked creates new NetworkDeviceConfig with generated MAC address.
-## src/Desktop/Controls/VMWizardStep5.axaml - 21 lines - VMWizardStep5
-  - Step 5 of 5 VM creation wizard: Review and create summary. Read-only TextBox with Consolas font.
-## src/Desktop/Controls/VMWizardStep5.axaml.cs - 44 lines - VMWizardStep5 code-behind
-  - Minimal: UpdateReview() builds VM config summary from VMC using StringBuilder.
 ## src/Desktop/DependencyInjection.cs - 62 lines - DependencyInjection
   - Static class with AddInfrastructureServices() and AddDesktopServices(). Registers 25+ singleton services.
 ## src/Desktop/GeneratedGitInfo.cs - 8 lines - GeneratedGitInfo
@@ -104,7 +76,3 @@
   - Full plugin management: RefreshPlugins, RenderPluginCardsAsync, OnSearchTextChanged, OnTogglePluginClicked, OnPolicyChanged, OnUninstallPlugin.
 ## src/Desktop/TabService.cs - 109 lines - TabService
   - Static MainWindow reference pattern. ITabService implementation with 6 tabs and ToggleButton-based switching.
-## src/Desktop/VMWizardWindow.axaml - 63 lines - VMWizardWindow
-  - 600x550 Window for VM creation wizard. 3-row Grid with header, scrollable WizardContent, footer buttons.
-## src/Desktop/VMWizardWindow.axaml.cs - 188 lines - VMWizardWindow code-behind
-  - 5-step VM creation wizard. DI constructor with IQEMUProcessManager, HardwareDetector.

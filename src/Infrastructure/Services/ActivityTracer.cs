@@ -91,3 +91,48 @@ public class ActivityTracer : IActivityTracer, IDisposable
         _disposed = true;
     }
 }
+
+// ============================================================
+// StructuredLoggerExtensions.cs (78 lines)
+// ============================================================
+
+/// <summary>
+/// Structured logging extensions for OpenLMStudio.
+/// Provides typed log events for model lifecycle, agent, and server operations.
+/// </summary>
+public static class StructuredLoggerExtensions
+{
+    // Model lifecycle events
+    public static void ModelLoadStarted(this ILogger logger, Guid modelId, string modelType, long fileSizeBytes)
+        => logger.LogDebug("[Model] Load started: {ModelId} ({ModelType}) {FileSize:N0} bytes", modelId, modelType, fileSizeBytes);
+
+    public static void ModelLoadCompleted(this ILogger logger, Guid modelId, float loadTimeMs, long vramBytes)
+        => logger.LogInformation("[Model] Load complete: {ModelId} in {Time:F1}ms (VRAM: {Vram:N0} bytes)", modelId, loadTimeMs, vramBytes);
+
+    public static void ModelLoadFailed(this ILogger logger, Guid modelId, string error)
+        => logger.LogError("[Model] Load failed: {ModelId} - {Error}", modelId, error);
+
+    public static void ModelUnloadStarted(this ILogger logger, Guid modelId)
+        => logger.LogDebug("[Model] Unload started: {ModelId}", modelId);
+
+    // Context compression events
+    public static void ContextCompressed(this ILogger logger, int originalMessages, int compressedMessages, int savedTokens)
+        => logger.LogDebug("[Context] Compressed {Original} messages to {Compressed} (saved {Tokens} tokens)", originalMessages, compressedMessages, savedTokens);
+
+    // Agent events
+    public static void AgentTaskStarted(this ILogger logger, Guid taskId, string description)
+        => logger.LogDebug("[Agent] Task started: {TaskId} - {Description}", taskId, description);
+
+    public static void AgentTaskCompleted(this ILogger logger, Guid taskId, double durationMs, bool success)
+        => logger.LogInformation("[Agent] Task {TaskId} completed in {Duration:F1}ms (Success: {Success})", taskId, durationMs, success);
+
+    public static void AgentToolCall(this ILogger logger, Guid taskId, string toolName, double durationMs, bool success, string? error = null)
+        => logger.LogDebug("[Agent] {TaskId} {ToolName}: {Duration:F1}ms {Status}{Error}", taskId, toolName, durationMs, success ? "OK" : $"FAIL ({error})", error);
+
+    // Server events
+    public static void ServerStarted(this ILogger logger, string address, int port)
+        => logger.LogInformation("[Server] Started at {Address}:{Port}", address, port);
+
+    public static void ServerStopped(this ILogger logger)
+        => logger.LogDebug("[Server] Stopped");
+}

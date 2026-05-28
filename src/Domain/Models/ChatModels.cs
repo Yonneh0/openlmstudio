@@ -522,3 +522,323 @@ public static class ConversationEncryption
         return result == 0;
     }
 }
+
+// ============================================================
+// ModelType.cs (80 lines)
+// ============================================================
+
+/// <summary>
+/// Defines the type of an AI model, supporting text generation, image generation, diffusion, VAE, LoRA adapters, and embeddings.
+/// </summary>
+public enum ModelType
+{
+    /// <summary>
+    /// Text generation model (e.g., LLaMA, Mistral) - typically GGUF format.
+    /// </summary>
+    TextGeneration = 0,
+
+    /// <summary>
+    /// Image generation model using diffusion (e.g., Stable Diffusion, Flux) - typically safetensors format.
+    /// </summary>
+    ImageGeneration = 1,
+
+    /// <summary>
+    /// Pure diffusion model for latent space operations - typically safetensors format.
+    /// </summary>
+    Diffusion = 2,
+
+    /// <summary>
+    /// VAE (Variational Autoencoder) model for encoding/decoding latent representations - typically safetensors format.
+    /// </summary>
+    Vae = 3,
+
+    /// <summary>
+    /// LoRA (Low-Rank Adaptation) adapter for fine-tuning models on-the-fly - typically safetensors format.
+    /// </summary>
+    Lora = 4,
+
+    /// <summary>
+    /// Text/image embedding model for vector representations - typically safetensors format.
+    /// </summary>
+    Embedding = 5
+}
+
+/// <summary>
+/// Defines the file format of a model file.
+/// </summary>
+public enum ModelFormat
+{
+    /// <summary>
+    /// GGUF (GPT-Generated Unified Format) - used for text generation models.
+    /// </summary>
+    Gguf,
+
+    /// <summary>
+    /// Safetensors - used for image generation, diffusion, VAE, LoRA, and embedding models.
+    /// Supports both single-file and multi-file sharded formats.
+    /// </summary>
+    Safetensors,
+
+    /// <summary>
+    /// ONNX (Open Neural Network Exchange) - alternative inference format.
+    /// </summary>
+    Onnx
+}
+
+/// <summary>
+/// Defines the LoRA adapter format variant for safetensors-based adapters.
+/// </summary>
+public enum LoraFormatVariant
+{
+    /// <summary>
+    /// Standard LoRA format (rank decomposition).
+    /// </summary>
+    LoRa,
+
+    /// <summary>
+    /// LoHa - High-order low-rank adaptation (uses Hadamard transform).
+    /// </summary>
+    LoHa,
+
+    /// <summary>
+    /// LoKr - Kronecker product adaptation (allows rank sharing across dimensions).
+    /// </summary>
+    LoKr
+}
+
+// ============================================================
+// ModelLoadState.cs (74 lines)
+// ============================================================
+
+/// <summary>
+/// Represents the lifecycle state of a loaded model instance in memory.
+/// </summary>
+public enum ModelLoadState
+{
+    /// <summary>
+    /// Model file exists on disk but is not currently loaded into GPU/CPU memory.
+    /// </summary>
+    Unloaded,
+
+    /// <summary>
+    /// Model is being loaded from disk into memory.
+    /// </summary>
+    Loading,
+
+    /// <summary>
+    /// Model has been successfully loaded and is ready to generate completions.
+    /// </summary>
+    Loaded,
+
+    /// <summary>
+    /// Model is in the process of unloading from memory.
+    /// </summary>
+    Unloading
+}
+
+/// <summary>
+/// Represents a model instance that has been loaded into GPU/CPU memory for inference.
+/// </summary>
+public class LoadedModelInstance : IDisposable
+{
+    private bool _disposed;
+
+    public string ModelId { get; set; } = string.Empty;
+    public ModelMetadata Metadata { get; set; } = null!;
+    public ModelLoadState State { get; set; } = ModelLoadState.Unloaded;
+
+    /// <summary>
+    /// GPU memory usage in MB for this model instance.
+    /// </summary>
+    public int GpuMemoryUsageMB { get; set; }
+
+    /// <summary>
+    /// Number of tokens processed (prompt + completion).
+    /// </summary>
+    public long TotalTokensProcessed { get; set; }
+
+    /// <summary>
+    /// When the model was loaded into memory.
+    /// </summary>
+    public DateTime LoadedAt { get; set; } = DateTime.UtcNow;
+
+    /// <summary>
+    /// GPU context handle for llama.cpp native binding.
+    /// </summary>
+    public IntPtr GpuContextHandle { get; set; } = IntPtr.Zero;
+
+    /// <summary>
+    /// Inference context handle for llama.cpp native binding.
+    /// </summary>
+    public IntPtr InferenceContextHandle { get; set; } = IntPtr.Zero;
+
+    public void Dispose()
+    {
+        if (_disposed) return;
+        _disposed = true;
+
+        // Release GPU memory and inference context handles
+        GpuContextHandle = IntPtr.Zero;
+        InferenceContextHandle = IntPtr.Zero;
+    }
+}
+
+// ============================================================
+// ImageOutput.cs (68 lines)
+// ============================================================
+
+/// <summary>
+/// Represents an image generation output from a diffusion pipeline.
+/// Stores the generated image as base64-encoded PNG along with generation metadata.
+/// </summary>
+public class ImageOutput
+{
+    /// <summary>
+    /// Unique identifier for this image output.
+    /// </summary>
+    public Guid Id { get; set; } = Guid.NewGuid();
+
+    /// <summary>
+    /// Base64-encoded PNG image data.
+    /// </summary>
+    public string ImageData { get; set; } = string.Empty;
+
+    /// <summary>
+    /// MIME type of the image (e.g., "image/png", "image/jpeg").
+    /// </summary>
+    public string MimeType { get; set; } = "image/png";
+
+    /// <summary>
+    /// Width of the generated image in pixels.
+    /// </summary>
+    public int Width { get; set; }
+
+    /// <summary>
+    /// Height of the generated image in pixels.
+    /// </summary>
+    public int Height { get; set; }
+
+    /// <summary>
+    /// Random seed used for generation (for reproducibility).
+    /// </summary>
+    public long Seed { get; set; }
+
+    /// <summary>
+    /// CFG scale used during generation (classifier-free guidance weight).
+    /// </summary>
+    public double CfgScale { get; set; } = 7.5;
+
+    /// <summary>
+    /// Number of denoising steps used during generation.
+    /// </summary>
+    public int Steps { get; set; } = 30;
+
+    /// <summary>
+    /// Model ID used to generate this image.
+    /// </summary>
+    public string? ModelId { get; set; }
+
+    /// <summary>
+    /// Timestamp when this image was generated.
+    /// </summary>
+    public DateTime GeneratedAt { get; set; } = DateTime.UtcNow;
+
+    /// <summary>
+    /// The prompt used to generate this image.
+    /// </summary>
+    public string Prompt { get; set; } = string.Empty;
+
+    /// <summary>
+    /// Negative prompt used during generation.
+    /// </summary>
+    public string? NegativePrompt { get; set; }
+}
+
+// ============================================================
+// CompressedEntry.cs (86 lines)
+// ============================================================
+
+/// <summary>
+/// Log level for engine logging.
+/// </summary>
+public enum LogLevel
+{
+    Trace,
+    Debug,
+    Info,
+    Warn,
+    Error
+}
+
+/// <summary>
+/// Type of engine being logged.
+/// </summary>
+public enum EngineType
+{
+    Primary,
+    SystemAI,
+    Diffusion,
+    Embedding
+}
+
+/// <summary>
+/// Represents a compressed conversation entry for context management.
+/// </summary>
+public class CompressedEntry
+{
+    /// <summary>
+    /// Human-readable summary of the compressed content.
+    /// </summary>
+    public string Summary { get; set; } = "";
+
+    /// <summary>
+    /// Key decisions extracted from the compressed content.
+    /// </summary>
+    public List<string> KeyDecisions { get; set; } = new();
+
+    /// <summary>
+    /// Files that were modified during the compressed content period.
+    /// </summary>
+    public List<string> FilesModified { get; set; } = new();
+
+    /// <summary>
+    /// Timestamp when this entry was created.
+    /// </summary>
+    public DateTime Timestamp { get; set; } = DateTime.UtcNow;
+}
+
+/// <summary>
+/// Statistics about context compression for UI display.
+/// </summary>
+public class CompressedStats
+{
+    /// <summary>
+    /// Total number of messages in the context.
+    /// </summary>
+    public int TotalMessages { get; set; }
+
+    /// <summary>
+    /// Number of messages in the active window.
+    /// </summary>
+    public int ActiveWindowSize { get; set; }
+
+    /// <summary>
+    /// Number of compressed entries in the history.
+    /// </summary>
+    public int CompressedEntriesCount { get; set; }
+
+    /// <summary>
+    /// Estimated token count of active messages.
+    /// </summary>
+    public int EstimatedActiveTokens { get; set; }
+
+    /// <summary>
+    /// Estimated token count of compressed content.
+    /// </summary>
+    public int EstimatedCompressedTokens { get; set; }
+
+    /// <summary>
+    /// Compression ratio as a percentage (0-100).
+    /// </summary>
+    public int CompressionRatio { get; set; }
+}

@@ -1,15 +1,11 @@
-## src/Infrastructure/Services/ActivityTracer.cs - 93 lines - Agent Activity Tracer
-  - IActivityTracer implementation for tracing agent tool calls with timing and resource consumption. Uses ConcurrentDictionary for per-task trace storage.
+## src/Infrastructure/Services/ActivityTracer.cs - ~250 lines - Agent Activity Tracer (consolidated)
+   - IActivityTracer implementation for tracing agent tool calls with timing and resource consumption. Uses ConcurrentDictionary for per-task trace storage. Merged StructuredLoggerExtensions with typed log events: ModelLoadStarted/Completed/Failed, ModelUnloadStarted, ContextCompressed, AgentTaskStarted/Completed, AgentToolCall, ServerStarted/Stopped.
 ## src/Infrastructure/Services/ArchPromptService.cs - 119 lines - Architecture-Specific QEMU System Prompts
   - IArchPromptService implementation with 14 architecture entries (X86_64, AArch64, RISC_V64, AVR, MIPS, etc.) and cross-compile environment variables.
 ## src/Infrastructure/Services/DependencyInjection.cs - 509 lines - Infrastructure Layer Dependency Injection
   - Static class with AddInfrastructureServices() and AddOpenLMStudioServices(). Registers 80+ services including IServerService, IConversationManager, IDeviceMonitor, IModelService, IAgent, IToolRegistry, IPluginRegistry, ITaskScheduler, ITaskValidationService, IPinguStore, IQEMUProcessManager, ISystemAICoordinator.
-## src/Infrastructure/Services/ModelLifecycleTracer.cs - 115 lines - Model Lifecycle Event Tracer
-  - Traces model load/unload timing and VRAM allocation changes. Contains NoOpLogger<T>, ConcurrentDictionary for active loads, ConcurrentQueue for recent traces.
 ## src/Infrastructure/OpenLMStudio.Infrastructure.csproj - 33 lines - Infrastructure Project File
   - .NET 8 SDK-style project with references to Domain and Application layers. Packages: Markdig.SyntaxHighlighting, Microsoft.Extensions.DependencyInjection, Microsoft.Data.Sqlite.Core, SQLitePCLRaw, SkiaSharp, System.Management.
-## src/Infrastructure/Services/PinguAutomation.cs - 67 lines - Pingu Automation Implementation
-  - IPinguAutomation implementation with IPinguStore and IQEMUProcessManager dependencies. EnterControlModeAsync, HandleDragToPauseAsync, PerformActionAsync.
 ## src/Infrastructure/Services/PinguPromptGenerator.cs - 382 lines - Pingu System Prompt Generator
   - IPinguPromptGenerator implementation with GenerateFullPrompt, GenerateCompressedPrompt, GenerateForTaskType. Private prompt builders for TaskOrchestrator, UIControl, ModelManagement, GamePlay, Wandering, UserAssistant.
 ## src/Infrastructure/Services/PinguStore.cs - 236 lines - Reactive Pingu State Store
@@ -225,8 +221,6 @@
    - **GitBranchesTool** (~46 lines): `ITool` with `IGitRepositoryService`. Lists branches, tags, and remotes. Tool name "git_branches".
    - **ProjectExplorerTool** (~73 lines): `ITool`, `IDisposable` with `ILogger<T>` and `IFileOperationsService`. Recursive directory listing. Tool name "ProjectExplorer". Parses RootPath/IncludeHiddenFiles.
    - **SearchFilesTool** (~85 lines): `ITool`, `IDisposable` with `ILogger<T>` and `IFileOperationsService`. Regex search across project files. Tool name "SearchFiles". Parses Pattern/RootPath/MaxResults.
-## src/Infrastructure/Services/TokenEstimator.cs - 52 lines - Token Count Estimator with Length and Word-Based Methods
-  - ITokenEstimator with static regex patterns. EstimateTokens ((text.Length+3)/4), EstimateTokensAdvanced, EstimateMessagesTokens, GetHumanReadableTokenCount.
 ## src/Infrastructure/Services/ToolRegistry.cs - 101 lines - Central Tool Discovery and Instantiation Registry
   - IToolRegistry and IDisposable for managing tool discovery and instantiation. GetTools, Register, Unregister, GetTool (lazy DI loading), ExecuteToolAsync.
 ## src/Infrastructure/Services/UpdateManager.cs - 227 lines - Application Update Manager with GitHub Releases Integration
@@ -235,8 +229,6 @@
   - IVAEPipelineService with ONNX Runtime-based VAE inference. EncodeAsync, DecodeAsync, GetAvailableModelsAsync, LoadModelAsync, SaveModelAsync.
 ## src/Infrastructure/Services/WindowSettingsService.cs - 71 lines - Window State Persistence Service
   - IWindowSettings and IDisposable for JSON-based window state persistence. SaveAsync, LoadAsync. Settings stored in AppData/Metadata directory.
-## src/Infrastructure/Services/StructuredLoggerExtensions.cs - 78 lines - Structured Logging Extensions for OpenLMStudio
-  - Static class with typed log events: ModelLoadStarted/Completed/Failed, ModelUnloadStarted, ContextCompressed, AgentTaskStarted/Completed, AgentToolCall, ServerStarted/Stopped.
 ## src/Infrastructure/Services/SystemAICoordinator.cs - 213 lines - System AI Orchestrator for Cross-Architecture Workflows
   - ISystemAICoordinator for orchestrating System AI with QEMU VMs. HandleCommandAsync, GetOrCreateArchVMAsync, ExecuteBugFixingWorkflowAsync, ExecuteCrossCompilationWorkflowAsync.
 ## src/Infrastructure/Services/ToolchainRegistry.cs - 91 lines - Architecture-Specific Compiler Toolchain Registry
