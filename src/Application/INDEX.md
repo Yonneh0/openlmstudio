@@ -145,20 +145,15 @@
    - QuestionService: ask_followup_question tool with optional options.
 ## src/Application/Services/AgentSessionService.cs - 133 lines - Agent Session Lifecycle Manager
   - Service managing AgentSession CRUD with thread-safe lock. Methods: CreateSession, GetOrCreateSession, GetActiveSession, PauseActiveSession, ResumeSession, CompleteActiveSession, DisposeSession, ListSessions.
-## src/Application/Services/AgentTaskAutoApprover.cs - 134 lines - Agent Task Auto-Approver Implementation
-  - Implementation of IAgentTaskAutoApprover using AgentAutoApprovalSettings for tool/command auto-approval rules.
-## src/Application/Services/AgentTaskCheckpointService.cs - 175 lines - Agent Task Checkpoint Service Implementation
-  - File-based implementation of IAgentTaskCheckpointService with ConcurrentDictionary cache.
-## src/Application/Services/AgentTaskContextManager.cs - 140 lines - Agent Task Context Manager Implementation
-  - File-based implementation of IAgentTaskContextManager with history, file cache, and context budget support.
-## src/Application/Services/AgentTaskHookService.cs - 176 lines - Agent Task Hook Service Implementation
-  - ConcurrentDictionary-based hook storage keyed by taskId/hookName with 4 lifecycle hooks.
+## src/Application/Services/TaskServices.cs - ~850 lines - Consolidated Task Services (6 files → 1)
+   - AgentTaskAutoApprover: auto-approval of agent tools/commands with 21+ tool mappings and command timeout calculation.
+   - AgentTaskCheckpointService: file-based checkpoint storage with versioned checkpoints (Tool/Completion types).
+   - AgentTaskContextManager: history truncation, summarization, file read cache, context budget management.
+   - AgentTaskHookService: 4 lifecycle hooks (TaskComplete, UserPromptSubmit, ToolCall, StateChange) with ConcurrentDictionary storage.
+   - AgentTaskProgressService: checklist management, step tracking, reminder system with file-based storage.
+   - AgentTaskStateService: task state persistence with file-based storage and agent state tracking.
 ## src/Application/Services/AgentTaskManager.cs - 463 lines - Agent Task Central Orchestrator
   - Central orchestrator for agent task lifecycle with 13+ methods for init, execute, complete, terminate operations.
-## src/Application/Services/AgentTaskProgressService.cs - 160 lines - Agent Task Progress Service Implementation
-  - File-based implementation of IAgentTaskProgressService with checklist management and step tracking.
-## src/Application/Services/AgentTaskStateService.cs - 141 lines - Agent Task State Service Implementation
-  - File-based implementation of IAgentTaskStateService for saving, restoring, and managing task state.
 ## src/Application/Services/AgentTools.cs - 185 lines - Consolidated Tool Classes (UseSkill, UseSubagents, NewTask, PatchService)
    - UseSkill: use_skill tool for skill activation.
    - UseSubagents: use_subagents tool for parallel subagent execution (max 5).
@@ -170,22 +165,16 @@
   - Implementation of IBrowserService with 6 actions: launch, click, type, scroll_down, scroll_up, close.
 ## src/Application/Services/CommandExecutor.cs - 120 lines - CLI Command Executor
   - Implementation of ICommandExecutor with ExecuteAsync and CancelAsync methods.
-## src/Application/Services/ContextCompressor.cs - 158 lines - Context Segment Compressor (3 Levels)
-  - Implementation of IContextCompressor with 3 strategies: Light (>0.3), Medium (>0.5), Aggressive (>0.7).
-## src/Application/Services/ContextManipulator.cs - 188 lines - Context Segment Manipulator (5 Actions)
-  - Implementation of IContextManipulator with Pin, Unpin, SuppressToggle, RemoveFromContext, AddCustomContext actions.
-## src/Application/Services/ContextRelevanceEngine.cs - 116 lines - Context Relevance Scoring Engine
-  - Engine scoring context segment relevance to goal text via word overlap + exact match similarity.
-## src/Application/Services/ContextSnapshotManager.cs - 153 lines - Context Snapshot Manager
-  - Manager for task context snapshots with file-based + ConcurrentDictionary storage.
-## src/Application/Services/ContextWindowBudgeter.cs - 165 lines - Context Window Budget Manager
-  - Implementation of IContextWindowBudgeter with auto-eviction of lowest-relevance segments.
+## src/Application/Services/ContextServices.cs - ~650 lines - Consolidated Context Services (5 files → 1)
+   - ContextCompressor: 3 compression strategies (Light >0.3, Medium >0.5, Aggressive >0.7) with in-memory cache.
+   - ContextManipulator: 5 actions (Pin, Unpin, SuppressToggle, RemoveFromContext, AddCustomContext) with event-driven state changes.
+   - ContextRelevanceEngine: word overlap + exact match similarity scoring with dynamic threshold calculation.
+   - ContextSnapshotManager: task context snapshots with file-based + ConcurrentDictionary storage.
+   - ContextWindowBudgeter: token budget management with auto-eviction of lowest-relevance segments.
 ## src/Application/Services/FileSystemService.cs - 460 lines - Agent File System Service
   - Implementation of IFileSystemService with write_to_file, read_file, search_files, list_files, replace_in_file. Supports .agentignore and @workspace:path syntax.
-## src/Application/Services/IMarkdownRenderer.cs - 21 lines - Markdown Rendering Interface
-  - Minimal interface with Render and ExtractPlainText methods.
-## src/Application/Services/MarkdownRenderer.cs - 87 lines - Markdig Markdown Renderer
-  - IMarkdownRenderer implementation using Markdig with AdvancedExtensions, Abbreviations, Mathematics, YamlFrontMatter.
+## src/Application/Services/MarkdownRenderer.cs - ~110 lines - Consolidated Markdown (2 files → 1)
+   - IMarkdownRenderer interface + MarkdownRenderer implementation using Markdig with AdvancedExtensions, Abbreviations, Mathematics, YamlFrontMatter.
 ## src/Application/Services/McpService.cs - 190 lines - MCP Service
   - Implementation of IMcpService with UseToolAsync, AccessResourceAsync, LoadDocumentationAsync methods.
 ## src/Application/Services/SystemPromptGenerator.cs - 213 lines - System Prompt Generator

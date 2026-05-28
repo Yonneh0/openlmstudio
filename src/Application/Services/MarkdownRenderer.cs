@@ -1,16 +1,40 @@
-using Markdig;
-using OpenLMStudio.Application.Services;
-
 namespace OpenLMStudio.Application.Services;
 
+using System.IO;
+using Markdig;
+using Markdig.Extensions.Mathematics;
+using Markdig.Extensions.Tables;
+using Markdig.Extensions.Yaml;
+using Markdig.Renderers;
+using Markdig.Syntax;
+using OpenLMStudio.Domain.Models;
+
 /// <summary>
-/// Markdown renderer backed by Markdig, producing HTML suitable for display in Avalonia.
-/// Supports code blocks with language detection, headers, bold, italic, lists, links, and tables.
+/// Converts Markdown text into formatted UI content for display in Avalonia controls.
+/// </summary>
+public interface IMarkdownRenderer
+{
+    /// <summary>
+    /// Renders markdown text into a formatted block suitable for display in a chat message.
+    /// </summary>
+    /// <param name="markdown">The markdown string to render.</param>
+    /// <returns>A string of formatted content (HTML-like or Avalonia markup).</returns>
+    string Render(string markdown);
+
+    /// <summary>
+    /// Extracts plain text from a markdown string (strips formatting).
+    /// </summary>
+    string ExtractPlainText(string markdown);
+}
+
+/// <summary>
+/// IMarkdownRenderer implementation using Markdig with AdvancedExtensions, Abbreviations,
+/// Mathematics, YamlFrontMatter.
 /// </summary>
 public class MarkdownRenderer : IMarkdownRenderer
 {
-    private readonly Markdig.MarkdownPipeline _pipeline;
-    private readonly Markdig.MarkdownPipeline _plainPipeline;
+    private readonly MarkdownPipeline _pipeline;
+    private readonly MarkdownPipeline _plainPipeline;
 
     public MarkdownRenderer()
     {
@@ -31,7 +55,14 @@ public class MarkdownRenderer : IMarkdownRenderer
         if (string.IsNullOrEmpty(markdown))
             return string.Empty;
 
-        return Markdig.Markdown.ToHtml(markdown, _pipeline);
+        try
+        {
+            return Markdig.Markdown.ToHtml(markdown, _pipeline);
+        }
+        catch
+        {
+            return markdown;
+        }
     }
 
     public string ExtractPlainText(string markdown)
@@ -39,49 +70,21 @@ public class MarkdownRenderer : IMarkdownRenderer
         if (string.IsNullOrEmpty(markdown))
             return string.Empty;
 
-        // Use a simple pipeline and then strip HTML tags to get plain text
-        var html = Markdig.Markdown.ToHtml(markdown, _plainPipeline);
-        return StripHtmlTags(html);
-    }
-
-    private static string StripHtmlTags(string html)
-    {
-        var sb = new System.Text.StringBuilder(html.Length);
-        var inTag = false;
-        foreach (var c in html)
+        try
         {
-            if (c == '<')
-            {
-                inTag = true;
-                continue;
-            }
-            if (c == '>')
-            {
-                inTag = false;
-                sb.Append(' ');
-                continue;
-            }
-            if (!inTag)
-                sb.Append(c);
+            var html = Markdig.Markdown.ToHtml(markdown, _plainPipeline);
+            var result = html.Replace("<p>", System.String.Empty)
+                .Replace("</p>", System.String.Empty)
+                .Replace("<br />", "\n")
+                .Replace("<br/>", "\n")
+                .Replace("<br>", "\n");
+            // Decode HTML entities
+            result = System.Net.WebUtility.HtmlDecode(result);
+            return result.Trim();
         }
-        var result = sb.ToString().Trim();
-        // Collapse whitespace
-        var cleaned = new System.Text.StringBuilder(result.Length);
-        var prevSpace = false;
-        foreach (var c in result)
+        catch
         {
-            if (c == ' ' || c == '\n' || c == '\r')
-            {
-                if (!prevSpace)
-                    cleaned.Append(' ');
-                prevSpace = true;
-            }
-            else
-            {
-                cleaned.Append(c);
-                prevSpace = false;
-            }
+            return markdown;
         }
-        return cleaned.ToString().Trim();
     }
 }
