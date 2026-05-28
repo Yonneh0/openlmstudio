@@ -20,7 +20,7 @@ namespace OpenLMStudio.Desktop.Controls;
 /// </summary>
 public partial class PinguHomeTile : UserControl, IDisposable
 {
-    private readonly IPinguStore? _pingu;
+    private readonly OpenLMStudio.Application.Interfaces.IPinguStore? _pingu;
     private bool _disposed;
     private bool _isAwake;
     private readonly PinguHomeScene _homeScene;
@@ -34,7 +34,7 @@ public partial class PinguHomeTile : UserControl, IDisposable
         _homeScene = PinguHomeScene.CreateDefault();
     }
 
-    public PinguHomeTile(IPinguStore? pingu) : this()
+    public PinguHomeTile(OpenLMStudio.Application.Interfaces.IPinguStore? pingu) : this()
     {
         _pingu = pingu;
     }

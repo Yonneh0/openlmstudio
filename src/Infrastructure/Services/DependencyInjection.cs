@@ -55,7 +55,7 @@ public static class DependencyInjection
         services.AddSingleton<IModelMetadataService, Services.ModelMetadataService>();
 
         // TokenEstimator provides standardized token counting using character-based estimation
-        services.AddSingleton<ITokenEstimator, Services.TokenEstimator>();
+        services.AddSingleton<ITokenEstimator, OpenLMStudio.Application.Services.TokenEstimator>();
 
         // ModelRepository manages GGUF model discovery and metadata storage
         services.AddSingleton<IModelRepository, Services.JsonModelRepository>();
@@ -359,7 +359,7 @@ public static class DependencyInjection
         services.AddSingleton<Application.Interfaces.IActivityTracer, ActivityTracer>();
 
         // ModelLifecycleTracer tracks per-model load/unload timing and VRAM allocation
-        services.AddSingleton<ModelLifecycleTracer>();
+        services.AddSingleton<Domain.Models.ModelLifecycleTracer>();
 
         // WindowSettingsService persists and restores main window state (position, size, active tab)
         services.AddSingleton<IWindowSettings, Services.WindowSettingsService>();
@@ -397,7 +397,7 @@ public static class DependencyInjection
         services.AddSingleton<IToolchainRegistry, ToolchainRegistry>();
 
         // PinguAutomation provides action animations and drag-to-pause VM management
-        services.AddSingleton<IPinguAutomation, PinguAutomation>();
+        services.AddSingleton<Domain.Models.PinguAutomation>();
 
         // ResourceManager monitors CPU/memory with VM-aware allocation
         services.AddSingleton<IResourceManager, ResourceManager>();

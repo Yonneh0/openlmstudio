@@ -13,7 +13,7 @@ namespace OpenLMStudio.Infrastructure.Services;
 /// <summary>
 /// Manages QEMU virtual machine instances with QMP protocol support.
 /// </summary>
-public class QEMUProcessManager : IQEMUProcessManager, IDisposable
+public class QEMUProcessManager : OpenLMStudio.Application.Interfaces.IQEMUProcessManager, IDisposable
 {
     private readonly ILogger<QEMUProcessManager> _logger;
     private readonly ConcurrentDictionary<string, VMInstance> _instances = new();

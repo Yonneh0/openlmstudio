@@ -49,7 +49,7 @@ public partial class MainWindow : Window
 
     private readonly IChatContextManager? _contextManager;
     private readonly IContextWindowBudgeter? _budgeter;
-    private readonly IPinguStore? _pinguStore;
+    private readonly OpenLMStudio.Application.Interfaces.IPinguStore? _pinguStore;
     private readonly IWindowSettings? _windowSettings;
     private readonly Infrastructure.Services.MainAIManager? _mainAIManager;
     private readonly Infrastructure.Services.SystemAIManager? _systemAIManager;
@@ -115,7 +115,7 @@ public partial class MainWindow : Window
         IChatCompletionService? chatCompletionService = null,
         IChatContextManager? contextManager = null,
         IContextWindowBudgeter? budgeter = null,
-        IPinguStore? pinguStore = null,
+        OpenLMStudio.Application.Interfaces.IPinguStore? pinguStore = null,
         IWindowSettings? windowSettings = null,
         Infrastructure.Services.MainAIManager? mainAIManager = null,
         Infrastructure.Services.SystemAIManager? systemAIManager = null,

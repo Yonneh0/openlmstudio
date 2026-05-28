@@ -1,4 +1,62 @@
+using System;
+using System.Collections.Concurrent;
+using System.Collections.Generic;
+using System.Linq;
+using System.Runtime.CompilerServices;
+using Microsoft.Extensions.Logging;
+
 namespace OpenLMStudio.Domain.Models;
+
+// ============================================================
+// Stubs for types from Application and Avalonia layers
+// ============================================================
+
+/// <summary>
+/// Stub interface for IPinguStore (defined in Application/Infrastructure).
+/// </summary>
+public interface IPinguStore
+{
+    Task UpdateMoodAsync(PinguMood mood);
+    Task ToggleMenuAsync();
+    Task SetActivePanelAsync(PinguPanelType panel);
+    Task SetAwakeAsync(bool awake);
+    Task StartAwakeningSequenceAsync();
+    Task StartBlinkTimerAsync();
+    Task CompleteTaskAsync(Guid taskId);
+    Task HandleTaskErrorAsync(Guid taskId, string error);
+    Task OnStateChangedAsync(PinguState state);
+    event EventHandler<PinguStateChangedEventArgs>? OnStateChanged;
+}
+
+/// <summary>
+/// Stub interface for IQEMUProcessManager (defined in Infrastructure).
+/// </summary>
+public interface IQEMUProcessManager
+{
+    IEnumerable<(string Id, VMRunState State)> Instances { get; }
+    Task CreateVMAsync(string vmId, string arch, int cpuCores, int ramMB);
+    Task StartVMAsync(string vmId);
+    Task PauseVMAsync(string vmId);
+    Task ResumeVMAsync(string vmId);
+    Task StopVMAsync(string vmId);
+    Task DeleteVMAsync(string vmId);
+}
+
+/// <summary>
+/// Stub for Avalonia DragEvent.
+/// </summary>
+public class DragEvent
+{
+    public object? Target { get; set; }
+}
+
+/// <summary>
+/// Stub for Avalonia Element.
+/// </summary>
+public class Element
+{
+    public string? VmId { get; set; }
+}
 
 // ============================================================================
 // Enums
@@ -1055,7 +1113,7 @@ public class PinguAutomation
 
     public async Task HandleDragToPauseAsync(DragEvent e)
     {
-        if (e?.Target == "pingu")
+        if ((e?.Target as string) == "pingu")
         {
             foreach (var vm in _qemuManager.Instances.Where(v => v.State == VMRunState.Running))
             {

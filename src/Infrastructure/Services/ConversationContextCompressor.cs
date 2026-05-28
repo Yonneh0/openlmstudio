@@ -66,7 +66,7 @@ public class ConversationContextCompressor : IContextCompressor, IDisposable
         var compressedTokenCount = compressed.Sum(s => s.TokenCount);
         var ratio = originalTokenCount > 0 ? (double)(originalTokenCount - compressedTokenCount) / originalTokenCount : 0;
 
-        _logger?.ContextCompressed(0, (int)originalTokenCount, (int)compressedTokenCount, ratio);
+        _logger?.ContextCompressed((int)originalTokenCount, (int)compressedTokenCount, (int)(originalTokenCount - compressedTokenCount));
 
         return new CompressionResult(compressed, originalTokenCount, compressedTokenCount, ratio);
     }

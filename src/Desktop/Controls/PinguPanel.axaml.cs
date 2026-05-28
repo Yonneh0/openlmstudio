@@ -2,6 +2,7 @@ using Avalonia.Controls;
 using Avalonia.Interactivity;
 using OpenLMStudio.Application.Interfaces;
 using OpenLMStudio.Domain.Models;
+using IPinguStore = OpenLMStudio.Application.Interfaces.IPinguStore;
 using OpenLMStudio.Infrastructure;
 
 namespace OpenLMStudio.Desktop.Controls;

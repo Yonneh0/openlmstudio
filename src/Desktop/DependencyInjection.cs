@@ -21,7 +21,7 @@ public static class DependencyInjection
         services.AddSingleton<IChatCompletionService, InfraServices.LlamaCppChatCompletionService>();
         services.AddSingleton<IChatContextManager, InfraServices.ChatContextManager>();
         services.AddSingleton<IContextWindowBudgeter, InfraServices.ContextWindowBudgeter>();
-        services.AddSingleton<IPinguStore, InfraServices.PinguStore>();
+        services.AddSingleton<OpenLMStudio.Application.Interfaces.IPinguStore, InfraServices.PinguStore>();
         services.AddSingleton<IWindowSettings, InfraServices.WindowSettingsService>();
         services.AddSingleton<IEngineLogger, InfraServices.EngineLogger>();
         services.AddSingleton<PanelService>();

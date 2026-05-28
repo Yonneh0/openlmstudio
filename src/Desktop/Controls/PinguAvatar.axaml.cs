@@ -15,13 +15,13 @@ namespace OpenLMStudio.Desktop.Controls;
 /// </summary>
 public partial class PinguAvatar : UserControl, IDisposable
 {
-    private readonly IPinguStore _pingu;
+    private readonly OpenLMStudio.Application.Interfaces.IPinguStore _pingu;
     private readonly Timer _mouthTimer;
     private readonly Timer _blinkTimer;
     private int _mouthFrame;
     private bool _disposed;
 
-    public PinguAvatar(IPinguStore pingu)
+    public PinguAvatar(OpenLMStudio.Application.Interfaces.IPinguStore pingu)
     {
         _pingu = pingu ?? throw new ArgumentNullException(nameof(pingu));
         InitializeComponent();

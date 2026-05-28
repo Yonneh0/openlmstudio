@@ -25,7 +25,7 @@ public static class PinguEventBus
 /// <summary>
 /// Reactive state store for the Pingu System AI avatar.
 /// </summary>
-public class PinguStore : IPinguStore, IDisposable
+public class PinguStore : OpenLMStudio.Application.Interfaces.IPinguStore, IDisposable
 {
     private readonly PinguState _state;
     private readonly ILogger<PinguStore>? _logger;

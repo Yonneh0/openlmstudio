@@ -10,14 +10,14 @@ namespace OpenLMStudio.Infrastructure.Services;
 public class SystemAICoordinator : ISystemAICoordinator
 {
     private readonly ISystemAIClient _systemAI;
-    private readonly IQEMUProcessManager _qemuManager;
+    private readonly OpenLMStudio.Application.Interfaces.IQEMUProcessManager _qemuManager;
     private readonly IArchPromptService _archPromptService;
     private readonly IToolchainRegistry _toolchainRegistry;
     private readonly ILogger<SystemAICoordinator> _logger;
 
     public SystemAICoordinator(
         ISystemAIClient systemAI,
-        IQEMUProcessManager qemuManager,
+        OpenLMStudio.Application.Interfaces.IQEMUProcessManager qemuManager,
         IArchPromptService archPromptService,
         IToolchainRegistry toolchainRegistry,
         ILogger<SystemAICoordinator> logger)

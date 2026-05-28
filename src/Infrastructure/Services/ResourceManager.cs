@@ -9,14 +9,14 @@ namespace OpenLMStudio.Infrastructure.Services;
 /// </summary>
 public class ResourceManager : IResourceManager, IDisposable
 {
-    private readonly IQEMUProcessManager _qemuManager;
+    private readonly OpenLMStudio.Application.Interfaces.IQEMUProcessManager _qemuManager;
     private readonly System.Threading.Timer? _monitorTimer;
     private readonly int _monitorIntervalMs;
     private static readonly int MAX_CONTEXT = 128 * 1024;
     private readonly IContextCompressionService? _contextCompression;
     private bool _disposed;
 
-    public ResourceManager(IQEMUProcessManager qemuManager, IContextCompressionService? contextCompression = null, int monitorIntervalMs = 10000)
+    public ResourceManager(OpenLMStudio.Application.Interfaces.IQEMUProcessManager qemuManager, IContextCompressionService? contextCompression = null, int monitorIntervalMs = 10000)
     {
         _qemuManager = qemuManager;
         _contextCompression = contextCompression;

@@ -57,7 +57,7 @@ public static class DependencyInjection
 
         // Context management services
         services.AddTransient<IContextWindowBudgeter, ContextWindowBudgeter>();
-        services.AddTransient<ITokenEstimator, TokenEstimator>();
+        services.AddTransient<ITokenEstimator, OpenLMStudio.Application.Services.TokenEstimator>();
         services.AddTransient<IContextCompressor, ContextCompressor>();
         services.AddTransient<IContextRelevanceEngine, ContextRelevanceEngine>();
         services.AddTransient<IContextManipulator, ContextManipulator>();
