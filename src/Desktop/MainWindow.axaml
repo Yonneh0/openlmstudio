@@ -908,6 +908,7 @@
                             </TextBlock>
                             <!-- Chat Title Edit (hidden by default) -->
                             <TextBox x:Name="ChatTitleEdit"
+                                     x:DataType="local:MainWindow"
                                      IsVisible="{Binding IsChatTitleEditing}"
                                      Foreground="{StaticResource TextPrimary}"
                                      Background="{StaticResource BgTertiary}"

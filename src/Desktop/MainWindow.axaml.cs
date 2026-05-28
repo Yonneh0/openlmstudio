@@ -57,6 +57,12 @@ public partial class MainWindow : Window
 
     /// <summary>Flag to prevent duplicate title saves when both LostFocus and overlay click fire.</summary>
     private int _titleEditSaving = 0;
+
+    /// <summary>
+    /// Gets or sets a value indicating whether the chat title is currently being edited.
+    /// Bound to the ChatTitleEdit TextBox IsVisible property in XAML.
+    /// </summary>
+    public bool IsChatTitleEditing { get; set; }
     /// <summary>Currently visible ToolCallForm popup (or null if closed).</summary>
     private ToolCallForm? _activeToolCallForm;
 
