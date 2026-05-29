@@ -53,7 +53,7 @@
 ## src/Desktop/MainWindow.axaml - ~970 lines - MainWindow
    - Full application shell: 3-column layout (280px left sidebar, 4* center pane, 320px right sidebar). Dark theme with 30+ embedded styles. Features: ChatTitleEdit with IsVisible binding, AgentTurnsBadge with positive margin (4,-4), PinguCornerPanel responsive dimensions (MinWidth/MinHeight/MaxWidth/MaxHeight), AgentModeToggle :pressed state, Safety toggles (WWW/Read/Edit/Exec) with :checked styles, Plan/Act toggle buttons with :pointerover, vscodeTab :pointerover state, settingsSubTab :pointerover state, ChatTitleDisplay :pointerover style, pluginBtn :pressed styles, BorderDefault resource for consistent borders.
 ## src/Desktop/MainWindow.axaml.cs - 1610 lines - MainWindow code-behind
-   - Core window logic: DI constructor, tab management, chat title editing, message sending, Pingu avatar panel, AgentMode toggle, Safety toggles. ImageGen wire-up methods (RandomSeedButton, ImageGenGenerateBtn, ImageGenModelSelector) now handled by ImageGenerationTab control.
+   - Core window logic: DI constructor, tab management, chat title editing, message sending, Pingu avatar panel, AgentMode toggle, Safety toggles. ImageGen wire-up methods (RandomSeedButton, ImageGenGenerateBtn, ImageGenModelSelector) now handled by ImageGenerationTab control. ShowTab delegates to MainWindow.TabManager.cs partial class.
 ## src/Desktop/MainWindow.ChatMessages.cs - 645 lines - MainWindow.ChatMessages
    - Chat list management, message loading, message rendering, tool call display, context controls.
 ## src/Desktop/MainWindow.Context.cs - 250 lines - MainWindow.Context
@@ -62,8 +62,8 @@
    - Message sending, server controls, model list, device status, DI resolution, window state, keyboard shortcuts, dialogs.
 ## src/Desktop/Controls/ImageGenerationTab.axaml - 212 lines - Image Generation Tab (Avalonia 12) — REWRITTEN
    - Compact 9-row layout for 280px sidebar: Model selector (with Load/Unload, VRAM indicator, status light), Mode tabs (🎨📷🖼🔁), Prompt/Negative Prompt, Image Input (I2I), Parameters (W/H/Steps/CFG/Seed/Sampler + presets), LoRA Adapters, Output & Generate, Preview, Recent gallery. Rich tooltips, progress bars, status lights.
-## src/Desktop/Controls/ImageGenerationTab.axaml.cs - 389 lines - ImageGenerationTab code-behind — REWRITTEN
-   - LoraViewModel, ImageGenerationTab with model loading (RefreshModelListAsync, LoadModelAsync, UnloadModelAsync), mode tabs, generate flow via IImageGenerationCoordinator, denoise slider, LoRA add/remove/clear, resolution presets, result display with gallery save, image save/copy/gallery view.
+## src/Desktop/Controls/ImageGenerationTab.axaml.cs - 665 lines - ImageGenerationTab code-behind — REWRITTEN
+   - LoraViewModel, ImageGenerationTab with model loading (RefreshModelListAsync, LoadModelAsync, UnloadModelAsync), mode tabs, generate flow via IImageGenerationCoordinator, denoise slider, LoRA add/remove/clear, resolution presets, result display with gallery save, image save/copy/gallery view. Fixed: FindResource, DispatcherOperation, ImageBytes, Window.Owner bugs.
 ## src/Desktop/MainWindow.Streaming.cs - 328 lines - MainWindow.Streaming
    - Streaming responses: GetAssistantResponseAsync, StreamResponseViaServerAsync (SSE), StreamResponseViaLocalServiceAsync.
 ## src/Desktop/MainWindow.TabManager.cs - 200 lines - MainWindow.TabManager

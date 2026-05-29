@@ -114,12 +114,16 @@ public partial class ImageGenerationTab : UserControl
 
     private void OnModelSelected(object? sender, SelectionChangedEventArgs e)
     {
-        if (ModelComboBox.SelectedItem is ComboBoxItem item && item.Tag is MultiModalModelMetadata metadata)
+        if (ModelComboBox.SelectedItem is ComboBoxItem item)
         {
-            _selectedModelId = metadata.Id;
-            ModelInfoText.Text = $"Type: {GetPipelineType(metadata)} | Channels: {GetLatentChannels(metadata)} | File: {Path.GetFileName(metadata.FilePath ?? "")}";
-            ModelStatusText.Text = _isModelLoaded ? " ● Loaded" : " ○ Unloaded";
-            UpdateModelStatusColor();
+            var metadata = item.Tag as MultiModalModelMetadata;
+            if (metadata != null)
+            {
+                _selectedModelId = metadata.Id;
+                ModelInfoText.Text = $"Type: {GetPipelineType(metadata)} | Channels: {GetLatentChannels(metadata)} | File: {Path.GetFileName(metadata.FilePath ?? "")}";
+                ModelStatusText.Text = _isModelLoaded ? " ● Loaded" : " ○ Unloaded";
+                UpdateModelStatusColor();
+            }
         }
     }
 
@@ -212,24 +216,19 @@ public partial class ImageGenerationTab : UserControl
                 _ => "sd15",
             };
 
-            // Update button styles
-            foreach (var btn in new[] { GenerateButton, Image2ImageButton, InpaintButton, VariationButton })
-            {
-                var isActive = btn == button;
-                btn.Background = isActive ?
-                    (SolidColorBrush)this.FindResource("AccentBlue")! :
-                    (SolidColorBrush)this.FindResource("BgTertiary")!;
-            }
+            SetActiveModeButton(button);
         }
     }
 
     private void OnImage2Image(object? sender, RoutedEventArgs e)
     {
         ImageInputBorder.IsVisible = true;
+        SetActiveModeButton(Image2ImageButton);
     }
 
     private async void OnInpaint(object? sender, RoutedEventArgs e)
     {
+        SetActiveModeButton(InpaintButton);
         await OnLoadImageInternal();
         await Dispatcher.UIThread.InvokeAsync(() =>
         {
@@ -248,6 +247,23 @@ public partial class ImageGenerationTab : UserControl
         else
         {
             OnImage2Image(sender, e);
+        }
+        SetActiveModeButton(VariationButton);
+    }
+
+    private void SetActiveModeButton(Button activeButton)
+    {
+        foreach (var btn in new[] { GenerateButton, Image2ImageButton, InpaintButton, VariationButton })
+        {
+            if (btn == null) continue;
+            if (btn == activeButton)
+            {
+                btn.Background = (SolidColorBrush)this.FindResource("AccentBlue")!;
+            }
+            else
+            {
+                btn.Background = (SolidColorBrush)this.FindResource("BgTertiary")!;
+            }
         }
     }
 
@@ -277,13 +293,20 @@ public partial class ImageGenerationTab : UserControl
 
         if (files.Any())
         {
-            _inputImageBytes = await File.ReadAllBytesAsync(files[0].Path.LocalPath);
-            await Dispatcher.UIThread.InvokeAsync(async () =>
+            try
             {
-                using var stream = new MemoryStream(_inputImageBytes);
-                var bitmap = new Bitmap(stream);
-                ImagePreview.Source = bitmap;
-            });
+                _inputImageBytes = await File.ReadAllBytesAsync(files[0].Path.LocalPath);
+                await Dispatcher.UIThread.InvokeAsync(async () =>
+                {
+                    using var stream = new MemoryStream(_inputImageBytes);
+                    var bitmap = new Bitmap(stream);
+                    ImagePreview.Source = bitmap;
+                });
+            }
+            catch (Exception ex)
+            {
+                ProgressText.Text = $"Error loading image: {ex.Message}";
+            }
         }
     }
 
@@ -324,6 +347,8 @@ public partial class ImageGenerationTab : UserControl
         _isGenerating = true;
         GenerateButton.IsEnabled = false;
         GenerateButton2.IsEnabled = false;
+        PauseButton.IsEnabled = true;
+        StopButton.IsEnabled = true;
         Progress.Value = 0;
         ProgressText.Text = "0%";
 
@@ -359,15 +384,11 @@ public partial class ImageGenerationTab : UserControl
             {
                 await foreach (var progress in _coordinator.ExecuteStreamingAsync(request, _generationCts.Token))
                 {
-                    var topLevel = TopLevel.GetTopLevel(this);
-                    if (topLevel != null)
+                    await Dispatcher.UIThread.InvokeAsync(() =>
                     {
-                        await Dispatcher.UIThread.InvokeAsync(() =>
-                        {
-                            Progress.Value = progress.Percentage;
-                            ProgressText.Text = $"{progress.Percentage:F0}%";
-                        });
-                    }
+                        Progress.Value = progress.Percentage;
+                        ProgressText.Text = $"{progress.Percentage:F0}%";
+                    });
                 }
 
                 var result = await _coordinator.ExecuteAsync(request, _generationCts.Token);
@@ -388,6 +409,8 @@ public partial class ImageGenerationTab : UserControl
                     _isGenerating = false;
                     GenerateButton.IsEnabled = true;
                     GenerateButton2.IsEnabled = true;
+                    PauseButton.IsEnabled = false;
+                    StopButton.IsEnabled = false;
                 });
             }
         }
@@ -435,45 +458,52 @@ public partial class ImageGenerationTab : UserControl
 
     private void ShowResult(ImageGenerationResult result)
     {
-        using var stream = new MemoryStream(result.ImageBytes);
-        var bitmap = new Bitmap(stream);
-        PreviewImage.Source = bitmap;
-
-        Progress.Value = 100;
-        ProgressText.Text = "100%";
-
-        if (_saver != null)
+        try
         {
-            var outputPath = Path.Combine(
-                ExpandPath(OutputPathTextBox.Text),
-                _saver.GenerateTimestampedFilename());
+            using var stream = new MemoryStream(result.ImageBytes);
+            var bitmap = new Bitmap(stream);
+            PreviewImage.Source = bitmap;
 
-            var format = GetOutputFormat(GetSelectedFormat());
-            var converted = _formatConverter != null
-                ? _formatConverter.ConvertAsync(result.ImageBytes, format).Result
-                : result.ImageBytes;
+            Progress.Value = 100;
+            ProgressText.Text = "100%";
 
-            _saver.SaveToDiskAsync(converted, outputPath, format).Wait();
+            if (_saver != null)
+            {
+                var outputPath = Path.Combine(
+                    ExpandPath(OutputPathTextBox.Text),
+                    _saver.GenerateTimestampedFilename());
 
-            _lastResult = new ImageGalleryEntry(
-                Id: Guid.NewGuid().ToString(),
-                Prompt: result.Prompt,
-                ModelId: result.ModelId,
-                Width: result.Width,
-                Height: result.Height,
-                Seed: result.Seed,
-                CfgScale: result.GuidanceScale,
-                Steps: result.Steps,
-                Sampler: result.SamplerType,
-                FilePath: outputPath,
-                ThumbnailPath: outputPath,
-                Timestamp: DateTime.UtcNow);
+                var format = GetOutputFormat(GetSelectedFormat());
+                var converted = _formatConverter != null
+                    ? _formatConverter.ConvertAsync(result.ImageBytes, format).Result
+                    : result.ImageBytes;
 
-            _recentImages.Insert(0, _lastResult);
-            if (_recentImages.Count > 20)
-                _recentImages.RemoveAt(_recentImages.Count - 1);
+                _saver.SaveToDiskAsync(converted, outputPath, format).Wait();
 
-            UpdateRecentImages();
+                _lastResult = new ImageGalleryEntry(
+                    Id: Guid.NewGuid().ToString(),
+                    Prompt: result.Prompt,
+                    ModelId: result.ModelId,
+                    Width: result.Width,
+                    Height: result.Height,
+                    Seed: result.Seed,
+                    CfgScale: result.GuidanceScale,
+                    Steps: result.Steps,
+                    Sampler: result.SamplerType,
+                    FilePath: outputPath,
+                    ThumbnailPath: outputPath,
+                    Timestamp: DateTime.UtcNow);
+
+                _recentImages.Insert(0, _lastResult);
+                if (_recentImages.Count > 20)
+                    _recentImages.RemoveAt(_recentImages.Count - 1);
+
+                UpdateRecentImages();
+            }
+        }
+        catch (Exception ex)
+        {
+            ProgressText.Text = $"Error showing result: {ex.Message}";
         }
     }
 
@@ -485,37 +515,152 @@ public partial class ImageGenerationTab : UserControl
     private async void OnSaveImage(object? sender, RoutedEventArgs e)
     {
         if (_lastResult == null || _saver == null) return;
-        var expanded = _saver.ExpandPath(OutputPathTextBox.Text);
-        var filename = _saver.GenerateTimestampedFilename();
-        var path = Path.Combine(expanded, filename);
-        if (_formatConverter != null)
+        try
         {
-            var format = GetOutputFormat(GetSelectedFormat());
-            var imageBytes = await File.ReadAllBytesAsync(_lastResult.FilePath);
-            var converted = await _formatConverter.ConvertAsync(imageBytes, format);
-            await _saver.SaveToDiskAsync(converted, path, format);
+            var expanded = _saver.ExpandPath(OutputPathTextBox.Text);
+            var filename = _saver.GenerateTimestampedFilename();
+            var path = Path.Combine(expanded, filename);
+            if (_formatConverter != null)
+            {
+                var format = GetOutputFormat(GetSelectedFormat());
+                var imageBytes = await File.ReadAllBytesAsync(_lastResult.FilePath).ConfigureAwait(false);
+                var converted = await _formatConverter.ConvertAsync(imageBytes, format).ConfigureAwait(false);
+                await _saver.SaveToDiskAsync(converted, path, format).ConfigureAwait(false);
+            }
+            else
+            {
+                var bytes = await File.ReadAllBytesAsync(_lastResult.FilePath);
+                await _saver.SaveToDiskAsync(bytes, path, ImageOutputFormat.Png);
+            }
+            ProgressText.Text = $"Saved: {filename}";
+        }
+        catch (Exception ex)
+        {
+            ProgressText.Text = $"Save error: {ex.Message}";
         }
     }
 
-    private void OnCopyImage(object? sender, RoutedEventArgs e)
+    private async void OnCopyImage(object? sender, RoutedEventArgs e)
     {
         if (_lastResult == null) return;
         try
         {
-            var imageBytes = File.ReadAllBytes(_lastResult.FilePath);
+            var imageBytes = await File.ReadAllBytesAsync(_lastResult.FilePath);
             var text = Convert.ToBase64String(imageBytes);
             var top = TopLevel.GetTopLevel(this);
             if (top?.Clipboard != null)
             {
-                Dispatcher.UIThread.InvokeAsync(() => top.Clipboard!.SetTextAsync(text));
+                await Dispatcher.UIThread.InvokeAsync(() => top.Clipboard!.SetTextAsync(text));
             }
+            ProgressText.Text = "Copied to clipboard";
         }
-        catch { }
+        catch (Exception ex)
+        {
+            ProgressText.Text = $"Copy error: {ex.Message}";
+        }
     }
 
     private void OnViewGallery(object? sender, RoutedEventArgs e)
     {
-        // TODO: Open gallery window
+        var galleryWindow = new Window
+        {
+            Title = "OpenLMStudio - Image Gallery",
+            Width = 600,
+            Height = 500,
+            Content = CreateGalleryContent()
+        };
+        var top = TopLevel.GetTopLevel(this);
+        if (top is Window parent)
+        {
+            galleryWindow.SetCurrentValue(Window.OwnerProperty, parent);
+        }
+        galleryWindow.Show();
+    }
+
+    private Control CreateGalleryContent()
+    {
+        var stack = new StackPanel
+        {
+            Margin = new Thickness(12),
+            Spacing = 8
+        };
+
+        stack.Children.Add(new TextBlock
+        {
+            Text = "Recent Images",
+            FontSize = 16,
+            FontWeight = Avalonia.Media.FontWeight.SemiBold,
+            Foreground = (SolidColorBrush)this.FindResource("TextPrimary")!
+        });
+
+        if (_recentImages.Count == 0)
+        {
+            stack.Children.Add(new TextBlock
+            {
+                Text = "No images generated yet. Use the Generate button to create images.",
+                FontSize = 12,
+                Foreground = (SolidColorBrush)this.FindResource("TextSecondary")!,
+                Margin = new Thickness(0, 8, 0, 0)
+            });
+            return stack;
+        }
+
+        foreach (var img in _recentImages)
+        {
+            var border = new Border
+            {
+                Background = (SolidColorBrush)this.FindResource("BgSecondary")!,
+                CornerRadius = new CornerRadius(6),
+                Padding = new Thickness(8),
+                Margin = new Thickness(0, 0, 0, 4)
+            };
+
+            var panel = new StackPanel
+            {
+                Orientation = Avalonia.Layout.Orientation.Horizontal
+            };
+
+            panel.Children.Add(new Border
+            {
+                Width = 60,
+                Height = 60,
+                Background = (SolidColorBrush)this.FindResource("BgTertiary")!,
+                CornerRadius = new CornerRadius(4),
+                Child = new Image
+                {
+                    Source = img.ThumbnailPath != null && File.Exists(img.ThumbnailPath) ? new Bitmap(img.ThumbnailPath) : null,
+                    Stretch = Avalonia.Media.Stretch.Uniform
+                }
+            });
+
+            border.Child = panel;
+
+            var info = new StackPanel
+            {
+                Margin = new Thickness(10, 0, 0, 0),
+                VerticalAlignment = Avalonia.Layout.VerticalAlignment.Center
+            };
+            info.Children.Add(new TextBlock
+            {
+                Text = img.Prompt,
+                FontSize = 11,
+                Foreground = (SolidColorBrush)this.FindResource("TextPrimary")!,
+                TextWrapping = TextWrapping.Wrap,
+                MaxWidth = 400
+            });
+            info.Children.Add(new TextBlock
+            {
+                Text = $"Model: {img.ModelId} | {img.Width}x{img.Height} | Seed: {img.Seed}",
+                FontSize = 9,
+                Foreground = (SolidColorBrush)this.FindResource("TextSecondary")!,
+                Margin = new Thickness(0, 2, 0, 0)
+            });
+
+            panel.Children.Add(info);
+            stack.Children.Add(border);
+        }
+
+        return stack;
     }
 
     #endregion

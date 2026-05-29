@@ -26,7 +26,8 @@ public partial class MainWindow
         SetTabVisibility(DevicesTabContent, tabName == "Devices");
         SetTabVisibility(ContextTabContent, tabName == "Context");
         SetTabVisibility(PinguTabContent, tabName == "Pingu");
-        SetControlVisibility(ImageGenerationTab, tabName == "ImageGen");
+        // ImageGenerationOverlay is a ContentControl that overlays the entire window
+        SetControlVisibility(ImageGenerationOverlay, tabName == "ImageGen");
         SetTabVisibility(SettingsTabContent, tabName == "Settings");
 
         // Update ToggleButton checked state (all left sidebar tabs are now ToggleButtons)

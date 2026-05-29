@@ -209,79 +209,11 @@ public partial class MainWindow : Window
             // If no panel found, the PinguCornerPanel will be defined in XAML
         }
 
-        // Initialize the GPU canvas
-        InitializePinguCanvas();
-    }
-
-    /// <summary>
-    /// Initializes the PinguCanvas control and starts the render loop.
-    /// </summary>
-    private void InitializePinguCanvas()
-    {
-        // Create the PinguCanvas
-        _pinguCanvas = new PinguCanvas
+        // Initialize the GPU canvas (if PinguCanvas is defined in XAML)
+        if (_pinguCanvas == null)
         {
-            Width = 350,
-            Height = 350,
-            Opacity = 0.95,
-            ZIndex = 10
-        };
-
-        // Use PinguCornerPanel (which is already positioned in the bottom-right corner of the window)
-        // to host the canvas so it doesn't interfere with the center pane content
-        var targetPanel = this.FindControl<Canvas>("PinguCornerPanel");
-        if (targetPanel != null)
-        {
-            // Set the Canvas size to match the CenterPaneGrid
-            targetPanel.Width = CenterPaneGrid.Width - 400; // Leave room for right sidebar
-            targetPanel.Height = CenterPaneGrid.Height - 100; // Leave room for status bar
-            _pinguCanvas.Width = 350;
-            _pinguCanvas.Height = 350;
-
-            // Add the canvas directly to PinguCornerPanel (preserve any existing children like PinguAvatar)
-            targetPanel.Children.Add(_pinguCanvas);
-
-            // Position it in the bottom-right of the panel
-            Canvas.SetRight(_pinguCanvas, 10);
-            Canvas.SetBottom(_pinguCanvas, 10);
+            _pinguCanvas = new PinguCanvas();
         }
-
-        // Initialize the renderer (this will load/create mesh, texture, etc.)
-        if (_pinguStore != null)
-        {
-            try
-            {
-                var renderFunc = _pinguStore.CreateRenderer();
-                _pinguCanvas.Initialize(renderFunc);
-            }
-            catch (Exception ex)
-            {
-                _logger?.LogWarning(ex, "Failed to initialize PinguCanvas renderer");
-            }
-        }
-
-        // Start the render loop
-        StartPinguRenderLoop();
-
-        // Wire up cursor tracking (placeholder — no-op handler)
-        this.PointerMoved += OnMainWindowPointerMoved;
-    }
-
-    /// <summary>
-    /// Starts the Pingu render loop (placeholder — no-op handler).
-    /// </summary>
-    private void StartPinguRenderLoop()
-    {
-        // The render loop is managed by PinguCanvas via its internal dispatcher timer.
-        // This method is a placeholder for future integration with MainWindow.
-    }
-
-    /// <summary>
-    /// Handles pointer movement events on the main window (placeholder — no-op handler).
-    /// </summary>
-    private void OnMainWindowPointerMoved(object? sender, PointerEventArgs e)
-    {
-        // Placeholder for pointer movement handling logic.
     }
 
     private void SetupEventHandlers()
