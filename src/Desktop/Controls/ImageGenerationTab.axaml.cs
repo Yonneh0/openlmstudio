@@ -80,13 +80,13 @@ public partial class ImageGenerationTab : UserControl
                 var sp = mainWin.FindResource("ServiceProvider") as IServiceProvider;
                 if (sp != null)
                 {
-                    _coordinator = (IImageGenerationCoordinator)sp.GetService(typeof(IImageGenerationCoordinator));
-                    _galleryService = (IImageGalleryService)sp.GetService(typeof(IImageGalleryService));
-                    _formatConverter = (IImageFormatConverter)sp.GetService(typeof(IImageFormatConverter));
-                    _imageSaver = (IImageSaver)sp.GetService(typeof(IImageSaver));
-                    _pipeline = (IDiffusionPipelineService)sp.GetService(typeof(IDiffusionPipelineService));
-                    _deviceStatus = (IDeviceStatusService)sp.GetService(typeof(IDeviceStatusService));
-                    _modelRepo = (IModelRepository)sp.GetService(typeof(IModelRepository));
+                    _coordinator = (IImageGenerationCoordinator)sp.GetService(typeof(IImageGenerationCoordinator))!;
+                    _galleryService = (IImageGalleryService)sp.GetService(typeof(IImageGalleryService))!;
+                    _formatConverter = (IImageFormatConverter)sp.GetService(typeof(IImageFormatConverter))!;
+                    _imageSaver = (IImageSaver)sp.GetService(typeof(IImageSaver))!;
+                    _pipeline = (IDiffusionPipelineService)sp.GetService(typeof(IDiffusionPipelineService))!;
+                    _deviceStatus = (IDeviceStatusService)sp.GetService(typeof(IDeviceStatusService))!;
+                    _modelRepo = (IModelRepository)sp.GetService(typeof(IModelRepository))!;
                 }
             }
         }
@@ -115,7 +115,7 @@ public partial class ImageGenerationTab : UserControl
         }
 
         var vramPercentage = _totalVram > 0 ? (_modelVramUsage / _totalVram) * 100 : 0;
-        Dispatcher.UIThread.InvokeAsync(() =>
+        _ = Dispatcher.UIThread.InvokeAsync(() =>
         {
             VramBar.Value = vramPercentage;
             VramText.Text = $"{_modelVramUsage:F1} / {_totalVram:F0} GB";
@@ -127,7 +127,7 @@ public partial class ImageGenerationTab : UserControl
         if (_pipeline == null) return;
 
         var models = await _pipeline.GetAvailableModelsAsync();
-        Dispatcher.UIThread.InvokeAsync(() =>
+        _ = Dispatcher.UIThread.InvokeAsync(() =>
         {
             ModelComboBox.Items.Clear();
             foreach (var model in models)
@@ -148,7 +148,10 @@ public partial class ImageGenerationTab : UserControl
         if (ModelComboBox.SelectedItem is ComboBoxItem item && item.Tag is string modelId)
         {
             _selectedModelId = modelId;
-            ModelInfoText.Text = $"ID: {modelId}";
+            _ = Dispatcher.UIThread.InvokeAsync(() =>
+            {
+                ModelInfoText.Text = $"ID: {modelId}";
+            });
         }
     }
 
@@ -156,7 +159,10 @@ public partial class ImageGenerationTab : UserControl
     {
         if (string.IsNullOrEmpty(_selectedModelId) || _pipeline == null)
         {
-            ModelInfoText.Text = "No model selected";
+            _ = Dispatcher.UIThread.InvokeAsync(() =>
+            {
+                ModelInfoText.Text = "No model selected";
+            });
             return;
         }
 
@@ -166,7 +172,7 @@ public partial class ImageGenerationTab : UserControl
 
         var success = await _pipeline.LoadModelAsync(_selectedModelId);
 
-        Dispatcher.UIThread.InvokeAsync(() =>
+        _ = Dispatcher.UIThread.InvokeAsync(() =>
         {
             if (success)
             {
@@ -192,7 +198,7 @@ public partial class ImageGenerationTab : UserControl
 
         var success = await _pipeline.UnloadModelAsync(_selectedModelId);
 
-        Dispatcher.UIThread.InvokeAsync(() =>
+        _ = Dispatcher.UIThread.InvokeAsync(() =>
         {
             if (success)
             {
@@ -251,7 +257,10 @@ public partial class ImageGenerationTab : UserControl
     {
         if (_coordinator == null || string.IsNullOrEmpty(_selectedModelId))
         {
-            ProgressText.Text = "Select a model first";
+            _ = Dispatcher.UIThread.InvokeAsync(() =>
+            {
+                ProgressText.Text = "Select a model first";
+            });
             return;
         }
 
@@ -264,10 +273,13 @@ public partial class ImageGenerationTab : UserControl
         var prompt = PromptTextBox.Text ?? "";
         var negativePrompt = NegativePromptTextBox.Text ?? "";
 
-        Progress.Value = 0;
-        ProgressText.Text = "Generating...";
-        GenerateButton2.IsEnabled = false;
-        PauseButton.IsEnabled = true;
+        _ = Dispatcher.UIThread.InvokeAsync(() =>
+        {
+            Progress.Value = 0;
+            ProgressText.Text = "Generating...";
+            GenerateButton2.IsEnabled = false;
+            PauseButton.IsEnabled = true;
+        });
 
         var result = await _coordinator.ExecuteAsync(new ImageGenerationCommand(
             PipelineType: _selectedModelId,
@@ -286,7 +298,7 @@ public partial class ImageGenerationTab : UserControl
             OutputFormat: "png",
             OutputPath: OutputPathTextBox.Text), CancellationToken.None);
 
-        Dispatcher.UIThread.InvokeAsync(() =>
+        _ = Dispatcher.UIThread.InvokeAsync(() =>
         {
             _lastResult = result;
             Progress.Value = 100;
@@ -352,14 +364,20 @@ public partial class ImageGenerationTab : UserControl
     private void OnStop(object? sender, RoutedEventArgs e)
     {
         _generationCts?.Cancel();
-        ProgressText.Text = "Stopped";
+        _ = Dispatcher.UIThread.InvokeAsync(() =>
+        {
+            ProgressText.Text = "Stopped";
+        });
     }
 
     private async void OnSaveImage(object? sender, RoutedEventArgs e)
     {
         if (_lastResult?.ImageBytes == null || _imageSaver == null)
         {
-            ProgressText.Text = "No image to save";
+            _ = Dispatcher.UIThread.InvokeAsync(() =>
+            {
+                ProgressText.Text = "No image to save";
+            });
             return;
         }
 
@@ -377,7 +395,7 @@ public partial class ImageGenerationTab : UserControl
         var path = OutputPathTextBox.Text ?? "~/Pictures/OpenLMStudio";
         await _imageSaver.SaveToDiskAsync(_lastResult!.ImageBytes, path, format);
 
-        Dispatcher.UIThread.InvokeAsync(() =>
+        _ = Dispatcher.UIThread.InvokeAsync(() =>
         {
             ProgressText.Text = $"Saved as {format}";
         });
