@@ -53,23 +53,21 @@
 ## src/Desktop/MainWindow.axaml - ~970 lines - MainWindow
    - Full application shell: 3-column layout (280px left sidebar, 4* center pane, 320px right sidebar). Dark theme with 30+ embedded styles. Features: ChatTitleEdit with IsVisible binding, AgentTurnsBadge with positive margin (4,-4), PinguCornerPanel responsive dimensions (MinWidth/MinHeight/MaxWidth/MaxHeight), AgentModeToggle :pressed state, Safety toggles (WWW/Read/Edit/Exec) with :checked styles, Plan/Act toggle buttons with :pointerover, vscodeTab :pointerover state, settingsSubTab :pointerover state, ChatTitleDisplay :pointerover style, pluginBtn :pressed styles, BorderDefault resource for consistent borders.
 ## src/Desktop/MainWindow.axaml.cs - 1610 lines - MainWindow code-behind
-  - Core window logic: DI constructor, tab management, chat title editing, message sending, Pingu avatar panel, AgentMode toggle, Safety toggles.
+   - Core window logic: DI constructor, tab management, chat title editing, message sending, Pingu avatar panel, AgentMode toggle, Safety toggles. ImageGen wire-up methods (RandomSeedButton, ImageGenGenerateBtn, ImageGenModelSelector) now handled by ImageGenerationTab control.
 ## src/Desktop/MainWindow.ChatMessages.cs - 645 lines - MainWindow.ChatMessages
-  - Chat list management, message loading, message rendering, tool call display, context controls.
+   - Chat list management, message loading, message rendering, tool call display, context controls.
 ## src/Desktop/MainWindow.Context.cs - 250 lines - MainWindow.Context
-  - Context budget management, context injection, context segment management, context compression, context segments panel.
+   - Context budget management, context injection, context segment management, context compression, context segments panel.
 ## src/Desktop/MainWindow.Helpers.cs - 770 lines - MainWindow.Helpers
-  - Message sending, server controls, model list, device status, DI resolution, window state, keyboard shortcuts, dialogs.
-## src/Desktop/MainWindow.ImageGeneration.cs - 290 lines - MainWindow.ImageGeneration
-   - Image generation: GenerateImageAsync, ImageGenModelSelector, resolution management, random seed.
+   - Message sending, server controls, model list, device status, DI resolution, window state, keyboard shortcuts, dialogs.
 ## src/Desktop/Controls/ImageGenerationTab.axaml - 196 lines - Image Generation Tab (Avalonia 12)
    - Full image generation UI: pipeline selector (SD1.5/SDXL/SD3/Flux), mode tabs (Generate/Image→Image/Inpaint/Variation), prompt/negative prompt, parameters (width/height/steps/CFG/seed/sampler), LoRA adapters, output format selection, progress bar, preview, recent images gallery.
 ## src/Desktop/Controls/ImageGenerationTab.axaml.cs - 230 lines - ImageGenerationTab code-behind
    - LoraViewModel class, ImageGenerationTab with pipeline switching, generate flow via IImageGenerationCoordinator, denoise slider, LoRA add/remove/clear, resolution presets, result display with gallery save.
 ## src/Desktop/MainWindow.Streaming.cs - 328 lines - MainWindow.Streaming
-  - Streaming responses: GetAssistantResponseAsync, StreamResponseViaServerAsync (SSE), StreamResponseViaLocalServiceAsync.
+   - Streaming responses: GetAssistantResponseAsync, StreamResponseViaServerAsync (SSE), StreamResponseViaLocalServiceAsync.
 ## src/Desktop/MainWindow.TabManager.cs - 200 lines - MainWindow.TabManager
-  - Tab navigation: ShowTab, SwitchToTab, UpdateActiveTab, pointer press handlers for all tabs.
+   - Tab navigation: ShowTab, SwitchToTab, UpdateActiveTab, pointer press handlers for all tabs. ImageGen tab handled separately (Control, not StackPanel).
 ## src/Desktop/OpenLMStudio.Desktop.csproj - 114 lines - OpenLMStudio.Desktop project file
   - SDK: Microsoft.NET.Sdk. WinExe, net8.0, nullable/implicit usings. Multi-platform with Avalonia 12.0.3.
 ## src/Desktop/PanelService.cs - 93 lines - PanelService
