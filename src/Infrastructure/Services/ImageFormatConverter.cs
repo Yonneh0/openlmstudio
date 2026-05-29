@@ -42,11 +42,8 @@ public class ImageFormatConverter : IImageFormatConverter
             return frames[0];
 
         // Use SkiaSharp's built-in GIF encoding via SKCodec.
-        var codecs = frames.Select(f => SKCodec.Create(new MemoryStream(f))).Where(c => c != null).ToArray();
         using var result = SKImage.FromEncodedData(frames[0])!;
         var encoded = result.Encode(SKEncodedImageFormat.Gif, 100);
-        foreach (var codec in codecs)
-            codec?.Dispose();
         return encoded!.ToArray();
     }
 
@@ -74,17 +71,21 @@ public class ImageFormatConverter : IImageFormatConverter
         writer.Write((short)1);       // Type: ICO
         writer.Write((short)frames.Count); // Number of images
 
+        var offset = 22;
         foreach (var frame in frames)
         {
-            var width = frame.Length > 16 ? (byte)Math.Min((int)(frame[12] | (frame[13] << 8)), 255) : 0;
-            var height = frame.Length > 18 ? (byte)Math.Min((int)(frame[14] | (frame[15] << 8)), 255) : 0;
+            using var frameImg = SKImage.FromEncodedData(frame)!;
+            var frameBitmap = frameImg.Encode(SKEncodedImageFormat.Png, 100)!;
+            var width = (byte)(frameBitmap.Length > 16 ? Math.Min((int)(frameBitmap[12] | (frameBitmap[13] << 8)), 255) : 256);
+            var height = (byte)(frameBitmap.Length > 18 ? Math.Min((int)(frameBitmap[14] | (frameBitmap[15] << 8)), 255) : 256);
             writer.Write((byte)(width == 0 ? 256 : width));
             writer.Write((byte)(height == 0 ? 256 : height));
             writer.Write((byte)0);      // Reserved
             writer.Write((byte)0);      // Color planes
             writer.Write((short)32);    // Bits per pixel
             writer.Write((int)frame.Length); // Image data size
-            writer.Write((int)(stream.Length + 4 * ((IList<byte[]>)frames).IndexOf(frame)));
+            writer.Write((int)offset);  // Offset
+            offset += frame.Length;
         }
 
         foreach (var frame in frames)

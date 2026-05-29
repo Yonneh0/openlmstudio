@@ -3,35 +3,27 @@ using OpenLMStudio.Application.Types;
 namespace OpenLMStudio.Application.Interfaces;
 
 /// <summary>
-/// Interface for saving generated images to disk with metadata and gallery support.
+/// Service for saving generated images to disk with metadata.
 /// </summary>
 public interface IImageSaver : IDisposable
 {
-    /// <summary>Default output directory: ~/Pictures/OpenLMStudio/</summary>
-    string DefaultOutputDirectory { get; }
-
     /// <summary>
-    /// Saves an image to disk with a timestamped filename.
+    /// Saves image bytes to disk as the specified format.
     /// </summary>
-    Task<string> SaveToDiskAsync(byte[] imageBytes, string? outputPath = null, ImageOutputFormat format = ImageOutputFormat.Png, CancellationToken ct = default);
+    Task<string> SaveToDiskAsync(byte[] imageBytes, string filePath, ImageOutputFormat format);
 
     /// <summary>
-    /// Saves an image alongside a JSON sidecar with generation parameters.
+    /// Saves image with a JSON sidecar containing generation metadata.
     /// </summary>
-    Task<string> SaveWithMetadataAsync(byte[] imageBytes, ImageGenerationMetadata metadata, string? outputPath = null, ImageOutputFormat format = ImageOutputFormat.Png, CancellationToken ct = default);
+    Task SaveWithMetadataAsync(byte[] imageBytes, string filePath, ImageOutputFormat format, ImageGenerationMetadata metadata);
 
     /// <summary>
-    /// Saves an image to the gallery directory with thumbnail generation.
-    /// </summary>
-    Task<ImageGalleryEntry> SaveToGalleryAsync(byte[] imageBytes, ImageGenerationMetadata metadata, CancellationToken ct = default);
-
-    /// <summary>
-    /// Generates a timestamped filename: IMG_20260528_143022.png
+    /// Generates a timestamped filename like IMG_20260529_020741.png.
     /// </summary>
     string GenerateTimestampedFilename(string extension = "png");
 
     /// <summary>
-    /// Gets the gallery directory path.
+    /// Generates a thumbnail (128x128) from the image bytes.
     /// </summary>
-    Task<string> GetGalleryDirectoryAsync();
+    Task<byte[]> GenerateThumbnailAsync(byte[] imageBytes, int size = 128);
 }

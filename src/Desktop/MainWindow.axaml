@@ -1133,7 +1133,7 @@
                 </Border>
             </Grid>
             <!-- PinguCanvas positioned in the bottom-right of the center pane -->
-            <Canvas x:Name="PinguCornerPanel" Grid.Column="1" Grid.Row="1" IsVisible="True" Panel.ZIndex="100" Background="#1A1A1E" MinWidth="200" MinHeight="200" MaxWidth="500" MaxHeight="500"/>
+            <Canvas x:Name="PinguCornerPanel" Grid.Column="1" Grid.Row="1" IsVisible="False" Panel.ZIndex="100" Background="#1A1A1E" MinWidth="200" MinHeight="200" MaxWidth="500" MaxHeight="500"/>
         </Grid>
 
 
@@ -1301,10 +1301,21 @@
             </Border>
         </Popup>
 
-        <!-- Image Generation tab content — uses ImageGenerationTab control (overlay) -->
-        <Canvas x:Name="ImageGenerationCanvas" Panel.ZIndex="10">
-            <Controls:ImageGenerationTab x:Name="ImageGenerationTab" IsVisible="False" Canvas.Left="0" Canvas.Top="0"/>
-        </Canvas>
+        <!-- Image Generation tab content — uses ImageGenerationTab control (overlay in center pane) -->
+        <ContentControl x:Name="ImageGenerationOverlay"
+                        Grid.Row="1"
+                        Grid.Column="1"
+                        Grid.RowSpan="2"
+                        ZIndex="10"
+                        IsVisible="False"
+                        HorizontalContentAlignment="Stretch"
+                        VerticalContentAlignment="Stretch">
+            <Border Background="#1A1A1E"
+                    CornerRadius="8"
+                    Padding="0">
+                <Controls:ImageGenerationTab x:Name="ImageGenerationTab"/>
+            </Border>
+        </ContentControl>
         </Grid>
     </ContentControl>
 </Window>

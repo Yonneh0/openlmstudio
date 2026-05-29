@@ -1479,8 +1479,8 @@ public class DiffusionPipelineService : IDiffusionPipelineService, IDisposable
     {
         var saver = new ImageSaver();
         if (outputPath != null)
-            return await saver.SaveToDiskAsync(imageBytes, outputPath, format, ct);
-        return await saver.SaveWithMetadataAsync(imageBytes, metadata, format: format, ct: ct);
+            return await saver.SaveToDiskAsync(imageBytes, outputPath, format);
+        return await saver.SaveWithMetadataAsync(imageBytes, metadata, format: format);
     }
 
     /// <summary>

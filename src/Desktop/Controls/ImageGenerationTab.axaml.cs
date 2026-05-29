@@ -28,32 +28,39 @@ public class LoraViewModel
 
 /// <summary>
 /// Image generation tab — UI for text-to-image, image-to-image, inpainting, and variation.
+/// Designed for the narrow left sidebar (max ~280px).
 /// </summary>
 public partial class ImageGenerationTab : UserControl
 {
     private readonly IImageGenerationCoordinator? _coordinator;
     private readonly IImageSaver? _saver;
+    private readonly IImageFormatConverter? _formatConverter;
     private CancellationTokenSource? _generationCts;
     private string _currentPipeline = "sd15";
     private bool _isGenerating;
     private readonly List<LoraViewModel> _loraViewModels = new();
+    private byte[]? _inputImageBytes;
+    private ImageGalleryEntry? _lastResult;
+    private readonly List<ImageGalleryEntry> _recentImages = new();
 
-    public ImageGenerationTab() : this(null, null)
+    public ImageGenerationTab() : this(null, null, null)
     {
     }
 
-    public ImageGenerationTab(IImageGenerationCoordinator? coordinator, IImageSaver? saver)
+    public ImageGenerationTab(IImageGenerationCoordinator? coordinator, IImageSaver? saver, IImageFormatConverter? formatConverter)
     {
         InitializeComponent();
         _coordinator = coordinator;
         _saver = saver;
+        _formatConverter = formatConverter;
         Loaded += OnLoaded;
     }
 
     private void OnLoaded(object? sender, RoutedEventArgs e)
     {
-        // Initialize LoRA list
         LoraList.ItemsSource = _loraViewModels;
+        // Default to SD1.5
+        OnPipelineSelected(this, new RoutedEventArgs());
     }
 
     private void OnPipelineSelected(object? sender, RoutedEventArgs e)
@@ -63,16 +70,19 @@ public partial class ImageGenerationTab : UserControl
             _currentPipeline = button.Content?.ToString()?.ToLowerInvariant() switch
             {
                 "sdxl" => "sdxl",
-                "sd 3" or "sd3" => "sd3",
+                "sd3" or "sd 3" => "sd3",
                 "flux" => "flux",
                 _ => "sd15",
             };
 
             // Update button styles
             foreach (var btn in new[] { Sd15Button, SdxlButton, Sd3Button, FluxButton })
-                btn.Background = btn == button ?
+            {
+                var isActive = btn == button;
+                btn.Background = isActive ?
                     (SolidColorBrush)this.FindResource("AccentBlue")! :
                     (SolidColorBrush)this.FindResource("BgTertiary")!;
+            }
         }
     }
 
@@ -82,16 +92,18 @@ public partial class ImageGenerationTab : UserControl
         _isGenerating = true;
         GenerateButton.IsEnabled = false;
         GenerateButton2.IsEnabled = false;
+        Progress.Value = 0;
+        ProgressText.Text = "0%";
 
         var request = new ImageGenerationCommand(
             PipelineType: _currentPipeline,
             Prompt: PromptTextBox.Text ?? "",
             NegativePrompt: NegativePromptTextBox.Text,
-            Width: int.TryParse(WidthTextBox.Text, out var w) ? w : 1024,
-            Height: int.TryParse(HeightTextBox.Text, out var h) ? h : 1024,
-            Steps: int.TryParse(StepsTextBox.Text, out var s) ? s : 30,
-            CfgScale: double.TryParse(CfgTextBox.Text, out var c) ? c : 7.5,
-            Seed: int.TryParse(SeedTextBox.Text, out var seed) ? seed : -1,
+            Width: ParseInt(WidthTextBox.Text, 1024),
+            Height: ParseInt(HeightTextBox.Text, 1024),
+            Steps: ParseInt(StepsTextBox.Text, 30),
+            CfgScale: ParseDouble(CfgTextBox.Text, 7.5),
+            Seed: ParseLong(SeedTextBox.Text, -1),
             SamplerType: SamplerComboBox.SelectedIndex switch
             {
                 1 => "EulerA",
@@ -100,29 +112,47 @@ public partial class ImageGenerationTab : UserControl
                 _ => "Euler",
             },
             LoRAAdapters: _loraViewModels.Select(l => new LoraAdapterCommand(l.ModelId, l.Weight)).ToList(),
-            ImageToImage: null,
+            ImageToImage: _inputImageBytes != null ? new ImageToImageCommand(_inputImageBytes, DenoiseSlider.Value) : null,
             ControlNet: null,
             Inpaint: null,
             OutputFormat: GetSelectedFormat(),
-            OutputPath: OutputPathTextBox.Text);
+            OutputPath: ExpandPath(OutputPathTextBox.Text));
 
         if (_coordinator != null)
         {
             _generationCts = new CancellationTokenSource();
             try
             {
+                // Stream progress for real-time updates
+                await foreach (var progress in _coordinator.ExecuteStreamingAsync(request, _generationCts.Token))
+                {
+                    await Dispatcher.UIThread.InvokeAsync(() =>
+                    {
+                        Progress.Value = progress.Percentage;
+                        ProgressText.Text = $"{progress.Percentage:F0}%";
+                    });
+                }
+
+                // Get final result
                 var result = await _coordinator.ExecuteAsync(request, _generationCts.Token);
-                ShowResult(result);
+                await Dispatcher.UIThread.InvokeAsync(() => ShowResult(result));
             }
             catch (OperationCanceledException)
             {
-                // Generation cancelled
+                await Dispatcher.UIThread.InvokeAsync(() => ProgressText.Text = "Cancelled");
+            }
+            catch (Exception ex)
+            {
+                await Dispatcher.UIThread.InvokeAsync(() => ProgressText.Text = $"Error: {ex.Message}");
             }
             finally
             {
-                _isGenerating = false;
-                GenerateButton.IsEnabled = true;
-                GenerateButton2.IsEnabled = true;
+                await Dispatcher.UIThread.InvokeAsync(() =>
+                {
+                    _isGenerating = false;
+                    GenerateButton.IsEnabled = true;
+                    GenerateButton2.IsEnabled = true;
+                });
             }
         }
     }
@@ -132,14 +162,62 @@ public partial class ImageGenerationTab : UserControl
         ImageInputBorder.IsVisible = true;
     }
 
-    private void OnInpaint(object? sender, RoutedEventArgs e)
+    private async void OnInpaint(object? sender, RoutedEventArgs e)
     {
-        // TODO: Load mask image
+        await OnLoadImageInternal();
+        await Dispatcher.UIThread.InvokeAsync(() =>
+        {
+            ImageInputBorder.IsVisible = true;
+            // TODO: Load mask image and set up inpainting mode
+        });
     }
 
     private void OnVariation(object? sender, RoutedEventArgs e)
     {
-        // TODO: Image variation
+        // Use the current preview image as input
+        if (_inputImageBytes != null)
+        {
+            ImageInputBorder.IsVisible = true;
+            // Variation uses full denoise (1.0) by default
+            DenoiseSlider.Value = 1.0;
+            DenoiseValue.Text = "1.00";
+        }
+        else
+        {
+            OnImage2Image(sender, e);
+        }
+    }
+
+    private async void OnLoadImage(object? sender, RoutedEventArgs e)
+    {
+        await OnLoadImageInternal();
+    }
+
+    private async Task OnLoadImageInternal()
+    {
+        var topLevel = TopLevel.GetTopLevel(this);
+        if (topLevel?.StorageContext == null) return;
+
+        var files = await topLevel.StorageContext.OpenFilePickerAsync(new FilePickerOpenOptions
+        {
+            Title = "Load Image",
+            AllowMultiple = false,
+            FileTypeFilter = new[]
+            {
+                new FilePickerFileType("Images") { Patterns = new[] { "*.png", "*.jpg", "*.jpeg", "*.webp", "*.bmp" } },
+            }
+        });
+
+        if (files.Any())
+        {
+            _inputImageBytes = await File.ReadAllBytesAsync(files[0].Path.FullPath);
+            await Dispatcher.UIThread.InvokeAsync(async () =>
+            {
+                using var stream = new MemoryStream(_inputImageBytes);
+                var bitmap = new Bitmap(stream);
+                ImagePreview.Source = bitmap;
+            });
+        }
     }
 
     private void OnDenoiseChanged(object? sender, RangeBaseValueChangedEventArgs e)
@@ -150,15 +228,11 @@ public partial class ImageGenerationTab : UserControl
     private void OnAddLora(object? sender, RoutedEventArgs e)
     {
         _loraViewModels.Add(new LoraViewModel { Name = "New LoRA", Weight = 1.0, ModelId = "lora_new" });
-        LoraList.ItemsSource = null;
-        LoraList.ItemsSource = _loraViewModels;
     }
 
     private void OnClearLora(object? sender, RoutedEventArgs e)
     {
         _loraViewModels.Clear();
-        LoraList.ItemsSource = null;
-        LoraList.ItemsSource = _loraViewModels;
     }
 
     private void OnRemoveLora(object? sender, RoutedEventArgs e)
@@ -166,23 +240,43 @@ public partial class ImageGenerationTab : UserControl
         if (sender is Button btn && btn.DataContext is LoraViewModel lora)
         {
             _loraViewModels.Remove(lora);
-            LoraList.ItemsSource = null;
-            LoraList.ItemsSource = _loraViewModels;
         }
     }
 
     private void OnPresetSelected(object? sender, RoutedEventArgs e)
     {
-        if (sender is Button btn && int.TryParse(btn.Content?.ToString()?.Replace("²", ""), out var preset))
+        if (sender is Button btn)
         {
-            WidthTextBox.Text = preset.ToString();
-            HeightTextBox.Text = preset.ToString();
+            var content = btn.Content?.ToString() ?? "";
+            // Parse number from content like "512" or "1024"
+            var numStr = new string(content.Where(c => char.IsDigit(c)).ToArray());
+            if (int.TryParse(numStr, out var preset) && preset > 0)
+            {
+                WidthTextBox.Text = preset.ToString();
+                HeightTextBox.Text = preset.ToString();
+            }
         }
     }
 
     private async void OnBrowseOutput(object? sender, RoutedEventArgs e)
     {
-        // TODO: Show folder picker
+        var topLevel = TopLevel.GetTopLevel(this);
+        if (topLevel?.StorageContext == null) return;
+
+        var folder = await topLevel.StorageContext.OpenFolderPickerAsync(new FolderPickerOpenOptions
+        {
+            Title = "Select Output Folder"
+        });
+
+        if (folder.Any())
+        {
+            OutputPathTextBox.Text = folder[0].Path.FullPath;
+        }
+    }
+
+    private void OnStop(object? sender, RoutedEventArgs e)
+    {
+        _generationCts?.Cancel();
     }
 
     private void ShowResult(ImageGenerationResult result)
@@ -198,32 +292,61 @@ public partial class ImageGenerationTab : UserControl
         // Save to gallery
         if (_saver != null)
         {
-        var entry = new ImageGalleryEntry(
-            Id: Guid.NewGuid().ToString(),
-            Prompt: result.Prompt,
-            ModelId: result.ModelId,
-            Width: result.Width,
-            Height: result.Height,
-            Seed: result.Seed,
-            CfgScale: result.GuidanceScale,
-            Steps: result.Steps,
-            SamplerType: "Euler",
-            FilePath: result.DataUri,
-            ThumbnailPath: "",
-            Timestamp: DateTime.UtcNow,
-            NegativePrompt: result.NegativePrompt,
-            LoRAAdapters: result.LoraAdapters?.Select(l => l.ModelId).ToList());
-        _saver.SaveToGalleryAsync(imageBytes: result.ImageBytes, metadata: new ImageGenerationMetadata(
-            Prompt: result.Prompt,
-            NegativePrompt: result.NegativePrompt,
-            ModelId: result.ModelId,
-            Width: result.Width,
-            Height: result.Height,
-            Seed: result.Seed,
-            CfgScale: result.GuidanceScale,
-            Steps: result.Steps,
-            SamplerType: "Euler"), ct: default);
+            var outputPath = Path.Combine(
+                ExpandPath(OutputPathTextBox.Text),
+                _saver.GenerateTimestampedFilename());
+
+            var format = GetSelectedFormat();
+            var converted = _formatConverter != null
+                ? _formatConverter.ConvertAsync(result.ImageBytes, GetOutputFormat(format)).Result
+                : result.ImageBytes;
+
+            _saver.SaveToDiskAsync(converted, outputPath, GetOutputFormat(format)).Wait();
+
+            _lastResult = new ImageGalleryEntry(
+                Id: Guid.NewGuid().ToString(),
+                Prompt: result.Prompt,
+                ModelId: result.ModelId,
+                Width: result.Width,
+                Height: result.Height,
+                Seed: result.Seed,
+                CfgScale: result.GuidanceScale,
+                Steps: result.Steps,
+                SamplerType: result.SamplerType,
+                FilePath: outputPath,
+                ThumbnailPath: outputPath,
+                Timestamp: DateTime.UtcNow,
+                NegativePrompt: result.NegativePrompt,
+                LoRAAdapters: result.LoraAdapters?.Select(l => l.ModelId).ToList());
+
+            // Add to recent images
+            _recentImages.Insert(0, _lastResult);
+            if (_recentImages.Count > 20)
+                _recentImages.RemoveAt(_recentImages.Count - 1);
+
+            // Update recent images
+            UpdateRecentImages();
         }
+    }
+
+    private void UpdateRecentImages()
+    {
+        RecentImages.ItemsSource = _recentImages;
+    }
+
+    private static int ParseInt(string? value, int defaultValue)
+    {
+        return int.TryParse(value, out var result) ? result : defaultValue;
+    }
+
+    private static long ParseLong(string? value, long defaultValue)
+    {
+        return long.TryParse(value, out var result) ? result : defaultValue;
+    }
+
+    private static double ParseDouble(string? value, double defaultValue)
+    {
+        return double.TryParse(value, out var result) ? result : defaultValue;
     }
 
     private string GetSelectedFormat()
@@ -237,5 +360,26 @@ public partial class ImageGenerationTab : UserControl
             5 => "gif",
             _ => "png",
         };
+    }
+
+    private static ImageOutputFormat GetOutputFormat(string format)
+        => format.ToLowerInvariant() switch
+        {
+            "jpeg" or "jpg" => ImageOutputFormat.Jpeg,
+            "webp" => ImageOutputFormat.WebP,
+            "ico" => ImageOutputFormat.Ico,
+            "bmp" => ImageOutputFormat.Bmp,
+            "gif" => ImageOutputFormat.Gif,
+            _ => ImageOutputFormat.Png,
+        };
+
+    private static string ExpandPath(string path)
+    {
+        if (path.StartsWith("~/", StringComparison.Ordinal))
+        {
+            var home = Environment.GetFolderPath(Environment.SpecialFolder.UserProfile);
+            return Path.Combine(home, path.Substring(2));
+        }
+        return path;
     }
 }

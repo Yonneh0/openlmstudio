@@ -1,10 +1,105 @@
+
+
+
 # OpenLMStudio
 
 A cross-platform desktop application for running and managing local AI models, built with .NET 8 and Avalonia UI. Provides an OpenAI/Anthropic-compatible inference server alongside a chat client with context management, multi-model support, and an agentic task harness.
 
 ## Overview
 
-OpenLMStudio brings LM Studio's local LLM interface and server capabilities to the .NET ecosystem, with extended support for multi-modal models beyond text generation — including image generation, diffusion models, VAE, LoRA adapters, and embeddings.
+OpenLMStudio is a cross-platform desktop application (.NET 8, Avalonia 12) that combines a local AI inference server with an integrated agentic workspace. At its core is "Pingu," a reactive system-AI avatar (~2600 lines of animation, IK, physics, and behavior logic) that orchestrates task execution through a plan/act cycle with 26+ tools spanning file operations, git, command execution, browser automation, and MCP protocol. The app manages two model ecosystems: text generation via llama.cpp GGUF models and image generation via an ONNX Runtime diffusion pipeline (SD1.5/SDXL/SD3/Flux), both backed by HuggingFace downloads, LoRA adapter support, and VRAM-aware memory management. Context is handled through a SQLite-backed conversation manager with three compression strategies, token budgeting with auto-eviction, and segment pinning/suppression. The UI presents a 3-column dark-themed layout with a Pingu avatar panel, image generation tab, and plugin management, while the embedded Kestrel server exposes OpenAI-compatible chat and image endpoints with SSE streaming, API key auth, and rate limiting. Cross-architecture compilation is supported via QEMU VMs with QMP protocol, and the entire system is extensible through a sandboxed plugin registry with SHA256 manifest validation.
+
+**Detailed Feature List**
+
+**Agent & Tooling**
+- Pingu system-AI avatar with real-time animation, IK solver, physics, and behavior triggers (Twitch, HeadTurn, Scratch, EarFlick, Blink, Sitting)
+- Plan/Act execution cycle with loop detection (50%+ same action), consecutive failure threshold (3), and auto-commit for Write/Patch tools
+- 26+ agent tools: FileRead, FileWrite, FilePatch, SearchFiles, ProjectExplorer, CommandExecute, GitDiff, GitHistory, GitBlame, GitBranches, CodeDefinitionExtractor, BrowserAction, UseSkill, UseSubagents, NewTask, PatchService, and more
+- Agent task lifecycle with SQLite-backed priority scheduling, context inheritance (parent→child), context pruning (Archive/Compress/Discard), and fast reinjection (<100ms)
+- AI-powered task completion detection via Pingu
+- Activity tracing with per-task timing and resource consumption (ConcurrentDictionary)
+- Agent session persistence to disk with checkpoint management
+
+**Model Management**
+- GGUF model support (llama.cpp) with GGUF parser (v1-v3, 51 tag types, 27 quantization patterns)
+- Safetensors model support with SHA256/MD5 hashing
+- HuggingFace Hub integration for model downloads
+- Diffusion pipeline (ONNX Runtime): SD1.5, SDXL, SD3, Flux.1-dev, Flux.2, Flux.1-schnell
+- Text encoding (CLIP/T5), UNet/DiT denoising, VAE encoding/decoding
+- LoRA adapter management with weight merging (W_base + alpha/rank * delta_W)
+- Dual model system: MainAI (text) + SystemAI (Pingu) with concurrent loading
+- VRAM and CPU memory tracking with eviction scoring
+- Model loading fallback chain (GPU→CPU→degraded parameters)
+- OOM recovery with progressive degradation
+- Model cache cleanup (KeepAll/RemoveByLastUsed/EvictBySize/Aggressive)
+- Self-signed HTTPS certificate generation (OpenSSL/dotnet dev-certs)
+
+**Context & Conversation**
+- SQLite-backed chat context manager with 4 tables: ChatMessages, PinSegmentStates, SuppressSegmentStates, CustomInjections
+- Three compression strategies: Light (key phrase extraction), Medium (summary generation), Aggressive (outline-level)
+- Context relevance scoring: 30% recency, 40% semantic, 30% entity match
+- Token budget management with auto-eviction of lowest-relevance segments
+- Context manipulation: Pin, Unpin, SuppressToggle, RemoveFromContext, AddCustomContext
+- AES-256-GCM conversation encryption with PBKDF2 key derivation (100K iterations)
+- Context compression using System AI (1B CPU model)
+- Chat search, export, and encryption
+
+**Task Management**
+- SQLite task repository with priority scheduling (Tasks/ToolCalls/Branches tables)
+- Task validation using Pingu with word-boundary-aware PASS detection
+- Task context snapshots with file-based + ConcurrentDictionary storage
+- Branch task caching with abandon/pause/resume
+- AI-powered context reinjection from compressed snapshots
+- Task hooks: TaskComplete, UserPromptSubmit, ToolCall, StateChange
+- Auto-approval of agent tools/commands with 21+ tool mappings
+
+**Desktop UI (Avalonia 12)**
+- 3-column layout: 280px left sidebar, 4* center pane, 320px right sidebar
+- Dark theme with 30+ embedded styles
+- Pingu avatar panel with 6 tabs: Skills, Settings, Models, Compile, Logs, About
+- Image generation tab with pipeline selector, mode tabs (Generate/Image→Image/Inpaint/Variation), LoRA, progress bar, preview, gallery
+- Chat title editing, agent mode toggle, safety toggles (WWW/Read/Edit/Exec)
+- Plugin management window (900x700) with search, cards, policy controls
+- Window state persistence (JSON)
+- Keyboard navigation and shortcuts (11 default shortcuts)
+- Accessibility: high-contrast mode, screen reader support, font size, keyboard navigation
+- Markdown rendering with syntax highlighting (Markdig)
+- Git log popup with 3-column table (hash/author/message)
+- Tool call form with dynamic parameter generation
+
+**Infrastructure & Services**
+- Kestrel server with OpenAI-compatible endpoints (chat completions, image generation)
+- SSE streaming with event buffering and reconnection replay
+- API key authentication (X-Api-Key header or query parameter)
+- Rate limiting middleware (sliding window, 60 req/min default, 429 responses)
+- Cross-platform process sandboxing (cgroups v2 on Linux/macOS, Job Objects on Windows)
+- QEMU VM process manager with QMP protocol for cross-architecture workflows (14 architectures: X86_64, AArch64, RISC_V64, AVR, MIPS, etc.)
+- Hardware detection (GPU via WMIC/SKInfo, RAM, platform detection)
+- Recommended backend selection (darwin→Metal, NVIDIA→CUDA)
+- Web search and content fetching with domain filtering
+- Browser service (Puppeteer) with 6 actions: launch, click, type, scroll_down, scroll_up, close
+- Real-time log viewer with filtering, searching, colorization
+- Performance benchmarking (model load, chat completion, image generation)
+- Application update checker (GitHub Releases API, 1-hour cache)
+
+**Plugin System**
+- Plugin registry with remote registry URL support
+- Plugin discovery, installation, uninstallation, enable/disable
+- Sandbox policies per plugin
+- Security validation: SHA256 hash verification, manifest integrity, plugin archive verification
+- Plugin provenance checking
+
+**Developer/Utility**
+- Git repository service (CLI): branches, tags, commits, diff, blame
+- Image post-processing: upscaling, HiRes.fix, ControlNet (Canny/Depth/OpenPose), IP-Adapter face embeddings
+- Image format conversion (PNG/JPEG/WebP/ICO/BMP/GIF) with SkiaSharp
+- Image gallery with SQLite persistence and auto-generated 128x128 thumbnails
+- System prompt generation: dynamic agent prompts, Pingu system prompts (TaskOrchestrator, UIControl, ModelManagement, GamePlay, Wandering, UserAssistant)
+- Engine configuration persistence (llama.cpp server settings)
+- Structured logging with disk rotation
+- OpenTelemetry activity source
+- Onboarding service with 8-step first-run flow
+
 
 ### Key Features
 

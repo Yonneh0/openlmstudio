@@ -2,6 +2,7 @@ using System.Runtime.CompilerServices;
 using OpenLMStudio.Application.Interfaces;
 using OpenLMStudio.Application.Types;
 using ImageOutputFormat = OpenLMStudio.Application.Types.ImageOutputFormat;
+using ImageGenCommand = OpenLMStudio.Application.Interfaces.ImageGenerationCommand;
 using OpenLMStudio.Infrastructure.Services;
 
 namespace OpenLMStudio.Infrastructure.Services;
