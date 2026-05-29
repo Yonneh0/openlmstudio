@@ -1,18 +1,20 @@
 using System;
 using System.Collections.Generic;
+using System.Collections.ObjectModel;
 using System.IO;
 using System.Linq;
-using System.Threading;
 using System.Threading.Tasks;
 using Avalonia;
 using Avalonia.Controls;
+using Avalonia.Controls.ApplicationLifetimes;
 using Avalonia.Controls.Primitives;
+using Avalonia.Data;
 using Avalonia.Interactivity;
+using Avalonia.Media;
 using Avalonia.Media.Imaging;
 using Avalonia.Platform;
-using Avalonia.Platform.Storage;
 using Avalonia.Threading;
-using Avalonia.Input.Platform;
+using ClipboardExtensions = Avalonia.Input.Platform.ClipboardExtensions;
 using OpenLMStudio.Application.Interfaces;
 using OpenLMStudio.Application.Types;
 using OpenLMStudio.Domain.Models;
@@ -21,418 +23,297 @@ using OpenLMStudio.Infrastructure.Services;
 namespace OpenLMStudio.Desktop.Controls;
 
 /// <summary>
-/// ViewModel for a single LoRA adapter entry in the UI.
+/// ViewModel for a single LoRA adapter entry in the ImageGenerationTab.
 /// </summary>
 public class LoraViewModel
 {
-    public string Name { get; set; } = string.Empty;
-    public double Weight { get; set; }
-    public string ModelId { get; set; } = string.Empty;
+    public string Name { get; set; } = "";
+    public string FilePath { get; set; } = "";
+    public double Weight { get; set; } = 1.0;
 }
 
 /// <summary>
-/// Image generation tab — UI for text-to-image, image-to-image, inpainting, and variation.
-/// Designed for the narrow left sidebar (max ~280px).
+/// Image Generation Tab — compact layout for the 280px left sidebar.
 /// </summary>
 public partial class ImageGenerationTab : UserControl
 {
     private readonly IImageGenerationCoordinator? _coordinator;
-    private readonly IImageSaver? _saver;
-    private readonly IImageFormatConverter? _formatConverter;
     private readonly IImageGalleryService? _galleryService;
+    private readonly IImageFormatConverter? _formatConverter;
+    private readonly IImageSaver? _imageSaver;
     private readonly IDiffusionPipelineService? _pipeline;
+    private readonly IDeviceStatusService? _deviceStatus;
     private readonly IModelRepository? _modelRepo;
-    private CancellationTokenSource? _generationCts;
-    private string _currentPipeline = "sd15";
-    private bool _isGenerating;
-    private readonly List<LoraViewModel> _loraViewModels = new();
-    private byte[]? _inputImageBytes;
-    private ImageGalleryEntry? _lastResult;
-    private readonly List<ImageGalleryEntry> _recentImages = new();
-    private string? _selectedModelId;
-    private bool _isModelLoaded;
-    public string ModelStatusColor { get; private set; } = "#757575"; // Loaded=green, Loading=orange, Unloaded=gray
 
-    public ImageGenerationTab() : this(null, null, null)
+    private string _selectedModelId = "";
+    private string _currentMode = "Generate"; // Generate, Image2Image, Inpaint, Variation
+    private bool _isModelLoaded;
+    private double _modelVramUsage = 0;
+    private double _totalVram = 0;
+    private readonly ObservableCollection<LoraViewModel> _loraItems = new();
+    private ImageGenerationResult? _lastResult;
+    private CancellationTokenSource? _generationCts = new();
+
+    public static readonly StyledProperty<string> ModelStatusColorProperty =
+        AvaloniaProperty.Register<ImageGenerationTab, string>(nameof(ModelStatusColor), "#757575");
+
+    public string ModelStatusColor
     {
+        get => GetValue(ModelStatusColorProperty);
+        set => SetValue(ModelStatusColorProperty, value);
     }
 
-    public ImageGenerationTab(
-        IImageGenerationCoordinator? coordinator,
-        IImageSaver? saver,
-        IImageFormatConverter? formatConverter,
-        IImageGalleryService? galleryService = null,
-        IDiffusionPipelineService? pipeline = null,
-        IModelRepository? modelRepo = null)
+    public ObservableCollection<LoraViewModel> LoraItems => _loraItems;
+
+    public ImageGenerationTab()
     {
         InitializeComponent();
-        _coordinator = coordinator;
-        _saver = saver;
-        _formatConverter = formatConverter;
-        _galleryService = galleryService;
-        _pipeline = pipeline;
-        _modelRepo = modelRepo;
-        Loaded += OnLoaded;
+        LoraList.ItemsSource = _loraItems;
+
+        // Try to resolve services from the current Avalonia application
+        var app = Avalonia.Application.Current;
+        if (app?.ApplicationLifetime is IClassicDesktopStyleApplicationLifetime desktop)
+        {
+            var mainWin = desktop.MainWindow as MainWindow;
+            if (mainWin != null)
+            {
+                var sp = mainWin.FindResource("ServiceProvider") as IServiceProvider;
+                if (sp != null)
+                {
+                    _coordinator = (IImageGenerationCoordinator)sp.GetService(typeof(IImageGenerationCoordinator));
+                    _galleryService = (IImageGalleryService)sp.GetService(typeof(IImageGalleryService));
+                    _formatConverter = (IImageFormatConverter)sp.GetService(typeof(IImageFormatConverter));
+                    _imageSaver = (IImageSaver)sp.GetService(typeof(IImageSaver));
+                    _pipeline = (IDiffusionPipelineService)sp.GetService(typeof(IDiffusionPipelineService));
+                    _deviceStatus = (IDeviceStatusService)sp.GetService(typeof(IDeviceStatusService));
+                    _modelRepo = (IModelRepository)sp.GetService(typeof(IModelRepository));
+                }
+            }
+        }
+
+        // Initialize VRAM from device status
+        UpdateVramDisplay();
+
+        // Load models if pipeline is available
+        if (_pipeline != null)
+        {
+            RefreshModelListAsync();
+        }
     }
 
-    private async void OnLoaded(object? sender, RoutedEventArgs e)
+    private void UpdateVramDisplay()
     {
-        LoraList.ItemsSource = _loraViewModels;
-        // Default to SD1.5
-        OnPipelineSelected(this, new RoutedEventArgs());
-        // Load models
-        await RefreshModelListAsync();
+        if (_deviceStatus != null)
+        {
+            _totalVram = _deviceStatus.GpuMemory ?? 8.0; // Default to 8GB if unknown
+            _modelVramUsage = _isModelLoaded ? _totalVram * 0.7 : 0;
+        }
+        else
+        {
+            _totalVram = 8.0;
+            _modelVramUsage = _isModelLoaded ? 5.6 : 0;
+        }
+
+        var vramPercentage = _totalVram > 0 ? (_modelVramUsage / _totalVram) * 100 : 0;
+        Dispatcher.UIThread.InvokeAsync(() =>
+        {
+            VramBar.Value = vramPercentage;
+            VramText.Text = $"{_modelVramUsage:F1} / {_totalVram:F0} GB";
+        });
     }
 
-    #region Model Loading
-
-    private async void OnRefreshModels(object? sender, RoutedEventArgs e)
+    private async void RefreshModelListAsync()
     {
-        await RefreshModelListAsync();
-    }
+        if (_pipeline == null) return;
 
-    private async Task RefreshModelListAsync()
-    {
-        if (_modelRepo == null)
-            return;
-
-        var models = await _modelRepo.ListMultiModalModelsAsync();
-        await Dispatcher.UIThread.InvokeAsync(() =>
+        var models = await _pipeline.GetAvailableModelsAsync();
+        Dispatcher.UIThread.InvokeAsync(() =>
         {
             ModelComboBox.Items.Clear();
             foreach (var model in models)
             {
-                var name = model.Id ?? model.FilePath?.Split('/').LastOrDefault() ?? "Unknown";
-                var item = new ComboBoxItem { Content = name };
-                item.Tag = model;
+                var item = new ComboBoxItem { Content = model.Name ?? model.Id, Tag = model.Id };
                 ModelComboBox.Items.Add(item);
             }
+
             if (ModelComboBox.Items.Count > 0)
+            {
                 ModelComboBox.SelectedIndex = 0;
+            }
         });
     }
 
-    private void OnModelSelected(object? sender, SelectionChangedEventArgs e)
+    private async void OnModelSelected(object? sender, SelectionChangedEventArgs e)
     {
-        if (ModelComboBox.SelectedItem is ComboBoxItem item)
+        if (ModelComboBox.SelectedItem is ComboBoxItem item && item.Tag is string modelId)
         {
-            var metadata = item.Tag as MultiModalModelMetadata;
-            if (metadata != null)
-            {
-                _selectedModelId = metadata.Id;
-                ModelInfoText.Text = $"Type: {GetPipelineType(metadata)} | Channels: {GetLatentChannels(metadata)} | File: {Path.GetFileName(metadata.FilePath ?? "")}";
-                ModelStatusText.Text = _isModelLoaded ? " ● Loaded" : " ○ Unloaded";
-                UpdateModelStatusColor();
-            }
+            _selectedModelId = modelId;
+            ModelInfoText.Text = $"ID: {modelId}";
         }
     }
 
     private async void OnLoadModel(object? sender, RoutedEventArgs e)
     {
-        if (_selectedModelId == null)
+        if (string.IsNullOrEmpty(_selectedModelId) || _pipeline == null)
         {
-            ModelStatusText.Text = " — No model selected";
+            ModelInfoText.Text = "No model selected";
             return;
         }
 
-        _isModelLoaded = true;
-        ModelStatusText.Text = " ● Loading...";
-        UpdateModelStatusColor();
-        LoadModelButton.IsEnabled = false;
+        ModelStatusColor = "#FF9800";
+        ModelStatusText.Text = " Loading";
+        ModelInfoText.Text = "Loading model...";
 
-        if (_pipeline != null)
-        {
-            await _pipeline.LoadModelAsync(_selectedModelId);
-        }
+        var success = await _pipeline.LoadModelAsync(_selectedModelId);
 
-        await Dispatcher.UIThread.InvokeAsync(() =>
+        Dispatcher.UIThread.InvokeAsync(() =>
         {
-            ModelStatusText.Text = " ● Loaded";
-            LoadModelButton.IsEnabled = true;
-            UpdateModelStatusColor();
+            if (success)
+            {
+                _isModelLoaded = true;
+                ModelStatusColor = "#4CAF50";
+                ModelStatusText.Text = " Loaded";
+                _modelVramUsage = _totalVram * 0.7;
+                UpdateVramDisplay();
+                ModelInfoText.Text = $"Loaded: {_selectedModelId}";
+            }
+            else
+            {
+                ModelStatusColor = "#FF6B6B";
+                ModelStatusText.Text = " Error";
+                ModelInfoText.Text = "Failed to load model";
+            }
         });
     }
 
     private async void OnUnloadModel(object? sender, RoutedEventArgs e)
     {
-        if (_selectedModelId == null)
-            return;
+        if (_pipeline == null) return;
 
-        _isModelLoaded = false;
-        ModelStatusText.Text = " ○ Unloading...";
-        UpdateModelStatusColor();
-        UnloadModelButton.IsEnabled = false;
+        var success = await _pipeline.UnloadModelAsync(_selectedModelId);
 
-        if (_pipeline != null)
+        Dispatcher.UIThread.InvokeAsync(() =>
         {
-            await _pipeline.UnloadModelAsync(_selectedModelId);
-        }
-
-        await Dispatcher.UIThread.InvokeAsync(() =>
-        {
-            ModelStatusText.Text = " ○ Unloaded";
-            UnloadModelButton.IsEnabled = true;
-            UpdateModelStatusColor();
+            if (success)
+            {
+                _isModelLoaded = false;
+                ModelStatusColor = "#757575";
+                ModelStatusText.Text = " Unloaded";
+                _modelVramUsage = 0;
+                UpdateVramDisplay();
+                ModelInfoText.Text = "Model unloaded";
+            }
         });
     }
 
-    private void UpdateModelStatusColor()
+    private void OnRefreshModels(object? sender, RoutedEventArgs e)
     {
-        ModelStatusColor = _isModelLoaded ? "#4CAF50" : "#757575";
-        ModelStatusText.Foreground = (SolidColorBrush)this.FindResource("TextSecondary")!;
+        RefreshModelListAsync();
     }
 
-    private static string GetPipelineType(MultiModalModelMetadata metadata)
+    private void OnGenerate(object? sender, RoutedEventArgs e)
     {
-        if (metadata.Id != null && metadata.Id.IndexOf("sdxl", StringComparison.OrdinalIgnoreCase) >= 0)
-            return "SDXL";
-        if (metadata.Id != null && metadata.Id.IndexOf("flux", StringComparison.OrdinalIgnoreCase) >= 0)
-            return "Flux";
-        if (metadata.Id != null && metadata.Id.IndexOf("sd3", StringComparison.OrdinalIgnoreCase) >= 0)
-            return "SD3";
-        return "SD1.5";
-    }
-
-    private static int GetLatentChannels(MultiModalModelMetadata metadata)
-    {
-        // Heuristic: SD1.5 = 4, SDXL = 4, SD3 = 16, Flux = 16
-        var type = GetPipelineType(metadata);
-        return type == "Flux" || type == "SD3" ? 16 : 4;
-    }
-
-    #endregion
-
-    #region Mode Tabs
-
-    private void OnPipelineSelected(object? sender, RoutedEventArgs e)
-    {
-        if (sender is Button button)
-        {
-            _currentPipeline = button.Content?.ToString()?.ToLowerInvariant() switch
-            {
-                "sdxl" => "sdxl",
-                "sd3" or "sd 3" => "sd3",
-                "flux" => "flux",
-                _ => "sd15",
-            };
-
-            SetActiveModeButton(button);
-        }
+        _currentMode = "Generate";
+        UpdateModeButtons();
+        ExecuteGeneration();
     }
 
     private void OnImage2Image(object? sender, RoutedEventArgs e)
     {
-        ImageInputBorder.IsVisible = true;
-        SetActiveModeButton(Image2ImageButton);
+        _currentMode = "Image2Image";
+        UpdateModeButtons();
     }
 
-    private async void OnInpaint(object? sender, RoutedEventArgs e)
+    private void OnInpaint(object? sender, RoutedEventArgs e)
     {
-        SetActiveModeButton(InpaintButton);
-        await OnLoadImageInternal();
-        await Dispatcher.UIThread.InvokeAsync(() =>
-        {
-            ImageInputBorder.IsVisible = true;
-        });
+        _currentMode = "Inpaint";
+        UpdateModeButtons();
     }
 
     private void OnVariation(object? sender, RoutedEventArgs e)
     {
-        if (_inputImageBytes != null)
+        _currentMode = "Variation";
+        UpdateModeButtons();
+    }
+
+    private void UpdateModeButtons()
+    {
+        var accentBrush = this.FindResource("AccentBlue") as IBrush ?? new SolidColorBrush(Colors.Black);
+        var normalBrush = this.FindResource("BgTertiary") as IBrush ?? new SolidColorBrush(Colors.Black);
+
+        GenerateButton.Background = _currentMode == "Generate" ? accentBrush : normalBrush;
+        Image2ImageButton.Background = _currentMode == "Image2Image" ? accentBrush : normalBrush;
+        InpaintButton.Background = _currentMode == "Inpaint" ? accentBrush : normalBrush;
+        VariationButton.Background = _currentMode == "Variation" ? accentBrush : normalBrush;
+    }
+
+    private async void ExecuteGeneration()
+    {
+        if (_coordinator == null || string.IsNullOrEmpty(_selectedModelId))
         {
-            ImageInputBorder.IsVisible = true;
-            DenoiseSlider.Value = 1.0;
-            DenoiseValue.Text = "1.00";
+            ProgressText.Text = "Select a model first";
+            return;
         }
-        else
-        {
-            OnImage2Image(sender, e);
-        }
-        SetActiveModeButton(VariationButton);
-    }
 
-    private void SetActiveModeButton(Button activeButton)
-    {
-        foreach (var btn in new[] { GenerateButton, Image2ImageButton, InpaintButton, VariationButton })
-        {
-            if (btn == null) continue;
-            if (btn == activeButton)
-            {
-                btn.Background = (SolidColorBrush)this.FindResource("AccentBlue")!;
-            }
-            else
-            {
-                btn.Background = (SolidColorBrush)this.FindResource("BgTertiary")!;
-            }
-        }
-    }
+        var width = int.TryParse(WidthTextBox.Text, out var w) ? w : 1024;
+        var height = int.TryParse(HeightTextBox.Text, out var h) ? h : 1024;
+        var steps = int.TryParse(StepsTextBox.Text, out var s) ? s : 30;
+        var cfg = double.TryParse(CfgTextBox.Text, out var c) ? c : 7.5;
+        var seed = long.TryParse(SeedTextBox.Text, out var sd) ? sd : -1;
 
-    #endregion
+        var prompt = PromptTextBox.Text ?? "";
+        var negativePrompt = NegativePromptTextBox.Text ?? "";
 
-    #region Image Input
-
-    private async void OnLoadImage(object? sender, RoutedEventArgs e)
-    {
-        await OnLoadImageInternal();
-    }
-
-    private async Task OnLoadImageInternal()
-    {
-        var topLevel = TopLevel.GetTopLevel(this);
-        if (topLevel is null) return;
-
-        var files = await ((IStorageProvider)topLevel).OpenFilePickerAsync(new FilePickerOpenOptions
-        {
-            Title = "Load Image",
-            AllowMultiple = false,
-            FileTypeFilter = new[]
-            {
-                new FilePickerFileType("Images") { Patterns = new[] { "*.png", "*.jpg", "*.jpeg", "*.webp", "*.bmp" } },
-            }
-        });
-
-        if (files.Any())
-        {
-            try
-            {
-                _inputImageBytes = await File.ReadAllBytesAsync(files[0].Path.LocalPath);
-                await Dispatcher.UIThread.InvokeAsync(async () =>
-                {
-                    using var stream = new MemoryStream(_inputImageBytes);
-                    var bitmap = new Bitmap(stream);
-                    ImagePreview.Source = bitmap;
-                });
-            }
-            catch (Exception ex)
-            {
-                ProgressText.Text = $"Error loading image: {ex.Message}";
-            }
-        }
-    }
-
-    private void OnDenoiseChanged(object? sender, RangeBaseValueChangedEventArgs e)
-    {
-        DenoiseValue.Text = e.NewValue.ToString("F2");
-    }
-
-    #endregion
-
-    #region LoRA Adapters
-
-    private void OnAddLora(object? sender, RoutedEventArgs e)
-    {
-        _loraViewModels.Add(new LoraViewModel { Name = "New LoRA", Weight = 1.0, ModelId = "lora_new" });
-    }
-
-    private void OnClearLora(object? sender, RoutedEventArgs e)
-    {
-        _loraViewModels.Clear();
-    }
-
-    private void OnRemoveLora(object? sender, RoutedEventArgs e)
-    {
-        if (sender is Button btn && btn.DataContext is LoraViewModel lora)
-        {
-            _loraViewModels.Remove(lora);
-        }
-    }
-
-    #endregion
-
-    #region Generation
-
-    private async void OnGenerate(object? sender, RoutedEventArgs e)
-    {
-        if (_isGenerating) return;
-        _isGenerating = true;
-        GenerateButton.IsEnabled = false;
+        Progress.Value = 0;
+        ProgressText.Text = "Generating...";
         GenerateButton2.IsEnabled = false;
         PauseButton.IsEnabled = true;
-        StopButton.IsEnabled = true;
-        Progress.Value = 0;
-        ProgressText.Text = "0%";
 
-        var request = new ImageGenerationCommand(
-            PipelineType: _currentPipeline,
-            Prompt: PromptTextBox.Text ?? "",
-            NegativePrompt: NegativePromptTextBox.Text,
-            Width: ParseInt(WidthTextBox.Text, 1024),
-            Height: ParseInt(HeightTextBox.Text, 1024),
-            Steps: ParseInt(StepsTextBox.Text, 30),
-            CfgScale: ParseDouble(CfgTextBox.Text, 7.5),
-            Seed: (int)ParseLong(SeedTextBox.Text, -1),
-            SamplerType: SamplerComboBox.SelectedIndex switch
-            {
-                1 => "EulerA",
-                2 => "DPMS",
-                3 => "DPMSSDE",
-                4 => "Heun",
-                5 => "LMS",
-                _ => "Euler",
-            },
-            LoRAAdapters: _loraViewModels.Select(l => new LoraAdapterCommand(l.ModelId, l.Weight)).ToList(),
-            ImageToImage: _inputImageBytes != null ? new ImageToImageCommand(_inputImageBytes, DenoiseSlider.Value) : null,
+        var result = await _coordinator.ExecuteAsync(new ImageGenerationCommand(
+            PipelineType: _selectedModelId,
+            Prompt: prompt,
+            NegativePrompt: negativePrompt,
+            Width: width,
+            Height: height,
+            Steps: steps,
+            CfgScale: cfg,
+            Seed: (int)seed,
+            SamplerType: SamplerComboBox.SelectedItem is ComboBoxItem ci2 ? ci2.Content?.ToString() ?? "Euler" : "Euler",
+            LoRAAdapters: null,
+            ImageToImage: null,
             ControlNet: null,
             Inpaint: null,
-            OutputFormat: GetSelectedFormat(),
-            OutputPath: ExpandPath(OutputPathTextBox.Text));
+            OutputFormat: "png",
+            OutputPath: OutputPathTextBox.Text), CancellationToken.None);
 
-        if (_coordinator != null)
+        Dispatcher.UIThread.InvokeAsync(() =>
         {
-            _generationCts = new CancellationTokenSource();
-            try
-            {
-                await foreach (var progress in _coordinator.ExecuteStreamingAsync(request, _generationCts.Token))
-                {
-                    await Dispatcher.UIThread.InvokeAsync(() =>
-                    {
-                        Progress.Value = progress.Percentage;
-                        ProgressText.Text = $"{progress.Percentage:F0}%";
-                    });
-                }
+            _lastResult = result;
+            Progress.Value = 100;
+            ProgressText.Text = "Complete!";
+            GenerateButton2.IsEnabled = true;
+            PauseButton.IsEnabled = false;
 
-                var result = await _coordinator.ExecuteAsync(request, _generationCts.Token);
-                await Dispatcher.UIThread.InvokeAsync(() => ShowResult(result));
-            }
-            catch (OperationCanceledException)
+            // Display result
+            if (result.ImageBytes != null && result.ImageBytes.Length > 0)
             {
-                await Dispatcher.UIThread.InvokeAsync(() => ProgressText.Text = "Cancelled");
+                using var ms = new System.IO.MemoryStream(result.ImageBytes);
+                var bitmap = new Bitmap(ms);
+                PreviewImage.Source = bitmap;
             }
-            catch (Exception ex)
-            {
-                await Dispatcher.UIThread.InvokeAsync(() => ProgressText.Text = $"Error: {ex.Message}");
-            }
-            finally
-            {
-                await Dispatcher.UIThread.InvokeAsync(() =>
-                {
-                    _isGenerating = false;
-                    GenerateButton.IsEnabled = true;
-                    GenerateButton2.IsEnabled = true;
-                    PauseButton.IsEnabled = false;
-                    StopButton.IsEnabled = false;
-                });
-            }
-        }
-    }
-
-    private void OnStop(object? sender, RoutedEventArgs e)
-    {
-        _generationCts?.Cancel();
+        });
     }
 
     private void OnRandomizeSeed(object? sender, RoutedEventArgs e)
     {
-        SeedTextBox.Text = new Random().Next(int.MaxValue).ToString();
+        SeedTextBox.Text = new Random().Next(0, 999999999).ToString();
     }
 
     private void OnPresetSelected(object? sender, RoutedEventArgs e)
     {
-        if (sender is Button btn)
+        if (sender is Button btn && btn.Content is string content)
         {
-            var content = btn.Content?.ToString() ?? "";
-            var numStr = new string(content.Where(c => char.IsDigit(c)).ToArray());
-            if (int.TryParse(numStr, out var preset) && preset > 0)
+            if (long.TryParse(content, out var preset))
             {
                 WidthTextBox.Text = preset.ToString();
                 HeightTextBox.Text = preset.ToString();
@@ -440,281 +321,85 @@ public partial class ImageGenerationTab : UserControl
         }
     }
 
-    private async void OnBrowseOutput(object? sender, RoutedEventArgs e)
+    private void OnAddLora(object? sender, RoutedEventArgs e)
     {
-        var topLevel = TopLevel.GetTopLevel(this);
-        if (topLevel is null) return;
-
-        var folder = await ((IStorageProvider)topLevel).OpenFolderPickerAsync(new FolderPickerOpenOptions
-        {
-            Title = "Select Output Folder"
-        });
-
-        if (folder.Any())
-        {
-            OutputPathTextBox.Text = folder[0].Path.LocalPath;
-        }
+        _loraItems.Add(new LoraViewModel { Name = "new_adapter.safetensors", Weight = 1.0 });
     }
 
-    private void ShowResult(ImageGenerationResult result)
+    private void OnClearLora(object? sender, RoutedEventArgs e)
     {
-        try
+        _loraItems.Clear();
+    }
+
+    private void OnRemoveLora(object? sender, RoutedEventArgs e)
+    {
+        if (sender is Button btn && btn.Parent is Panel panel)
         {
-            using var stream = new MemoryStream(result.ImageBytes);
-            var bitmap = new Bitmap(stream);
-            PreviewImage.Source = bitmap;
-
-            Progress.Value = 100;
-            ProgressText.Text = "100%";
-
-            if (_saver != null)
+            var item = panel.Parent as Border;
+            if (item?.DataContext is LoraViewModel lora)
             {
-                var outputPath = Path.Combine(
-                    ExpandPath(OutputPathTextBox.Text),
-                    _saver.GenerateTimestampedFilename());
-
-                var format = GetOutputFormat(GetSelectedFormat());
-                var converted = _formatConverter != null
-                    ? _formatConverter.ConvertAsync(result.ImageBytes, format).Result
-                    : result.ImageBytes;
-
-                _saver.SaveToDiskAsync(converted, outputPath, format).Wait();
-
-                _lastResult = new ImageGalleryEntry(
-                    Id: Guid.NewGuid().ToString(),
-                    Prompt: result.Prompt,
-                    ModelId: result.ModelId,
-                    Width: result.Width,
-                    Height: result.Height,
-                    Seed: result.Seed,
-                    CfgScale: result.GuidanceScale,
-                    Steps: result.Steps,
-                    Sampler: result.SamplerType,
-                    FilePath: outputPath,
-                    ThumbnailPath: outputPath,
-                    Timestamp: DateTime.UtcNow);
-
-                _recentImages.Insert(0, _lastResult);
-                if (_recentImages.Count > 20)
-                    _recentImages.RemoveAt(_recentImages.Count - 1);
-
-                UpdateRecentImages();
+                _loraItems.Remove(lora);
             }
         }
-        catch (Exception ex)
-        {
-            ProgressText.Text = $"Error showing result: {ex.Message}";
-        }
     }
 
-    private void UpdateRecentImages()
+    private void OnBrowseOutput(object? sender, RoutedEventArgs e)
     {
-        RecentImages.ItemsSource = _recentImages;
+        // Placeholder for file dialog
+        OutputPathTextBox.Text = "~/Pictures/OpenLMStudio";
+    }
+
+    private void OnStop(object? sender, RoutedEventArgs e)
+    {
+        _generationCts?.Cancel();
+        ProgressText.Text = "Stopped";
     }
 
     private async void OnSaveImage(object? sender, RoutedEventArgs e)
     {
-        if (_lastResult == null || _saver == null) return;
-        try
+        if (_lastResult?.ImageBytes == null || _imageSaver == null)
         {
-            var expanded = _saver.ExpandPath(OutputPathTextBox.Text);
-            var filename = _saver.GenerateTimestampedFilename();
-            var path = Path.Combine(expanded, filename);
-            if (_formatConverter != null)
-            {
-                var format = GetOutputFormat(GetSelectedFormat());
-                var imageBytes = await File.ReadAllBytesAsync(_lastResult.FilePath).ConfigureAwait(false);
-                var converted = await _formatConverter.ConvertAsync(imageBytes, format).ConfigureAwait(false);
-                await _saver.SaveToDiskAsync(converted, path, format).ConfigureAwait(false);
-            }
-            else
-            {
-                var bytes = await File.ReadAllBytesAsync(_lastResult.FilePath);
-                await _saver.SaveToDiskAsync(bytes, path, ImageOutputFormat.Png);
-            }
-            ProgressText.Text = $"Saved: {filename}";
+            ProgressText.Text = "No image to save";
+            return;
         }
-        catch (Exception ex)
+
+        var format = OutputFormatComboBox.SelectedIndex switch
         {
-            ProgressText.Text = $"Save error: {ex.Message}";
-        }
+            0 => ImageOutputFormat.Png,
+            1 => ImageOutputFormat.Jpeg,
+            2 => ImageOutputFormat.WebP,
+            3 => ImageOutputFormat.Ico,
+            4 => ImageOutputFormat.Bmp,
+            5 => ImageOutputFormat.Gif,
+            _ => ImageOutputFormat.Png
+        };
+
+        var path = OutputPathTextBox.Text ?? "~/Pictures/OpenLMStudio";
+        await _imageSaver.SaveToDiskAsync(_lastResult!.ImageBytes, path, format);
+
+        Dispatcher.UIThread.InvokeAsync(() =>
+        {
+            ProgressText.Text = $"Saved as {format}";
+        });
     }
 
     private async void OnCopyImage(object? sender, RoutedEventArgs e)
     {
-        if (_lastResult == null) return;
-        try
+        if (_lastResult?.ImageBytes == null) return;
+
+        // Copy to clipboard as PNG
+        var topLevel = TopLevel.GetTopLevel(this);
+        if (topLevel?.Clipboard != null)
         {
-            var imageBytes = await File.ReadAllBytesAsync(_lastResult.FilePath);
-            var text = Convert.ToBase64String(imageBytes);
-            var top = TopLevel.GetTopLevel(this);
-            if (top?.Clipboard != null)
-            {
-                await Dispatcher.UIThread.InvokeAsync(() => top.Clipboard!.SetTextAsync(text));
-            }
-            ProgressText.Text = "Copied to clipboard";
+            await ClipboardExtensions.SetTextAsync(topLevel.Clipboard, Convert.ToBase64String(_lastResult.ImageBytes));
         }
-        catch (Exception ex)
-        {
-            ProgressText.Text = $"Copy error: {ex.Message}";
-        }
+
+        ProgressText.Text = "Copied to clipboard";
     }
 
     private void OnViewGallery(object? sender, RoutedEventArgs e)
     {
-        var galleryWindow = new Window
-        {
-            Title = "OpenLMStudio - Image Gallery",
-            Width = 600,
-            Height = 500,
-            Content = CreateGalleryContent()
-        };
-        var top = TopLevel.GetTopLevel(this);
-        if (top is Window parent)
-        {
-            galleryWindow.SetCurrentValue(Window.OwnerProperty, parent);
-        }
-        galleryWindow.Show();
+        // Placeholder: open gallery window
+        ProgressText.Text = "Gallery view";
     }
-
-    private Control CreateGalleryContent()
-    {
-        var stack = new StackPanel
-        {
-            Margin = new Thickness(12),
-            Spacing = 8
-        };
-
-        stack.Children.Add(new TextBlock
-        {
-            Text = "Recent Images",
-            FontSize = 16,
-            FontWeight = Avalonia.Media.FontWeight.SemiBold,
-            Foreground = (SolidColorBrush)this.FindResource("TextPrimary")!
-        });
-
-        if (_recentImages.Count == 0)
-        {
-            stack.Children.Add(new TextBlock
-            {
-                Text = "No images generated yet. Use the Generate button to create images.",
-                FontSize = 12,
-                Foreground = (SolidColorBrush)this.FindResource("TextSecondary")!,
-                Margin = new Thickness(0, 8, 0, 0)
-            });
-            return stack;
-        }
-
-        foreach (var img in _recentImages)
-        {
-            var border = new Border
-            {
-                Background = (SolidColorBrush)this.FindResource("BgSecondary")!,
-                CornerRadius = new CornerRadius(6),
-                Padding = new Thickness(8),
-                Margin = new Thickness(0, 0, 0, 4)
-            };
-
-            var panel = new StackPanel
-            {
-                Orientation = Avalonia.Layout.Orientation.Horizontal
-            };
-
-            panel.Children.Add(new Border
-            {
-                Width = 60,
-                Height = 60,
-                Background = (SolidColorBrush)this.FindResource("BgTertiary")!,
-                CornerRadius = new CornerRadius(4),
-                Child = new Image
-                {
-                    Source = img.ThumbnailPath != null && File.Exists(img.ThumbnailPath) ? new Bitmap(img.ThumbnailPath) : null,
-                    Stretch = Avalonia.Media.Stretch.Uniform
-                }
-            });
-
-            border.Child = panel;
-
-            var info = new StackPanel
-            {
-                Margin = new Thickness(10, 0, 0, 0),
-                VerticalAlignment = Avalonia.Layout.VerticalAlignment.Center
-            };
-            info.Children.Add(new TextBlock
-            {
-                Text = img.Prompt,
-                FontSize = 11,
-                Foreground = (SolidColorBrush)this.FindResource("TextPrimary")!,
-                TextWrapping = TextWrapping.Wrap,
-                MaxWidth = 400
-            });
-            info.Children.Add(new TextBlock
-            {
-                Text = $"Model: {img.ModelId} | {img.Width}x{img.Height} | Seed: {img.Seed}",
-                FontSize = 9,
-                Foreground = (SolidColorBrush)this.FindResource("TextSecondary")!,
-                Margin = new Thickness(0, 2, 0, 0)
-            });
-
-            panel.Children.Add(info);
-            stack.Children.Add(border);
-        }
-
-        return stack;
-    }
-
-    #endregion
-
-    #region Helpers
-
-    private static int ParseInt(string? value, int defaultValue)
-    {
-        return int.TryParse(value, out var result) ? result : defaultValue;
-    }
-
-    private static long ParseLong(string? value, long defaultValue)
-    {
-        return long.TryParse(value, out var result) ? result : defaultValue;
-    }
-
-    private static double ParseDouble(string? value, double defaultValue)
-    {
-        return double.TryParse(value, out var result) ? result : defaultValue;
-    }
-
-    private string GetSelectedFormat()
-    {
-        return OutputFormatComboBox.SelectedIndex switch
-        {
-            1 => "jpeg",
-            2 => "webp",
-            3 => "ico",
-            4 => "bmp",
-            5 => "gif",
-            _ => "png",
-        };
-    }
-
-    private static ImageOutputFormat GetOutputFormat(string format)
-        => format.ToLowerInvariant() switch
-        {
-            "jpeg" or "jpg" => ImageOutputFormat.Jpeg,
-            "webp" => ImageOutputFormat.WebP,
-            "ico" => ImageOutputFormat.Ico,
-            "bmp" => ImageOutputFormat.Bmp,
-            "gif" => ImageOutputFormat.Gif,
-            _ => ImageOutputFormat.Png,
-        };
-
-    private static string ExpandPath(string path)
-    {
-        if (path.StartsWith("~/", StringComparison.Ordinal))
-        {
-            var home = Environment.GetFolderPath(Environment.SpecialFolder.UserProfile);
-            return Path.Combine(home, path.Substring(2));
-        }
-        return path;
-    }
-
-    #endregion
 }

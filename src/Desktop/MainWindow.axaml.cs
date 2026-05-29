@@ -72,6 +72,8 @@ public partial class MainWindow : Window
     /// <summary>PinguCanvas control for GPU rendering.</summary>
     private PinguCanvas? _pinguCanvas;
 
+    // ImageGenerationContent is defined in MainWindow.axaml via x:Name — no duplicate declaration needed
+
     /// <summary>DispatcherTimer for the render loop (60fps).</summary>
     private DispatcherTimer? _pinguRenderTimer;
 

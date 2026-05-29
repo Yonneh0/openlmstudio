@@ -1300,17 +1300,16 @@
             </Border>
         </Popup>
 
-        <!-- Image Generation tab content — uses ImageGenerationTab control (overlay in center pane) -->
-        <ContentControl x:Name="ImageGenerationOverlay"
+        <!-- Image Generation tab content — sits in the left sidebar, replaces Model section -->
+        <ContentControl x:Name="ImageGenerationContent"
                         Grid.Row="1"
-                        Grid.Column="1"
-                        Grid.RowSpan="2"
+                        Grid.Column="0"
                         ZIndex="10"
                         IsVisible="False"
-                        HorizontalContentAlignment="Stretch"
-                        VerticalContentAlignment="Stretch">
-            <Border Background="#1A1A1E"
-                    CornerRadius="8"
+                        VerticalAlignment="Top"
+                        Width="280">
+            <Border Background="{StaticResource BgPrimary}"
+                    CornerRadius="0"
                     Padding="0">
                 <Controls:ImageGenerationTab x:Name="ImageGenerationTab"/>
             </Border>
