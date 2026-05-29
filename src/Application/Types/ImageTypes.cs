@@ -52,6 +52,7 @@ public record ImageGenerationResult(
 {
     public string DataUri => $"data:image/png;base64,{Convert.ToBase64String(ImageBytes)}";
     public string MimeType { get; init; } = "image/png";
+    public string SamplerType { get; init; } = "Euler";
 }
 
 /// <summary>
@@ -65,25 +66,6 @@ public record ImageGenerationProgress(
     public float ProgressPercent => TotalSteps > 0 ? (Step / (float)TotalSteps) * 100 : 0;
     public byte[]? ImageBytes { get; init; }
 }
-
-/// <summary>
-/// Entry in the image gallery with metadata.
-/// </summary>
-public record ImageGalleryEntry(
-    string Id,
-    string Prompt,
-    string ModelId,
-    int Width,
-    int Height,
-    long Seed,
-    double CfgScale,
-    int Steps,
-    string SamplerType,
-    string FilePath,
-    string? ThumbnailPath,
-    DateTime Timestamp,
-    string? NegativePrompt = null,
-    IReadOnlyList<string>? LoRAAdapters = null);
 
 /// <summary>
 /// Result of a batch image generation operation.

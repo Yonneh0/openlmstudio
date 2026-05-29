@@ -44,16 +44,15 @@ public class ImageSaver : IImageSaver
         return fullPath;
     }
 
-    public async Task<string> SaveWithMetadataAsync(byte[] imageBytes, ImageGenerationMetadata metadata, ImageOutputFormat format = ImageOutputFormat.Png, string? filePath = null)
+    public async Task SaveWithMetadataAsync(byte[] imageBytes, string filePath, ImageOutputFormat format, ImageGenerationMetadata metadata)
     {
-        var fullPath = filePath ?? GenerateTimestampedFilename(format.ToString().ToLowerInvariant());
+        var fullPath = Path.Combine(_defaultDirectory, $"{Path.GetFileNameWithoutExtension(filePath)}_{Guid.NewGuid():N}.{format.ToString().ToLowerInvariant()}");
         await SaveToDiskAsync(imageBytes, fullPath, format);
 
         // Save JSON sidecar
         var jsonPath = Path.ChangeExtension(fullPath, ".json");
         var json = JsonSerializer.Serialize(metadata, new JsonSerializerOptions { WriteIndented = true });
         await File.WriteAllTextAsync(jsonPath, json);
-        return fullPath;
     }
 
     public async Task<ImageGalleryEntry> SaveToGalleryAsync(byte[] imageBytes, ImageGenerationMetadata metadata, CancellationToken ct = default)
@@ -65,18 +64,18 @@ public class ImageSaver : IImageSaver
         await File.WriteAllBytesAsync(thumbPath, thumbnail, ct);
 
         var entry = new ImageGalleryEntry(
-            id: Guid.NewGuid().ToString(),
-            prompt: metadata.Prompt,
-            modelId: metadata.ModelId,
-            width: metadata.Width,
-            height: metadata.Height,
-            seed: metadata.Seed,
-            cfgScale: metadata.CfgScale,
-            steps: metadata.Steps,
-            sampler: metadata.Sampler,
-            filePath: path,
-            thumbnailPath: thumbPath,
-            timestamp: DateTimeOffset.UtcNow
+            Id: Guid.NewGuid().ToString(),
+            Prompt: metadata.Prompt,
+            ModelId: metadata.ModelId,
+            Width: metadata.Width,
+            Height: metadata.Height,
+            Seed: metadata.Seed,
+            CfgScale: metadata.CfgScale,
+            Steps: metadata.Steps,
+            Sampler: metadata.Sampler,
+            FilePath: path,
+            ThumbnailPath: thumbPath,
+            Timestamp: DateTimeOffset.UtcNow
         );
 
         return entry;

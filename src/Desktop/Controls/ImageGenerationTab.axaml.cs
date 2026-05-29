@@ -10,6 +10,8 @@ using Avalonia.Controls.Primitives;
 using Avalonia.Interactivity;
 using Avalonia.Media.Imaging;
 using Avalonia.Platform;
+using Avalonia.Platform.Storage;
+using Avalonia.Threading;
 using OpenLMStudio.Application.Interfaces;
 using OpenLMStudio.Application.Types;
 using OpenLMStudio.Infrastructure.Services;
@@ -103,7 +105,7 @@ public partial class ImageGenerationTab : UserControl
             Height: ParseInt(HeightTextBox.Text, 1024),
             Steps: ParseInt(StepsTextBox.Text, 30),
             CfgScale: ParseDouble(CfgTextBox.Text, 7.5),
-            Seed: ParseLong(SeedTextBox.Text, -1),
+            Seed: (int)ParseLong(SeedTextBox.Text, -1),
             SamplerType: SamplerComboBox.SelectedIndex switch
             {
                 1 => "EulerA",
@@ -126,11 +128,15 @@ public partial class ImageGenerationTab : UserControl
                 // Stream progress for real-time updates
                 await foreach (var progress in _coordinator.ExecuteStreamingAsync(request, _generationCts.Token))
                 {
-                    await Dispatcher.UIThread.InvokeAsync(() =>
+                    var topLevel = TopLevel.GetTopLevel(this);
+                    if (topLevel != null)
                     {
-                        Progress.Value = progress.Percentage;
-                        ProgressText.Text = $"{progress.Percentage:F0}%";
-                    });
+                        await Dispatcher.UIThread.InvokeAsync(() =>
+                        {
+                            Progress.Value = progress.Percentage;
+                            ProgressText.Text = $"{progress.Percentage:F0}%";
+                        });
+                    }
                 }
 
                 // Get final result
@@ -196,9 +202,9 @@ public partial class ImageGenerationTab : UserControl
     private async Task OnLoadImageInternal()
     {
         var topLevel = TopLevel.GetTopLevel(this);
-        if (topLevel?.StorageContext == null) return;
+        if (topLevel is null) return;
 
-        var files = await topLevel.StorageContext.OpenFilePickerAsync(new FilePickerOpenOptions
+        var files = await ((IStorageProvider)topLevel).OpenFilePickerAsync(new FilePickerOpenOptions
         {
             Title = "Load Image",
             AllowMultiple = false,
@@ -210,7 +216,7 @@ public partial class ImageGenerationTab : UserControl
 
         if (files.Any())
         {
-            _inputImageBytes = await File.ReadAllBytesAsync(files[0].Path.FullPath);
+            _inputImageBytes = await File.ReadAllBytesAsync(files[0].Path.LocalPath);
             await Dispatcher.UIThread.InvokeAsync(async () =>
             {
                 using var stream = new MemoryStream(_inputImageBytes);
@@ -261,16 +267,16 @@ public partial class ImageGenerationTab : UserControl
     private async void OnBrowseOutput(object? sender, RoutedEventArgs e)
     {
         var topLevel = TopLevel.GetTopLevel(this);
-        if (topLevel?.StorageContext == null) return;
+        if (topLevel is null) return;
 
-        var folder = await topLevel.StorageContext.OpenFolderPickerAsync(new FolderPickerOpenOptions
+        var folder = await ((IStorageProvider)topLevel).OpenFolderPickerAsync(new FolderPickerOpenOptions
         {
             Title = "Select Output Folder"
         });
 
         if (folder.Any())
         {
-            OutputPathTextBox.Text = folder[0].Path.FullPath;
+            OutputPathTextBox.Text = folder[0].Path.LocalPath;
         }
     }
 
@@ -312,12 +318,10 @@ public partial class ImageGenerationTab : UserControl
                 Seed: result.Seed,
                 CfgScale: result.GuidanceScale,
                 Steps: result.Steps,
-                SamplerType: result.SamplerType,
+                Sampler: result.SamplerType,
                 FilePath: outputPath,
                 ThumbnailPath: outputPath,
-                Timestamp: DateTime.UtcNow,
-                NegativePrompt: result.NegativePrompt,
-                LoRAAdapters: result.LoraAdapters?.Select(l => l.ModelId).ToList());
+                Timestamp: DateTime.UtcNow);
 
             // Add to recent images
             _recentImages.Insert(0, _lastResult);

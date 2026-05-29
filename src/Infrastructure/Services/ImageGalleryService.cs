@@ -37,12 +37,10 @@ public class ImageGalleryService : IImageGalleryService
                 Seed INTEGER,
                 CfgScale REAL,
                 Steps INTEGER,
-                SamplerType TEXT,
+                Sampler TEXT,
                 FilePath TEXT,
                 ThumbnailPath TEXT,
-                Timestamp DATETIME,
-                NegativePrompt TEXT,
-                LoRAAdapters TEXT
+                Timestamp DATETIME
             );
             CREATE INDEX IF NOT EXISTS IX_Images_Timestamp ON Images(Timestamp DESC);
             CREATE INDEX IF NOT EXISTS IX_Images_Prompt ON Images(Prompt);
@@ -122,9 +120,9 @@ public class ImageGalleryService : IImageGalleryService
             foreach (var entry in entries)
             {
                 Execute(conn, @"
-                    INSERT OR REPLACE INTO Images (Id, Prompt, ModelId, Width, Height, Seed, CfgScale, Steps, SamplerType, FilePath, ThumbnailPath, Timestamp, NegativePrompt, LoRAAdapters)
-                    VALUES (@Id, @Prompt, @ModelId, @Width, @Height, @Seed, @CfgScale, @Steps, @SamplerType, @FilePath, @ThumbnailPath, @Timestamp, @NegativePrompt, @LoRAAdapters)",
-                    new { entry.Id, entry.Prompt, entry.ModelId, entry.Width, entry.Height, entry.Seed, entry.CfgScale, entry.Steps, entry.SamplerType, entry.FilePath, entry.ThumbnailPath, entry.Timestamp, entry.NegativePrompt, entry.LoRAAdapters });
+            INSERT OR REPLACE INTO Images (Id, Prompt, ModelId, Width, Height, Seed, CfgScale, Steps, Sampler, FilePath, ThumbnailPath, Timestamp)
+            VALUES (@Id, @Prompt, @ModelId, @Width, @Height, @Seed, @CfgScale, @Steps, @Sampler, @FilePath, @ThumbnailPath, @Timestamp)",
+                    new { entry.Id, entry.Prompt, entry.ModelId, entry.Width, entry.Height, entry.Seed, entry.CfgScale, entry.Steps, entry.Sampler, entry.FilePath, entry.ThumbnailPath, entry.Timestamp });
             }
         });
     }
@@ -133,7 +131,6 @@ public class ImageGalleryService : IImageGalleryService
 
     private static ImageGalleryEntry MapRow(SqliteDataReader reader)
     {
-        var lora = reader["LoRAAdapters"] as string;
         return new ImageGalleryEntry(
             Id: reader["Id"] as string ?? "",
             Prompt: reader["Prompt"] as string ?? "",
@@ -143,12 +140,10 @@ public class ImageGalleryService : IImageGalleryService
             Seed: Convert.ToInt64(reader["Seed"]),
             CfgScale: Convert.ToDouble(reader["CfgScale"]),
             Steps: Convert.ToInt32(reader["Steps"]),
-            SamplerType: reader["SamplerType"] as string ?? "",
+            Sampler: reader["Sampler"] as string ?? "",
             FilePath: reader["FilePath"] as string ?? "",
-            ThumbnailPath: reader["ThumbnailPath"] as string,
-            Timestamp: reader["Timestamp"] is DateTime dt ? dt : DateTime.Now,
-            NegativePrompt: reader["NegativePrompt"] as string,
-            LoRAAdapters: lora != null ? JsonSerializer.Deserialize<List<string>>(lora) : null);
+            ThumbnailPath: reader["ThumbnailPath"] as string ?? "",
+            Timestamp: reader["Timestamp"] is DateTime dt ? dt : DateTime.Now);
     }
 
     private int Execute(SqliteConnection conn, string sql, object? parameters = null)

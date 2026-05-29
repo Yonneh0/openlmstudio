@@ -1,7 +1,8 @@
 <UserControl xmlns="https://github.com/avaloniaui"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              x:Class="OpenLMStudio.Desktop.Controls.ImageGenerationTab"
-             xmlns:local="clr-namespace:OpenLMStudio.Desktop.Controls">
+             xmlns:local="clr-namespace:OpenLMStudio.Desktop.Controls"
+             xmlns:app="clr-namespace:OpenLMStudio.Application.Types;assembly=OpenLMStudio.Application">
     <UserControl.Resources>
         <SolidColorBrush x:Key="BgPrimary" Color="#1E1E22"/>
         <SolidColorBrush x:Key="BgSecondary" Color="#252529"/>
@@ -160,7 +161,7 @@
                         <ComboBoxItem Content="BMP"/>
                         <ComboBoxItem Content="GIF"/>
                     </ComboBox>
-                    <TextBox x:Name="OutputPathTextBox" Text="~/Pictures/OpenLMStudio" Width="*" Margin="3,0,0,0" FontSize="10"/>
+                    <TextBox x:Name="OutputPathTextBox" Text="~/Pictures/OpenLMStudio" Width="100" Margin="3,0,0,0" FontSize="10"/>
                     <Button Content="…" Padding="4,1" x:Name="BrowseOutputButton" Click="OnBrowseOutput" FontSize="10"/>
                 </StackPanel>
                 <StackPanel Orientation="Horizontal" Margin="0,2,0,0">
@@ -197,7 +198,7 @@
                         </ItemsPanelTemplate>
                     </ItemsControl.ItemsPanel>
                     <ItemsControl.ItemTemplate>
-                        <DataTemplate>
+                        <DataTemplate x:DataType="app:ImageGalleryEntry">
                             <Border Width="45" Height="45" Margin="2" Background="{StaticResource BgTertiary}" CornerRadius="3">
                                 <Image Stretch="Uniform" Source="{Binding ThumbnailPath}"/>
                             </Border>

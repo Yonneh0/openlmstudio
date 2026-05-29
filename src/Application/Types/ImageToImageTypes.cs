@@ -99,5 +99,27 @@ public record ImageGenerationMetadata(
     double CfgScale = 7.5,
     int Steps = 30,
     string SamplerType = "Euler",
-    IReadOnlyList<string>? LoRAAdapters = null);
+    IReadOnlyList<string>? LoRAAdapters = null)
+{
+    /// <summary>
+    /// Alias for SamplerType to support ImageGalleryEntry's Sampler parameter.
+    /// </summary>
+    public string Sampler => SamplerType;
+};
 
+/// <summary>
+/// Entry in the image gallery with metadata and file paths.
+/// </summary>
+public record ImageGalleryEntry(
+    string Id,
+    string Prompt,
+    string ModelId,
+    int Width,
+    int Height,
+    long Seed,
+    double CfgScale,
+    int Steps,
+    string Sampler,
+    string FilePath,
+    string ThumbnailPath,
+    DateTimeOffset Timestamp);

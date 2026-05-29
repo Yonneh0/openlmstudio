@@ -75,17 +75,17 @@ public class ImageFormatConverter : IImageFormatConverter
         foreach (var frame in frames)
         {
             using var frameImg = SKImage.FromEncodedData(frame)!;
-            var frameBitmap = frameImg.Encode(SKEncodedImageFormat.Png, 100)!;
-            var width = (byte)(frameBitmap.Length > 16 ? Math.Min((int)(frameBitmap[12] | (frameBitmap[13] << 8)), 255) : 256);
-            var height = (byte)(frameBitmap.Length > 18 ? Math.Min((int)(frameBitmap[14] | (frameBitmap[15] << 8)), 255) : 256);
+            var frameBytes = frameImg.Encode(SKEncodedImageFormat.Png, 100)!.ToArray();
+            var width = (byte)(frameBytes.Length > 16 ? Math.Min((int)(frameBytes[12] | (frameBytes[13] << 8)), 255) : 256);
+            var height = (byte)(frameBytes.Length > 18 ? Math.Min((int)(frameBytes[14] | (frameBytes[15] << 8)), 255) : 256);
             writer.Write((byte)(width == 0 ? 256 : width));
             writer.Write((byte)(height == 0 ? 256 : height));
             writer.Write((byte)0);      // Reserved
             writer.Write((byte)0);      // Color planes
             writer.Write((short)32);    // Bits per pixel
-            writer.Write((int)frame.Length); // Image data size
+            writer.Write((int)frameBytes.Length); // Image data size
             writer.Write((int)offset);  // Offset
-            offset += frame.Length;
+            offset += frameBytes.Length;
         }
 
         foreach (var frame in frames)

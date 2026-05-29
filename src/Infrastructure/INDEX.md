@@ -228,7 +228,7 @@
 ## src/Infrastructure/Services/ImageFormatConverter.cs - ~180 lines - Image Format Converter (PNG/JPEG/WebP/ICO/BMP/GIF)
    - IImageFormatConverter implementation with SkiaSharp-based format conversion. ConvertAsync, ConvertToPng, ConvertToJpeg, ConvertToWebP, ConvertToIco, ConvertToBmp, ToGifAsync (fixed disposal).
 ## src/Infrastructure/Services/ImageSaver.cs - 130 lines - Image Saver with Metadata Sidecars and Gallery
-   - IImageSaver implementation for saving generated images to disk. SaveToDiskAsync, SaveWithMetadataAsync, SaveToGalleryAsync, GenerateTimestampedFilename, GetGalleryDirectoryAsync.
+   - IImageSaver implementation for saving generated images to disk. SaveToDiskAsync, SaveWithMetadataAsync, SaveToGalleryAsync, GenerateTimestampedFilename, GetGalleryDirectoryAsync. Fixed: Id parameter name (was id), SamplerType property for ImageGalleryEntry.
 ## src/Infrastructure/Services/ImageToImageService.cs - 300 lines - Image-to-Image Service with Denoise Control
    - IImageToImageService implementation. EncodeAndDenoiseAsync, ImageVariationAsync, InpaintAsync, OutpaintAsync. Encodes input image via VAE, applies noise, runs denoising loop.
 ## src/Infrastructure/Services/ImageGenerationCoordinator.cs - 150 lines - Image Generation Coordinator for SystemAI
