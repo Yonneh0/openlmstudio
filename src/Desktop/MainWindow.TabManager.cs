@@ -26,7 +26,7 @@ public partial class MainWindow
         SetTabVisibility(DevicesTabContent, tabName == "Devices");
         SetTabVisibility(ContextTabContent, tabName == "Context");
         SetTabVisibility(PinguTabContent, tabName == "Pingu");
-        SetTabVisibility(ImageGenTabContent, tabName == "ImageGen");
+        SetControlVisibility(ImageGenerationTab, tabName == "ImageGen");
         SetTabVisibility(SettingsTabContent, tabName == "Settings");
 
         // Update ToggleButton checked state (all left sidebar tabs are now ToggleButtons)
@@ -107,7 +107,6 @@ public partial class MainWindow
             (DevicesTab!, DevicesTabContent!),
             (ContextTab!, ContextTabContent!),
             (PinguTab!, PinguTabContent!),
-            (ImageGenTab!, ImageGenTabContent!),
         };
 
         foreach (var (tab, panel) in tabMap)
@@ -135,6 +134,12 @@ public partial class MainWindow
             }
         }
 
+        // Handle ImageGen tab separately (uses a Control, not StackPanel)
+        if (ImageGenerationTab?.IsVisible == true && ImageGenTab?.IsChecked == true)
+        {
+            // ImageGen styling is handled by the ImageGenerationTab control itself
+        }
+
         // SettingsTab is also a ToggleButton now — handle it the same way
         if (SettingsTabContent?.IsVisible == true)
         {
@@ -145,6 +150,12 @@ public partial class MainWindow
                 firstTextBlock.FontWeight = FontWeight.SemiBold;
             }
         }
+    }
+
+    private void SetControlVisibility(Avalonia.Controls.Control? control, bool visible)
+    {
+        if (control != null)
+            control.IsVisible = visible;
     }
 
     private void SetPanelVisibility(StackPanel? panel, bool visible)

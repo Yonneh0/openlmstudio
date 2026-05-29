@@ -38,7 +38,11 @@ public partial class ImageGenerationTab : UserControl
     private bool _isGenerating;
     private readonly List<LoraViewModel> _loraViewModels = new();
 
-    public ImageGenerationTab(IImageGenerationCoordinator? coordinator = null, IImageSaver? saver = null)
+    public ImageGenerationTab() : this(null, null)
+    {
+    }
+
+    public ImageGenerationTab(IImageGenerationCoordinator? coordinator, IImageSaver? saver)
     {
         InitializeComponent();
         _coordinator = coordinator;

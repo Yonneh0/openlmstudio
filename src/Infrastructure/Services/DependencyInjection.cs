@@ -80,6 +80,18 @@ public static class DependencyInjection
         // EmbeddingPipelineService for text/image embedding vectors using ONNX Runtime + safetensors models
         services.AddSingleton<IEmbeddingPipelineService, Services.EmbeddingPipelineService>();
 
+        // ImageToImageService for image-to-image generation with denoise control
+        services.AddSingleton<IImageToImageService, Services.ImageToImageService>();
+
+        // ImageFormatConverter for PNG/JPEG/WebP/ICO/BMP/GIF format conversion
+        services.AddSingleton<IImageFormatConverter, Services.ImageFormatConverter>();
+
+        // ImageSaver for saving images to disk with metadata sidecars and gallery support
+        services.AddSingleton<IImageSaver, Services.ImageSaver>();
+
+        // ImageGenerationCoordinator for SystemAI to orchestrate image generation
+        services.AddSingleton<IImageGenerationCoordinator, Services.ImageGenerationCoordinator>();
+
         // AppDataDirectoryResolver resolves platform-specific appdata paths (Windows/macOS/Linux)
         services.AddSingleton<AppDataDirectoryResolver>();
 

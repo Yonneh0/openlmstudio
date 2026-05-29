@@ -345,9 +345,9 @@ public partial class MainWindow : Window
         if (ContextCompressionSelector != null)
             ContextCompressionSelector.SelectionChanged += OnContextCompressionSelectionChanged;
 
-        // Random seed button
-        if (RandomSeedButton != null)
-            RandomSeedButton.Click += OnRandomSeedClicked;
+        // Random seed button (now handled by ImageGenerationTab)
+        // if (RandomSeedButton != null)
+        //     RandomSeedButton.Click += OnRandomSeedClicked;
 
 
         // Agent mode toggle button
@@ -375,13 +375,13 @@ public partial class MainWindow : Window
             SafetyExec.Click += OnSafetyToggleClicked;
 
 
-        // Image generation generate button
-        if (ImageGenGenerateBtn != null)
-            ImageGenGenerateBtn.Click += OnImageGenGenerateClicked;
+        // Image generation generate button (now handled by ImageGenerationTab)
+        // if (ImageGenGenerateBtn != null)
+        //     ImageGenGenerateBtn.Click += OnImageGenGenerateClicked;
 
-        // Image generation model selector
-        if (ImageGenModelSelector != null)
-            ImageGenModelSelector.SelectionChanged += OnImageGenModelSelectorSelectionChanged;
+        // Image generation model selector (now handled by ImageGenerationTab)
+        // if (ImageGenModelSelector != null)
+        //     ImageGenModelSelector.SelectionChanged += OnImageGenModelSelectorSelectionChanged;
 
         // Git status bar
         if (GitStatusBorder != null)
