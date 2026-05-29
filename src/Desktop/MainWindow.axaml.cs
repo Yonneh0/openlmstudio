@@ -211,10 +211,25 @@ public partial class MainWindow : Window
             // If no panel found, the PinguCornerPanel will be defined in XAML
         }
 
-        // Initialize the GPU canvas (if PinguCanvas is defined in XAML)
-        if (_pinguCanvas == null)
+        // Initialize the GPU canvas and wire it up with the PinguStore
+        if (_pinguStore != null && _pinguCanvas == null)
         {
             _pinguCanvas = new PinguCanvas();
+
+            // Create the render function from PinguStore and initialize the canvas
+            var renderFunc = _pinguStore.CreateRenderer();
+            _pinguCanvas.Initialize(renderFunc);
+
+            // Start the render timer
+            _pinguRenderTimer = new DispatcherTimer
+            {
+                Interval = TimeSpan.FromMilliseconds(16) // ~60fps
+            };
+            _pinguRenderTimer.Tick += (s, e) =>
+            {
+                _pinguCanvas?.InvalidateRender();
+            };
+            _pinguRenderTimer.Start();
         }
     }
 

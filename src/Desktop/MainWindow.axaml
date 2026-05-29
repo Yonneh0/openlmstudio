@@ -199,6 +199,21 @@
                 <RowDefinition Height="Auto"/>
             </Grid.RowDefinitions>
 
+            <!-- Image Generation tab content — sits inside the left sidebar Grid -->
+            <ContentControl x:Name="ImageGenerationContent"
+                            Grid.Row="1"
+                            Grid.Column="0"
+                            IsVisible="False"
+                            Width="280"
+                            VerticalAlignment="Top"
+                            HorizontalAlignment="Left">
+                <Border Background="{StaticResource BgPrimary}"
+                        CornerRadius="0"
+                        Padding="0">
+                    <Controls:ImageGenerationTab x:Name="ImageGenerationTab"/>
+                </Border>
+            </ContentControl>
+
             <!-- VS Code-style TabStrip for left sidebar tabs -->
             <StackPanel x:Name="LeftTabStripPanel"
                         Orientation="Horizontal"
@@ -879,258 +894,135 @@
                     </StackPanel>
                 </ScrollViewer>
 
-                <Border Grid.Row="2" Background="{StaticResource BgSecondary}">
-                    <Grid Margin="0,8,0,8">
-                        <Grid.RowDefinitions>
-                            <RowDefinition Height="*"/>
-                            <RowDefinition Height="Auto"/>
-                        </Grid.RowDefinitions>
-                        <Border Grid.Row="0" Background="{StaticResource BgTertiary}" Margin="16,0,16,8">
-                            <TextBox x:Name="MessageInputBox" Foreground="{StaticResource TextPrimary}" Background="Transparent" BorderThickness="0" Padding="16,12" FontSize="14" MaxHeight="120" MinHeight="60"/>
-                        </Border>
-
-                        <StackPanel Grid.Row="1" Orientation="Horizontal" Margin="8,0,8,4" VerticalAlignment="Bottom">
-                            <!-- Agent Mode (clickable emoji with turns badge) -->
-                            <Border Background="{StaticResource BgTertiary}" CornerRadius="6" Padding="8,0" Margin="0,0,4,0">
-                                <StackPanel Orientation="Horizontal" HorizontalAlignment="Center" VerticalAlignment="Center">
-                                    <!-- Agent emoji with floating turns count -->
-                                    <Grid Width="44" Height="44" Margin="0,0,2,0">
-                                        <Button x:Name="AgentModeToggle" Content="&#x1F916;" FontSize="34" Padding="0" Classes="AgentModeToggle" Foreground="{StaticResource AccentBlue}" Cursor="Hand"
-                                                HorizontalAlignment="Center" VerticalAlignment="Center"
-                                                HorizontalContentAlignment="Center" VerticalContentAlignment="Center"
-                                                ToolTip.Tip="Toggle agent mode"/>
-                                        <!-- Floating turns count badge - clickable, positioned to the very bottom right -->
-                                        <Button x:Name="AgentTurnsBadge"
-                                                Cursor="Hand"
-                                                CornerRadius="4"
-                                                Padding="4,1"
-                                                VerticalAlignment="Bottom"
-                                                HorizontalAlignment="Right"
-                                                Margin="0,0,4,-4"
-                                                Click="OnAgentTurnsBadgeClicked"
-                                                IsHitTestVisible="True"
-                                                Background="{StaticResource AccentOrange}"
-                                                Foreground="White"
-                                                ToolTip.Tip="Agent turns count">
-                                            <Button.Styles>
-                                                <Style Selector="Button:pointerover">
-                                                    <Setter Property="Background" Value="{Binding Background, RelativeSource={RelativeSource Self}}"/>
-                                                </Style>
-                                            </Button.Styles>
-                                            <TextBlock x:Name="AgentTurnsText" Text="0" Foreground="White" FontSize="12" FontWeight="Bold" TextAlignment="Center"/>
-                                        </Button>
-                                    </Grid>
-                                </StackPanel>
-                            </Border>
-
-                            <!-- Plan/Act Toggle -->
-                            <Border Background="{StaticResource BgTertiary}" CornerRadius="6" Padding="0,0" Margin="0,0,4,0">
-                                <StackPanel Orientation="Horizontal" HorizontalAlignment="Center" VerticalAlignment="Center" Height="36">
-                                    <Border Background="{StaticResource BgTertiary}" CornerRadius="6" Padding="6,0" Width="130" Height="36" HorizontalAlignment="Center" VerticalAlignment="Center">
-                                        <StackPanel x:Name="PlanActPanel" Orientation="Horizontal" HorizontalAlignment="Center" VerticalAlignment="Center">
-                                            <Button x:Name="PlanButton"
-                                                    Content="Plan"
-                                                    Width="55" Height="32"
-                                                    Click="OnPlanClicked"
-                                                    Classes="active"
-                                                    HorizontalContentAlignment="Center"
-                                                    VerticalContentAlignment="Center"
-                                                    ToolTip.Tip="Switch to Plan mode">
-                                                <Button.Styles>
-                                                    <Style Selector="Button">
-                                                        <Setter Property="Background" Value="#2D2D30"/>
-                                                        <Setter Property="Foreground" Value="{StaticResource TextPrimary}"/>
-                                                        <Setter Property="FontSize" Value="11"/>
-                                                        <Setter Property="FontWeight" Value="SemiBold"/>
-                                                        <Setter Property="BorderThickness" Value="0"/>
-                                                    </Style>
-                                                    <Style Selector="Button.active">
-                                                        <Setter Property="Background" Value="{StaticResource AccentBlue}"/>
-                                                        <Setter Property="Foreground" Value="White"/>
-                                                    </Style>
-                                                    <Style Selector="Button:pointerover">
-                                                        <Setter Property="Background" Value="{Binding (Button.Background), RelativeSource={RelativeSource Self}}"/>
-                                                    </Style>
-                                                </Button.Styles>
-                                            </Button>
-                                            <Button x:Name="ActButton"
-                                                    Content="Act"
-                                                    Width="55" Height="32"
-                                                    Click="OnActClicked"
-                                                    Padding="0,0"
-                                                    HorizontalContentAlignment="Center"
-                                                    VerticalContentAlignment="Center"
-                                                    ToolTip.Tip="Switch to Act mode">
-                                                <Button.Styles>
-                                                    <Style Selector="Button">
-                                                        <Setter Property="Background" Value="#2D2D30"/>
-                                                        <Setter Property="Foreground" Value="{StaticResource TextPrimary}"/>
-                                                        <Setter Property="FontSize" Value="11"/>
-                                                        <Setter Property="FontWeight" Value="SemiBold"/>
-                                                        <Setter Property="BorderThickness" Value="0"/>
-                                                    </Style>
-                                                    <Style Selector="Button.active">
-                                                        <Setter Property="Background" Value="{StaticResource AccentBlue}"/>
-                                                        <Setter Property="Foreground" Value="White"/>
-                                                    </Style>
-                                                    <Style Selector="Button:pointerover">
-                                                        <Setter Property="Background" Value="{Binding (Button.Background), RelativeSource={RelativeSource Self}}"/>
-                                                    </Style>
-                                                </Button.Styles>
-                                            </Button>
-                                        </StackPanel>
-                                    </Border>
-                                </StackPanel>
-                            </Border>
-
-                            <!-- Safety Mode -->
-                            <Border Background="{StaticResource BgTertiary}" CornerRadius="6" Padding="8,0" Margin="0,0,4,0">
-                                <StackPanel Orientation="Horizontal" HorizontalAlignment="Center" VerticalAlignment="Center">
-                                    <ToggleButton x:Name="SafetyWWW"
-                                                  Content="&#x1F310;"
-                                                  Width="36" Height="36"
-                                                  Padding="0"
-                                                  FontSize="22"
-                                                  Background="#2D2D30"
-                                                  Foreground="{StaticResource TextPrimary}"
-                                                  Margin="0,0,3,0"
-                                                  HorizontalAlignment="Center"
-                                                  VerticalAlignment="Center"
-                                                  HorizontalContentAlignment="Center"
-                                                  VerticalContentAlignment="Center"
-                                                  ToolTip.Tip="Web safety">
-                                        <ToggleButton.Styles>
-                                            <Style Selector="ToggleButton:pointerover">
-                                                <Setter Property="Background" Value="{Binding (ToggleButton.Background), RelativeSource={RelativeSource Self}}"/>
-                                            </Style>
-                                            <Style Selector="ToggleButton:checked">
-                                                <Setter Property="Background" Value="{StaticResource AccentBlue}"/>
-                                                <Setter Property="Foreground" Value="White"/>
-                                            </Style>
-                                        </ToggleButton.Styles>
-                                    </ToggleButton>
-                                        <ToggleButton x:Name="SafetyRead"
-                                                      Content="&#x1F441;"
-                                                      Width="36" Height="36"
-                                                      Padding="0"
-                                                      FontSize="22"
-                                                      Background="#2D2D30"
-                                                      Foreground="{StaticResource TextPrimary}"
-                                                  Margin="0,0,3,0"
-                                                  HorizontalAlignment="Center"
-                                                  VerticalAlignment="Center"
-                                                  HorizontalContentAlignment="Center"
-                                                  VerticalContentAlignment="Center"
-                                                  ToolTip.Tip="Read safety">
-                                        <ToggleButton.Styles>
-                                            <Style Selector="ToggleButton:pointerover">
-                                                <Setter Property="Background" Value="{Binding (ToggleButton.Background), RelativeSource={RelativeSource Self}}"/>
-                                            </Style>
-                                            <Style Selector="ToggleButton:checked">
-                                                <Setter Property="Background" Value="{StaticResource AccentBlue}"/>
-                                                <Setter Property="Foreground" Value="White"/>
-                                            </Style>
-                                        </ToggleButton.Styles>
-                                    </ToggleButton>
-                                        <ToggleButton x:Name="SafetyEdit"
-                                                      Content="&#x270E;"
-                                                      Width="36" Height="36"
-                                                      Padding="0"
-                                                      FontSize="22"
-                                                      Background="#2D2D30"
-                                                      Foreground="{StaticResource TextPrimary}"
-                                                  Margin="0,0,3,0"
-                                                  HorizontalAlignment="Center"
-                                                  VerticalAlignment="Center"
-                                                  HorizontalContentAlignment="Center"
-                                                  VerticalContentAlignment="Center"
-                                                  ToolTip.Tip="Edit safety">
-                                        <ToggleButton.Styles>
-                                            <Style Selector="ToggleButton:pointerover">
-                                                <Setter Property="Background" Value="{Binding (ToggleButton.Background), RelativeSource={RelativeSource Self}}"/>
-                                            </Style>
-                                            <Style Selector="ToggleButton:checked">
-                                                <Setter Property="Background" Value="{StaticResource AccentBlue}"/>
-                                                <Setter Property="Foreground" Value="White"/>
-                                            </Style>
-                                        </ToggleButton.Styles>
-                                    </ToggleButton>
-                                        <ToggleButton x:Name="SafetyExec"
-                                                      Content="&#x2699;"
-                                                      Width="36" Height="36"
-                                                      Padding="0"
-                                                      FontSize="22"
-                                                      Background="#2D2D30"
-                                                      Foreground="{StaticResource TextPrimary}"
-                                                  HorizontalAlignment="Center"
-                                                  VerticalAlignment="Center"
-                                                  HorizontalContentAlignment="Center"
-                                                  VerticalContentAlignment="Center"
-                                                  ToolTip.Tip="Execute safety">
-                                        <ToggleButton.Styles>
-                                            <Style Selector="ToggleButton:pointerover">
-                                                <Setter Property="Background" Value="{Binding (ToggleButton.Background), RelativeSource={RelativeSource Self}}"/>
-                                            </Style>
-                                            <Style Selector="ToggleButton:checked">
-                                                <Setter Property="Background" Value="{StaticResource AccentBlue}"/>
-                                                <Setter Property="Foreground" Value="White"/>
-                                            </Style>
-                                        </ToggleButton.Styles>
-                                    </ToggleButton>
-                                </StackPanel>
-                            </Border>
-                        </StackPanel>
-                                <Grid Grid.Row="2" Grid.Column="0" HorizontalAlignment="Right" VerticalAlignment="Bottom" Margin="16,0,16,8">
-                                    <Grid.ColumnDefinitions>
-                                        <ColumnDefinition Width="*"/>
-                                        <ColumnDefinition Width="Auto"/>
-                                        <ColumnDefinition Width="Auto"/>
-                                    </Grid.ColumnDefinitions>
-                                    <Button x:Name="ToolsButton"
-                                            Content="🔧"
-                                            Width="60" Height="36"
-                                            Background="{StaticResource BgTertiary}"
-                                            Foreground="{StaticResource TextPrimary}"
-                                            Padding="0"
-                                            Click="OnToolsButtonClicked"
+                <!-- Bottom bar: input area + controls + Send/Tools buttons in one row -->
+                <Grid Grid.Row="2" Background="{StaticResource BgSecondary}">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*"/>
+                        <ColumnDefinition Width="Auto"/>
+                        <ColumnDefinition Width="Auto"/>
+                    </Grid.ColumnDefinitions>
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="*"/>
+                        <RowDefinition Height="Auto"/>
+                    </Grid.RowDefinitions>
+                    <!-- Message input -->
+                    <Border Grid.Row="0" Grid.Column="0" Background="{StaticResource BgTertiary}" Margin="16,0,8,8">
+                        <TextBox x:Name="MessageInputBox" Foreground="{StaticResource TextPrimary}" Background="Transparent" BorderThickness="0" Padding="16,12" FontSize="14" MaxHeight="120" MinHeight="60"/>
+                    </Border>
+                    <!-- Controls row -->
+                    <StackPanel Grid.Row="1" Grid.Column="0" Orientation="Horizontal" Margin="16,0,16,8" VerticalAlignment="Bottom">
+                        <!-- Agent Mode (clickable emoji with turns badge) -->
+                        <Border Background="{StaticResource BgTertiary}" CornerRadius="6" Padding="8,0" Margin="0,0,4,0">
+                            <StackPanel Orientation="Horizontal" HorizontalAlignment="Center" VerticalAlignment="Center">
+                                <Grid Width="44" Height="44" Margin="0,0,2,0">
+                                    <Button x:Name="AgentModeToggle" Content="&#x1F916;" FontSize="34" Padding="0" Classes="AgentModeToggle" Foreground="{StaticResource AccentBlue}" Cursor="Hand"
+                                            HorizontalAlignment="Center" VerticalAlignment="Center"
+                                            HorizontalContentAlignment="Center" VerticalContentAlignment="Center"
+                                            ToolTip.Tip="Toggle agent mode"/>
+                                    <Button x:Name="AgentTurnsBadge"
                                             Cursor="Hand"
-                                            Grid.Column="1"
-                                            ToolTip.Tip="Open tools">
-                                        <Button.Styles>
-                                            <Style Selector="Button">
-                                                <Setter Property="Background" Value="{StaticResource BgTertiary}"/>
-                                                <Setter Property="Foreground" Value="{StaticResource TextPrimary}"/>
-                                            </Style>
-                                            <Style Selector="Button:pointerover">
-                                                <Setter Property="Background" Value="#3A3A3E"/>
-                                            </Style>
-                                        </Button.Styles>
-                                    </Button>
-                                    <Button x:Name="SendButton"
-                                            Content="Send"
-                                            Width="60" Height="36"
-                                            Background="{StaticResource AccentBlue}"
+                                            CornerRadius="4"
+                                            Padding="4,1"
+                                            VerticalAlignment="Bottom"
+                                            HorizontalAlignment="Right"
+                                            Margin="0,0,4,-4"
+                                            Click="OnAgentTurnsBadgeClicked"
+                                            IsHitTestVisible="True"
+                                            Background="{StaticResource AccentOrange}"
                                             Foreground="White"
-                                            Padding="0"
-                                            Click="OnSendMessageClicked"
-                                            Cursor="Hand"
-                                            ToolTip.Tip="Send the message">
+                                            ToolTip.Tip="Agent turns count">
                                         <Button.Styles>
-                                            <Style Selector="Button">
-                                                <Setter Property="Background" Value="{StaticResource AccentBlue}"/>
-                                                <Setter Property="Foreground" Value="White"/>
+                                            <Style Selector="Button:pointerover">
+                                                <Setter Property="Background" Value="{Binding Background, RelativeSource={RelativeSource Self}}"/>
                                             </Style>
                                         </Button.Styles>
-                                        <Button.ContextMenu>
-                                            <ContextMenu>
-                                                <MenuItem Header="MainAI" Click="OnSendTargetSelected" Tag="MainAI"/>
-                                                <MenuItem Header="Pingu" Click="OnSendTargetSelected" Tag="Pingu"/>
-                                            </ContextMenu>
-                                        </Button.ContextMenu>
+                                        <TextBlock x:Name="AgentTurnsText" Text="0" Foreground="White" FontSize="12" FontWeight="Bold" TextAlignment="Center"/>
                                     </Button>
                                 </Grid>
-                    </Grid>
-                </Border>
+                            </StackPanel>
+                        </Border>
+                        <!-- Plan/Act Toggle -->
+                        <Border Background="{StaticResource BgTertiary}" CornerRadius="6" Padding="0,0" Margin="0,0,4,0">
+                            <Border Background="{StaticResource BgTertiary}" CornerRadius="6" Padding="6,0" Width="130" Height="36">
+                                <StackPanel x:Name="PlanActPanel" Orientation="Horizontal" HorizontalAlignment="Center" VerticalAlignment="Center">
+                                    <Button x:Name="PlanButton" Content="Plan" Width="55" Height="32" Click="OnPlanClicked" Classes="active"
+                                            HorizontalContentAlignment="Center" VerticalContentAlignment="Center"
+                                            ToolTip.Tip="Switch to Plan mode">
+                                        <Button.Styles>
+                                            <Style Selector="Button"><Setter Property="Background" Value="#2D2D30"/><Setter Property="Foreground" Value="{StaticResource TextPrimary}"/><Setter Property="FontSize" Value="11"/><Setter Property="FontWeight" Value="SemiBold"/><Setter Property="BorderThickness" Value="0"/></Style>
+                                            <Style Selector="Button.active"><Setter Property="Background" Value="{StaticResource AccentBlue}"/><Setter Property="Foreground" Value="White"/></Style>
+                                            <Style Selector="Button:pointerover"><Setter Property="Background" Value="{Binding (Button.Background), RelativeSource={RelativeSource Self}}"/></Style>
+                                        </Button.Styles>
+                                    </Button>
+                                    <Button x:Name="ActButton" Content="Act" Width="55" Height="32" Click="OnActClicked" Padding="0,0"
+                                            HorizontalContentAlignment="Center" VerticalContentAlignment="Center"
+                                            ToolTip.Tip="Switch to Act mode">
+                                        <Button.Styles>
+                                            <Style Selector="Button"><Setter Property="Background" Value="#2D2D30"/><Setter Property="Foreground" Value="{StaticResource TextPrimary}"/><Setter Property="FontSize" Value="11"/><Setter Property="FontWeight" Value="SemiBold"/><Setter Property="BorderThickness" Value="0"/></Style>
+                                            <Style Selector="Button.active"><Setter Property="Background" Value="{StaticResource AccentBlue}"/><Setter Property="Foreground" Value="White"/></Style>
+                                            <Style Selector="Button:pointerover"><Setter Property="Background" Value="{Binding (Button.Background), RelativeSource={RelativeSource Self}}"/></Style>
+                                        </Button.Styles>
+                                    </Button>
+                                </StackPanel>
+                            </Border>
+                        </Border>
+                        <!-- Safety Mode -->
+                        <Border Background="{StaticResource BgTertiary}" CornerRadius="6" Padding="8,0" Margin="0,0,4,0">
+                            <StackPanel Orientation="Horizontal" HorizontalAlignment="Center" VerticalAlignment="Center">
+                                <ToggleButton x:Name="SafetyWWW" Content="&#x1F310;" Width="36" Height="36" Padding="0" FontSize="22" Background="#2D2D30" Foreground="{StaticResource TextPrimary}" Margin="0,0,3,0"
+                                    HorizontalAlignment="Center" VerticalAlignment="Center" HorizontalContentAlignment="Center" VerticalContentAlignment="Center" ToolTip.Tip="Web safety">
+                                    <ToggleButton.Styles>
+                                        <Style Selector="ToggleButton:pointerover"><Setter Property="Background" Value="{Binding (ToggleButton.Background), RelativeSource={RelativeSource Self}}"/></Style>
+                                        <Style Selector="ToggleButton:checked"><Setter Property="Background" Value="{StaticResource AccentBlue}"/><Setter Property="Foreground" Value="White"/></Style>
+                                    </ToggleButton.Styles>
+                                </ToggleButton>
+                                <ToggleButton x:Name="SafetyRead" Content="&#x1F441;" Width="36" Height="36" Padding="0" FontSize="22" Background="#2D2D30" Foreground="{StaticResource TextPrimary}" Margin="0,0,3,0"
+                                    HorizontalAlignment="Center" VerticalAlignment="Center" HorizontalContentAlignment="Center" VerticalContentAlignment="Center" ToolTip.Tip="Read safety">
+                                    <ToggleButton.Styles>
+                                        <Style Selector="ToggleButton:pointerover"><Setter Property="Background" Value="{Binding (ToggleButton.Background), RelativeSource={RelativeSource Self}}"/></Style>
+                                        <Style Selector="ToggleButton:checked"><Setter Property="Background" Value="{StaticResource AccentBlue}"/><Setter Property="Foreground" Value="White"/></Style>
+                                    </ToggleButton.Styles>
+                                </ToggleButton>
+                                <ToggleButton x:Name="SafetyEdit" Content="&#x270E;" Width="36" Height="36" Padding="0" FontSize="22" Background="#2D2D30" Foreground="{StaticResource TextPrimary}" Margin="0,0,3,0"
+                                    HorizontalAlignment="Center" VerticalAlignment="Center" HorizontalContentAlignment="Center" VerticalContentAlignment="Center" ToolTip.Tip="Edit safety">
+                                    <ToggleButton.Styles>
+                                        <Style Selector="ToggleButton:pointerover"><Setter Property="Background" Value="{Binding (ToggleButton.Background), RelativeSource={RelativeSource Self}}"/></Style>
+                                        <Style Selector="ToggleButton:checked"><Setter Property="Background" Value="{StaticResource AccentBlue}"/><Setter Property="Foreground" Value="White"/></Style>
+                                    </ToggleButton.Styles>
+                                </ToggleButton>
+                                <ToggleButton x:Name="SafetyExec" Content="&#x2699;" Width="36" Height="36" Padding="0" FontSize="22" Background="#2D2D30" Foreground="{StaticResource TextPrimary}"
+                                    HorizontalAlignment="Center" VerticalAlignment="Center" HorizontalContentAlignment="Center" VerticalContentAlignment="Center" ToolTip.Tip="Execute safety">
+                                    <ToggleButton.Styles>
+                                        <Style Selector="ToggleButton:pointerover"><Setter Property="Background" Value="{Binding (ToggleButton.Background), RelativeSource={RelativeSource Self}}"/></Style>
+                                        <Style Selector="ToggleButton:checked"><Setter Property="Background" Value="{StaticResource AccentBlue}"/><Setter Property="Foreground" Value="White"/></Style>
+                                    </ToggleButton.Styles>
+                                </ToggleButton>
+                            </StackPanel>
+                        </Border>
+                    </StackPanel>
+                    <!-- Send & Tools buttons anchored to the right -->
+                    <StackPanel Grid.Row="0" Grid.RowSpan="2" Grid.Column="1" Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,8,16,8">
+                        <Button x:Name="ToolsButton" Content="&#x1F527;" Width="60" Height="36" Background="{StaticResource BgTertiary}" Foreground="{StaticResource TextPrimary}"
+                                Padding="0" Click="OnToolsButtonClicked" Cursor="Hand" ToolTip.Tip="Open tools">
+                            <Button.Styles>
+                                <Style Selector="Button"><Setter Property="Background" Value="{StaticResource BgTertiary}"/><Setter Property="Foreground" Value="{StaticResource TextPrimary}"/></Style>
+                                <Style Selector="Button:pointerover"><Setter Property="Background" Value="#3A3A3E"/></Style>
+                            </Button.Styles>
+                        </Button>
+                        <Button x:Name="SendButton" Content="&#x1F4E5;" Width="60" Height="36" Background="{StaticResource AccentBlue}" Foreground="White"
+                                Padding="0" Click="OnSendMessageClicked" Cursor="Hand" ToolTip.Tip="Send the message">
+                            <Button.Styles>
+                                <Style Selector="Button"><Setter Property="Background" Value="{StaticResource AccentBlue}"/><Setter Property="Foreground" Value="White"/></Style>
+                            </Button.Styles>
+                            <Button.ContextMenu>
+                                <ContextMenu>
+                                    <MenuItem Header="MainAI" Click="OnSendTargetSelected" Tag="MainAI"/>
+                                    <MenuItem Header="Pingu" Click="OnSendTargetSelected" Tag="Pingu"/>
+                                </ContextMenu>
+                            </Button.ContextMenu>
+                        </Button>
+                    </StackPanel>
+                </Grid>
             </Grid>
             <!-- PinguCanvas positioned in the bottom-right of the center pane -->
             <Canvas x:Name="PinguCornerPanel" Grid.Column="1" Grid.Row="1" IsVisible="False" Panel.ZIndex="100" Background="#1A1A1E" MinWidth="200" MinHeight="200" MaxWidth="500" MaxHeight="500"/>
@@ -1300,20 +1192,6 @@
             </Border>
         </Popup>
 
-        <!-- Image Generation tab content — sits in the left sidebar, replaces Model section -->
-        <ContentControl x:Name="ImageGenerationContent"
-                        Grid.Row="1"
-                        Grid.Column="0"
-                        ZIndex="10"
-                        IsVisible="False"
-                        VerticalAlignment="Top"
-                        Width="280">
-            <Border Background="{StaticResource BgPrimary}"
-                    CornerRadius="0"
-                    Padding="0">
-                <Controls:ImageGenerationTab x:Name="ImageGenerationTab"/>
-            </Border>
-        </ContentControl>
         </Grid>
     </ContentControl>
 </Window>

@@ -1,6 +1,3 @@
-
-
-
 # OpenLMStudio
 
 A cross-platform desktop application for running and managing local AI models, built with .NET 8 and Avalonia UI. Provides an OpenAI/Anthropic-compatible inference server alongside a chat client with context management, multi-model support, and an agentic task harness.
@@ -234,6 +231,10 @@ curl http://localhost:8080/v1/chat/completions \
 See [docs/INDEX.md](docs/INDEX.md) for a complete file tree with descriptions of every tracked source file.
 
 ## Documentation
+- dotnet format -v n && git add . && git commit -m . && git push
+- dotnet run --project src/Desktop/OpenLMStudio.Desktop.csproj
+- dotnet run --project src/Desktop/OpenLMStudio.Desktop.csproj -c Debug
+
 
 | Document | Description |
 |----------|-------------|
