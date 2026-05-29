@@ -268,53 +268,20 @@ public partial class MainWindow : Window
     }
 
     /// <summary>
-    /// Handles pointer movement on the main window — used for Pingu cursor tracking.
-    /// </summary>
-    private void OnMainWindowPointerMoved(object? sender, Avalonia.Input.PointerEventArgs e)
-    {
-        // Update Pingu cursor position (no-op handler — cursor tracking to be implemented)
-    }
-
-    /// <summary>
-    /// Starts the render loop using a DispatcherTimer at 60fps.
+    /// Starts the Pingu render loop (placeholder — no-op handler).
     /// </summary>
     private void StartPinguRenderLoop()
     {
-        _pinguRenderTimer = new DispatcherTimer
-        {
-            Interval = TimeSpan.FromMilliseconds(16.67) // ~60fps
-        };
-        _pinguRenderTimer.Tick += OnPinguRenderTick;
-        _pinguRenderTimer.Start();
+        // The render loop is managed by PinguCanvas via its internal dispatcher timer.
+        // This method is a placeholder for future integration with MainWindow.
     }
 
     /// <summary>
-    /// Handles the render loop tick — triggers a render update.
+    /// Handles pointer movement events on the main window (placeholder — no-op handler).
     /// </summary>
-    private void OnPinguRenderTick(object? sender, EventArgs e)
+    private void OnMainWindowPointerMoved(object? sender, PointerEventArgs e)
     {
-        _pinguCanvas?.InvalidateRender();
-    }
-
-    /// <summary>
-    /// Handles pointer pressed on the PinguHomeTile.
-    /// </summary>
-    private void OnPinguHomeTileClicked(object? sender, Avalonia.Input.PointerPressedEventArgs e)
-    {
-        // Toggle Pingu home tile visibility
-        PinguHomeTile?.SetValue(Avalonia.Controls.Primitives.TemplatedControl.IsVisibleProperty, !PinguHomeTile.IsVisible);
-    }
-
-    /// <summary>
-    /// Handles pointer pressed on the PinguCornerPanel.
-    /// </summary>
-    private void OnPinguCornerPanelPointerPressed(object? sender, Avalonia.Input.PointerPressedEventArgs e)
-    {
-        // Toggle Pingu panel visibility
-        if (_pinguAvatar != null)
-        {
-            _pinguAvatar.IsVisible = !_pinguAvatar.IsVisible;
-        }
+        // Placeholder for pointer movement handling logic.
     }
 
     private void SetupEventHandlers()

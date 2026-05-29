@@ -1152,10 +1152,9 @@
             <Border Grid.Row="1"
                     Background="{StaticResource BgSecondary}"
                     Padding="0">
-                <Controls:PinguHomeTile x:Name="PinguHomeTile"
-                                        HorizontalAlignment="Stretch"
-                                        Height="120"
-                                        PointerPressed="OnPinguHomeTileClicked"/>
+            <Controls:PinguHomeTile x:Name="PinguHomeTile"
+                                    HorizontalAlignment="Stretch"
+                                    Height="120"/>
             </Border>
         </Grid>
 

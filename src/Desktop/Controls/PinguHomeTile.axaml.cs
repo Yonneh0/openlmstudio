@@ -42,7 +42,7 @@ public partial class PinguHomeTile : UserControl, IDisposable
     /// <summary>
     /// Called when the tile is clicked to awaken Pingu.
     /// </summary>
-    private async void OnTileClicked(object? sender, PointerPressedEventArgs e)
+    public async void OnTileClicked(object? sender, PointerPressedEventArgs e)
     {
         if (_isAwake) return;
 
