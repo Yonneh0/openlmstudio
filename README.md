@@ -234,7 +234,7 @@ See [docs/INDEX.md](docs/INDEX.md) for a complete file tree with descriptions of
 - dotnet format -v n && git add . && git commit -m . && git push
 - dotnet run --project src/Desktop/OpenLMStudio.Desktop.csproj
 - dotnet run --project src/Desktop/OpenLMStudio.Desktop.csproj -c Debug
-
+- dotnet publish src/Desktop/OpenLMStudio.Desktop.csproj -c Release -r win-x64 -o publish/win-x64 --self-contained
 
 | Document | Description |
 |----------|-------------|
