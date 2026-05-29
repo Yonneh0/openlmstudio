@@ -95,9 +95,10 @@ public class DiffusionModelFamilyService : IDiffusionModelFamilyService
             SupportedSafetensorsFilePattern: "stable-diffusion-3",
             SupportedSamplers: AllSamplers));
 
+        // Flux.1-dev — original Flux with DiT architecture (T5 + CLIP).
         RegisterFamily(new DiffusionModelFamilyConfig(
-            "Flux",
-            "flux",
+            "Flux.1-dev",
+            "flux1",
             LatentChannels: 16,
             DefaultWidth: 1024,
             DefaultHeight: 1024,
@@ -105,8 +106,36 @@ public class DiffusionModelFamilyService : IDiffusionModelFamilyService
             RecommendedStepsMax: 35,
             CfgScaleMin: 1.0,
             CfgScaleMax: 3.5,
-            SupportedSafetensorsFilePattern: "flux",
+            SupportedSafetensorsFilePattern: "flux1",
             SupportedSamplers: AllSamplers));
+
+        // Flux.2 — Flux.2 with improved DiT, requires T5-XL encoder.
+        RegisterFamily(new DiffusionModelFamilyConfig(
+            "Flux.2",
+            "flux2",
+            LatentChannels: 16,
+            DefaultWidth: 1024,
+            DefaultHeight: 1024,
+            RecommendedStepsMin: 25,
+            RecommendedStepsMax: 50,
+            CfgScaleMin: 1.0,
+            CfgScaleMax: 3.5,
+            SupportedSafetensorsFilePattern: "flux2",
+            SupportedSamplers: AllSamplers));
+
+        // Flux.1-schnell — quantized, faster Flux variant.
+        RegisterFamily(new DiffusionModelFamilyConfig(
+            "Flux.1-schnell",
+            "flux_schnell",
+            LatentChannels: 16,
+            DefaultWidth: 1024,
+            DefaultHeight: 1024,
+            RecommendedStepsMin: 4,
+            RecommendedStepsMax: 8,
+            CfgScaleMin: 0.0,
+            CfgScaleMax: 1.0,
+            SupportedSafetensorsFilePattern: "schnell",
+            SupportedSamplers: new[] { ImageSamplerType.Euler, ImageSamplerType.DPMS }));
     }
 
     public void Dispose() { }

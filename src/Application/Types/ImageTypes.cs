@@ -1,4 +1,98 @@
+using OpenLMStudio.Application.Interfaces;
+using System.Runtime.CompilerServices;
+
 namespace OpenLMStudio.Application.Types;
+
+/// <summary>
+/// Supported output image formats for image generation.
+/// </summary>
+public enum ImageOutputFormat
+{
+    Png,
+    Jpeg,
+    WebP,
+    Ico,
+    Bmp,
+    Gif,
+}
+
+/// <summary>
+/// A request for image generation (used by DiffusionPipelineService).
+/// </summary>
+public record ImageGenerationRequest(
+    string ModelId,
+    string Prompt,
+    string? NegativePrompt = null,
+    int Width = 1024,
+    int Height = 1024,
+    double GuidanceScale = 7.5,
+    int Steps = 30,
+    long Seed = -1,
+    bool StreamProgress = false,
+    OpenLMStudio.Application.Interfaces.ImageSamplerType SamplerType = OpenLMStudio.Application.Interfaces.ImageSamplerType.Euler,
+    List<OpenLMStudio.Application.Interfaces.LoraAdapterReference>? LoraAdapters = null)
+{
+    public long EffectiveSeed => Seed == -1 ? (long)(DateTimeOffset.UtcNow.ToUnixTimeMilliseconds() % int.MaxValue) : Seed;
+}
+
+/// <summary>
+/// Result of a single image generation request.
+/// </summary>
+public record ImageGenerationResult(
+    byte[] ImageBytes,
+    int Width,
+    int Height,
+    long Seed,
+    double GuidanceScale,
+    int Steps,
+    string ModelId,
+    string Prompt = "",
+    string? NegativePrompt = null,
+    IReadOnlyList<LoraAdapterReference>? LoraAdapters = null)
+{
+    public string DataUri => $"data:image/png;base64,{Convert.ToBase64String(ImageBytes)}";
+    public string MimeType { get; init; } = "image/png";
+}
+
+/// <summary>
+/// Represents progress during an image generation operation.
+/// </summary>
+public record ImageGenerationProgress(
+    int Step,
+    int TotalSteps,
+    float Percentage)
+{
+    public float ProgressPercent => TotalSteps > 0 ? (Step / (float)TotalSteps) * 100 : 0;
+    public byte[]? ImageBytes { get; init; }
+}
+
+/// <summary>
+/// Entry in the image gallery with metadata.
+/// </summary>
+public record ImageGalleryEntry(
+    string Id,
+    string Prompt,
+    string ModelId,
+    int Width,
+    int Height,
+    long Seed,
+    double CfgScale,
+    int Steps,
+    string SamplerType,
+    string FilePath,
+    string? ThumbnailPath,
+    DateTime Timestamp,
+    string? NegativePrompt = null,
+    IReadOnlyList<string>? LoRAAdapters = null);
+
+/// <summary>
+/// Result of a batch image generation operation.
+/// </summary>
+public record ImageBatchResult(
+    IReadOnlyList<ImageGenerationResult> Results,
+    byte[]? GridImage,
+    int Succeeded,
+    int Failed);
 
 /// <summary>
 /// Request to the image generation endpoint via OpenAI-compatible API format.

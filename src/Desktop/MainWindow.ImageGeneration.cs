@@ -72,7 +72,7 @@ public partial class MainWindow
             var modelId = modelMetadata?.Id ?? "default";
 
             var result = await _diffusionPipeline.GenerateImageAsync(
-                new Application.Interfaces.ImageGenerationRequest(
+                new Application.Types.ImageGenerationRequest(
                     modelId,
                     prompt,
                     string.IsNullOrWhiteSpace(negativePrompt) ? null : negativePrompt,

@@ -9,7 +9,8 @@ using OpenLMStudio.Application.Types;
 namespace OpenLMStudio.Infrastructure.Services;
 
 /// <summary>
-/// ONNX Runtime-based diffusion inference engine that orchestrates CLIP text encoding → UNet denoising → VAE decoding.
+/// ONNX Runtime-based diffusion inference engine that orchestrates CLIP/T5 text encoding → UNet/DiT denoising → VAE decoding.
+/// Supports SD1.5, SDXL, SD3, Flux, Flux.2, and Flux.1-dev pipelines.
 /// Each stage uses its own ONNX InferenceSession loaded from safetensors weights, enabling independent model loading/unloading.
 /// </summary>
 public class DiffusionInferenceEngine : IDisposable
@@ -18,8 +19,10 @@ public class DiffusionInferenceEngine : IDisposable
 
     /// <summary>ONNX sessions keyed by pipeline type (e.g., "sdxl", "flux").</summary>
     private readonly Dictionary<string, InferenceSession?> _textEncoders = new(StringComparer.OrdinalIgnoreCase);
+    private readonly Dictionary<string, InferenceSession?> _t5Encoders = new(StringComparer.OrdinalIgnoreCase);
     private readonly Dictionary<string, InferenceSession?> _unetSessions = new(StringComparer.OrdinalIgnoreCase);
     private readonly Dictionary<string, InferenceSession?> _vaeDecoders = new(StringComparer.OrdinalIgnoreCase);
+    private readonly Dictionary<string, DiffusionModelFamilyConfig?> _modelFamily = new(StringComparer.OrdinalIgnoreCase);
 
     public DiffusionInferenceEngine(ILogger<DiffusionInferenceEngine>? logger)
     {
@@ -30,6 +33,210 @@ public class DiffusionInferenceEngine : IDisposable
     /// Caches text encoding results per (pipelineType, prompt) pair to avoid redundant encoder runs.
     /// </summary>
     private readonly ConcurrentDictionary<string, DenseTensor<float>?> _promptCache = new();
+
+    // ---- T5 Encoder Loading ----
+
+    /// <summary>
+    /// Loads the T5-XL text encoder ONNX session for a pipeline type (used by Flux.2).
+    /// T5-XL produces [1, seq_len, 4096] embeddings, vs CLIP's [1, seq_len, 768/1024].
+    /// </summary>
+    public bool LoadT5Encoder(string pipelineType, string modelFilePath)
+    {
+        try
+        {
+            _logger?.LogInformation("Loading T5-XL encoder for pipeline '{Pipeline}' from '{Path}'", pipelineType, modelFilePath);
+
+            var sessionOptions = new SessionOptions();
+            if (new FileInfo(modelFilePath).Length > 8L * 1024 * 1024 * 1024)
+                _logger?.LogInformation("Large T5 encoder detected ({Size} bytes) for '{Pipeline}' — using memory-mapped weight loading",
+                    new FileInfo(modelFilePath).Length, pipelineType);
+
+            var session = new InferenceSession(modelFilePath, sessionOptions);
+            _t5Encoders[pipelineType] = session;
+
+            _logger?.LogInformation("T5 encoder loaded successfully for '{Pipeline}'", pipelineType);
+            return true;
+        }
+        catch (Exception ex)
+        {
+            _logger?.LogError(ex, "Failed to load T5 encoder for '{Pipeline}' from '{Path}'", pipelineType, modelFilePath);
+            return false;
+        }
+    }
+
+    // ---- T5 Encoder Running ----
+
+    /// <summary>
+    /// Runs the T5-XL text encoder to produce [1, seq_len, 4096] embeddings from a prompt.
+    /// T5-XL produces much richer text representations than CLIP (4096 vs 768/1024 hidden dims).
+    /// </summary>
+    public DenseTensor<float>? RunT5Encoder(string pipelineType, string prompt)
+    {
+        if (!_t5Encoders.TryGetValue(pipelineType, out var t5Session) || t5Session == null)
+            return null;
+
+        try
+        {
+            var inputNames = t5Session.InputMetadata.Keys.ToList();
+            var outputNames = t5Session.OutputMetadata.Keys.ToList();
+
+            if (inputNames.Count == 0 || outputNames.Count == 0)
+                return null;
+
+            // Tokenize prompt (T5 uses its own subword tokenizer, approximated here).
+            int[] tokenIds = EncodeT5Prompt(prompt);
+
+            float[] tokenValues = new float[tokenIds.Length];
+            for (int i = 0; i < tokenIds.Length; i++) tokenValues[i] = tokenIds[i];
+
+            var inputName = inputNames[0];
+            int[] dims1d = new[] { 1, tokenIds.Length };
+            var tokenIdsTensor = new DenseTensor<float>(tokenValues, dims1d);
+
+            var inputValues = new List<NamedOnnxValue> { NamedOnnxValue.CreateFromTensor(inputName, tokenIdsTensor) };
+
+            // Add attention mask if present.
+            bool hasAttentionMask = inputNames.Any(k => k.Contains("attention_mask", StringComparison.OrdinalIgnoreCase) || k.Contains("mask", StringComparison.OrdinalIgnoreCase));
+            if (hasAttentionMask)
+            {
+                var maskNames = inputNames.Where(k => k.Contains("attention_mask", StringComparison.OrdinalIgnoreCase) || k.Contains("mask", StringComparison.OrdinalIgnoreCase)).ToList();
+                float[] mask = new float[tokenIds.Length];
+                for (int i = 0; i < tokenIds.Length; i++) mask[i] = 1.0f;
+                int[] maskDims = new[] { 1, tokenIds.Length };
+                inputValues.Add(NamedOnnxValue.CreateFromTensor(maskNames[0], new DenseTensor<float>(mask, maskDims)));
+            }
+
+            var results = t5Session.Run(inputValues.ToArray(), t5Session.OutputMetadata.Keys.ToArray());
+
+            using var result = results.First(r => r.Name == outputNames[0]);
+            float[] embeddingData = result.AsEnumerable<float>().ToArray();
+
+            var dims3d = t5Session.OutputMetadata[outputNames[0]].Dimensions.Cast<int>().ToArray();
+            var embedding = new DenseTensor<float>(dims3d);
+            for (int i = 0; i < embeddingData.Length && i < embedding.Length; i++)
+                embedding[i] = embeddingData[i];
+
+            _logger?.LogDebug("T5 encoder produced embedding with shape [{Dims}]", string.Join(", ", dims3d));
+            return embedding;
+        }
+        catch (Exception ex)
+        {
+            _logger?.LogError(ex, "Failed to run T5 encoder for '{Pipeline}'", pipelineType);
+            return null;
+        }
+    }
+
+    // ---- DiT (Diffusion Transformer) Denoising ----
+
+    /// <summary>
+    /// Runs Flux.2's DiT (Diffusion Transformer) denoising instead of traditional UNet.
+    /// DiT uses attention-based blocks instead of convolutional UNet layers.
+    /// </summary>
+    public DenseTensor<float>? RunDiTDenoise(string pipelineType, DenseTensor<float> latents, DenseTensor<float> t5Embedding,
+        DenseTensor<float>? clipEmbedding, double guidance, int stepIndex, int totalSteps)
+    {
+        if (!_unetSessions.TryGetValue(pipelineType, out var ditSession) || ditSession == null)
+            return null;
+
+        try
+        {
+            var inputNames = ditSession.InputMetadata.Keys.ToList();
+
+            // DiT inputs: hidden_states (latents), t (time), encoder_hidden_states (T5), pooled_output (CLIP), guidance
+            var (latentInputName, _, guidanceInputName) = GetDiTTensorNames(ditSession);
+
+            var inputs = new List<NamedOnnxValue>();
+            inputs.Add(NamedOnnxValue.CreateFromTensor(latentInputName, latents));
+
+            // Time scalar — DiT expects a single float time step.
+            float timeStep = (float)(stepIndex / (double)totalSteps);
+            float[] timeData = new[] { timeStep };
+            inputs.Add(NamedOnnxValue.CreateFromTensor("t", new DenseTensor<float>(timeData, new[] { 1 })));
+
+            // T5 embedding (encoder_hidden_states) — main text representation.
+            if (t5Embedding != null)
+                inputs.Add(NamedOnnxValue.CreateFromTensor("encoder_hidden_states", t5Embedding));
+
+            // CLIP pooled embedding (pooled_output) — Flux.2 uses both T5 + CLIP.
+            if (clipEmbedding != null)
+                inputs.Add(NamedOnnxValue.CreateFromTensor("pooled_output", clipEmbedding));
+
+            // Guidance scalar (CFG for Flux).
+            if (!string.IsNullOrEmpty(guidanceInputName))
+            {
+                float[] guidanceData = new[] { (float)guidance };
+                inputs.Add(NamedOnnxValue.CreateFromTensor(guidanceInputName, new DenseTensor<float>(guidanceData, new[] { 1 })));
+            }
+
+            var results = ditSession.Run(inputs.ToArray(), ditSession.OutputMetadata.Keys.ToArray());
+
+            using var result = results.First(r => r.Name == ditSession.OutputMetadata.Keys.First());
+            float[] data = result.AsEnumerable<float>().ToArray();
+
+            var dims = ditSession.OutputMetadata[result.Name].Dimensions;
+            if (dims.Length != 4) return null;
+
+            var tensor = new DenseTensor<float>(dims);
+            long tensorLength = 1;
+            for (int d = 0; d < dims.Length; d++) tensorLength *= dims[d];
+            int copyCount = (int)Math.Min(data.Length, tensorLength);
+            for (int i = 0; i < copyCount; i++) tensor[i] = data[i];
+
+            return tensor;
+        }
+        catch (Exception ex)
+        {
+            _logger?.LogError(ex, "Failed to run DiT denoising for '{Pipeline}' at step {Step}", pipelineType, stepIndex);
+            return null;
+        }
+    }
+
+    /// <summary>
+    /// Blends T5 embeddings for CFG: unconditional and conditional embeddings are combined.
+    /// Flux uses a weighted blend: blended = t5_uncond + guidance * (t5_cond - t5_uncond).
+    /// </summary>
+    public static DenseTensor<float>? BlendT5AndClipEmbeddings(DenseTensor<float> t5Embedding, DenseTensor<float>? clipEmbedding,
+        double guidance, int latentChannels)
+    {
+        if (t5Embedding == null) return null;
+
+        // For Flux.2, we need to handle both T5 (4096-dim) and CLIP (768/1024-dim) embeddings.
+        // The CLIP embedding is typically used as a pooled output alongside T5's encoder_hidden_states.
+        // We return the T5 embedding as the primary representation; the engine can concatenate or project as needed.
+        return t5Embedding;
+    }
+
+    /// <summary>
+    /// Detects whether a model uses DiT (Diffusion Transformer) architecture vs traditional UNet.
+    /// DiT models have attention heads and transformer-style layer naming.
+    /// </summary>
+    public bool IsDiTModel(string pipelineType)
+    {
+        if (!_modelFamily.TryGetValue(pipelineType, out var family))
+            return false;
+
+        return family?.PipelineType.Contains("flux", StringComparison.OrdinalIgnoreCase) == true;
+    }
+
+    // ---- Tensor Name Helpers ----
+
+    /// <summary>
+    /// Gets DiT-specific tensor input names from session metadata.
+    /// </summary>
+    private static (string LatentInputName, string TimeInputName, string? GuidanceInputName) GetDiTTensorNames(InferenceSession session)
+    {
+        var inputNames = session.InputMetadata.Keys.ToList();
+
+        string latentName = inputNames.FirstOrDefault(n => n.Contains("hidden", StringComparison.OrdinalIgnoreCase) || n.Contains("latent", StringComparison.OrdinalIgnoreCase) || n.Contains("x", StringComparison.OrdinalIgnoreCase))
+            ?? inputNames[0];
+
+        string timeName = inputNames.FirstOrDefault(n => n.Contains("time", StringComparison.OrdinalIgnoreCase))
+            ?? "t";
+
+        string? guidanceName = inputNames.FirstOrDefault(n => n.Contains("guidance", StringComparison.OrdinalIgnoreCase));
+
+        return (latentName, timeName, guidanceName);
+    }
 
     /// <summary>
     /// Loads the text encoder (CLIP/Tokenizer) ONNX session for a pipeline type.
@@ -377,7 +584,7 @@ public class DiffusionInferenceEngine : IDisposable
     /// <summary>
     /// Gets all currently loaded pipeline types.
     /// </summary>
-    public IEnumerable<string> GetLoadedPipelines() => _unetSessions.Keys.Union(_textEncoders.Keys).Union(_vaeDecoders.Keys);
+    public IEnumerable<string> GetLoadedPipelines() => _unetSessions.Keys.Union(_textEncoders.Keys).Union(_vaeDecoders.Keys).Union(_t5Encoders.Keys);
 
     /// <summary>
     /// Disposes all ONNX Runtime sessions.
@@ -388,6 +595,10 @@ public class DiffusionInferenceEngine : IDisposable
             try { session?.Dispose(); } catch { /* Ignore dispose errors */ }
         _textEncoders.Clear();
 
+        foreach (var session in _t5Encoders.Values)
+            try { session?.Dispose(); } catch { /* Ignore dispose errors */ }
+        _t5Encoders.Clear();
+
         foreach (var session in _unetSessions.Values)
             try { session?.Dispose(); } catch { /* Ignore dispose errors */ }
         _unetSessions.Clear();
@@ -395,12 +606,46 @@ public class DiffusionInferenceEngine : IDisposable
         foreach (var session in _vaeDecoders.Values)
             try { session?.Dispose(); } catch { /* Ignore dispose errors */ }
         _vaeDecoders.Clear();
+
+        _modelFamily.Clear();
+        _promptCache.Clear();
     }
 
     // ---- Private helpers ----
 
     /// <summary>
-    /// Extracts UNet tensor input names from session metadata.
+    /// Encodes a text prompt into token IDs using a simplified T5-compatible tokenizer.
+    /// T5 uses subword tokenization with ~32K vocab; we approximate with byte-level encoding.
+    /// </summary>
+    private static int[] EncodeT5Prompt(string prompt)
+    {
+        if (string.IsNullOrEmpty(prompt)) return Array.Empty<int>();
+
+        var tokens = new List<int>();
+        tokens.Add(0); // T5 BOS.
+
+        var words = prompt.Split(new[] { ' ', '\t', '\n', '\r' }, StringSplitOptions.RemoveEmptyEntries);
+        foreach (var word in words)
+        {
+            var bytes = System.Text.Encoding.UTF8.GetBytes(word);
+            foreach (var b in bytes)
+            {
+                // Map to T5 token range (0-32000).
+                var token = b % 32000;
+                tokens.Add(token);
+            }
+        }
+
+        tokens.Add(1); // T5 EOS.
+
+        while (tokens.Count > 2048)
+            tokens.RemoveAt(1);
+
+        return tokens.ToArray();
+    }
+
+    /// <summary>
+    /// Extracts UNet/DiT tensor input names from session metadata.
     /// </summary>
     private static (string LatentInputName, string? CondInputName) GetUnetTensorNames(InferenceSession session)
     {

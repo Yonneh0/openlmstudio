@@ -48,8 +48,8 @@
   - Defines IConversationEncryption interface for AES-256-GCM conversation data encryption with PBKDF2 key derivation.
 ## src/Application/Interfaces/IConversationManager.cs - 340 lines - Conversation Manager, Device Monitor, Server, and MCP Interfaces
   - Defines ServerConfiguration, IConversationManager, IDeviceMonitor, IServerService, IMcpClient interfaces plus related types.
-## src/Application/Interfaces/IDiffusionPipelineService.cs - 249 lines - Diffusion Pipeline, VAE, LoRA, and Embedding Services
-  - Defines IDiffusionPipelineService, IVAEPipelineService, ILoraAdapterManager, IEmbeddingPipelineService, IDiffusionModelFamilyService interfaces.
+## src/Application/Interfaces/IDiffusionPipelineService.cs - 280 lines - Diffusion Pipeline, VAE, LoRA, Embedding, and Image Generation Coordination
+  - Defines IDiffusionPipelineService, IVAEPipelineService, ILoraAdapterManager, IEmbeddingPipelineService, IDiffusionModelFamilyService, IImageGenerationCoordinator interfaces plus ImageGenerationCommand, LoraAdapterCommand, ImageToImageCommand, ControlNetCommand, InpaintCommand, ImageGenerationStatus records.
 ## src/Application/Interfaces/IDigitalSignatureVerifier.cs - 23 lines - Digital Signature Verification Service
   - Defines IDigitalSignatureVerifier interface for verifying RSA signatures on model files with SHA256/SHA512 support.
 ## src/Application/Interfaces/IDownloadManager.cs - 174 lines - Model Download Manager with Progress Events
@@ -104,6 +104,8 @@
   - Defines ISystemAIClient interface for the llama.cpp System AI inference engine with SSE streaming support.
 ## src/Application/Interfaces/ISystemAICoordinator.cs - 35 lines - System AI Workflow Orchestrator
   - Defines ISystemAICoordinator interface for orchestrating System AI with QEMU VMs for cross-architecture workflows.
+## src/Application/Interfaces/ISystemAICoordination.cs - 3 lines - SystemAI Coordination (placeholder)
+  - Placeholder for future SystemAI coordination expansion. IImageGenerationCoordinator is defined in IDiffusionPipelineService.cs.
 ## src/Application/Interfaces/ITabService.cs - 25 lines - Tab Navigation Service
   - Defines ITabService interface with ActiveTab, SwitchTabAsync, GetAvailableTabs methods for tab navigation.
 ## src/Application/Interfaces/ITaskCompletionDetector.cs - 18 lines - Task Completion Detection Interface
@@ -189,7 +191,7 @@
   - 9 record types for agent tool requests: ListFilesRequest, WriteFileRequest, ReadFileRequest, ReplaceFileRequest, SearchFilesRequest, ExecuteCommandRequest, UseMcpToolRequest, AccessMcpResourceRequest, BrowserActionRequest.
 ## src/Application/Types/ChatTypes.cs - 242 lines - Chat Completion Types and Event Handlers
   - ChatMessage, ChatCompletionRequest, ChatChoice, ChatCompletionResponse, UsageStats, StreamingEventArgs, StreamingEventHandler.
-## src/Application/Types/ImageTypes.cs - 289 lines - Image Generation Request/Response Types
-  - OpenAI-compatible image generation types: OpenAIImageGenerationRequest, ImageGenerationResponse, ImageData, ImageInpaintingRequest, ImageOutpaintingRequest.
+## src/Application/Types/ImageTypes.cs - ~330 lines - Image Generation Request/Response Types
+   - OpenAI-compatible image generation types: OpenAIImageGenerationRequest, ImageGenerationResponse, ImageData, ImageInpaintingRequest, ImageOutpaintingRequest. Also: ImageOutputFormat enum, ImageGalleryEntry record, ImageBatchResult record.
 ## src/Application/Types/MiscTypes.cs - 295 lines - Misc DTOs, Plugin Verification, HuggingFace Info, Budget Types, and OpenTelemetry ActivitySource
   - FilePreviewResult, PluginVerificationResult, HfRepoFileInfo, LoadTestResult, BenchmarkResult, ChatBudgetStateDto, ContextBudgetIndicator, OpenLmStudioActivitySource.

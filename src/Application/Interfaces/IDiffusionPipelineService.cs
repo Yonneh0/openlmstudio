@@ -1,9 +1,18 @@
 using System.Collections.Generic;
 using System.Runtime.CompilerServices;
-using OpenLMStudio.Application.Types;
 using OpenLMStudio.Domain.Models;
 
 namespace OpenLMStudio.Application.Interfaces;
+
+// Re-export types from Application.Types for convenience
+using ImageGenerationRequest = OpenLMStudio.Application.Types.ImageGenerationRequest;
+using ImageGenerationResult = OpenLMStudio.Application.Types.ImageGenerationResult;
+using ImageGenerationProgress = OpenLMStudio.Application.Types.ImageGenerationProgress;
+using ImageOutputFormat = OpenLMStudio.Application.Types.ImageOutputFormat;
+using ImageGenerationMetadata = OpenLMStudio.Application.Types.ImageGenerationMetadata;
+using ImageInpaintingRequest = OpenLMStudio.Application.Types.ImageInpaintingRequest;
+using ImageOutpaintingRequest = OpenLMStudio.Application.Types.ImageOutpaintingRequest;
+using MultiModalModelMetadata = OpenLMStudio.Domain.Models.MultiModalModelMetadata;
 
 /// <summary>
 /// Represents a LoRA adapter weight tensor delta for runtime application to ONNX Runtime inference.
@@ -35,63 +44,11 @@ public enum ImageSamplerType
 }
 
 /// <summary>
-/// Represents a request to generate an image using a diffusion model.
-/// </summary>
-public record ImageGenerationRequest(
-    string ModelId,
-    string Prompt,
-    string? NegativePrompt = null,
-    int Width = 1024,
-    int Height = 1024,
-    double GuidanceScale = 7.5,
-    int Steps = 30,
-    long Seed = -1,
-    List<LoraAdapterReference>? LoraAdapters = null,
-    bool StreamProgress = false,
-    ImageSamplerType SamplerType = ImageSamplerType.Euler)
-{
-    public long EffectiveSeed => Seed == -1 ? (long)(DateTimeOffset.UtcNow.ToUnixTimeMilliseconds() % int.MaxValue) : Seed;
-}
-
-/// <summary>
 /// Reference to a LoRA adapter for on-the-fly application during image generation.
 /// </summary>
 public record LoraAdapterReference(
     string ModelId,
     double Weight = 1.0);
-
-/// <summary>
-/// Represents progress during an image generation operation.
-/// </summary>
-public record ImageGenerationProgress(
-    int Step,
-    int TotalSteps,
-    float Percentage)
-{
-    public float ProgressPercent => TotalSteps > 0 ? (Step / (float)TotalSteps) * 100 : 0;
-
-    /// <summary>Intermediate PNG bytes from this step (null for simulated progress).</summary>
-    public byte[]? ImageBytes { get; init; }
-}
-
-/// <summary>
-/// Result of an image generation operation.
-/// </summary>
-public record ImageGenerationResult(
-    byte[] ImageBytes,           // PNG bytes
-    int Width,                   // required: output width in pixels
-    int Height,                  // required: output height in pixels
-    long Seed,                   // required: seed used for generation
-    double GuidanceScale,        // required: CFG scale factor
-    int Steps,                   // required: number of diffusion steps
-    string ModelId)              // required: model ID that generated this result
-{
-    /// <summary>Convert image bytes to a Base64-encoded data URI.</summary>
-    public string DataUri => $"data:image/png;base64,{Convert.ToBase64String(ImageBytes)}";
-
-    /// <summary>MIME type for the generated image (default: PNG).</summary>
-    public string MimeType { get; init; } = "image/png";
-}
 
 /// <summary>
 /// Interface for managing diffusion-based image generation pipelines.
@@ -247,3 +204,65 @@ public interface IDiffusionModelFamilyService : IDisposable
     void RegisterFamily(DiffusionModelFamilyConfig config);
     void RegisterDefaultFamilies();
 }
+
+/// <summary>
+/// Interface for the image generation coordinator — SystemAI's primary entry point for image generation.
+/// </summary>
+public interface IImageGenerationCoordinator : IDisposable
+{
+    Task<ImageGenerationResult> ExecuteAsync(ImageGenerationCommand command, CancellationToken ct = default);
+    IAsyncEnumerable<ImageGenerationProgress> ExecuteStreamingAsync(ImageGenerationCommand command, CancellationToken ct = default);
+    ImageGenerationStatus GetStatus();
+}
+
+/// <summary>
+/// Command record for SystemAI to control image generation.
+/// </summary>
+public record ImageGenerationCommand(
+    string PipelineType,
+    string Prompt,
+    string? NegativePrompt,
+    int Width,
+    int Height,
+    int Steps,
+    double CfgScale,
+    int Seed,
+    string SamplerType,
+    IReadOnlyList<LoraAdapterCommand>? LoRAAdapters,
+    ImageToImageCommand? ImageToImage,
+    ControlNetCommand? ControlNet,
+    InpaintCommand? Inpaint,
+    string OutputFormat,
+    string? OutputPath);
+
+/// <summary>
+/// Command for applying a LoRA adapter.
+/// </summary>
+public record LoraAdapterCommand(string ModelId, double Weight);
+
+/// <summary>
+/// Command for image-to-image input.
+/// </summary>
+public record ImageToImageCommand(byte[] InputImage, double DenoiseStrength);
+
+/// <summary>
+/// Command for ControlNet conditioning.
+/// </summary>
+public record ControlNetCommand(string ControlType, byte[] ControlImage);
+
+/// <summary>
+/// Command for inpainting.
+/// </summary>
+public record InpaintCommand(byte[] MaskImage, string Prompt);
+
+/// <summary>
+/// Current status of an image generation operation.
+/// </summary>
+public record ImageGenerationStatus(
+    bool IsGenerating,
+    int CurrentStep,
+    int TotalSteps,
+    float Percentage,
+    string? CurrentModelId,
+    string? CurrentPrompt);
+

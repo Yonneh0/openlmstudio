@@ -74,14 +74,14 @@
   - Static class with GenerateKey, Encrypt, Decrypt, DeriveKey, ComputeSha256Hash, ConstantTimeEquals. Format: [Salt (32 bytes)][IV (16 bytes)][Encrypted Data].
 ## src/Infrastructure/Services/DeviceMonitor.cs - 367 lines - Windows Hardware Device Monitor
   - WindowsDeviceMonitor with WMI-based hardware detection (Win32_VideoController, Win32_Processor, Win32_OperatingSystem). 10s polling interval.
-## src/Infrastructure/Services/DiffusionInferenceEngine.cs - 549 lines - ONNX Runtime Diffusion Inference Engine
-  - CLIP text encoding → UNet denoising with CFG → VAE decoding pipeline. Supports SD1.5/SDXL/Flux pipelines. RunUnetDenoise, ApplyLoraDeltas, RunTextEncoder.
-## src/Infrastructure/Services/DiffusionModelFamilyService.cs - 113 lines - Diffusion Model Family Configuration Manager
-  - Manages diffusion model families (SD 1.5, SDXL, SD 3, Flux) with pipeline-specific configurations. RegisterFamily, RegisterDefaultFamilies.
+## src/Infrastructure/Services/DiffusionInferenceEngine.cs - ~700 lines - ONNX Runtime Diffusion Inference Engine (T5 + DiT)
+   - CLIP/T5 text encoding → UNet/DiT denoising → VAE decoding pipeline. Supports SD1.5/SDXL/SD3/Flux/Flux.2/Flux.1-dev. LoadT5Encoder, RunT5Encoder, RunDiTDenoise, BlendT5AndClipEmbeddings, IsDiTModel, ApplyLoraDeltas, RunTextEncoder. T5-XL produces [1, seq_len, 4096] embeddings.
+## src/Infrastructure/Services/DiffusionModelFamilyService.cs - ~140 lines - Diffusion Model Family Configuration Manager
+   - Manages diffusion model families (SD 1.5, SDXL, SD 3, Flux.1-dev, Flux.2, Flux.1-schnell) with pipeline-specific configurations. RegisterFamily, RegisterDefaultFamilies, GetFamily, GetFamilyByModelId.
 ## src/Infrastructure/Services/DiffusionModelLoader.cs - 155 lines - Image Generation Model Loader Adapter
   - IModelLoader for image generation models, wrapping DiffusionPipelineService. LoadModelAsync, UnloadModelAsync, GetModelMetadataAsync.
-## src/Infrastructure/Services/DiffusionPipelineService.cs - 1378 lines - Full 3-Stage Diffusion Pipeline Service
-  - IDiffusionPipelineService with ONNX Runtime-based image generation. GenerateImageAsync, GenerateInpaintingAsync, GenerateOutpaintingAsync, StreamProgressAsync.
+## src/Infrastructure/Services/DiffusionPipelineService.cs - ~1500 lines - Full 3-Stage Diffusion Pipeline Service
+   - IDiffusionPipelineService with ONNX Runtime-based image generation. GenerateImageAsync, GenerateInpaintingAsync, GenerateOutpaintingAsync, StreamProgressAsync, GenerateBatchAsync, CreateGridImage, SaveImageAsync, SaveToGalleryAsync, UpdatePreviewAsync. PreviewService for live previews.
 ## src/Infrastructure/Services/DigitalSignatureVerifier.cs - 85 lines - RSA Digital Signature Verifier
   - IDigitalSignatureVerifier implementation for model file integrity verification. VerifySignature (SHA256), VerifySignatureSha512, ComputeFileHash.
 ## src/Infrastructure/Services/DownloadManager.cs - 1024 lines - Model Download Manager with HuggingFace Support
@@ -225,8 +225,20 @@
   - IToolRegistry and IDisposable for managing tool discovery and instantiation. GetTools, Register, Unregister, GetTool (lazy DI loading), ExecuteToolAsync.
 ## src/Infrastructure/Services/UpdateManager.cs - 227 lines - Application Update Manager with GitHub Releases Integration
   - IUpdateManager for application updates via GitHub Releases API. CheckForUpdateAsync, DownloadUpdateAsync, ApplyUpdateAsync, CancelUpdate.
+## src/Infrastructure/Services/ImageFormatConverter.cs - ~180 lines - Image Format Converter (PNG/JPEG/WebP/ICO/BMP/GIF)
+   - IImageFormatConverter implementation with SkiaSharp-based format conversion. ConvertAsync, ConvertToPng, ConvertToJpeg, ConvertToWebP, ConvertToIco, ConvertToBmp, ToGifAsync (fixed disposal).
+## src/Infrastructure/Services/ImageSaver.cs - 130 lines - Image Saver with Metadata Sidecars and Gallery
+   - IImageSaver implementation for saving generated images to disk. SaveToDiskAsync, SaveWithMetadataAsync, SaveToGalleryAsync, GenerateTimestampedFilename, GetGalleryDirectoryAsync.
+## src/Infrastructure/Services/ImageToImageService.cs - 300 lines - Image-to-Image Service with Denoise Control
+   - IImageToImageService implementation. EncodeAndDenoiseAsync, ImageVariationAsync, InpaintAsync, OutpaintAsync. Encodes input image via VAE, applies noise, runs denoising loop.
+## src/Infrastructure/Services/ImageGenerationCoordinator.cs - 150 lines - Image Generation Coordinator for SystemAI
+   - IImageGenerationCoordinator implementation. ExecuteAsync, ExecuteStreamingAsync, GetStatus. Orchestrates pipeline, image-to-image, format conversion, and saving.
+## src/Infrastructure/Services/ImagePreviewService.cs - ~30 lines - Image Preview Service for Live Updates
+    - IImagePreviewService implementation with thread-safe preview updates. OnPreviewUpdated event, UpdatePreviewAsync, GetCurrentPreviewAsync, ClearPreview.
+## src/Infrastructure/Services/ImageGalleryService.cs - 163 lines - SQLite-Backed Image Gallery Service
+    - IImageGalleryService implementation with SQLite persistence. GetRecentImagesAsync, SearchImagesAsync, GetImageAsync, DeleteImageAsync, SaveImageAsync. Auto-generates 128x128 thumbnails. WAL journal mode for concurrent reads.
 ## src/Infrastructure/Services/VaEPipelineService.cs - 434 lines - ONNX Runtime VAE Pipeline for Latent Encoding/Decoding
-  - IVAEPipelineService with ONNX Runtime-based VAE inference. EncodeAsync, DecodeAsync, GetAvailableModelsAsync, LoadModelAsync, SaveModelAsync.
+   - IVAEPipelineService with ONNX Runtime-based VAE inference. EncodeAsync, DecodeAsync, GetAvailableModelsAsync, LoadModelAsync, SaveModelAsync.
 ## src/Infrastructure/Services/WindowSettingsService.cs - 71 lines - Window State Persistence Service
   - IWindowSettings and IDisposable for JSON-based window state persistence. SaveAsync, LoadAsync. Settings stored in AppData/Metadata directory.
 ## src/Infrastructure/Services/SystemAICoordinator.cs - 213 lines - System AI Orchestrator for Cross-Architecture Workflows

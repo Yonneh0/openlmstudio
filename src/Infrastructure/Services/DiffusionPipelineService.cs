@@ -11,6 +11,10 @@ using SkiaSharp;
 
 namespace OpenLMStudio.Infrastructure.Services;
 
+// Resolve ambiguous ImageOutputFormat reference
+using ImageOutputFormat = OpenLMStudio.Application.Types.ImageOutputFormat;
+using ImageGenerationMetadata = OpenLMStudio.Application.Types.ImageGenerationMetadata;
+
 /// <summary>
 /// ONNX Runtime-based diffusion pipeline service for image generation (Stable Diffusion, Flux).
 /// Implements full 3-stage pipeline: CLIP text encoding → UNet denoising with CFG → VAE decoding.
@@ -1374,5 +1378,121 @@ public class DiffusionPipelineService : IDiffusionPipelineService, IDisposable
         using var imageData = image.Encode(SKEncodedImageFormat.Png, 100);
         return imageData.ToArray();
     }
-}
 
+    // ---- Batch Generation ----
+
+    /// <summary>
+    /// Generates multiple images in a batch — supports multiple seeds, multiple prompts, and grid layout output.
+    /// </summary>
+    public async Task<ImageBatchResult> GenerateBatchAsync(
+        List<ImageGenerationRequest> requests,
+        CancellationToken ct = default)
+    {
+        var results = new List<ImageGenerationResult>();
+        foreach (var req in requests)
+        {
+            try
+            {
+                var result = await GenerateImageAsync(req, ct);
+                results.Add(result);
+            }
+            catch (Exception ex)
+            {
+                _logger?.LogWarning(ex, "Failed to generate image in batch for model '{ModelId}'", req.ModelId);
+            }
+        }
+
+        // Create grid image if multiple results
+        byte[]? gridImage = null;
+        if (results.Count > 1)
+        {
+            gridImage = CreateGridImage(results);
+        }
+
+        return new ImageBatchResult(
+            results,
+            gridImage,
+            results.Count,
+            requests.Count - results.Count);
+    }
+
+    /// <summary>
+    /// Creates a grid image from multiple results (2x2, 3x3, etc.).
+    /// </summary>
+    public static byte[]? CreateGridImage(IReadOnlyList<ImageGenerationResult> results, int cols = 3)
+    {
+        if (results.Count == 1)
+            return results[0].ImageBytes;
+
+        var images = results.Select(r => SKImage.FromEncodedData(r.ImageBytes)).ToArray();
+        int rows = (int)Math.Ceiling(results.Count / (double)cols);
+        int maxW = images.Max(i => i.Width);
+        int maxH = images.Max(i => i.Height);
+
+        using var grid = new SKBitmap(cols * maxW, rows * maxH);
+        using var canvas = new SKCanvas(grid);
+        canvas.Clear(SKColors.Black);
+
+        for (int i = 0; i < images.Length; i++)
+        {
+            int row = i / cols;
+            int col = i % cols;
+            var src = images[i];
+            var rect = new SKRect(col * maxW, row * maxH, (col + 1) * maxW, (row + 1) * maxH);
+            canvas.DrawImage(src, rect);
+        }
+
+        foreach (var img in images)
+            img.Dispose();
+
+        using var image = SKImage.FromBitmap(grid);
+        using var data = image.Encode(SKEncodedImageFormat.Png, 100);
+        return data?.ToArray();
+    }
+
+    // ---- Image Preview Service ----
+
+    private readonly IImagePreviewService _previewService = new ImagePreviewService();
+
+    /// <summary>
+    /// Gets the image preview service for live preview updates during generation.
+    /// </summary>
+    public IImagePreviewService PreviewService => _previewService;
+
+    /// <summary>
+    /// Updates the preview with an intermediate image from a generation step.
+    /// </summary>
+    public async Task UpdatePreviewAsync(ImageGenerationProgress progress, byte[] imageBytes, CancellationToken ct = default)
+    {
+        await _previewService.UpdatePreviewAsync(progress, ct);
+    }
+
+    /// <summary>
+    /// Saves an image with the specified format and metadata.
+    /// </summary>
+    public async Task<string> SaveImageAsync(
+        byte[] imageBytes,
+        ImageGenerationMetadata metadata,
+        ImageOutputFormat format = ImageOutputFormat.Png,
+        string? outputPath = null,
+        CancellationToken ct = default)
+    {
+        var saver = new ImageSaver();
+        if (outputPath != null)
+            return await saver.SaveToDiskAsync(imageBytes, outputPath, format, ct);
+        return await saver.SaveWithMetadataAsync(imageBytes, metadata, format: format, ct: ct);
+    }
+
+    /// <summary>
+    /// Saves an image to the gallery with thumbnail generation.
+    /// </summary>
+    public async Task<ImageGalleryEntry> SaveToGalleryAsync(
+        byte[] imageBytes,
+        ImageGenerationMetadata metadata,
+        CancellationToken ct = default)
+    {
+        var saver = new ImageSaver();
+        return await saver.SaveToGalleryAsync(imageBytes, metadata, ct);
+    }
+
+}

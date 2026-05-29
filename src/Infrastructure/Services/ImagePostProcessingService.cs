@@ -112,9 +112,9 @@ public class ImagePostProcessingService : IImagePostProcessingService, IDisposab
             request.GuidanceScale,
             request.Steps,
             request.Seed ?? -1,
-            LoraAdapters: null,
             StreamProgress: false,
-            request.SamplerType);
+            SamplerType: request.SamplerType,
+            LoraAdapters: null);
 
         // Step 2: Upscale the generated image to target resolution
         var upscaleRequest = new ImageUpscaleRequest(
