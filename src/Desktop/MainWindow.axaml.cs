@@ -87,9 +87,6 @@ public partial class MainWindow : Window
     /// <summary>The text block within the assistant message that receives streamed tokens.</summary>
     private TextBlock? _assistantTextBlock;
 
-    /// <summary>Resolves the diffusion pipeline service for image generation (lazy from DI).</summary>
-    private Application.Interfaces.IDiffusionPipelineService? _diffusionPipeline;
-
     // Tab tracking
     private string _activeTab = "Chat";
 

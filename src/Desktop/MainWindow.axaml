@@ -139,17 +139,18 @@
         <Style Selector="Button.headerDeleteBtn:pointerover"><Setter Property="Background" Value="#454549"/><Setter Property="Foreground" Value="{StaticResource AccentRed}"/></Style>
     </Window.Styles>
 
-    <Grid>
-        <Grid.ColumnDefinitions>
-            <ColumnDefinition Width="280"/>
-            <ColumnDefinition Width="4*"/>
-            <ColumnDefinition Width="320"/>
-        </Grid.ColumnDefinitions>
-        <Grid.RowDefinitions>
-            <RowDefinition Height="48"/>
-            <RowDefinition Height="*"/>
-            <RowDefinition Height="24"/>
-        </Grid.RowDefinitions>
+    <ContentControl>
+        <Grid>
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="280"/>
+                <ColumnDefinition Width="4*"/>
+                <ColumnDefinition Width="320"/>
+            </Grid.ColumnDefinitions>
+            <Grid.RowDefinitions>
+                <RowDefinition Height="48"/>
+                <RowDefinition Height="*"/>
+                <RowDefinition Height="24"/>
+            </Grid.RowDefinitions>
 
         <!-- ===== HEADER BAR (spans all columns) ===== -->
         <Border Grid.Row="0" Grid.ColumnSpan="3" Background="{StaticResource BgPrimary}" ClipToBounds="True">
@@ -751,14 +752,9 @@
                                 </StackPanel>
                             </StackPanel>
                         </StackPanel>
-
-        <!-- Image Generation tab content — uses ImageGenerationTab control -->
-        <Controls:ImageGenerationTab x:Name="ImageGenerationTab" IsVisible="False"/>
-
                     </StackPanel>
                 </ScrollViewer>
             </Grid>
-
         </Grid>
 
         <!-- Invisible overlay to catch clicks outside the title while editing -->
@@ -1304,5 +1300,11 @@
                 </StackPanel>
             </Border>
         </Popup>
-    </Grid>
+
+        <!-- Image Generation tab content — uses ImageGenerationTab control (overlay) -->
+        <Canvas x:Name="ImageGenerationCanvas" Panel.ZIndex="10">
+            <Controls:ImageGenerationTab x:Name="ImageGenerationTab" IsVisible="False" Canvas.Left="0" Canvas.Top="0"/>
+        </Canvas>
+        </Grid>
+    </ContentControl>
 </Window>
