@@ -50,6 +50,10 @@
   - Defines ServerConfiguration, IConversationManager, IDeviceMonitor, IServerService, IMcpClient interfaces plus related types.
 ## src/Application/Interfaces/IDiffusionPipelineService.cs - 280 lines - Diffusion Pipeline, VAE, LoRA, Embedding, and Image Generation Coordination
   - Defines IDiffusionPipelineService, IVAEPipelineService, ILoraAdapterManager, IEmbeddingPipelineService, IDiffusionModelFamilyService, IImageGenerationCoordinator interfaces plus ImageGenerationCommand, LoraAdapterCommand, ImageToImageCommand, ControlNetCommand, InpaintCommand, ImageGenerationStatus records.
+## src/Application/Interfaces/IImageGalleryService.cs - 19 lines - Image Gallery Service Interface
+  - Defines IImageGalleryService interface with AddImageAsync, GetImageAsync, GetRecentImagesAsync, SearchImagesAsync, GetAllImagesAsync, DeleteImageAsync, ExportGalleryAsJsonAsync, ImportGalleryFromJsonAsync methods.
+## src/Application/Interfaces/IImageSaver.cs - 32 lines - Image Saver Interface
+  - Defines IImageSaver interface with SaveToDiskAsync, SaveImageWithMetadataAsync, GenerateTimestampedFilename, GenerateThumbnailAsync, ExpandPath, DefaultSaveDirectory.
 ## src/Application/Interfaces/IDigitalSignatureVerifier.cs - 23 lines - Digital Signature Verification Service
   - Defines IDigitalSignatureVerifier interface for verifying RSA signatures on model files with SHA256/SHA512 support.
 ## src/Application/Interfaces/IDownloadManager.cs - 174 lines - Model Download Manager with Progress Events

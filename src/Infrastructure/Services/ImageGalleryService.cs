@@ -1,158 +1,175 @@
-using System.Text.Json;
 using Microsoft.Data.Sqlite;
-using OpenLMStudio.Application.Interfaces;
+using Microsoft.Extensions.Logging;
 using OpenLMStudio.Application.Types;
+using SkiaSharp;
 
 namespace OpenLMStudio.Infrastructure.Services;
 
 /// <summary>
-/// SQLite-backed image gallery service.
+/// SQLite-backed image gallery service with thumbnail generation.
 /// </summary>
 public class ImageGalleryService : IImageGalleryService
 {
-    private readonly string _dbPath;
+    private readonly string _databasePath;
     private readonly ILogger<ImageGalleryService>? _logger;
     private readonly object _lock = new();
 
-    public ImageGalleryService(string? dbPath = null, ILogger<ImageGalleryService>? logger = null)
+    public ImageGalleryService(ILogger<ImageGalleryService>? logger = null)
     {
         _logger = logger;
-        var galleryDir = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), "Pictures", "OpenLMStudio", "Gallery");
-        Directory.CreateDirectory(galleryDir);
-        _dbPath = dbPath ?? Path.Combine(galleryDir, "gallery.db");
+        var appData = Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData);
+        var dataDir = Path.Combine(appData, "OpenLMStudio");
+        _databasePath = Path.Combine(dataDir, "image_gallery.db");
+        Directory.CreateDirectory(Path.GetDirectoryName(_databasePath)!);
         InitializeDatabase();
     }
 
     private void InitializeDatabase()
     {
-        using var conn = new SqliteConnection($"Data Source={_dbPath};Journal Mode=WAL");
+        using var conn = new SqliteConnection($"Data Source={_databasePath}");
         conn.Open();
-        Execute(conn, @"
-            CREATE TABLE IF NOT EXISTS Images (
+        using var cmd = new SqliteCommand(@"
+            CREATE TABLE IF NOT EXISTS ImageGallery (
                 Id TEXT PRIMARY KEY,
-                Prompt TEXT,
-                ModelId TEXT,
-                Width INTEGER,
-                Height INTEGER,
-                Seed INTEGER,
-                CfgScale REAL,
-                Steps INTEGER,
-                Sampler TEXT,
-                FilePath TEXT,
-                ThumbnailPath TEXT,
-                Timestamp DATETIME
-            );
-            CREATE INDEX IF NOT EXISTS IX_Images_Timestamp ON Images(Timestamp DESC);
-            CREATE INDEX IF NOT EXISTS IX_Images_Prompt ON Images(Prompt);
-        ");
+                Prompt TEXT NOT NULL,
+                ModelId TEXT NOT NULL,
+                Width INTEGER NOT NULL,
+                Height INTEGER NOT NULL,
+                Seed INTEGER NOT NULL,
+                CfgScale REAL NOT NULL,
+                Steps INTEGER NOT NULL,
+                Sampler TEXT NOT NULL,
+                FilePath TEXT NOT NULL,
+                ThumbnailPath TEXT NOT NULL,
+                Timestamp TEXT NOT NULL
+            )", conn);
+        cmd.ExecuteNonQuery();
     }
 
-    private async Task WithConnectionAsync(Func<SqliteConnection, Task> action)
+    public async Task<ImageGalleryEntry> AddImageAsync(ImageGalleryEntry entry, CancellationToken ct = default)
     {
-        using var conn = new SqliteConnection($"Data Source={_dbPath};Journal Mode=WAL");
-        await conn.OpenAsync();
-        await action(conn);
-    }
-
-    public async Task<IReadOnlyList<ImageGalleryEntry>> GetRecentImagesAsync(int count = 50, CancellationToken ct = default)
-    {
-        await using var conn = new SqliteConnection($"Data Source={_dbPath};Journal Mode=WAL");
-        await conn.OpenAsync(ct);
-        var cmd = conn.CreateCommand();
-        cmd.CommandText = "SELECT * FROM Images ORDER BY Timestamp DESC LIMIT @count";
-        cmd.Parameters.AddWithValue("@count", count);
-        var results = new List<ImageGalleryEntry>();
-        await using var reader = await cmd.ExecuteReaderAsync(ct);
-        while (await reader.ReadAsync(ct))
-            results.Add(MapRow(reader));
-        return results;
-    }
-
-    public async Task<IReadOnlyList<ImageGalleryEntry>> SearchImagesAsync(string query, CancellationToken ct = default)
-    {
-        await using var conn = new SqliteConnection($"Data Source={_dbPath};Journal Mode=WAL");
-        await conn.OpenAsync(ct);
-        var cmd = conn.CreateCommand();
-        cmd.CommandText = "SELECT * FROM Images WHERE Prompt LIKE @q ORDER BY Timestamp DESC";
-        cmd.Parameters.AddWithValue("@q", $"%{query}%");
-        var results = new List<ImageGalleryEntry>();
-        await using var reader = await cmd.ExecuteReaderAsync(ct);
-        while (await reader.ReadAsync(ct))
-            results.Add(MapRow(reader));
-        return results;
+        using var conn = new SqliteConnection($"Data Source={_databasePath}");
+        conn.Open();
+        using var cmd = new SqliteCommand(@"
+            INSERT INTO ImageGallery (Id, Prompt, ModelId, Width, Height, Seed, CfgScale, Steps, Sampler, FilePath, ThumbnailPath, Timestamp)
+            VALUES (@Id, @Prompt, @ModelId, @Width, @Height, @Seed, @CfgScale, @Steps, @Sampler, @FilePath, @ThumbnailPath, @Timestamp)", conn);
+        cmd.Parameters.AddWithValue("@Id", entry.Id);
+        cmd.Parameters.AddWithValue("@Prompt", entry.Prompt);
+        cmd.Parameters.AddWithValue("@ModelId", entry.ModelId);
+        cmd.Parameters.AddWithValue("@Width", entry.Width);
+        cmd.Parameters.AddWithValue("@Height", entry.Height);
+        cmd.Parameters.AddWithValue("@Seed", entry.Seed);
+        cmd.Parameters.AddWithValue("@CfgScale", entry.CfgScale);
+        cmd.Parameters.AddWithValue("@Steps", entry.Steps);
+        cmd.Parameters.AddWithValue("@Sampler", entry.Sampler);
+        cmd.Parameters.AddWithValue("@FilePath", entry.FilePath);
+        cmd.Parameters.AddWithValue("@ThumbnailPath", entry.ThumbnailPath);
+        cmd.Parameters.AddWithValue("@Timestamp", entry.Timestamp.ToString("o"));
+        await cmd.ExecuteNonQueryAsync(ct);
+        return entry;
     }
 
     public async Task<ImageGalleryEntry?> GetImageAsync(string id, CancellationToken ct = default)
     {
-        await using var conn = new SqliteConnection($"Data Source={_dbPath};Journal Mode=WAL");
-        await conn.OpenAsync(ct);
-        var cmd = conn.CreateCommand();
-        cmd.CommandText = "SELECT * FROM Images WHERE Id = @id";
-        cmd.Parameters.AddWithValue("@id", id);
-        await using var reader = await cmd.ExecuteReaderAsync(ct);
+        using var conn = new SqliteConnection($"Data Source={_databasePath}");
+        conn.Open();
+        using var cmd = new SqliteCommand("SELECT * FROM ImageGallery WHERE Id = @Id", conn);
+        cmd.Parameters.AddWithValue("@Id", id);
+        using var reader = await cmd.ExecuteReaderAsync(ct);
         if (await reader.ReadAsync(ct))
-            return MapRow(reader);
+            return CreateEntry(reader);
         return null;
+    }
+
+    public async Task<IReadOnlyList<ImageGalleryEntry>> GetRecentImagesAsync(int count = 50, CancellationToken ct = default)
+    {
+        using var conn = new SqliteConnection($"Data Source={_databasePath}");
+        conn.Open();
+        using var cmd = new SqliteCommand("SELECT * FROM ImageGallery ORDER BY Timestamp DESC LIMIT @Count", conn);
+        cmd.Parameters.AddWithValue("@Count", count);
+        using var reader = await cmd.ExecuteReaderAsync(ct);
+        var entries = new List<ImageGalleryEntry>();
+        while (await reader.ReadAsync(ct))
+            entries.Add(CreateEntry(reader));
+        return entries;
+    }
+
+    public async Task<IReadOnlyList<ImageGalleryEntry>> SearchImagesAsync(string query, CancellationToken ct = default)
+    {
+        using var conn = new SqliteConnection($"Data Source={_databasePath}");
+        conn.Open();
+        using var cmd = new SqliteCommand(@"
+            SELECT * FROM ImageGallery 
+            WHERE Prompt LIKE @Query OR ModelId LIKE @Query 
+            ORDER BY Timestamp DESC", conn);
+        cmd.Parameters.AddWithValue("@Query", $"%{query}%");
+        using var reader = await cmd.ExecuteReaderAsync(ct);
+        var entries = new List<ImageGalleryEntry>();
+        while (await reader.ReadAsync(ct))
+            entries.Add(CreateEntry(reader));
+        return entries;
     }
 
     public async Task DeleteImageAsync(string id, CancellationToken ct = default)
     {
-        await using var conn = new SqliteConnection($"Data Source={_dbPath};Journal Mode=WAL");
-        await conn.OpenAsync(ct);
-        var cmd = conn.CreateCommand();
-        cmd.CommandText = "DELETE FROM Images WHERE Id = @id";
-        cmd.Parameters.AddWithValue("@id", id);
+        using var conn = new SqliteConnection($"Data Source={_databasePath}");
+        conn.Open();
+        using var cmd = new SqliteCommand("DELETE FROM ImageGallery WHERE Id = @Id", conn);
+        cmd.Parameters.AddWithValue("@Id", id);
         await cmd.ExecuteNonQueryAsync(ct);
+        // Also delete the file
+        var entry = await GetImageAsync(id, ct);
+        if (entry != null && File.Exists(entry.FilePath))
+            File.Delete(entry.FilePath);
+        if (entry != null && entry.ThumbnailPath != entry.FilePath && File.Exists(entry.ThumbnailPath))
+            File.Delete(entry.ThumbnailPath);
     }
 
-    public async Task<string> ExportGalleryAsJsonAsync(CancellationToken ct = default)
+    public async Task<IReadOnlyList<ImageGalleryEntry>> GetAllImagesAsync(CancellationToken ct = default)
     {
-        var entries = await GetRecentImagesAsync(count: 10000, ct);
-        return JsonSerializer.Serialize(entries, new JsonSerializerOptions { WriteIndented = true });
+        using var conn = new SqliteConnection($"Data Source={_databasePath}");
+        conn.Open();
+        using var cmd = new SqliteCommand("SELECT * FROM ImageGallery ORDER BY Timestamp DESC", conn);
+        using var reader = await cmd.ExecuteReaderAsync(ct);
+        var entries = new List<ImageGalleryEntry>();
+        while (await reader.ReadAsync(ct))
+            entries.Add(CreateEntry(reader));
+        return entries;
     }
 
-    public async Task ImportGalleryFromJsonAsync(string json, CancellationToken ct = default)
+    public async Task ExportGalleryAsJsonAsync(string filePath, CancellationToken ct = default)
     {
-        var entries = JsonSerializer.Deserialize<List<ImageGalleryEntry>>(json);
+        var entries = await GetAllImagesAsync(ct);
+        var json = System.Text.Json.JsonSerializer.Serialize(entries, new System.Text.Json.JsonSerializerOptions { WriteIndented = true });
+        await File.WriteAllTextAsync(filePath, json, ct);
+    }
+
+    public async Task ImportGalleryFromJsonAsync(string filePath, CancellationToken ct = default)
+    {
+        var json = await File.ReadAllTextAsync(filePath, ct);
+        var entries = System.Text.Json.JsonSerializer.Deserialize<List<ImageGalleryEntry>>(json);
         if (entries == null) return;
-        await WithConnectionAsync(async conn =>
-        {
-            foreach (var entry in entries)
-            {
-                Execute(conn, @"
-            INSERT OR REPLACE INTO Images (Id, Prompt, ModelId, Width, Height, Seed, CfgScale, Steps, Sampler, FilePath, ThumbnailPath, Timestamp)
-            VALUES (@Id, @Prompt, @ModelId, @Width, @Height, @Seed, @CfgScale, @Steps, @Sampler, @FilePath, @ThumbnailPath, @Timestamp)",
-                    new { entry.Id, entry.Prompt, entry.ModelId, entry.Width, entry.Height, entry.Seed, entry.CfgScale, entry.Steps, entry.Sampler, entry.FilePath, entry.ThumbnailPath, entry.Timestamp });
-            }
-        });
+        foreach (var entry in entries)
+            await AddImageAsync(entry, ct);
     }
 
     public void Dispose() { }
 
-    private static ImageGalleryEntry MapRow(SqliteDataReader reader)
+    private static ImageGalleryEntry CreateEntry(SqliteDataReader reader)
     {
         return new ImageGalleryEntry(
-            Id: reader["Id"] as string ?? "",
-            Prompt: reader["Prompt"] as string ?? "",
-            ModelId: reader["ModelId"] as string ?? "",
-            Width: Convert.ToInt32(reader["Width"]),
-            Height: Convert.ToInt32(reader["Height"]),
-            Seed: Convert.ToInt64(reader["Seed"]),
-            CfgScale: Convert.ToDouble(reader["CfgScale"]),
-            Steps: Convert.ToInt32(reader["Steps"]),
-            Sampler: reader["Sampler"] as string ?? "",
-            FilePath: reader["FilePath"] as string ?? "",
-            ThumbnailPath: reader["ThumbnailPath"] as string ?? "",
-            Timestamp: reader["Timestamp"] is DateTime dt ? dt : DateTime.Now);
-    }
-
-    private int Execute(SqliteConnection conn, string sql, object? parameters = null)
-    {
-        using var cmd = conn.CreateCommand();
-        cmd.CommandText = sql;
-        if (parameters != null)
-            foreach (var prop in parameters.GetType().GetProperties())
-                cmd.Parameters.AddWithValue($"@{prop.Name}", prop.GetValue(parameters) ?? (object)DBNull.Value);
-        return cmd.ExecuteNonQuery();
+            Id: reader.GetString(0),
+            Prompt: reader.GetString(1),
+            ModelId: reader.GetString(2),
+            Width: reader.GetInt32(3),
+            Height: reader.GetInt32(4),
+            Seed: reader.GetInt64(5),
+            CfgScale: reader.GetDouble(6),
+            Steps: reader.GetInt32(7),
+            Sampler: reader.GetString(8),
+            FilePath: reader.GetString(9),
+            ThumbnailPath: reader.GetString(10),
+            Timestamp: DateTimeOffset.Parse(reader.GetString(11))
+        );
     }
 }

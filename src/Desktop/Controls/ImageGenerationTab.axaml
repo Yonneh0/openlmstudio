@@ -1,6 +1,7 @@
 <UserControl xmlns="https://github.com/avaloniaui"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              x:Class="OpenLMStudio.Desktop.Controls.ImageGenerationTab"
+             x:Name="Root"
              xmlns:local="clr-namespace:OpenLMStudio.Desktop.Controls"
              xmlns:app="clr-namespace:OpenLMStudio.Application.Types;assembly=OpenLMStudio.Application">
     <UserControl.Resources>
@@ -13,118 +14,171 @@
         <SolidColorBrush x:Key="AccentGreen" Color="#4CAF50"/>
         <SolidColorBrush x:Key="AccentOrange" Color="#FF9800"/>
         <SolidColorBrush x:Key="AccentRed" Color="#FF6B6B"/>
+        <SolidColorBrush x:Key="AccentPurple" Color="#AB47BC"/>
+        <SolidColorBrush x:Key="ModelLoaded" Color="#4CAF50"/>
+        <SolidColorBrush x:Key="ModelLoading" Color="#FF9800"/>
+        <SolidColorBrush x:Key="ModelUnloaded" Color="#757575"/>
     </UserControl.Resources>
 
-    <!-- Fixed height layout for sidebar (280x400) — no scrolling -->
-    <StackPanel Margin="6" Spacing="6" MaxWidth="280">
+    <!-- Compact layout for 280x400 sidebar — no scrolling -->
+    <StackPanel Margin="6" Spacing="4" MaxWidth="280">
 
-        <!-- Pipeline Selector -->
+        <!-- Row 1: Model Selector -->
         <Border Background="{StaticResource BgSecondary}" CornerRadius="6" Padding="6">
             <StackPanel>
-                <TextBlock Text="Pipeline" FontSize="11" FontWeight="SemiBold" Foreground="{StaticResource TextPrimary}" Margin="0,0,0,3"/>
-                <UniformGrid Columns="4" Rows="1">
-                    <Button Content="SD1.5" Padding="3,3" Margin="0,0,2,0" x:Name="Sd15Button" Click="OnPipelineSelected" FontSize="10"/>
-                    <Button Content="SDXL" Padding="3,3" Margin="0,0,2,0" x:Name="SdxlButton" Click="OnPipelineSelected" FontSize="10"/>
-                    <Button Content="SD3" Padding="3,3" Margin="0,0,2,0" x:Name="Sd3Button" Click="OnPipelineSelected" FontSize="10"/>
-                    <Button Content="Flux" Padding="3,3" x:Name="FluxButton" Click="OnPipelineSelected" FontSize="10"/>
-                </UniformGrid>
+                <StackPanel Orientation="Horizontal" Margin="0,0,0,3">
+                    <TextBlock Text="Model" FontSize="11" FontWeight="SemiBold" Foreground="{StaticResource TextPrimary}" VerticalAlignment="Center"/>
+                    <Rectangle Width="6" Height="6" VerticalAlignment="Center" Margin="6,0,0,0">
+                        <Rectangle.Fill>
+                            <SolidColorBrush Color="{Binding ModelStatusColor, ElementName=Root}"/>
+                        </Rectangle.Fill>
+                    </Rectangle>
+                    <TextBlock x:Name="ModelStatusText" Text="— Unloaded" FontSize="9" Foreground="{StaticResource TextSecondary}" Margin="3,0,0,0" VerticalAlignment="Center"/>
+                    <Button Content="🔄" Padding="2,0" Margin="3,0,0,0" x:Name="RefreshModelButton" Click="OnRefreshModels" FontSize="9" ToolTip.Tip="Refresh model list"/>
+                </StackPanel>
+
+                <Grid>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*"/>
+                        <ColumnDefinition Width="Auto"/>
+                        <ColumnDefinition Width="Auto"/>
+                    </Grid.ColumnDefinitions>
+                    <ComboBox x:Name="ModelComboBox" Grid.Column="0" Height="24" Margin="0,0,3,0" FontSize="10" SelectionChanged="OnModelSelected"
+                              ToolTip.Tip="Select a diffusion model for generation">
+                        <ComboBoxItem Content="— Select Model —"/>
+                    </ComboBox>
+                    <Button Content="Load" Grid.Column="1" Padding="6,2" Margin="3,0,2,0" x:Name="LoadModelButton" Click="OnLoadModel" FontSize="9" Background="{StaticResource AccentGreen}" Foreground="White"/>
+                    <Button Content="Unload" Grid.Column="2" Padding="6,2" x:Name="UnloadModelButton" Click="OnUnloadModel" FontSize="9" Background="{StaticResource AccentRed}" Foreground="White"/>
+                </Grid>
+
+                <!-- VRAM indicator -->
+                <StackPanel Margin="0,2,0,0">
+                    <Grid>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="Auto"/>
+                            <ColumnDefinition Width="*"/>
+                            <ColumnDefinition Width="Auto"/>
+                        </Grid.ColumnDefinitions>
+                        <TextBlock Text="VRAM" FontSize="8" Foreground="{StaticResource TextSecondary}" Grid.Column="0"/>
+                        <ProgressBar x:Name="VramBar" Grid.Column="1" Height="3" Margin="4,0" Minimum="0" Maximum="100" Value="0"/>
+                        <TextBlock x:Name="VramText" Text="0/16 GB" FontSize="8" Foreground="{StaticResource TextSecondary}" Grid.Column="2" Margin="4,0,0,0"/>
+                    </Grid>
+                </StackPanel>
+
+                <!-- Model info -->
+                <TextBlock x:Name="ModelInfoText" Text="Select a model to begin" FontSize="8" Foreground="{StaticResource TextSecondary}" Margin="0,2,0,0"
+                           TextWrapping="Wrap" MaxLines="2" TextTrimming="CharacterEllipsis"/>
             </StackPanel>
         </Border>
 
-        <!-- Mode Tabs -->
-        <Border Background="{StaticResource BgSecondary}" CornerRadius="6" Padding="6">
+        <!-- Row 2: Mode Tabs (🎨 Generate, 📷 I2I, 🖼 Inpaint, 🔁 Variation) -->
+        <Border Background="{StaticResource BgSecondary}" CornerRadius="6" Padding="4">
             <UniformGrid Columns="4" Rows="1">
-                <Button Content="🎨" Padding="4,3" Margin="0,0,1,0" x:Name="GenerateButton" Click="OnGenerate" FontSize="12"/>
-                <Button Content="📷" Padding="4,3" Margin="0,0,1,0" x:Name="Image2ImageButton" Click="OnImage2Image" FontSize="12"/>
-                <Button Content="🖼" Padding="4,3" Margin="0,0,1,0" x:Name="InpaintButton" Click="OnInpaint" FontSize="12"/>
-                <Button Content="🔁" Padding="4,3" x:Name="VariationButton" Click="OnVariation" FontSize="12"/>
+                <Button Content="🎨" Padding="4,3" Margin="0,0,1,0" x:Name="GenerateButton" Click="OnGenerate" FontSize="12" ToolTip.Tip="Text-to-image generation"/>
+                <Button Content="📷" Padding="4,3" Margin="0,0,1,0" x:Name="Image2ImageButton" Click="OnImage2Image" FontSize="12" ToolTip.Tip="Image-to-image transformation"/>
+                <Button Content="🖼" Padding="4,3" Margin="0,0,1,0" x:Name="InpaintButton" Click="OnInpaint" FontSize="12" ToolTip.Tip="Inpaint masked region"/>
+                <Button Content="🔁" Padding="4,3" x:Name="VariationButton" Click="OnVariation" FontSize="12" ToolTip.Tip="Image variation"/>
             </UniformGrid>
         </Border>
 
-        <!-- Prompt -->
+        <!-- Row 3: Prompt -->
         <Border Background="{StaticResource BgSecondary}" CornerRadius="6" Padding="6">
             <StackPanel>
-                <TextBlock Text="Prompt" FontSize="10" Foreground="{StaticResource TextSecondary}" Margin="0,0,0,2"/>
-                <TextBox x:Name="PromptTextBox" Height="40" Background="Transparent" Foreground="{StaticResource TextPrimary}" TextWrapping="Wrap" BorderThickness="0" Padding="3" FontSize="10"/>
-                <TextBlock Text="Negative Prompt" FontSize="10" Foreground="{StaticResource TextSecondary}" Margin="0,4,0,2"/>
-                <TextBox x:Name="NegativePromptTextBox" Height="30" Background="Transparent" Foreground="{StaticResource TextSecondary}" TextWrapping="Wrap" BorderThickness="0" Padding="3" FontSize="10"/>
+                <TextBlock Text="Prompt" FontSize="10" Foreground="{StaticResource TextPrimary}" Margin="0,0,0,2"/>
+                <TextBox x:Name="PromptTextBox" Height="40" Background="{StaticResource BgTertiary}" Foreground="{StaticResource TextPrimary}"
+                         TextWrapping="Wrap" BorderThickness="0" Padding="4,3" FontSize="10"
+                         ToolTip.Tip="Describe the image you want to generate"/>
+                <TextBlock Text="Negative Prompt" FontSize="9" Foreground="{StaticResource TextSecondary}" Margin="0,4,0,2"/>
+                <TextBox x:Name="NegativePromptTextBox" Height="24" Background="{StaticResource BgTertiary}" Foreground="{StaticResource TextSecondary}"
+                         TextWrapping="Wrap" BorderThickness="0" Padding="4,2" FontSize="9"
+                         ToolTip.Tip="Describe what to avoid in the output"/>
             </StackPanel>
         </Border>
 
-        <!-- Image Input (for Image→Image) -->
+        <!-- Row 4: Image Input (for Image→Image) -->
         <Border x:Name="ImageInputBorder" Background="{StaticResource BgSecondary}" CornerRadius="6" Padding="6" IsVisible="False">
             <StackPanel>
-                <TextBlock Text="Input Image" FontSize="10" Foreground="{StaticResource TextSecondary}" Margin="0,0,0,2"/>
-                <Border x:Name="ImagePreviewBorder" Background="{StaticResource BgTertiary}" CornerRadius="4" MinHeight="50" MaxHeight="100">
-                    <Image x:Name="ImagePreview" Stretch="Uniform" Margin="3"/>
+                <TextBlock Text="Input Image" FontSize="10" Foreground="{StaticResource TextPrimary}" Margin="0,0,0,2"/>
+                <Border x:Name="ImagePreviewBorder" Background="{StaticResource BgTertiary}" CornerRadius="4" MinHeight="40" MaxHeight="70">
+                    <Image x:Name="ImagePreview" Stretch="Uniform" Margin="2"/>
                 </Border>
                 <StackPanel Orientation="Horizontal" Margin="0,3,0,0">
-                    <TextBlock Text="Denoise:" VerticalAlignment="Center" Foreground="{StaticResource TextSecondary}" FontSize="10"/>
-                    <Slider x:Name="DenoiseSlider" Minimum="0" Maximum="1" Value="0.75" Width="90" Margin="3,0" ValueChanged="OnDenoiseChanged"/>
-                    <TextBlock x:Name="DenoiseValue" Text="0.75" VerticalAlignment="Center" Foreground="{StaticResource TextSecondary}" FontSize="10" Width="24"/>
+                    <TextBlock Text="Denoise:" FontSize="9" Foreground="{StaticResource TextSecondary}" VerticalAlignment="Center"/>
+                    <Slider x:Name="DenoiseSlider" Minimum="0" Maximum="1" Value="0.75" Width="80" Margin="3,0" ValueChanged="OnDenoiseChanged"
+                            ToolTip.Tip="Lower = more similar to input, higher = more transformation"/>
+                    <TextBlock x:Name="DenoiseValue" Text="0.75" FontSize="9" Foreground="{StaticResource TextSecondary}" Width="24" VerticalAlignment="Center"/>
                 </StackPanel>
-                <Button Content="📁 Load" Padding="3,2" Margin="0,3,0,0" Click="OnLoadImage" FontSize="10"/>
+                <Button Content="📁 Load Image" Padding="4,2" Margin="0,3,0,0" Click="OnLoadImage" FontSize="9"/>
             </StackPanel>
         </Border>
 
-        <!-- Parameters -->
+        <!-- Row 5: Parameters -->
         <Border Background="{StaticResource BgSecondary}" CornerRadius="6" Padding="6">
             <StackPanel>
                 <TextBlock Text="Parameters" FontSize="11" FontWeight="SemiBold" Foreground="{StaticResource TextPrimary}" Margin="0,0,0,3"/>
                 <UniformGrid Columns="2" Rows="1">
                     <StackPanel>
                         <TextBlock Text="W" FontSize="9" Foreground="{StaticResource TextSecondary}"/>
-                        <TextBox x:Name="WidthTextBox" Text="1024" Width="50" Margin="0,1,0,0" FontSize="10"/>
+                        <TextBox x:Name="WidthTextBox" Text="1024" Width="50" Margin="0,1,0,0" FontSize="10" Background="{StaticResource BgTertiary}" Foreground="{StaticResource TextPrimary}"/>
                     </StackPanel>
                     <StackPanel>
                         <TextBlock Text="H" FontSize="9" Foreground="{StaticResource TextSecondary}"/>
-                        <TextBox x:Name="HeightTextBox" Text="1024" Width="50" Margin="0,1,0,0" FontSize="10"/>
+                        <TextBox x:Name="HeightTextBox" Text="1024" Width="50" Margin="0,1,0,0" FontSize="10" Background="{StaticResource BgTertiary}" Foreground="{StaticResource TextPrimary}"/>
                     </StackPanel>
                 </UniformGrid>
-                <UniformGrid Columns="2" Rows="1" Margin="0,3,0,0">
+                <UniformGrid Columns="2" Rows="1" Margin="0,2,0,0">
                     <StackPanel>
                         <TextBlock Text="Steps" FontSize="9" Foreground="{StaticResource TextSecondary}"/>
-                        <TextBox x:Name="StepsTextBox" Text="30" Width="50" Margin="0,1,0,0" FontSize="10"/>
+                        <TextBox x:Name="StepsTextBox" Text="30" Width="50" Margin="0,1,0,0" FontSize="10" Background="{StaticResource BgTertiary}" Foreground="{StaticResource TextPrimary}"/>
                     </StackPanel>
                     <StackPanel>
                         <TextBlock Text="CFG" FontSize="9" Foreground="{StaticResource TextSecondary}"/>
-                        <TextBox x:Name="CfgTextBox" Text="7.5" Width="50" Margin="0,1,0,0" FontSize="10"/>
+                        <TextBox x:Name="CfgTextBox" Text="7.5" Width="50" Margin="0,1,0,0" FontSize="10" Background="{StaticResource BgTertiary}" Foreground="{StaticResource TextPrimary}"/>
                     </StackPanel>
                 </UniformGrid>
-                <UniformGrid Columns="2" Rows="1" Margin="0,3,0,0">
+                <UniformGrid Columns="2" Rows="1" Margin="0,2,0,0">
                     <StackPanel>
                         <TextBlock Text="Seed" FontSize="9" Foreground="{StaticResource TextSecondary}"/>
-                        <TextBox x:Name="SeedTextBox" Text="-1" Width="50" Margin="0,1,0,0" FontSize="10"/>
+                        <Grid>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*"/>
+                                <ColumnDefinition Width="Auto"/>
+                            </Grid.ColumnDefinitions>
+                            <TextBox x:Name="SeedTextBox" Text="-1" Width="40" Margin="0,1,0,0" FontSize="10" Background="{StaticResource BgTertiary}" Foreground="{StaticResource TextPrimary}" Grid.Column="0"/>
+                            <Button Content="🎲" Padding="2,0" Grid.Column="1" Click="OnRandomizeSeed" FontSize="9" ToolTip.Tip="Randomize seed"/>
+                        </Grid>
                     </StackPanel>
                     <StackPanel>
                         <TextBlock Text="Sampler" FontSize="9" Foreground="{StaticResource TextSecondary}"/>
-                        <ComboBox x:Name="SamplerComboBox" SelectedIndex="0" Width="70" Margin="0,1,0,0" FontSize="10">
+                        <ComboBox x:Name="SamplerComboBox" SelectedIndex="0" Width="65" Margin="0,1,0,0" FontSize="10" Background="{StaticResource BgTertiary}" Foreground="{StaticResource TextPrimary}">
                             <ComboBoxItem Content="Euler"/>
                             <ComboBoxItem Content="Euler A"/>
-                            <ComboBoxItem Content="DPM++"/>
+                            <ComboBoxItem Content="DPM++ 2M"/>
+                            <ComboBoxItem Content="DPM++ SDE"/>
+                            <ComboBoxItem Content="Heun"/>
                             <ComboBoxItem Content="LMS"/>
                         </ComboBox>
                     </StackPanel>
                 </UniformGrid>
                 <StackPanel Orientation="Horizontal" Margin="0,3,0,0">
                     <TextBlock Text="P:" VerticalAlignment="Center" Foreground="{StaticResource TextSecondary}" FontSize="9" Margin="0,0,3,0"/>
-                    <Button Content="512" Padding="3,1" Margin="0,0,2,0" Click="OnPresetSelected" FontSize="9"/>
-                    <Button Content="768" Padding="3,1" Margin="0,0,2,0" Click="OnPresetSelected" FontSize="9"/>
-                    <Button Content="1024" Padding="3,1" Margin="0,0,2,0" Click="OnPresetSelected" FontSize="9"/>
-                    <Button Content="1344" Padding="3,1" Click="OnPresetSelected" FontSize="9"/>
+                    <Button Content="512" Padding="3,1" Margin="0,0,2,0" Click="OnPresetSelected" FontSize="9" ToolTip.Tip="512×512"/>
+                    <Button Content="768" Padding="3,1" Margin="0,0,2,0" Click="OnPresetSelected" FontSize="9" ToolTip.Tip="768×768"/>
+                    <Button Content="1024" Padding="3,1" Margin="0,0,2,0" Click="OnPresetSelected" FontSize="9" ToolTip.Tip="1024×1024"/>
+                    <Button Content="1344" Padding="3,1" Click="OnPresetSelected" FontSize="9" ToolTip.Tip="1344×1344"/>
                 </StackPanel>
             </StackPanel>
         </Border>
 
-        <!-- LoRA Adapters -->
+        <!-- Row 6: LoRA Adapters -->
         <Border Background="{StaticResource BgSecondary}" CornerRadius="6" Padding="6">
             <StackPanel>
                 <StackPanel Orientation="Horizontal" Margin="0,0,0,3">
                     <TextBlock Text="LoRA" FontSize="11" FontWeight="SemiBold" Foreground="{StaticResource TextPrimary}"/>
-                    <Button Content="+" Padding="3,1" Margin="3,0,0,0" x:Name="AddLoraButton" Click="OnAddLora" FontSize="10"/>
-                    <Button Content="C" Padding="3,1" Margin="2,0,0,0" x:Name="ClearLoraButton" Click="OnClearLora" FontSize="10"/>
+                    <Button Content="+" Padding="3,1" Margin="4,0,0,0" x:Name="AddLoraButton" Click="OnAddLora" FontSize="10" ToolTip.Tip="Add LoRA adapter"/>
+                    <Button Content="C" Padding="3,1" Margin="2,0,0,0" x:Name="ClearLoraButton" Click="OnClearLora" FontSize="10" ToolTip.Tip="Clear all LoRAs"/>
                 </StackPanel>
-                <ItemsControl x:Name="LoraList" MaxHeight="50">
+                <ItemsControl x:Name="LoraList" MaxHeight="60">
                     <ItemsControl.ItemsPanel>
                         <ItemsPanelTemplate>
                             <WrapPanel Orientation="Horizontal"/>
@@ -134,8 +188,8 @@
                         <DataTemplate x:DataType="local:LoraViewModel">
                             <Border Width="100" Background="{StaticResource BgTertiary}" CornerRadius="4" Padding="3" Margin="0,0,3,3">
                                 <StackPanel>
-                                    <TextBlock Text="{Binding Name}" MaxWidth="80" TextWrapping="NoWrap" TextTrimming="CharacterEllipsis" FontSize="9" Foreground="{StaticResource TextPrimary}"/>
-                                    <Slider Width="90" Minimum="0" Maximum="2" Value="{Binding Weight}" Margin="0,1,0,0" FontSize="9"/>
+                                    <TextBlock Text="{Binding Name}" MaxWidth="80" TextWrapping="NoWrap" TextTrimming="CharacterEllipsis" FontSize="9" Foreground="{StaticResource TextPrimary}" ToolTip.Tip="{Binding Name}"/>
+                                    <Slider Width="90" Minimum="0" Maximum="2" Value="{Binding Weight}" Margin="0,1,0,0" FontSize="9" ToolTip.Tip="LoRA weight (0-2)"/>
                                     <StackPanel Orientation="Horizontal" Margin="0,1,0,0">
                                         <TextBlock Text="{Binding Weight, StringFormat={}{0:F1}}" FontSize="9" Foreground="{StaticResource TextSecondary}" Width="20"/>
                                         <Button Content="✕" Padding="1,0" Margin="3,0,0,0" Click="OnRemoveLora" FontSize="9"/>
@@ -148,12 +202,12 @@
             </StackPanel>
         </Border>
 
-        <!-- Output & Generate -->
+        <!-- Row 7: Output & Generate -->
         <Border Background="{StaticResource BgSecondary}" CornerRadius="6" Padding="6">
             <StackPanel>
                 <StackPanel Orientation="Horizontal" Margin="0,0,0,3">
-                    <TextBlock Text="Format" FontSize="11" Foreground="{StaticResource TextSecondary}"/>
-                    <ComboBox x:Name="OutputFormatComboBox" Width="50" Margin="3,0" FontSize="10">
+                    <TextBlock Text="Format" FontSize="10" Foreground="{StaticResource TextSecondary}"/>
+                    <ComboBox x:Name="OutputFormatComboBox" Width="50" Margin="3,0" FontSize="9">
                         <ComboBoxItem Content="PNG"/>
                         <ComboBoxItem Content="JPG"/>
                         <ComboBoxItem Content="WebP"/>
@@ -161,37 +215,42 @@
                         <ComboBoxItem Content="BMP"/>
                         <ComboBoxItem Content="GIF"/>
                     </ComboBox>
-                    <TextBox x:Name="OutputPathTextBox" Text="~/Pictures/OpenLMStudio" Width="100" Margin="3,0,0,0" FontSize="10"/>
-                    <Button Content="…" Padding="4,1" x:Name="BrowseOutputButton" Click="OnBrowseOutput" FontSize="10"/>
+                    <TextBox x:Name="OutputPathTextBox" Text="~/Pictures/OpenLMStudio" Width="80" Margin="3,0,0,0" FontSize="9" Background="{StaticResource BgTertiary}" Foreground="{StaticResource TextSecondary}"/>
+                    <Button Content="…" Padding="4,1" x:Name="BrowseOutputButton" Click="OnBrowseOutput" FontSize="9" ToolTip.Tip="Browse for output folder"/>
                 </StackPanel>
                 <StackPanel Orientation="Horizontal" Margin="0,2,0,0">
-                    <Button Content="▶" Padding="10,3" Background="{StaticResource AccentGreen}" Foreground="White" x:Name="GenerateButton2" Click="OnGenerate" FontSize="11"/>
-                    <Button Content="⏸" Padding="6,3" Margin="3,0,0,0" x:Name="PauseButton" FontSize="11"/>
-                    <Button Content="⏹" Padding="6,3" Margin="2,0,0,0" x:Name="StopButton" Click="OnStop" FontSize="11"/>
+                    <Button Content="▶ Generate" Padding="12,4" Background="{StaticResource AccentGreen}" Foreground="White" FontWeight="SemiBold"
+                            x:Name="GenerateButton2" Click="OnGenerate" FontSize="11" ToolTip.Tip="Start image generation"/>
+                    <Button Content="⏸" Padding="6,4" Margin="3,0,0,0" x:Name="PauseButton" ToolTip.Tip="Pause generation"/>
+                    <Button Content="⏹" Padding="6,4" Margin="2,0,0,0" x:Name="StopButton" Click="OnStop" FontSize="11" ToolTip.Tip="Stop generation"/>
                 </StackPanel>
                 <ProgressBar x:Name="Progress" Minimum="0" Maximum="100" Value="0" Height="3" Margin="0,3,0,0"/>
-                <TextBlock x:Name="ProgressText" Text="0%" Foreground="{StaticResource TextSecondary}" FontSize="9" Margin="0,2,0,0"/>
+                <TextBlock x:Name="ProgressText" Text="Ready" Foreground="{StaticResource TextSecondary}" FontSize="9" Margin="0,2,0,0"/>
             </StackPanel>
         </Border>
 
-        <!-- Preview -->
+        <!-- Row 8: Preview -->
         <Border Background="{StaticResource BgSecondary}" CornerRadius="6" Padding="6">
             <StackPanel>
-                <TextBlock Text="Preview" FontSize="11" FontWeight="SemiBold" Foreground="{StaticResource TextPrimary}" Margin="0,0,0,3"/>
-                <Border x:Name="PreviewBorder" Background="{StaticResource BgTertiary}" CornerRadius="4" MinHeight="60" MaxHeight="120">
-                    <Image x:Name="PreviewImage" Stretch="Uniform" Margin="3"/>
+                <StackPanel Orientation="Horizontal" Margin="0,0,0,3">
+                    <TextBlock Text="Preview" FontSize="11" FontWeight="SemiBold" Foreground="{StaticResource TextPrimary}"/>
+                    <Button Content="💾 Save" Padding="4,1" Margin="4,0,0,0" x:Name="SaveButton" Click="OnSaveImage" FontSize="9" ToolTip.Tip="Save image to disk"/>
+                    <Button Content="📋" Padding="4,1" Margin="2,0,0,0" x:Name="CopyButton" Click="OnCopyImage" FontSize="9" ToolTip.Tip="Copy to clipboard"/>
+                </StackPanel>
+                <Border x:Name="PreviewBorder" Background="{StaticResource BgTertiary}" CornerRadius="4" MinHeight="50" MaxHeight="100">
+                    <Image x:Name="PreviewImage" Stretch="Uniform" Margin="2"/>
                 </Border>
             </StackPanel>
         </Border>
 
-        <!-- Recent -->
+        <!-- Row 9: Recent -->
         <Border Background="{StaticResource BgSecondary}" CornerRadius="6" Padding="6">
             <StackPanel>
                 <StackPanel Orientation="Horizontal" Margin="0,0,0,3">
                     <TextBlock Text="Recent" FontSize="11" FontWeight="SemiBold" Foreground="{StaticResource TextPrimary}"/>
-                    <Button Content="→" Padding="3,0" Margin="3,0,0,0" FontSize="10"/>
+                    <Button Content="→" Padding="3,0" Margin="3,0,0,0" Click="OnViewGallery" FontSize="9" ToolTip.Tip="View full gallery"/>
                 </StackPanel>
-                <ItemsControl x:Name="RecentImages" MaxHeight="60">
+                <ItemsControl x:Name="RecentImages" MaxHeight="50">
                     <ItemsControl.ItemsPanel>
                         <ItemsPanelTemplate>
                             <WrapPanel Orientation="Horizontal"/>
@@ -199,8 +258,8 @@
                     </ItemsControl.ItemsPanel>
                     <ItemsControl.ItemTemplate>
                         <DataTemplate x:DataType="app:ImageGalleryEntry">
-                            <Border Width="45" Height="45" Margin="2" Background="{StaticResource BgTertiary}" CornerRadius="3">
-                                <Image Stretch="Uniform" Source="{Binding ThumbnailPath}"/>
+                            <Border Width="42" Height="42" Margin="2" Background="{StaticResource BgTertiary}" CornerRadius="3">
+                                <Image Stretch="Uniform" Source="{Binding ThumbnailPath}" ToolTip.Tip="{Binding Prompt}"/>
                             </Border>
                         </DataTemplate>
                     </ItemsControl.ItemTemplate>

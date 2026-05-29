@@ -236,7 +236,9 @@
 ## src/Infrastructure/Services/ImagePreviewService.cs - ~30 lines - Image Preview Service for Live Updates
     - IImagePreviewService implementation with thread-safe preview updates. OnPreviewUpdated event, UpdatePreviewAsync, GetCurrentPreviewAsync, ClearPreview.
 ## src/Infrastructure/Services/ImageGalleryService.cs - 163 lines - SQLite-Backed Image Gallery Service
-    - IImageGalleryService implementation with SQLite persistence. GetRecentImagesAsync, SearchImagesAsync, GetImageAsync, DeleteImageAsync, SaveImageAsync. Auto-generates 128x128 thumbnails. WAL journal mode for concurrent reads.
+     - IImageGalleryService implementation with SQLite persistence. GetRecentImagesAsync, SearchImagesAsync, GetImageAsync, DeleteImageAsync, SaveImageAsync, ExportGalleryAsJsonAsync, ImportGalleryFromJsonAsync. Auto-generates 128x128 thumbnails. WAL journal mode for concurrent reads.
+## src/Infrastructure/Services/ImageSaver.cs - 130 lines - Image Saver with Metadata Sidecars and Gallery
+     - IImageSaver implementation for saving generated images to disk. SaveToDiskAsync, SaveImageWithMetadataAsync, GenerateTimestampedFilename, GenerateThumbnailAsync, ExpandPath. Uses SkiaSharp for thumbnail generation.
 ## src/Infrastructure/Services/VaEPipelineService.cs - 434 lines - ONNX Runtime VAE Pipeline for Latent Encoding/Decoding
    - IVAEPipelineService with ONNX Runtime-based VAE inference. EncodeAsync, DecodeAsync, GetAvailableModelsAsync, LoadModelAsync, SaveModelAsync.
 ## src/Infrastructure/Services/WindowSettingsService.cs - 71 lines - Window State Persistence Service

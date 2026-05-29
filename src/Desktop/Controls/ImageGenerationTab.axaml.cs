@@ -12,8 +12,10 @@ using Avalonia.Media.Imaging;
 using Avalonia.Platform;
 using Avalonia.Platform.Storage;
 using Avalonia.Threading;
+using Avalonia.Input.Platform;
 using OpenLMStudio.Application.Interfaces;
 using OpenLMStudio.Application.Types;
+using OpenLMStudio.Domain.Models;
 using OpenLMStudio.Infrastructure.Services;
 
 namespace OpenLMStudio.Desktop.Controls;
@@ -37,6 +39,9 @@ public partial class ImageGenerationTab : UserControl
     private readonly IImageGenerationCoordinator? _coordinator;
     private readonly IImageSaver? _saver;
     private readonly IImageFormatConverter? _formatConverter;
+    private readonly IImageGalleryService? _galleryService;
+    private readonly IDiffusionPipelineService? _pipeline;
+    private readonly IModelRepository? _modelRepo;
     private CancellationTokenSource? _generationCts;
     private string _currentPipeline = "sd15";
     private bool _isGenerating;
@@ -44,26 +49,156 @@ public partial class ImageGenerationTab : UserControl
     private byte[]? _inputImageBytes;
     private ImageGalleryEntry? _lastResult;
     private readonly List<ImageGalleryEntry> _recentImages = new();
+    private string? _selectedModelId;
+    private bool _isModelLoaded;
+    public string ModelStatusColor { get; private set; } = "#757575"; // Loaded=green, Loading=orange, Unloaded=gray
 
     public ImageGenerationTab() : this(null, null, null)
     {
     }
 
-    public ImageGenerationTab(IImageGenerationCoordinator? coordinator, IImageSaver? saver, IImageFormatConverter? formatConverter)
+    public ImageGenerationTab(
+        IImageGenerationCoordinator? coordinator,
+        IImageSaver? saver,
+        IImageFormatConverter? formatConverter,
+        IImageGalleryService? galleryService = null,
+        IDiffusionPipelineService? pipeline = null,
+        IModelRepository? modelRepo = null)
     {
         InitializeComponent();
         _coordinator = coordinator;
         _saver = saver;
         _formatConverter = formatConverter;
+        _galleryService = galleryService;
+        _pipeline = pipeline;
+        _modelRepo = modelRepo;
         Loaded += OnLoaded;
     }
 
-    private void OnLoaded(object? sender, RoutedEventArgs e)
+    private async void OnLoaded(object? sender, RoutedEventArgs e)
     {
         LoraList.ItemsSource = _loraViewModels;
         // Default to SD1.5
         OnPipelineSelected(this, new RoutedEventArgs());
+        // Load models
+        await RefreshModelListAsync();
     }
+
+    #region Model Loading
+
+    private async void OnRefreshModels(object? sender, RoutedEventArgs e)
+    {
+        await RefreshModelListAsync();
+    }
+
+    private async Task RefreshModelListAsync()
+    {
+        if (_modelRepo == null)
+            return;
+
+        var models = await _modelRepo.ListMultiModalModelsAsync();
+        await Dispatcher.UIThread.InvokeAsync(() =>
+        {
+            ModelComboBox.Items.Clear();
+            foreach (var model in models)
+            {
+                var name = model.Id ?? model.FilePath?.Split('/').LastOrDefault() ?? "Unknown";
+                var item = new ComboBoxItem { Content = name };
+                item.Tag = model;
+                ModelComboBox.Items.Add(item);
+            }
+            if (ModelComboBox.Items.Count > 0)
+                ModelComboBox.SelectedIndex = 0;
+        });
+    }
+
+    private void OnModelSelected(object? sender, SelectionChangedEventArgs e)
+    {
+        if (ModelComboBox.SelectedItem is ComboBoxItem item && item.Tag is MultiModalModelMetadata metadata)
+        {
+            _selectedModelId = metadata.Id;
+            ModelInfoText.Text = $"Type: {GetPipelineType(metadata)} | Channels: {GetLatentChannels(metadata)} | File: {Path.GetFileName(metadata.FilePath ?? "")}";
+            ModelStatusText.Text = _isModelLoaded ? " ● Loaded" : " ○ Unloaded";
+            UpdateModelStatusColor();
+        }
+    }
+
+    private async void OnLoadModel(object? sender, RoutedEventArgs e)
+    {
+        if (_selectedModelId == null)
+        {
+            ModelStatusText.Text = " — No model selected";
+            return;
+        }
+
+        _isModelLoaded = true;
+        ModelStatusText.Text = " ● Loading...";
+        UpdateModelStatusColor();
+        LoadModelButton.IsEnabled = false;
+
+        if (_pipeline != null)
+        {
+            await _pipeline.LoadModelAsync(_selectedModelId);
+        }
+
+        await Dispatcher.UIThread.InvokeAsync(() =>
+        {
+            ModelStatusText.Text = " ● Loaded";
+            LoadModelButton.IsEnabled = true;
+            UpdateModelStatusColor();
+        });
+    }
+
+    private async void OnUnloadModel(object? sender, RoutedEventArgs e)
+    {
+        if (_selectedModelId == null)
+            return;
+
+        _isModelLoaded = false;
+        ModelStatusText.Text = " ○ Unloading...";
+        UpdateModelStatusColor();
+        UnloadModelButton.IsEnabled = false;
+
+        if (_pipeline != null)
+        {
+            await _pipeline.UnloadModelAsync(_selectedModelId);
+        }
+
+        await Dispatcher.UIThread.InvokeAsync(() =>
+        {
+            ModelStatusText.Text = " ○ Unloaded";
+            UnloadModelButton.IsEnabled = true;
+            UpdateModelStatusColor();
+        });
+    }
+
+    private void UpdateModelStatusColor()
+    {
+        ModelStatusColor = _isModelLoaded ? "#4CAF50" : "#757575";
+        ModelStatusText.Foreground = (SolidColorBrush)this.FindResource("TextSecondary")!;
+    }
+
+    private static string GetPipelineType(MultiModalModelMetadata metadata)
+    {
+        if (metadata.Id != null && metadata.Id.IndexOf("sdxl", StringComparison.OrdinalIgnoreCase) >= 0)
+            return "SDXL";
+        if (metadata.Id != null && metadata.Id.IndexOf("flux", StringComparison.OrdinalIgnoreCase) >= 0)
+            return "Flux";
+        if (metadata.Id != null && metadata.Id.IndexOf("sd3", StringComparison.OrdinalIgnoreCase) >= 0)
+            return "SD3";
+        return "SD1.5";
+    }
+
+    private static int GetLatentChannels(MultiModalModelMetadata metadata)
+    {
+        // Heuristic: SD1.5 = 4, SDXL = 4, SD3 = 16, Flux = 16
+        var type = GetPipelineType(metadata);
+        return type == "Flux" || type == "SD3" ? 16 : 4;
+    }
+
+    #endregion
+
+    #region Mode Tabs
 
     private void OnPipelineSelected(object? sender, RoutedEventArgs e)
     {
@@ -78,87 +213,12 @@ public partial class ImageGenerationTab : UserControl
             };
 
             // Update button styles
-            foreach (var btn in new[] { Sd15Button, SdxlButton, Sd3Button, FluxButton })
+            foreach (var btn in new[] { GenerateButton, Image2ImageButton, InpaintButton, VariationButton })
             {
                 var isActive = btn == button;
                 btn.Background = isActive ?
                     (SolidColorBrush)this.FindResource("AccentBlue")! :
                     (SolidColorBrush)this.FindResource("BgTertiary")!;
-            }
-        }
-    }
-
-    private async void OnGenerate(object? sender, RoutedEventArgs e)
-    {
-        if (_isGenerating) return;
-        _isGenerating = true;
-        GenerateButton.IsEnabled = false;
-        GenerateButton2.IsEnabled = false;
-        Progress.Value = 0;
-        ProgressText.Text = "0%";
-
-        var request = new ImageGenerationCommand(
-            PipelineType: _currentPipeline,
-            Prompt: PromptTextBox.Text ?? "",
-            NegativePrompt: NegativePromptTextBox.Text,
-            Width: ParseInt(WidthTextBox.Text, 1024),
-            Height: ParseInt(HeightTextBox.Text, 1024),
-            Steps: ParseInt(StepsTextBox.Text, 30),
-            CfgScale: ParseDouble(CfgTextBox.Text, 7.5),
-            Seed: (int)ParseLong(SeedTextBox.Text, -1),
-            SamplerType: SamplerComboBox.SelectedIndex switch
-            {
-                1 => "EulerA",
-                2 => "DPMS",
-                3 => "LMS",
-                _ => "Euler",
-            },
-            LoRAAdapters: _loraViewModels.Select(l => new LoraAdapterCommand(l.ModelId, l.Weight)).ToList(),
-            ImageToImage: _inputImageBytes != null ? new ImageToImageCommand(_inputImageBytes, DenoiseSlider.Value) : null,
-            ControlNet: null,
-            Inpaint: null,
-            OutputFormat: GetSelectedFormat(),
-            OutputPath: ExpandPath(OutputPathTextBox.Text));
-
-        if (_coordinator != null)
-        {
-            _generationCts = new CancellationTokenSource();
-            try
-            {
-                // Stream progress for real-time updates
-                await foreach (var progress in _coordinator.ExecuteStreamingAsync(request, _generationCts.Token))
-                {
-                    var topLevel = TopLevel.GetTopLevel(this);
-                    if (topLevel != null)
-                    {
-                        await Dispatcher.UIThread.InvokeAsync(() =>
-                        {
-                            Progress.Value = progress.Percentage;
-                            ProgressText.Text = $"{progress.Percentage:F0}%";
-                        });
-                    }
-                }
-
-                // Get final result
-                var result = await _coordinator.ExecuteAsync(request, _generationCts.Token);
-                await Dispatcher.UIThread.InvokeAsync(() => ShowResult(result));
-            }
-            catch (OperationCanceledException)
-            {
-                await Dispatcher.UIThread.InvokeAsync(() => ProgressText.Text = "Cancelled");
-            }
-            catch (Exception ex)
-            {
-                await Dispatcher.UIThread.InvokeAsync(() => ProgressText.Text = $"Error: {ex.Message}");
-            }
-            finally
-            {
-                await Dispatcher.UIThread.InvokeAsync(() =>
-                {
-                    _isGenerating = false;
-                    GenerateButton.IsEnabled = true;
-                    GenerateButton2.IsEnabled = true;
-                });
             }
         }
     }
@@ -174,17 +234,14 @@ public partial class ImageGenerationTab : UserControl
         await Dispatcher.UIThread.InvokeAsync(() =>
         {
             ImageInputBorder.IsVisible = true;
-            // TODO: Load mask image and set up inpainting mode
         });
     }
 
     private void OnVariation(object? sender, RoutedEventArgs e)
     {
-        // Use the current preview image as input
         if (_inputImageBytes != null)
         {
             ImageInputBorder.IsVisible = true;
-            // Variation uses full denoise (1.0) by default
             DenoiseSlider.Value = 1.0;
             DenoiseValue.Text = "1.00";
         }
@@ -193,6 +250,10 @@ public partial class ImageGenerationTab : UserControl
             OnImage2Image(sender, e);
         }
     }
+
+    #endregion
+
+    #region Image Input
 
     private async void OnLoadImage(object? sender, RoutedEventArgs e)
     {
@@ -231,6 +292,10 @@ public partial class ImageGenerationTab : UserControl
         DenoiseValue.Text = e.NewValue.ToString("F2");
     }
 
+    #endregion
+
+    #region LoRA Adapters
+
     private void OnAddLora(object? sender, RoutedEventArgs e)
     {
         _loraViewModels.Add(new LoraViewModel { Name = "New LoRA", Weight = 1.0, ModelId = "lora_new" });
@@ -249,12 +314,100 @@ public partial class ImageGenerationTab : UserControl
         }
     }
 
+    #endregion
+
+    #region Generation
+
+    private async void OnGenerate(object? sender, RoutedEventArgs e)
+    {
+        if (_isGenerating) return;
+        _isGenerating = true;
+        GenerateButton.IsEnabled = false;
+        GenerateButton2.IsEnabled = false;
+        Progress.Value = 0;
+        ProgressText.Text = "0%";
+
+        var request = new ImageGenerationCommand(
+            PipelineType: _currentPipeline,
+            Prompt: PromptTextBox.Text ?? "",
+            NegativePrompt: NegativePromptTextBox.Text,
+            Width: ParseInt(WidthTextBox.Text, 1024),
+            Height: ParseInt(HeightTextBox.Text, 1024),
+            Steps: ParseInt(StepsTextBox.Text, 30),
+            CfgScale: ParseDouble(CfgTextBox.Text, 7.5),
+            Seed: (int)ParseLong(SeedTextBox.Text, -1),
+            SamplerType: SamplerComboBox.SelectedIndex switch
+            {
+                1 => "EulerA",
+                2 => "DPMS",
+                3 => "DPMSSDE",
+                4 => "Heun",
+                5 => "LMS",
+                _ => "Euler",
+            },
+            LoRAAdapters: _loraViewModels.Select(l => new LoraAdapterCommand(l.ModelId, l.Weight)).ToList(),
+            ImageToImage: _inputImageBytes != null ? new ImageToImageCommand(_inputImageBytes, DenoiseSlider.Value) : null,
+            ControlNet: null,
+            Inpaint: null,
+            OutputFormat: GetSelectedFormat(),
+            OutputPath: ExpandPath(OutputPathTextBox.Text));
+
+        if (_coordinator != null)
+        {
+            _generationCts = new CancellationTokenSource();
+            try
+            {
+                await foreach (var progress in _coordinator.ExecuteStreamingAsync(request, _generationCts.Token))
+                {
+                    var topLevel = TopLevel.GetTopLevel(this);
+                    if (topLevel != null)
+                    {
+                        await Dispatcher.UIThread.InvokeAsync(() =>
+                        {
+                            Progress.Value = progress.Percentage;
+                            ProgressText.Text = $"{progress.Percentage:F0}%";
+                        });
+                    }
+                }
+
+                var result = await _coordinator.ExecuteAsync(request, _generationCts.Token);
+                await Dispatcher.UIThread.InvokeAsync(() => ShowResult(result));
+            }
+            catch (OperationCanceledException)
+            {
+                await Dispatcher.UIThread.InvokeAsync(() => ProgressText.Text = "Cancelled");
+            }
+            catch (Exception ex)
+            {
+                await Dispatcher.UIThread.InvokeAsync(() => ProgressText.Text = $"Error: {ex.Message}");
+            }
+            finally
+            {
+                await Dispatcher.UIThread.InvokeAsync(() =>
+                {
+                    _isGenerating = false;
+                    GenerateButton.IsEnabled = true;
+                    GenerateButton2.IsEnabled = true;
+                });
+            }
+        }
+    }
+
+    private void OnStop(object? sender, RoutedEventArgs e)
+    {
+        _generationCts?.Cancel();
+    }
+
+    private void OnRandomizeSeed(object? sender, RoutedEventArgs e)
+    {
+        SeedTextBox.Text = new Random().Next(int.MaxValue).ToString();
+    }
+
     private void OnPresetSelected(object? sender, RoutedEventArgs e)
     {
         if (sender is Button btn)
         {
             var content = btn.Content?.ToString() ?? "";
-            // Parse number from content like "512" or "1024"
             var numStr = new string(content.Where(c => char.IsDigit(c)).ToArray());
             if (int.TryParse(numStr, out var preset) && preset > 0)
             {
@@ -280,34 +433,27 @@ public partial class ImageGenerationTab : UserControl
         }
     }
 
-    private void OnStop(object? sender, RoutedEventArgs e)
-    {
-        _generationCts?.Cancel();
-    }
-
     private void ShowResult(ImageGenerationResult result)
     {
         using var stream = new MemoryStream(result.ImageBytes);
         var bitmap = new Bitmap(stream);
         PreviewImage.Source = bitmap;
 
-        // Update progress
         Progress.Value = 100;
         ProgressText.Text = "100%";
 
-        // Save to gallery
         if (_saver != null)
         {
             var outputPath = Path.Combine(
                 ExpandPath(OutputPathTextBox.Text),
                 _saver.GenerateTimestampedFilename());
 
-            var format = GetSelectedFormat();
+            var format = GetOutputFormat(GetSelectedFormat());
             var converted = _formatConverter != null
-                ? _formatConverter.ConvertAsync(result.ImageBytes, GetOutputFormat(format)).Result
+                ? _formatConverter.ConvertAsync(result.ImageBytes, format).Result
                 : result.ImageBytes;
 
-            _saver.SaveToDiskAsync(converted, outputPath, GetOutputFormat(format)).Wait();
+            _saver.SaveToDiskAsync(converted, outputPath, format).Wait();
 
             _lastResult = new ImageGalleryEntry(
                 Id: Guid.NewGuid().ToString(),
@@ -323,12 +469,10 @@ public partial class ImageGenerationTab : UserControl
                 ThumbnailPath: outputPath,
                 Timestamp: DateTime.UtcNow);
 
-            // Add to recent images
             _recentImages.Insert(0, _lastResult);
             if (_recentImages.Count > 20)
                 _recentImages.RemoveAt(_recentImages.Count - 1);
 
-            // Update recent images
             UpdateRecentImages();
         }
     }
@@ -337,6 +481,46 @@ public partial class ImageGenerationTab : UserControl
     {
         RecentImages.ItemsSource = _recentImages;
     }
+
+    private async void OnSaveImage(object? sender, RoutedEventArgs e)
+    {
+        if (_lastResult == null || _saver == null) return;
+        var expanded = _saver.ExpandPath(OutputPathTextBox.Text);
+        var filename = _saver.GenerateTimestampedFilename();
+        var path = Path.Combine(expanded, filename);
+        if (_formatConverter != null)
+        {
+            var format = GetOutputFormat(GetSelectedFormat());
+            var imageBytes = await File.ReadAllBytesAsync(_lastResult.FilePath);
+            var converted = await _formatConverter.ConvertAsync(imageBytes, format);
+            await _saver.SaveToDiskAsync(converted, path, format);
+        }
+    }
+
+    private void OnCopyImage(object? sender, RoutedEventArgs e)
+    {
+        if (_lastResult == null) return;
+        try
+        {
+            var imageBytes = File.ReadAllBytes(_lastResult.FilePath);
+            var text = Convert.ToBase64String(imageBytes);
+            var top = TopLevel.GetTopLevel(this);
+            if (top?.Clipboard != null)
+            {
+                Dispatcher.UIThread.InvokeAsync(() => top.Clipboard!.SetTextAsync(text));
+            }
+        }
+        catch { }
+    }
+
+    private void OnViewGallery(object? sender, RoutedEventArgs e)
+    {
+        // TODO: Open gallery window
+    }
+
+    #endregion
+
+    #region Helpers
 
     private static int ParseInt(string? value, int defaultValue)
     {
@@ -386,4 +570,6 @@ public partial class ImageGenerationTab : UserControl
         }
         return path;
     }
+
+    #endregion
 }

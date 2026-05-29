@@ -60,10 +60,10 @@
    - Context budget management, context injection, context segment management, context compression, context segments panel.
 ## src/Desktop/MainWindow.Helpers.cs - 770 lines - MainWindow.Helpers
    - Message sending, server controls, model list, device status, DI resolution, window state, keyboard shortcuts, dialogs.
-## src/Desktop/Controls/ImageGenerationTab.axaml - 196 lines - Image Generation Tab (Avalonia 12)
-   - Full image generation UI: pipeline selector (SD1.5/SDXL/SD3/Flux), mode tabs (Generate/Image→Image/Inpaint/Variation), prompt/negative prompt, parameters (width/height/steps/CFG/seed/sampler), LoRA adapters, output format selection, progress bar, preview, recent images gallery.
-## src/Desktop/Controls/ImageGenerationTab.axaml.cs - 230 lines - ImageGenerationTab code-behind
-   - LoraViewModel class, ImageGenerationTab with pipeline switching, generate flow via IImageGenerationCoordinator, denoise slider, LoRA add/remove/clear, resolution presets, result display with gallery save.
+## src/Desktop/Controls/ImageGenerationTab.axaml - 212 lines - Image Generation Tab (Avalonia 12) — REWRITTEN
+   - Compact 9-row layout for 280px sidebar: Model selector (with Load/Unload, VRAM indicator, status light), Mode tabs (🎨📷🖼🔁), Prompt/Negative Prompt, Image Input (I2I), Parameters (W/H/Steps/CFG/Seed/Sampler + presets), LoRA Adapters, Output & Generate, Preview, Recent gallery. Rich tooltips, progress bars, status lights.
+## src/Desktop/Controls/ImageGenerationTab.axaml.cs - 389 lines - ImageGenerationTab code-behind — REWRITTEN
+   - LoraViewModel, ImageGenerationTab with model loading (RefreshModelListAsync, LoadModelAsync, UnloadModelAsync), mode tabs, generate flow via IImageGenerationCoordinator, denoise slider, LoRA add/remove/clear, resolution presets, result display with gallery save, image save/copy/gallery view.
 ## src/Desktop/MainWindow.Streaming.cs - 328 lines - MainWindow.Streaming
    - Streaming responses: GetAssistantResponseAsync, StreamResponseViaServerAsync (SSE), StreamResponseViaLocalServiceAsync.
 ## src/Desktop/MainWindow.TabManager.cs - 200 lines - MainWindow.TabManager
